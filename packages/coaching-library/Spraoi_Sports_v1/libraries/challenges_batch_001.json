@@ -1,0 +1,97 @@
+[
+  {
+    "title": "Target Knockdown",
+    "skill": "Target Accuracy",
+    "sport": "hurling",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 10,
+    "description": "Set up three safe targets and try to roll or strike your ball into them. Count every clean hit and try to improve your score.",
+    "target": "Hit a target 10 times from 20 attempts",
+    "video_url": ""
+  },
+  {
+    "title": "Around the Body",
+    "skill": "Ball Control",
+    "sport": "hurling",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 8,
+    "description": "Move the ball around your waist and through your legs in a figure eight. Stay balanced and keep the ball under control.",
+    "target": "Complete 10 circles each way and 10 figure eights",
+    "video_url": ""
+  },
+  {
+    "title": "Balance Explorer",
+    "skill": "Balance",
+    "sport": "athletic",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 8,
+    "description": "Balance a beanbag or rolled-up pair of socks while walking slowly. Try a different safe body position each round.",
+    "target": "Complete 4 x 20-second balance rounds without dropping it",
+    "video_url": ""
+  },
+  {
+    "title": "Passing Streak",
+    "skill": "Passing",
+    "sport": "hurling",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 10,
+    "description": "Pass with a partner or against a safe wall target. Keep your passes controlled and see how long your accurate streak can last.",
+    "target": "Complete 20 accurate passes, including a streak of 5",
+    "video_url": ""
+  },
+  {
+    "title": "Move the Big Ball",
+    "skill": "Striking Accuracy",
+    "sport": "hurling",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 10,
+    "description": "Use controlled strikes or rolls to move a large soft ball across a safe line. Aim carefully rather than using maximum force.",
+    "target": "Move the large ball across the line in 15 accurate attempts or fewer",
+    "video_url": ""
+  }
+]

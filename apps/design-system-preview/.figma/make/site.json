@@ -1,0 +1,10 @@
+{
+  "description": "Streamline grassroots sports management with a premium design system that enhances user experience through modern, accessible components and a mobile-first approach.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

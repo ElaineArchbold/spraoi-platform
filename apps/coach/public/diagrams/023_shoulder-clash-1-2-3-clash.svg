@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300">
+  <rect width="400" height="300" fill="#4a9835" rx="12"/>
+  <rect x="10" y="10" width="380" height="280" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" rx="6"/>
+  <line x1="200" y1="10" x2="200" y2="290" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+  <circle cx="200" cy="150" r="30" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+  <circle cx="120" cy="50" r="12" fill="#073B74" stroke="#fff" stroke-width="2"/>
+  <text x="120" y="54" text-anchor="middle" fill="#fff" font-size="9" font-weight="800" font-family="sans-serif">A</text>
+  <circle cx="280" cy="50" r="12" fill="#079CE0" stroke="#fff" stroke-width="2"/>
+  <text x="280" y="54" text-anchor="middle" fill="#fff" font-size="9" font-weight="800" font-family="sans-serif">B</text>
+  <line x1="140" y1="50" x2="260" y2="50" stroke="#FFB400" stroke-width="2" stroke-dasharray="5,4" opacity="0.8"/>
+  <polygon points="260,50 252.6315120479769,53.115346738469206 252.6315120479769,46.884653261530794" fill="#FFB400" opacity="0.8"/><circle cx="200" cy="38" r="6" fill="#FFB400" stroke="#fff" stroke-width="1.5"/><polygon points="90,42 84,55 96,55" fill="#FF7A00" stroke="#fff" stroke-width="1"/><polygon points="310,42 304,55 316,55" fill="#FF7A00" stroke="#fff" stroke-width="1"/>
+  <circle cx="120" cy="170" r="12" fill="#073B74" stroke="#fff" stroke-width="2"/>
+  <text x="120" y="174" text-anchor="middle" fill="#fff" font-size="9" font-weight="800" font-family="sans-serif">A</text>
+  <circle cx="280" cy="170" r="12" fill="#079CE0" stroke="#fff" stroke-width="2"/>
+  <text x="280" y="174" text-anchor="middle" fill="#fff" font-size="9" font-weight="800" font-family="sans-serif">B</text>
+  <line x1="140" y1="170" x2="260" y2="170" stroke="#FFB400" stroke-width="2" stroke-dasharray="5,4" opacity="0.8"/>
+  <polygon points="260,170 252.6315120479769,173.1153467384692 252.6315120479769,166.8846532615308" fill="#FFB400" opacity="0.8"/><circle cx="200" cy="158" r="6" fill="#FFB400" stroke="#fff" stroke-width="1.5"/><polygon points="90,162 84,175 96,175" fill="#FF7A00" stroke="#fff" stroke-width="1"/><polygon points="310,162 304,175 316,175" fill="#FF7A00" stroke="#fff" stroke-width="1"/><text x="200" y="25" text-anchor="middle" fill="#fff" font-size="11" font-weight="700" font-family="sans-serif" opacity="0.9">2 pairs · facing</text><text x="386" y="292" text-anchor="end" fill="rgba(255,255,255,0.5)" font-size="8" font-weight="700" font-family="sans-serif">SPRAOI SPORTS</text></svg>

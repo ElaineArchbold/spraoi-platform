@@ -1,0 +1,100 @@
+[
+  {
+    "name": "Target Accuracy",
+    "sport": "football",
+    "category": "kicking",
+    "description": "Direct a ball or football towards a chosen target with controlled force and accuracy.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ]
+  },
+  {
+    "name": "Ball Control",
+    "sport": "football",
+    "category": "ball_control",
+    "description": "Control and manipulate a ball around the body using coordinated hand and body movements.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ]
+  },
+  {
+    "name": "Balance",
+    "sport": "athletic",
+    "category": "coordination",
+    "description": "Maintain body control while stationary or moving through different positions.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ]
+  },
+  {
+    "name": "Passing",
+    "sport": "football",
+    "category": "passing",
+    "description": "Move the ball accurately to a teammate using an age-appropriate passing action.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ]
+  },
+  {
+    "name": "Movement",
+    "sport": "athletic",
+    "category": "agility",
+    "description": "Move efficiently in different directions using running, hopping, skipping and turning actions.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ]
+  },
+  {
+    "name": "Catching",
+    "sport": "football",
+    "category": "catching",
+    "description": "Track and receive a moving ball safely with controlled hands.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ]
+  },
+  {
+    "name": "Coordination",
+    "sport": "athletic",
+    "category": "coordination",
+    "description": "Coordinate body movements and visual tracking to complete controlled movement tasks.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ]
+  }
+]

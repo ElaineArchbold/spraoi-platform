@@ -1,0 +1,258 @@
+[
+  {
+    "title": "Chest Catch - Captain Ball",
+    "skill": "Chest Catch",
+    "secondary_skills": [
+      "Hand Pass",
+      "Solo Run",
+      "Support Play"
+    ],
+    "sport": "hurling",
+    "category": "catching",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "developing",
+    "format": "game",
+    "duration_mins": 12,
+    "players_min": 8,
+    "players_max": 20,
+    "equipment": "cones, sliotar",
+    "area_size": "30m x 20m",
+    "indoor": false,
+    "outdoor": true,
+    "description": "Two teams retain possession using hand passes and score by passing to a designated goal receiver in an end zone.",
+    "coaching_points": "Move into space before calling for the ball. Present hands early and secure the sliotar into the chest. Use quick hand passes. Goal receivers stay balanced and ready.",
+    "setup": "Mark a 30m x 20m playing area with a goal zone at each end. Divide players into two equal teams and place one goal receiver from each team in the attacking end zone.",
+    "diagram_description": "Rectangle 30m x 20m with a narrow goal zone at each short end. Two equal teams are spread through the central area. One goal receiver stands inside each end zone. Dashed arrows show hand passes through the middle and a final pass to the receiver. The coach stands on the sideline at halfway."
+  },
+  {
+    "title": "Hook - Skill Point Game",
+    "skill": "Hook",
+    "secondary_skills": [
+      "Ground Strike",
+      "Dribble",
+      "Frontal Ground Block"
+    ],
+    "sport": "hurling",
+    "category": "defending",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "developing",
+    "format": "game",
+    "duration_mins": 12,
+    "players_min": 8,
+    "players_max": 20,
+    "equipment": "cones, sliotar, whistle",
+    "area_size": "30m x 20m",
+    "indoor": false,
+    "outdoor": true,
+    "description": "A conditioned ground-hurling game awards extra points for a successful hook while normal goals also count.",
+    "coaching_points": "Approach from a safe angle. Keep the hurley controlled and below knee height. Time the hook as the opponent begins the strike. Recover quickly after the attempt.",
+    "setup": "Mark a suitable playing area with goals at each end. Divide players into equal teams and begin with a larger training sliotar where appropriate.",
+    "diagram_description": "Rectangle 30m x 20m with a goal at each short end. Two teams are spread throughout. One attacker prepares a ground strike while a defender approaches from behind and to the side. A short curved arrow shows the hook action. Ground-pass arrows connect other players. The coach stands near halfway."
+  },
+  {
+    "title": "Solo Run - On the Run",
+    "skill": "Solo Run",
+    "secondary_skills": [
+      "Hand Pass",
+      "Movement",
+      "Defending"
+    ],
+    "sport": "hurling",
+    "category": "movement",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "developing",
+    "format": "game",
+    "duration_mins": 12,
+    "players_min": 8,
+    "players_max": 12,
+    "equipment": "cones, sliotar",
+    "area_size": "40m x 20m",
+    "indoor": false,
+    "outdoor": true,
+    "description": "Teams score by soloing the sliotar over the opposition end line while using only solo runs and hand passes.",
+    "coaching_points": "Keep the sliotar balanced and close. Accelerate into free space. Support the ball carrier at angles. Defenders target the ball without making contact.",
+    "setup": "Mark a 40m x 20m rectangle with an end line at each side. Divide players into two teams, ideally five per team, and begin with one sliotar.",
+    "diagram_description": "Rectangle 40m x 20m with scoring lines across both short ends. Two teams of five are spread through the area. Solid arrows show solo runs toward the end line. Dashed arrows show hand passes between supporting players. One defender is shown attempting to flick the ball from the hurley. The coach stands at halfway."
+  },
+  {
+    "title": "Dribble and Score",
+    "skill": "Dribble",
+    "secondary_skills": [
+      "Ground Strike",
+      "Passing",
+      "Movement"
+    ],
+    "sport": "hurling",
+    "category": "ball_control",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "format": "game",
+    "duration_mins": 10,
+    "players_min": 6,
+    "players_max": 16,
+    "equipment": "cones, sliotar, whistle",
+    "area_size": "25m x 20m",
+    "indoor": false,
+    "outdoor": true,
+    "description": "Teams keep possession using dribbling and ground strikes, scoring by dribbling the sliotar over the opposition end line.",
+    "coaching_points": "Use short touches to keep the sliotar close. Keep the hurley below knee height. Scan for space before dribbling. Pass early when pressure arrives.",
+    "setup": "Mark a rectangular grid with a scoring line at each end. Divide players into two teams and start with one suitable sliotar.",
+    "diagram_description": "Rectangle 25m x 20m with scoring lines at both short ends. Two teams are spread throughout. Curved short arrows show players dribbling on the ground. Dashed ground-level arrows show ground passes. One player crosses the far end line with the ball under control. The coach stands on the sideline."
+  },
+  {
+    "title": "Ground Strike - Four Goal Game",
+    "skill": "Ground Strike",
+    "secondary_skills": [
+      "Dribble",
+      "Frontal Ground Block",
+      "Decision Making"
+    ],
+    "sport": "hurling",
+    "category": "ground_hurling",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "developing",
+    "format": "game",
+    "duration_mins": 12,
+    "players_min": 8,
+    "players_max": 12,
+    "equipment": "cones, sliotar, stopwatch, whistle",
+    "area_size": "40m x 30m",
+    "indoor": false,
+    "outdoor": true,
+    "description": "Two teams play a ground-hurling game with four corner goals, with each team defending two and attacking two.",
+    "coaching_points": "Scan both attacking goals before striking. Use width to create angles. Keep the ball moving on the ground. Defend the nearest goal first.",
+    "setup": "Mark a 40m x 30m area and place one small goal in each corner. Divide players into teams of four to six with no goalkeepers.",
+    "diagram_description": "Rectangle 40m x 30m with a small cone goal in each corner. Team A attacks the two goals on the right and Team B attacks the two goals on the left. Ground-pass arrows show play switching across the field. Players are spread to create width. The coach stands centrally on one sideline."
+  },
+  {
+    "title": "Frontal Ground Block - Skill Point Game",
+    "skill": "Frontal Ground Block",
+    "secondary_skills": [
+      "Ground Strike",
+      "Dribble",
+      "Hook"
+    ],
+    "sport": "hurling",
+    "category": "defending",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "developing",
+    "format": "game",
+    "duration_mins": 12,
+    "players_min": 8,
+    "players_max": 20,
+    "equipment": "sliotar, stopwatch, whistle",
+    "area_size": "30m x 20m",
+    "indoor": false,
+    "outdoor": true,
+    "description": "A conditioned ground-hurling game awards points for goals and additional points for successful frontal ground blocks.",
+    "coaching_points": "Approach square and balanced. Place the hurley firmly in the striking path. Keep hands and body protected. React quickly to the loose ball.",
+    "setup": "Mark a suitable rectangular playing area with goals at each end. Divide players into equal teams and begin with a larger sliotar where needed.",
+    "diagram_description": "Rectangle 30m x 20m with goals at both short ends. An attacker prepares a ground strike near the centre. A defender faces the attacker and places the hurley in the strike line. A blocked-ball symbol appears between them. Other players are spread for support. The coach stands near halfway."
+  },
+  {
+    "title": "Strike from the Hand - Skill Point Game",
+    "skill": "Strike from the Hand",
+    "secondary_skills": [
+      "Hand Pass",
+      "Ground Strike",
+      "Scoring"
+    ],
+    "sport": "hurling",
+    "category": "striking",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "developing",
+    "format": "game",
+    "duration_mins": 12,
+    "players_min": 8,
+    "players_max": 20,
+    "equipment": "goalposts, markers, sliotar, whistle",
+    "area_size": "35m x 25m",
+    "indoor": false,
+    "outdoor": true,
+    "description": "A conditioned game rewards players for scoring points by striking from the hand, with goals also counting.",
+    "coaching_points": "Create space before lifting the sliotar. Keep eyes on the ball through contact. Strike through the target. Support underneath the striker for rebounds.",
+    "setup": "Mark a suitable pitch with goals at each end. Divide players into equal teams and begin with one sliotar. Remove solo running if more striking repetitions are needed.",
+    "diagram_description": "Rectangle 35m x 25m with goalposts at both short ends. Two teams are spread through the area. One player strikes from the hand toward the posts. A high arcing arrow shows the shot for a point. Dashed arrows show hand passes into the striker. The coach stands on the sideline."
+  },
+  {
+    "title": "Overhead Catch - Skill Point Game",
+    "skill": "Overhead Catch",
+    "secondary_skills": [
+      "Strike from the Hand",
+      "Hand Pass",
+      "Movement"
+    ],
+    "sport": "hurling",
+    "category": "catching",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "developing",
+    "format": "game",
+    "duration_mins": 12,
+    "players_min": 8,
+    "players_max": 20,
+    "equipment": "cones, sliotar, stopwatch, whistle",
+    "area_size": "35m x 25m",
+    "indoor": false,
+    "outdoor": true,
+    "description": "A conditioned game awards additional points when a player completes a clean overhead catch during normal play.",
+    "coaching_points": "Track the flight early. Move under the dropping ball. Reach strongly with both hands. Secure the sliotar before landing or turning.",
+    "setup": "Mark a suitable playing area with goals at each end. Divide players into equal teams and encourage frequent high deliveries by limiting solo runs if needed.",
+    "diagram_description": "Rectangle 35m x 25m with goals at both short ends. One player sends a high ball toward a teammate. A large arcing arrow shows the sliotar flight. The receiver stands beneath it with arms raised for an overhead catch. Defenders and support players are positioned nearby. The coach stands at halfway."
+  }
+]

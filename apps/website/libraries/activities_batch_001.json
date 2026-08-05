@@ -1,0 +1,150 @@
+[
+  {
+    "title": "Aim and Shoot",
+    "skill": "Target Accuracy",
+    "secondary_skills": [
+      "Ball Control"
+    ],
+    "sport": "hurling",
+    "category": "striking",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "format": "game",
+    "duration_mins": 8,
+    "players_min": 4,
+    "players_max": 24,
+    "equipment": "cones, football, hoop, markers, sliotar",
+    "area_size": "15m x 15m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Two teams roll balls down a chute and try to knock over cone targets. The team that hits the most targets within the round wins.",
+    "coaching_points": "Keep eyes on the target. Release the ball smoothly and in line with the chute. Adjust force to improve accuracy. Reset quickly and encourage equal turns.",
+    "setup": "Create two team lanes with a chute or ramp at the front of each lane. Place cone targets beyond each chute and a clear waiting line behind the start marker.",
+    "diagram_description": "Rectangle 15m x 15m split into two parallel lanes. One team queues at the bottom of each lane behind a marker. A chute is positioned at the front of each queue. Cone targets are spread across the far end. Solid arrows show the ball rolling from each chute toward the targets. The coach stands centrally between the lanes."
+  },
+  {
+    "title": "Around the World Ball Control",
+    "skill": "Ball Control",
+    "secondary_skills": [
+      "Balance"
+    ],
+    "sport": "hurling",
+    "category": "ball_control",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "format": "warm_up",
+    "duration_mins": 6,
+    "players_min": 2,
+    "players_max": 30,
+    "equipment": "cones, football",
+    "area_size": "15m x 15m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Each player moves a ball around different parts of the body, including figure-of-eight patterns through the legs. The coach changes the movement on a signal.",
+    "coaching_points": "Use soft controlled touches. Keep knees slightly bent and stay balanced. Start slowly before increasing speed. Use both directions around the body.",
+    "setup": "Mark a safe square with cones. Give every player one suitable ball and spread players evenly with enough space to move without contact.",
+    "diagram_description": "Square 15m x 15m with one cone at each corner. Players are evenly spread throughout the square, each with one ball. Small circular arrows around each player show the ball moving around the waist and legs. The coach stands just outside the centre line and gives movement instructions."
+  },
+  {
+    "title": "Beanbag Balance Journey",
+    "skill": "Balance",
+    "secondary_skills": [],
+    "sport": "athletic",
+    "category": "coordination",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "format": "warm_up",
+    "duration_mins": 6,
+    "players_min": 2,
+    "players_max": 30,
+    "equipment": "beanbags, cones",
+    "area_size": "15m x 15m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Players travel through the area while balancing a beanbag on the body part called by the coach. The challenge changes regularly to develop control and body awareness.",
+    "coaching_points": "Move under control. Keep eyes forward when safe to do so. Use small steps when balance is difficult. Stop and reset safely if the beanbag falls.",
+    "setup": "Mark a square with cones and give each player one beanbag. Spread players evenly and explain the safe movement rules before starting.",
+    "diagram_description": "Square 15m x 15m with cones at all four corners. Players are distributed around the area with beanbags shown on different body positions. Curved solid arrows show players travelling in different directions without fixed lanes. The coach stands outside the square and calls the next body part."
+  },
+  {
+    "title": "Beat the Circle",
+    "skill": "Passing",
+    "secondary_skills": [
+      "Balance"
+    ],
+    "sport": "hurling",
+    "category": "passing",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "developing",
+    "format": "game",
+    "duration_mins": 10,
+    "players_min": 8,
+    "players_max": 24,
+    "equipment": "cones, football, sliotar",
+    "area_size": "20m x 20m",
+    "indoor": false,
+    "outdoor": true,
+    "description": "One team passes around a circle while a runner from the second team races around the outside. A point goes to the team that completes its task first before roles are changed.",
+    "coaching_points": "Present a clear target for the pass. Pass accurately before adding speed. Communicate the receiver's name. Runners use controlled acceleration and stay outside the circle.",
+    "setup": "Mark a large circle with cones. Place one team evenly around the circle and the second team in a queue behind a start cone outside it. Use one ball or sliotar for the passing team.",
+    "diagram_description": "Large circle approximately 12m in diameter inside a 20m x 20m area. Team A players are evenly spaced on the circle. Dashed arrows show the ball travelling clockwise from player to player. Team B queues at a cone outside the circle. A solid curved arrow shows the first runner travelling around the outside and returning to the start. The coach stands near the start cone."
+  },
+  {
+    "title": "Big Ball Bombardment",
+    "skill": "Striking Accuracy",
+    "secondary_skills": [
+      "Target Accuracy"
+    ],
+    "sport": "hurling",
+    "category": "striking",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "format": "game",
+    "duration_mins": 10,
+    "players_min": 6,
+    "players_max": 24,
+    "equipment": "cones, football, markers, sliotar, exercise ball",
+    "area_size": "20m x 20m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Players around a circle use different balls to hit a large exercise ball in the centre. The group works together to move the large ball beyond the circle boundary.",
+    "coaching_points": "Aim before releasing or striking. Use controlled force and keep the action below waist height for safety. Wait for a clear line to the target. Retrieve equipment only on the coach's signal.",
+    "setup": "Mark a wide circle with cones and place a large exercise ball in the centre. Spread players evenly outside the circle with a selection of suitable balls or sliotars.",
+    "diagram_description": "Circle approximately 14m in diameter inside a 20m x 20m area. One large exercise ball is placed in the centre. Players are spaced evenly outside the circle with individual balls. Dashed arrows point from several players toward the central ball. The coach stands outside the circle with a clear view of all players."
+  }
+]

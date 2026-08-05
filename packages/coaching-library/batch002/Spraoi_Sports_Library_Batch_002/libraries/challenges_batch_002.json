@@ -1,0 +1,59 @@
+[
+  {
+    "title": "Colour Cone Quest",
+    "skill": "Agility",
+    "sport": "athletic",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 8,
+    "description": "Set out coloured markers and move quickly to the colour called by a parent or helper.",
+    "target": "Complete 20 correct colour changes with controlled stops",
+    "video_url": ""
+  },
+  {
+    "title": "Hoop Target Throws",
+    "skill": "Throwing Accuracy",
+    "sport": "athletic",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 10,
+    "description": "Use a soft safe object and try to throw it through a hoop or marked target.",
+    "target": "Score 10 successful throws from 20 attempts",
+    "video_url": ""
+  },
+  {
+    "title": "Hoop Team Challenge",
+    "skill": "Team Coordination",
+    "sport": "athletic",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 8,
+    "description": "Work with family or teammates to move a hoop around your linked group without letting go.",
+    "target": "Complete 3 full loops without breaking the chain",
+    "video_url": ""
+  }
+]

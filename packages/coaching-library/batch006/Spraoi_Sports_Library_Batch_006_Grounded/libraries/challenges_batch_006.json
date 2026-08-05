@@ -1,0 +1,90 @@
+[
+  {
+    "title": "Ground Flick Control",
+    "skill": "Ground Flick",
+    "sport": "hurling",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "developing",
+    "level": 1,
+    "duration_mins": 8,
+    "description": "Ask a partner to dribble slowly and practise flicking the sliotar away from a safe side angle.",
+    "target": "Complete 10 controlled ground flicks from each side",
+    "video_url": ""
+  },
+  {
+    "title": "Safe Hook Footwork",
+    "skill": "Hook",
+    "sport": "hurling",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "developing",
+    "level": 1,
+    "duration_mins": 8,
+    "description": "Practise chasing from behind and moving into a safe hook position without swinging hard.",
+    "target": "Complete 10 approaches from each side",
+    "video_url": ""
+  },
+  {
+    "title": "Overhead Timing",
+    "skill": "Overhead Strike",
+    "sport": "hurling",
+    "age_groups": [
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "advanced",
+    "level": 1,
+    "duration_mins": 10,
+    "description": "With a qualified adult and plenty of space, practise timing controlled overhead contacts from gentle feeds.",
+    "target": "Complete 10 controlled contacts",
+    "video_url": ""
+  },
+  {
+    "title": "Knock Down the Aliens",
+    "skill": "Underarm Throw",
+    "sport": "athletic",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 8,
+    "description": "Set up safe cone targets and use an underarm throw to knock them down.",
+    "target": "Knock down 10 targets from 20 throws",
+    "video_url": ""
+  },
+  {
+    "title": "Beanbag Balance Journey",
+    "skill": "Hurley Balance",
+    "sport": "hurling",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 8,
+    "description": "Balance a beanbag on the bas and walk through a safe course without dropping it.",
+    "target": "Complete 5 journeys of 10 metres",
+    "video_url": ""
+  }
+]

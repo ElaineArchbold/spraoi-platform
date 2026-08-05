@@ -1,0 +1,44 @@
+[
+  {
+    "name": "Agility",
+    "sport": "athletic",
+    "category": "agility",
+    "description": "Change direction, speed and body position efficiently while staying balanced and aware.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ]
+  },
+  {
+    "name": "Throwing Accuracy",
+    "sport": "athletic",
+    "category": "coordination",
+    "description": "Throw an object towards a target using controlled direction, force and follow-through.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ]
+  },
+  {
+    "name": "Team Coordination",
+    "sport": "athletic",
+    "category": "coordination",
+    "description": "Work with others to complete a shared movement task using timing, communication and control.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ]
+  }
+]

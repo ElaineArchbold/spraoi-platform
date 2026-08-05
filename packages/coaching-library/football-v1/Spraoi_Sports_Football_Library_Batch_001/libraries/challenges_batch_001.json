@@ -1,0 +1,116 @@
+[
+  {
+    "title": "Target Knockdown",
+    "skill": "Target Accuracy",
+    "sport": "football",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 10,
+    "description": "Choose a safe target and see how many accurate rolls, hand passes or kicks you can make.",
+    "target": "Hit the target 10 times from 20 attempts",
+    "video_url": ""
+  },
+  {
+    "title": "Around the Body",
+    "skill": "Ball Control",
+    "sport": "football",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 8,
+    "description": "Move a ball around your waist, knees and legs without dropping it.",
+    "target": "Complete 5 full circuits in each direction",
+    "video_url": ""
+  },
+  {
+    "title": "Balance Explorer",
+    "skill": "Balance",
+    "sport": "athletic",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 6,
+    "description": "Balance a beanbag or rolled-up sock while moving slowly around a safe space.",
+    "target": "Complete 3 one-minute rounds using 3 different body parts",
+    "video_url": ""
+  },
+  {
+    "title": "Passing Streak",
+    "skill": "Passing",
+    "sport": "football",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 10,
+    "description": "Hand pass or kick pass with a partner, or use a safe wall, and try to build your longest accurate streak.",
+    "target": "Complete 20 accurate passes with no more than 3 misses",
+    "video_url": ""
+  },
+  {
+    "title": "Follow My Moves",
+    "skill": "Movement",
+    "sport": "athletic",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 6,
+    "description": "Ask someone to lead four movements, then copy each one as closely as you can.",
+    "target": "Complete 3 rounds of 4 movements",
+    "video_url": ""
+  },
+  {
+    "title": "Clap and Catch",
+    "skill": "Catching",
+    "sport": "football",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 8,
+    "description": "Throw a soft ball or rolled-up sock upwards, clap once, and catch it safely.",
+    "target": "Complete 20 catches, then try 10 with two claps",
+    "video_url": ""
+  }
+]

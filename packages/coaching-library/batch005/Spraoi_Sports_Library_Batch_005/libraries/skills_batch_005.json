@@ -1,0 +1,72 @@
+[
+  {
+    "name": "Chest Catch",
+    "sport": "hurling",
+    "category": "catching",
+    "description": "Receive and secure a sliotar safely against the chest while maintaining balance and awareness.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ]
+  },
+  {
+    "name": "Hook",
+    "sport": "hurling",
+    "category": "defending",
+    "description": "Disrupt an opponent's ground strike by applying a controlled hook to the opponent's hurley.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ]
+  },
+  {
+    "name": "Dribble",
+    "sport": "hurling",
+    "category": "ball_control",
+    "description": "Move the sliotar along the ground under control using short touches with the hurley.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ]
+  },
+  {
+    "name": "Frontal Ground Block",
+    "sport": "hurling",
+    "category": "defending",
+    "description": "Block an opponent's ground strike from the front using safe body position and hurley placement.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ]
+  },
+  {
+    "name": "Overhead Catch",
+    "sport": "hurling",
+    "category": "catching",
+    "description": "Track and secure a high sliotar above head height using strong hands and balanced body position.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ]
+  }
+]

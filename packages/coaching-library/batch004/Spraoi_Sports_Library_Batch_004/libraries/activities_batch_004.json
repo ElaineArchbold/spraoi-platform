@@ -1,0 +1,250 @@
+[
+  {
+    "title": "Swap Shop",
+    "skill": "Speed",
+    "secondary_skills": [
+      "Movement",
+      "Team Coordination"
+    ],
+    "sport": "athletic",
+    "category": "speed",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "format": "game",
+    "duration_mins": 8,
+    "players_min": 4,
+    "players_max": 24,
+    "equipment": "cones, football, hoop",
+    "area_size": "15m x 20m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Players race from their team line to move a ball from one hoop to another before returning to release the next teammate.",
+    "coaching_points": "Move quickly but stay under control. Place the ball fully inside the hoop. Use a clear high-five changeover. Vary the movement style between rounds.",
+    "setup": "Create parallel team lanes with a start cone and two hoops in each lane. Place one ball in the first hoop and split players into equal teams.",
+    "diagram_description": "Rectangle 15m x 20m divided into four parallel lanes. Teams queue behind start cones at the bottom. Two hoops are positioned in each lane, one containing a ball and one empty. Solid arrows show the player travelling to swap the ball, returning to the line and high-fiving the next player. The coach stands centrally."
+  },
+  {
+    "title": "Target Ball",
+    "skill": "Target Accuracy",
+    "secondary_skills": [
+      "Passing",
+      "Throwing Accuracy"
+    ],
+    "sport": "multi",
+    "category": "ball_control",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "format": "drill",
+    "duration_mins": 8,
+    "players_min": 2,
+    "players_max": 20,
+    "equipment": "cones, football, hoop",
+    "area_size": "10m x 15m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Players aim at a marked wall target using a throw, hand pass, kick or controlled strike.",
+    "coaching_points": "Choose the target before releasing. Use the right amount of force. Follow through toward the target. Retrieve only when the space is clear.",
+    "setup": "Mark one or more targets on a safe wall. Create shooting lines with cones and give each player or pair a suitable ball.",
+    "diagram_description": "Rectangle 10m x 15m facing a wall. Three large hoop or marker targets are fixed at different heights on the wall. Players queue behind three cone lines several metres away. Dashed arrows show balls travelling toward the targets. The coach stands to the side controlling turns."
+  },
+  {
+    "title": "Team Pass",
+    "skill": "Passing",
+    "secondary_skills": [
+      "Catching",
+      "Support Play"
+    ],
+    "sport": "hurling",
+    "category": "passing",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "developing",
+    "format": "game",
+    "duration_mins": 8,
+    "players_min": 6,
+    "players_max": 24,
+    "equipment": "bibs, cones, football, goalposts, sliotar",
+    "area_size": "20m x 20m",
+    "indoor": false,
+    "outdoor": true,
+    "description": "Teams pass continuously and count how many successful passes they can complete within a short time limit.",
+    "coaching_points": "Move after every pass. Show hands and call clearly. Use controlled accurate passes. Add light shadow pressure only when the group is ready.",
+    "setup": "Mark a square and divide players into small teams. Give each team one suitable ball and enough space to work independently.",
+    "diagram_description": "Square 20m x 20m divided into two team zones. Four to six players are spread in each zone with one ball. Dashed arrows form passing patterns between players. A shadow defender is shown beside one group as an optional progression. The coach stands between the zones with a timer."
+  },
+  {
+    "title": "Up in the Sky Football",
+    "skill": "Ball Control",
+    "secondary_skills": [
+      "Team Coordination",
+      "Reaction Speed"
+    ],
+    "sport": "multi",
+    "category": "ball_control",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "format": "game",
+    "duration_mins": 8,
+    "players_min": 1,
+    "players_max": 24,
+    "equipment": "football, balloon",
+    "area_size": "15m x 15m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Players work alone, in pairs or in groups to keep a balloon or light ball in the air for as long as possible.",
+    "coaching_points": "Track the ball throughout. Use soft controlled touches. Move underneath the ball early. Communicate when working in a group.",
+    "setup": "Mark a clear square and provide one balloon or light ball per player, pair or group. Leave enough space between working areas.",
+    "diagram_description": "Square 15m x 15m split into four smaller zones. One player, pair or small group works in each zone with a balloon above them. Short upward arrows show repeated touches. One variation shows two balloons in the same zone. The coach stands centrally timing each effort."
+  },
+  {
+    "title": "Up in the Sky Hurling",
+    "skill": "Ball Control",
+    "secondary_skills": [
+      "Coordination",
+      "Reaction Speed"
+    ],
+    "sport": "hurling",
+    "category": "ball_control",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "format": "drill",
+    "duration_mins": 8,
+    "players_min": 1,
+    "players_max": 20,
+    "equipment": "balloon, hurley, tennis racket",
+    "area_size": "15m x 15m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Players use a hurley or tennis racket to keep a balloon or light ball in the air for as long as possible.",
+    "coaching_points": "Use soft upward taps. Keep the hurley or racket face controlled. Move early to stay under the ball. Keep safe space from other players.",
+    "setup": "Create individual or small-group working zones. Give each player or group one balloon and suitable striking equipment.",
+    "diagram_description": "Square 15m x 15m divided into individual working zones. Each player holds a hurley or racket with a balloon above the striking surface. Short upward arrows show controlled taps. One zone shows a pair cooperating and another shows two balloons as a progression. The coach stands at the edge."
+  },
+  {
+    "title": "Walking Tag",
+    "skill": "Spatial Awareness",
+    "secondary_skills": [
+      "Reaction Speed",
+      "Movement"
+    ],
+    "sport": "athletic",
+    "category": "agility",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "format": "warm_up",
+    "duration_mins": 6,
+    "players_min": 4,
+    "players_max": 24,
+    "equipment": "cones",
+    "area_size": "15m x 15m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Players spread out inside a grid and take one step on the coach's signal, trying to tag someone within reach.",
+    "coaching_points": "Start outside touching distance. Take only one controlled step. Keep eyes up. Re-enter safely after completing the outside cone route.",
+    "setup": "Mark a square and place one return cone outside it. Spread players evenly inside the grid with clear personal space.",
+    "diagram_description": "Square 15m x 15m with players spread evenly and not within touching distance. Small one-step arrows appear beside every player. One tagged player follows a curved arrow around a cone outside the grid before returning. The coach stands centrally giving the step command."
+  },
+  {
+    "title": "Wide Player Support Game",
+    "skill": "Support Play",
+    "secondary_skills": [
+      "Passing",
+      "Movement"
+    ],
+    "sport": "hurling",
+    "category": "movement",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "developing",
+    "format": "game",
+    "duration_mins": 12,
+    "players_min": 8,
+    "players_max": 20,
+    "equipment": "bibs, cones, football, goalposts",
+    "area_size": "25m x 35m",
+    "indoor": false,
+    "outdoor": true,
+    "description": "A small-sided game is played in the main area while a protected wide player offers an uncontested passing option in a side channel.",
+    "coaching_points": "Look wide before forcing a central pass. Move to support after releasing the ball. Wide players receive side-on. Use the protected player to switch play.",
+    "setup": "Mark a main playing rectangle with a narrow channel along one side. Place one neutral or designated player in the channel and split the remaining players into two teams.",
+    "diagram_description": "Rectangle 25m x 35m with a 4m-wide channel running along the right side. Two small teams play inside the main zone. One wide player stands in the protected channel. Dashed arrows show passes into and out of the channel. Goals are positioned at each short end. The coach stands on the opposite sideline."
+  },
+  {
+    "title": "Colour Grab",
+    "skill": "Reaction Speed",
+    "secondary_skills": [
+      "Speed",
+      "Team Coordination"
+    ],
+    "sport": "athletic",
+    "category": "speed",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "format": "game",
+    "duration_mins": 8,
+    "players_min": 8,
+    "players_max": 24,
+    "equipment": "cones, hoop, markers",
+    "area_size": "20m x 20m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Four teams race from the corners to collect the colour called by the coach from a central pile.",
+    "coaching_points": "React to the colour before moving. Keep the head up near the centre. Collect one marker only. Return fully to the team before the next player goes.",
+    "setup": "Place one team at each corner of a square. Put a mixed pile of coloured cones or markers in a hoop at the centre.",
+    "diagram_description": "Square 20m x 20m with one team queue at each corner. A central hoop contains many coloured cones and markers. Solid arrows run from each corner toward the centre and back. One called colour is highlighted. The coach stands just outside the central hoop."
+  }
+]

@@ -1,0 +1,180 @@
+/* ─── Google Fonts — Source of truth: spraoi-sports website ─────────────────
+   Nunito: display headings  |  Work Sans: body copy  |  JetBrains Mono: data
+   @import rules must come first ────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+@import 'tailwindcss';
+
+/* ─── Tailwind v4 theme bridge ───────────────────────────────────────────── */
+@theme inline {
+  /* Semantic surfaces */
+  --color-background:           var(--background);
+  --color-foreground:           var(--foreground);
+  --color-card:                 var(--card);
+  --color-card-foreground:      var(--card-foreground);
+  --color-primary:              var(--primary);
+  --color-primary-foreground:   var(--primary-foreground);
+  --color-secondary:            var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted:                var(--muted);
+  --color-muted-foreground:     var(--muted-foreground);
+  --color-accent:               var(--accent);
+  --color-accent-foreground:    var(--accent-foreground);
+  --color-border:               var(--border);
+  --color-ring:                 var(--ring);
+  --color-destructive:          var(--destructive);
+
+  /* Radius scale */
+  --radius-xs:   var(--ss-radius-xs);
+  --radius-sm:   var(--ss-radius-sm);
+  --radius-md:   var(--ss-radius-md);
+  --radius-lg:   var(--ss-radius-lg);
+  --radius-xl:   var(--ss-radius-xl);
+  --radius-pill: var(--ss-radius-pill);
+
+  /* Fonts */
+  --font-display: var(--ss-font-display);
+  --font-sans:    var(--ss-font-body);
+  --font-mono:    var(--ss-font-mono);
+}
+
+/* ─── Spraoi Sports Design Tokens ───────────────────────────────────────────
+   Source: https://github.com/ElaineArchbold/spraoi-sports
+   Every value copied verbatim from the website's CSS variables.
+   Do NOT invent new colours — the website is the source of truth.
+   ─────────────────────────────────────────────────────────────────────────── */
+:root {
+  /* ── Raw brand palette ─────────────────────────────────────────────────── */
+  --ss-navy:   #0b2545;   /* primary dark navy */
+  --ss-blue:   #0d47a1;   /* primary blue */
+  --ss-blue2:  #42a5f5;   /* light blue */
+  --ss-green:  #43a047;   /* primary CTA green */
+  --ss-orange: #fb8c00;   /* accent orange */
+  --ss-sky:    #29b6f6;   /* sky blue */
+  --ss-purple: #8e24aa;   /* purple */
+  --ss-yellow: #fbc02d;   /* yellow */
+  --ss-coral:  #e64a19;   /* coral / energetic red */
+  --ss-cream:  #fffaf2;   /* warm off-white background */
+  --ss-ink:    #13243b;   /* dark body text */
+  --ss-muted:  #627187;   /* secondary text */
+  --ss-line:   #dfe7ef;   /* dividers / borders */
+  --ss-soft:   #f6f9fc;   /* light surface */
+  --ss-white:  #ffffff;
+
+  /* ── Six product colour families ──────────────────────────────────────── */
+  --product-coach:     var(--ss-blue);     /* #0d47a1 — professional, trusted */
+  --product-journey:   var(--ss-orange);   /* #fb8c00 — growth, pathways */
+  --product-challenge: var(--ss-purple);   /* #8e24aa — competition, goals */
+  --product-blitz:     var(--ss-coral);    /* #e64a19 — energy, speed */
+  --product-connect:   var(--ss-sky);      /* #29b6f6 — communication */
+  --product-club:      var(--ss-green);    /* #43a047 — community, growth */
+
+  /* Light foregrounds on product colours */
+  --product-coach-fg:     #ffffff;
+  --product-journey-fg:   #ffffff;
+  --product-challenge-fg: #ffffff;
+  --product-blitz-fg:     #ffffff;
+  --product-connect-fg:   var(--ss-ink);
+  --product-club-fg:      #ffffff;
+
+  /* ── Semantic tokens (light mode) ─────────────────────────────────────── */
+  --background:           var(--ss-cream);   /* #fffaf2 */
+  --foreground:           var(--ss-ink);     /* #13243b */
+  --card:                 var(--ss-white);
+  --card-foreground:      var(--ss-ink);
+  --primary:              var(--ss-navy);    /* #0b2545 */
+  --primary-foreground:   var(--ss-white);
+  --secondary:            var(--ss-soft);    /* #f6f9fc */
+  --secondary-foreground: var(--ss-ink);
+  --muted:                var(--ss-soft);
+  --muted-foreground:     var(--ss-muted);   /* #627187 */
+  --accent:               var(--ss-green);   /* #43a047 */
+  --accent-foreground:    var(--ss-white);
+  --border:               var(--ss-line);    /* #dfe7ef */
+  --ring:                 var(--ss-blue);    /* #0d47a1 */
+  --destructive:          var(--ss-coral);   /* #e64a19 */
+  --destructive-foreground: var(--ss-white);
+
+  /* ── Typography — website source of truth ─────────────────────────────── */
+  --ss-font-display: 'Nunito', system-ui, sans-serif;
+  --ss-font-body:    'Work Sans', system-ui, sans-serif;
+  --ss-font-mono:    'JetBrains Mono', monospace;
+
+  /* ── Border radius — website source of truth ──────────────────────────── */
+  /* Website primary token is 28px. Scale derived from actual component usage */
+  --ss-radius-xs:   8px;      /* chips, tight badges */
+  --ss-radius-sm:   13px;     /* inputs */
+  --ss-radius-md:   14px;     /* buttons, small cards */
+  --ss-radius-lg:   24px;     /* module cards, roadmap cards */
+  --ss-radius-xl:   28px;     /* website --radius primary: forms, large surfaces */
+  --ss-radius-pill: 999px;    /* pills, avatars */
+
+  /* ── Shadow system — website source of truth ──────────────────────────── */
+  /* Primary elevation: 0 24px 70px rgba(13,49,87,.16) from website */
+  --shadow-xs: 0 2px 8px  rgba(13,49,87,.05);
+  --shadow-sm: 0 4px 16px rgba(13,49,87,.07);
+  --shadow-md: 0 10px 30px rgba(13,49,87,.10);
+  --shadow-lg: 0 20px 50px rgba(13,49,87,.13);
+  --shadow-xl: 0 24px 70px rgba(13,49,87,.16);  /* website exact */
+
+  /* Coloured shadows for CTAs — website source */
+  --shadow-green:  0 12px 30px rgba(67,160,71,.25);
+  --shadow-navy:   0 10px 25px rgba(11,37,69,.22);
+  --shadow-orange: 0 10px 25px rgba(251,140,0,.22);
+  --shadow-purple: 0 10px 25px rgba(142,36,170,.22);
+  --shadow-sky:    0 10px 25px rgba(41,182,246,.22);
+  --shadow-coral:  0 10px 25px rgba(230,74,25,.22);
+
+  /* ── Transitions ─────────────────────────────────────────────────────── */
+  --transition: .2s ease;
+  --transition-slow: .35s cubic-bezier(.4,0,.2,1);
+}
+
+/* ─── Base styles ────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--ss-font-body);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--ss-font-display);
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  color: var(--foreground);
+}
+
+code, pre, kbd, samp {
+  font-family: var(--ss-font-mono);
+}
+
+::selection {
+  background-color: rgba(67,160,71,.18);
+  color: var(--foreground);
+}
+
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* Scrollbars: thin, appear on hover */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+*:hover {
+  scrollbar-color: var(--border) transparent;
+}

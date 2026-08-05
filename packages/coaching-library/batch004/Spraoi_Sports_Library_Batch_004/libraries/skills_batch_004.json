@@ -1,0 +1,44 @@
+[
+  {
+    "name": "Spatial Awareness",
+    "sport": "athletic",
+    "category": "coordination",
+    "description": "Recognise and use available space while moving safely around teammates and equipment.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ]
+  },
+  {
+    "name": "Support Play",
+    "sport": "hurling",
+    "category": "movement",
+    "description": "Create passing options and help teammates by moving into useful supporting positions.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ]
+  },
+  {
+    "name": "Reaction Speed",
+    "sport": "athletic",
+    "category": "speed",
+    "description": "Respond quickly and accurately to a visual or verbal signal.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ]
+  }
+]

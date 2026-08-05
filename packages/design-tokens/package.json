@@ -1,0 +1,9 @@
+{
+  "name": "@spraoi/design-tokens",
+  "version": "0.1.0",
+  "private": true,
+  "exports": {
+    "./tokens": "./tokens.json",
+    "./css": "./tokens.css"
+  }
+}

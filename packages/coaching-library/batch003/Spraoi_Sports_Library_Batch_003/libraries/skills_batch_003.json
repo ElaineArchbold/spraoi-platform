@@ -1,0 +1,44 @@
+[
+  {
+    "name": "Fine Motor Control",
+    "sport": "athletic",
+    "category": "coordination",
+    "description": "Use precise hand and arm movements to guide, balance or manipulate equipment accurately.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ]
+  },
+  {
+    "name": "Speed",
+    "sport": "athletic",
+    "category": "speed",
+    "description": "Move quickly over short distances while maintaining control, posture and awareness.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ]
+  },
+  {
+    "name": "Obstacle Movement",
+    "sport": "athletic",
+    "category": "agility",
+    "description": "Travel safely and efficiently through varied obstacles using different movement patterns.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ]
+  }
+]

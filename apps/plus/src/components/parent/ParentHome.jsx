@@ -1,0 +1,1515 @@
+import { useEffect, useState } from "react";
+import ChallengeHome from "./ChallengeHome";
+import ProgressHome from "./ProgressHome";
+import SettingsHome from "./SettingsHome";
+import SkillsLibrary from "./SkillsLibrary";
+import RunLoggerModal from "./RunLoggerModal";
+import { useAllWeeklyActivities } from "../../hooks/useWeeklyActivities";
+import { playActivityComplete } from "../../lib/sounds";
+import { getCurrentChallengeWeek, clampChallengeWeek } from "../../lib/challengeWeeks";
+
+
+function getPlayerInitials(name = "") {
+  return name
+    .split(" ")
+    .map(part => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+function normaliseRunType(run = {}, fallback = "manual") {
+  const candidates = [
+    run?.type,
+    run?.runType,
+    run?.run_type,
+    run?.source,
+    run?.runSource,
+    run?.run_source,
+    run?.completionType,
+    run?.completion_type,
+    run?.activityType,
+    run?.importSource,
+  ]
+    .filter(Boolean)
+    .map(value => String(value).trim().toLowerCase());
+
+  const hasUploadMetadata = Boolean(
+    run?.fileType ||
+    run?.file_type ||
+    run?.originalFilename ||
+    run?.original_filename ||
+    run?.importedAt ||
+    run?.imported_at
+  );
+
+  if (
+    hasUploadMetadata ||
+    candidates.some(value =>
+      ["file_upload", "upload", "uploaded", "import", "imported", "gpx", "tcx"].includes(value)
+    )
+  ) {
+    return "file_upload";
+  }
+
+  if (candidates.includes("gps")) return "gps";
+  if (candidates.includes("manual")) return "manual";
+
+  return fallback;
+}
+
+function normaliseSavedRun(run = {}) {
+  const persistedRunType = String(run?.run_type || run?.run_source || "").toLowerCase() || null;
+  const runType = normaliseRunType(run, persistedRunType || "manual");
+
+  return {
+    ...run,
+    type: runType,
+    source: runType,
+    runType,
+    runSource: runType,
+    run_type: runType,
+    run_source: runType,
+    persisted_run_type: persistedRunType,
+  };
+}
+
+function xpForActivity(activity, completionType = "activity") {
+  const title = String(activity?.title || "").toLowerCase();
+  const isRun =
+    activity?.gps_preferred ||
+    activity?.target_unit === "km" ||
+    title.includes("run");
+
+  if (isRun || completionType === "gps" || completionType === "manual") return 3;
+
+  if (
+    activity?.activity_key === "running-technique" ||
+    activity?.activity_key === "football-skill" ||
+    activity?.activity_key === "hurling-skill"
+  ) {
+    return 2;
+  }
+
+  if (activity?.activity_key === "fitness") return 2;
+  if (activity?.activity_key === "squad-session") return 4;
+  if (activity?.activity_key === "bonus") return 4;
+  if (activity?.activity_key === "recovery") return 1;
+
+  return 1;
+}
+
+export default function ParentHome({
+  supabase,
+  session,
+  squadConfig,
+  squadKey,
+  onChangeSquad,
+  players,
+  selectedPlayerId,
+  onSelectPlayer,
+  parentView,
+  onChangeParentView,
+  onSignOut,
+  termsAcceptedAt,
+  previewPlayer = null,
+}) {
+  const [availablePlayers, setAvailablePlayers] = useState([]);
+  const [loadingAvailable, setLoadingAvailable] = useState(false);
+  const [linking, setLinking] = useState(false);
+  const initialPlayers = previewPlayer ? [previewPlayer] : (players || []);
+  const [localPlayers, setLocalPlayers] = useState(initialPlayers);
+  const [allLinkedPlayers, setAllLinkedPlayers] = useState(initialPlayers);
+  const currentWeek = getCurrentChallengeWeek();
+  const [challengeWeek, setChallengeWeek] = useState(Math.min(8, Math.max(1, currentWeek)));
+  const [runActivity, setRunActivity] = useState(null);
+  const [savedRuns, setSavedRuns] = useState([]);
+  const [completions, setCompletions] = useState([]);
+  const [xpTotal, setXpTotal] = useState(0);
+  const [xpTransactions, setXpTransactions] = useState([]);
+  const [badges, setBadges] = useState([]);
+  const [squadRank, setSquadRank] = useState(null);
+  const [showChildSwitcher, setShowChildSwitcher] = useState(false);
+
+  const { weeks } = useAllWeeklyActivities(supabase, squadConfig.key);
+
+  const selectedPlayer =
+    allLinkedPlayers.find(p => p.id === selectedPlayerId) ||
+    localPlayers.find(p => p.id === selectedPlayerId) ||
+    null;
+
+  useEffect(() => {
+    const nextPlayers = previewPlayer ? [previewPlayer] : (players || []);
+    setLocalPlayers(nextPlayers);
+    if (previewPlayer) setAllLinkedPlayers(nextPlayers);
+  }, [players, previewPlayer]);
+
+  useEffect(() => {
+    if (previewPlayer) return;
+    loadAllLinkedPlayers();
+  }, [session?.user?.id, squadConfig.key, players?.length, previewPlayer]);
+
+  useEffect(() => {
+    if (!allLinkedPlayers.length && !localPlayers.length) return;
+
+    const pool = allLinkedPlayers.length ? allLinkedPlayers : localPlayers;
+    const savedPlayerId = localStorage.getItem("selectedPlayerId");
+    const savedPlayer = pool.find(p => p.id === savedPlayerId);
+
+    if (savedPlayer && !selectedPlayerId) {
+      selectPlayer(savedPlayer);
+      return;
+    }
+
+    if (pool.length === 1 && !selectedPlayerId) {
+      selectPlayer(pool[0]);
+    }
+  }, [allLinkedPlayers, localPlayers, selectedPlayerId]);
+
+  useEffect(() => {
+    async function loadAvailablePlayers() {
+      if (previewPlayer || localPlayers.length || !squadConfig?.key) return;
+
+      setLoadingAvailable(true);
+
+      const { data, error } = await supabase
+        .from("players")
+        .select("id,name,squad,squad_key,child_access_token")
+        .eq("squad_key", squadConfig.key)
+        .order("name");
+
+      if (error) {
+        console.error(error);
+        setAvailablePlayers([]);
+      } else {
+        setAvailablePlayers(data || []);
+      }
+
+      setLoadingAvailable(false);
+    }
+
+    loadAvailablePlayers();
+  }, [supabase, squadConfig?.key, localPlayers.length, previewPlayer]);
+
+  useEffect(() => {
+    if (!selectedPlayer?.id) return;
+
+    refreshPlayerData(selectedPlayer.id);
+
+    const channel = supabase
+      .channel(`parent-player-realtime-${selectedPlayer.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "activity_completions",
+          filter: `player_id=eq.${selectedPlayer.id}`,
+        },
+        () => refreshPlayerData(selectedPlayer.id)
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "run_proofs",
+          filter: `player_id=eq.${selectedPlayer.id}`,
+        },
+        () => refreshPlayerData(selectedPlayer.id)
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "xp_transactions",
+          filter: `player_id=eq.${selectedPlayer.id}`,
+        },
+        () => refreshPlayerData(selectedPlayer.id)
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "player_badges",
+          filter: `player_id=eq.${selectedPlayer.id}`,
+        },
+        () => refreshPlayerData(selectedPlayer.id)
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [supabase, selectedPlayer?.id, squadConfig.key]);
+
+  async function loadAllLinkedPlayers() {
+    if (previewPlayer) {
+      setAllLinkedPlayers([previewPlayer]);
+      return;
+    }
+
+    if (!session?.user?.id) {
+      setAllLinkedPlayers(players || []);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("parent_players")
+      .select("player_id, players(id,name,squad,squad_key,child_access_token)")
+      .eq("user_id", session.user.id);
+
+    if (error) {
+      console.error(error);
+      setAllLinkedPlayers(players || []);
+      return;
+    }
+
+    const linked = (data || [])
+      .map(row => row.players)
+      .filter(Boolean)
+      .sort((a, b) => `${a.squad_key}-${a.name}`.localeCompare(`${b.squad_key}-${b.name}`));
+
+    setAllLinkedPlayers(linked.length ? linked : players || []);
+  }
+
+  async function refreshPlayerData(playerId) {
+    const playerForRank =
+      selectedPlayer?.id === playerId
+        ? selectedPlayer
+        : localPlayers.find(player => player.id === playerId) ||
+        allLinkedPlayers.find(player => player.id === playerId);
+
+    await Promise.all([
+      loadSavedRuns(playerId),
+      loadCompletions(playerId),
+      loadXp(playerId),
+      loadBadges(playerId),
+      loadSquadRank(playerForRank),
+    ]);
+  }
+
+  async function loadSavedRuns(playerId) {
+    const { data, error } = await supabase
+      .from("run_proofs")
+      .select("*")
+      .eq("player_id", playerId)
+      .order("saved_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      setSavedRuns([]);
+      return;
+    }
+
+    setSavedRuns((data || []).map(normaliseSavedRun));
+  }
+
+  async function loadCompletions(playerId) {
+    const { data, error } = await supabase
+      .from("activity_completions")
+      .select("*")
+      .eq("player_id", playerId)
+      .order("completed_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      setCompletions([]);
+      return;
+    }
+
+    setCompletions(data || []);
+  }
+
+  async function loadXp(playerId) {
+    const { data, error } = await supabase
+      .from("xp_transactions")
+      .select("*")
+      .eq("player_id", playerId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      setXpTransactions([]);
+      setXpTotal(0);
+      return;
+    }
+
+    setXpTransactions(data || []);
+    setXpTotal((data || []).reduce((total, row) => total + Number(row.xp || 0), 0));
+  }
+
+  async function loadSquadRank(player) {
+    if (!player?.id || !player?.squad_key || player?.is_test_player) {
+      setSquadRank(null);
+      return;
+    }
+
+    const { data: squadPlayers, error: playerError } = await supabase
+      .from("players")
+      .select("id,name,squad_key,is_test_player")
+      .eq("squad_key", player.squad_key)
+      .eq("is_test_player", false);
+
+    if (playerError) {
+      console.error(playerError);
+      setSquadRank(null);
+      return;
+    }
+
+    const ids = (squadPlayers || []).map(item => item.id);
+
+    if (!ids.length) {
+      setSquadRank(null);
+      return;
+    }
+
+    const { data: xpRows, error: xpError } = await supabase
+      .from("xp_transactions")
+      .select("player_id,xp")
+      .in("player_id", ids);
+
+    if (xpError) {
+      console.error(xpError);
+      setSquadRank(null);
+      return;
+    }
+
+    const totals = new Map(ids.map(id => [id, 0]));
+
+    (xpRows || []).forEach(row => {
+      totals.set(row.player_id, (totals.get(row.player_id) || 0) + Number(row.xp || 0));
+    });
+
+    const ranked = (squadPlayers || [])
+      .map(item => ({
+        ...item,
+        xp: totals.get(item.id) || 0,
+      }))
+      .sort((a, b) => b.xp - a.xp || a.name.localeCompare(b.name));
+
+    const index = ranked.findIndex(item => item.id === player.id);
+
+    setSquadRank(
+      index >= 0
+        ? {
+          position: index + 1,
+          total: ranked.length,
+          xp: ranked[index].xp,
+        }
+        : null
+    );
+  }
+
+  async function loadBadges(playerId) {
+    const { data, error } = await supabase
+      .from("player_badges")
+      .select("*")
+      .eq("player_id", playerId)
+      .order("earned_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      setBadges([]);
+      return;
+    }
+
+    setBadges(data || []);
+  }
+
+  async function maybeAwardBadges(playerId) {
+    const { data: completionRows } = await supabase
+      .from("activity_completions")
+      .select("id,status,activity_id")
+      .eq("player_id", playerId);
+
+    const { data: weeklyRecoveryRows } = await supabase
+      .from("weekly_activities")
+      .select("id,week_number")
+      .eq("activity_key", "recovery")
+      .eq("squad_key", squadConfig.key);
+
+    const recoveryActivityIds = new Set((weeklyRecoveryRows || []).map(row => row.id));
+
+    const recoveryCompletedCount = (completionRows || []).filter(
+      row => row.status === "completed" && recoveryActivityIds.has(row.activity_id)
+    ).length;
+
+    const { data: runRows } = await supabase
+      .from("run_proofs")
+      .select("id,run_type")
+      .eq("player_id", playerId);
+
+    const { data: xpRows } = await supabase
+      .from("xp_transactions")
+      .select("xp")
+      .eq("player_id", playerId);
+
+    const totalCompleted = (completionRows || []).filter(
+      row => row.status === "completed" || row.status === "awaiting_approval"
+    ).length;
+
+    const totalRuns = (runRows || []).length;
+    const totalXp = (xpRows || []).reduce((sum, row) => sum + Number(row.xp || 0), 0);
+
+    const badgeInserts = [];
+
+    if (totalCompleted >= 1) {
+      badgeInserts.push({ player_id: playerId, badge_key: "first_mission", badge_label: "First Mission" });
+    }
+
+    if (totalRuns >= 1) {
+      badgeInserts.push({ player_id: playerId, badge_key: "first_run", badge_label: "First Run" });
+    }
+
+    if ((runRows || []).some(row => row.run_type === "gps")) {
+      badgeInserts.push({ player_id: playerId, badge_key: "first_gps_run", badge_label: "GPS Verified" });
+    }
+
+    if (totalCompleted >= 5) {
+      badgeInserts.push({ player_id: playerId, badge_key: "five_missions", badge_label: "Five Missions" });
+    }
+
+    if (totalRuns >= 3) {
+      badgeInserts.push({ player_id: playerId, badge_key: "three_runs", badge_label: "Three Runs" });
+    }
+
+    if (recoveryCompletedCount >= 1) {
+      badgeInserts.push({ player_id: playerId, badge_key: "first_recovery", badge_label: "First Recovery" });
+    }
+
+    if (recoveryCompletedCount >= 4) {
+      badgeInserts.push({ player_id: playerId, badge_key: "recovery_streak", badge_label: "Recovery Streak" });
+    }
+
+    if (recoveryCompletedCount >= 8) {
+      badgeInserts.push({ player_id: playerId, badge_key: "recovery_hero", badge_label: "Recovery Hero" });
+    }
+
+    if (totalXp >= 100) {
+      badgeInserts.push({ player_id: playerId, badge_key: "hundred_xp", badge_label: "100 XP Club" });
+    }
+
+    if (totalXp >= 250) {
+      badgeInserts.push({ player_id: playerId, badge_key: "two_fifty_xp", badge_label: "250 XP Club" });
+    }
+
+    if (totalXp >= 500) {
+      badgeInserts.push({ player_id: playerId, badge_key: "five_hundred_xp", badge_label: "500 XP Club" });
+    }
+
+    if (!badgeInserts.length) return;
+
+    await supabase
+      .from("player_badges")
+      .upsert(badgeInserts, { onConflict: "player_id,badge_key" });
+  }
+
+  async function awardXp({
+    playerId,
+    activity,
+    completionId,
+    completionType,
+    reason,
+  }) {
+    const xp = xpForActivity(activity, completionType);
+
+    if (!xp) return;
+
+    const { error } = await supabase.from("xp_transactions").insert({
+      player_id: playerId,
+      activity_id: activity?.id || null,
+      activity_completion_id: completionId || null,
+      reason,
+      xp,
+      source: completionType || "activity",
+    });
+
+    if (error) {
+      throw error;
+    }
+  }
+
+  async function removeXpForActivity(playerId, activityId) {
+    const { error } = await supabase
+      .from("xp_transactions")
+      .delete()
+      .eq("player_id", playerId)
+      .eq("activity_id", activityId);
+
+    if (error) {
+      throw error;
+    }
+  }
+
+  function selectPlayer(playerOrId, options = {}) {
+    const player =
+      typeof playerOrId === "string"
+        ? allLinkedPlayers.find(p => p.id === playerOrId) ||
+        localPlayers.find(p => p.id === playerOrId)
+        : playerOrId;
+
+    if (!player?.id) return;
+
+    localStorage.setItem("selectedPlayerId", player.id);
+    localStorage.setItem("selectedSquadKey", player.squad_key || squadConfig.key);
+
+    onSelectPlayer(player.id);
+
+    logMigrationAudit("child_selected", player, { stay_on_page: Boolean(options.stayOnPage) });
+
+    if (player.squad_key && player.squad_key !== squadConfig.key) {
+      onChangeSquad?.(player.squad_key);
+    }
+
+    setShowChildSwitcher(false);
+
+    if (!options.stayOnPage) {
+      onChangeParentView("challenge");
+    }
+  }
+
+
+  async function logMigrationAudit(event, player = null, extraDetails = {}) {
+    try {
+      await supabase.from("migration_audit").insert({
+        parent_email: session?.user?.email || null,
+        parent_user_id: session?.user?.id || null,
+        event,
+        details: {
+          squad_key: player?.squad_key || squadConfig?.key || null,
+          child_name: player?.name || null,
+          player_id: player?.id || null,
+          app_url: window.location.origin,
+          path: window.location.pathname,
+          user_agent: navigator.userAgent,
+          ...extraDetails,
+        },
+      });
+    } catch (auditError) {
+      console.error("Migration audit insert failed", auditError);
+    }
+  }
+
+  async function removeLinkedChild(player) {
+    if (!session?.user?.id || !player?.id) return;
+
+    if (player.id === selectedPlayer?.id) {
+      alert("Switch to another child before removing this child.");
+      return;
+    }
+
+    const ok = window.confirm(`Remove ${player.name} from this parent account?`);
+    if (!ok) return;
+
+    const { error } = await supabase
+      .from("parent_players")
+      .delete()
+      .eq("user_id", session.user.id)
+      .eq("player_id", player.id);
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+
+    await logMigrationAudit("child_removed", player);
+
+    setAllLinkedPlayers(previous => previous.filter(item => item.id !== player.id));
+    setLocalPlayers(previous => previous.filter(item => item.id !== player.id));
+  }
+
+  async function linkChild(player) {
+    setLinking(true);
+
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !userData?.user?.id) {
+      alert("Could not find logged-in parent.");
+      setLinking(false);
+      return;
+    }
+
+    const { error } = await supabase.from("parent_players").insert({
+      user_id: userData.user.id,
+      player_id: player.id,
+    });
+
+    setLinking(false);
+
+    if (error && !String(error.message || "").toLowerCase().includes("duplicate")) {
+      alert(error.message);
+      return;
+    }
+
+    await loadAllLinkedPlayers();
+    await logMigrationAudit("child_linked", player);
+
+    setLocalPlayers(previous => {
+      if (previous.some(item => item.id === player.id)) return previous;
+      return [...previous, player];
+    });
+
+    selectPlayer(player);
+  }
+
+  async function upsertCompletion({
+    playerId,
+    activity,
+    status = "completed",
+    completionType = "activity",
+    gpsVerified = false,
+    awardPoints = true,
+  }) {
+    const { data, error } = await supabase
+      .from("activity_completions")
+      .upsert(
+        {
+          player_id: playerId,
+          activity_id: activity.id,
+          status,
+          completion_type: completionType,
+          gps_verified: gpsVerified,
+          completed_at: new Date().toISOString(),
+        },
+        {
+          onConflict: "player_id,activity_id",
+        }
+      )
+      .select()
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    try {
+      await removeXpForActivity(playerId, activity.id);
+
+      if (awardPoints) {
+        await awardXp({
+          playerId,
+          activity,
+          completionId: data.id,
+          completionType,
+          reason: activity.title || completionType,
+        });
+      }
+    } catch (xpError) {
+      console.error("XP update failed after completion save", xpError);
+    }
+
+    try {
+      await maybeAwardBadges(playerId);
+    } catch (badgeError) {
+      console.error("Badge refresh failed after completion save", badgeError);
+    }
+
+    try {
+      await refreshPlayerData(playerId);
+    } catch (refreshError) {
+      console.error("Player refresh failed after completion save", refreshError);
+    }
+
+    if (
+      (status === "completed" || status === "awaiting_approval") &&
+      !["gps", "manual", "file_upload"].includes(completionType)
+    ) {
+      try {
+        playActivityComplete();
+      } catch (soundError) {
+        console.error("Completion sound failed", soundError);
+      }
+    }
+
+    return data;
+  }
+
+  async function handleToggleActivity(activity, existingCompletion) {
+    if (!selectedPlayer?.id) return;
+
+    if (existingCompletion) {
+      const { error } = await supabase
+        .from("activity_completions")
+        .delete()
+        .eq("player_id", selectedPlayer.id)
+        .eq("activity_id", activity.id)
+        .or("gps_verified.is.false,gps_verified.is.null");
+
+      if (error) {
+        alert(error.message);
+        return;
+      }
+
+      try {
+        await removeXpForActivity(selectedPlayer.id, activity.id);
+      } catch (xpError) {
+        alert(xpError.message);
+      }
+
+      await refreshPlayerData(selectedPlayer.id);
+      await logMigrationAudit("activity_removed", selectedPlayer, {
+        activity_id: activity.id,
+        activity_title: activity.title,
+      });
+      return;
+    }
+
+    try {
+      await upsertCompletion({
+        playerId: selectedPlayer.id,
+        activity,
+        status: "completed",
+        completionType: "activity",
+        gpsVerified: false,
+        awardPoints: true,
+      });
+      await logMigrationAudit("activity_completed", selectedPlayer, {
+        activity_id: activity.id,
+        activity_title: activity.title,
+      });
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  async function handleSubmitApproval(activity, type) {
+    if (!selectedPlayer?.id) return;
+
+    try {
+      await upsertCompletion({
+        playerId: selectedPlayer.id,
+        activity,
+        status: "awaiting_approval",
+        completionType: type === "bonus" ? "bonus_approval" : "squad_approval",
+        gpsVerified: false,
+        awardPoints: false,
+      });
+      await logMigrationAudit("approval_submitted", selectedPlayer, {
+        activity_id: activity.id,
+        activity_title: activity.title,
+        approval_type: type,
+      });
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+
+  async function handleRunSaved(result) {
+    const runType = normaliseRunType(result, "manual");
+    const runSource = runType;
+
+    const fullActivity =
+      (weeks || []).find(activity => activity.id === result.activityId) || {
+        id: result.activityId,
+        title: result.title,
+        activity_key: "run",
+        target_unit: "km",
+        target_value: result.targetKm || result.distanceKm || 0,
+      };
+
+    const proofPayload = {
+      squad: squadConfig.shortLabel || squadConfig.label || null,
+      squad_key: selectedPlayer?.squad_key || squadConfig.key,
+      player_id: result.playerId,
+      player_name: selectedPlayer?.name || null,
+      task_key: result.activityId,
+      week: result.week || challengeWeek,
+      label: result.title,
+      target: result.targetKm ? `${result.targetKm} km` : null,
+      run_type: runType,
+      run_source: runSource,
+      distance_km: result.distanceKm,
+      duration_min: result.durationMin,
+      pace_min_per_km:
+        result.distanceKm > 0 && result.durationMin
+          ? Number((result.durationMin / result.distanceKm).toFixed(2))
+          : null,
+      note:
+        runType === "gps"
+          ? "Verified GPS run"
+          : runType === "file_upload"
+            ? `Imported ${String(result.fileType || "activity").toUpperCase()} activity`
+            : "Manual run entry",
+      saved_at: result.savedAt || new Date().toISOString(),
+    };
+
+    const { data: proof, error: proofError } = await supabase
+      .from("run_proofs")
+      .insert(proofPayload)
+      .select()
+      .single();
+
+    if (proofError) {
+      throw proofError;
+    }
+
+    let completion;
+
+    try {
+      completion = await upsertCompletion({
+        playerId: result.playerId,
+        activity: fullActivity,
+        status: "completed",
+        completionType: runType,
+        gpsVerified: runType === "gps",
+        awardPoints: true,
+      });
+    } catch (completionError) {
+      const { error: cleanupError } = await supabase
+        .from("run_proofs")
+        .delete()
+        .eq("id", proof.id);
+
+      if (cleanupError) {
+        console.error("Could not roll back run proof after completion failure", cleanupError);
+      }
+
+      throw completionError;
+    }
+
+    const savedProof = normaliseSavedRun(proof);
+
+    setSavedRuns(previous => [
+      savedProof,
+      ...previous.filter(item => item.id !== savedProof.id),
+    ]);
+
+    setCompletions(previous => [
+      completion,
+      ...previous.filter(item => item.id !== completion.id),
+    ]);
+
+    const auditEvent =
+      runType === "gps"
+        ? "gps_run_saved"
+        : runType === "file_upload"
+          ? "uploaded_run_saved"
+          : "manual_run_saved";
+
+    try {
+      await logMigrationAudit(auditEvent, selectedPlayer, {
+        activity_id: result.activityId,
+        activity_title: result.title,
+        distance_km: result.distanceKm,
+        duration_min: result.durationMin || null,
+        run_type: runType,
+        run_source: runSource,
+        file_type: result.fileType || null,
+        original_filename: result.originalFilename || null,
+        run_proof_id: proof?.id || null,
+      });
+    } catch (auditError) {
+      console.error("Run audit failed after successful save", auditError);
+    }
+
+    Promise.resolve(refreshPlayerData(result.playerId)).catch(refreshError => {
+      console.error("Run refresh failed after successful save", refreshError);
+    });
+
+    return {
+      ...completion,
+      runProofId: proof?.id,
+      proof: savedProof,
+    };
+  }
+
+  async function deleteRun(run = {}) {
+    const flowId =
+      `${Date.now()}-${Math.random()
+        .toString(16)
+        .slice(2)}`;
+
+    const playerId =
+      run?.playerId ||
+      run?.player_id ||
+      run?.player?.id ||
+      selectedPlayer?.id;
+
+    const activityId =
+      run?.activityId ||
+      run?.activity_id ||
+      run?.task_key ||
+      run?.activity?.id;
+
+    const proofId =
+      run?.runProofId ||
+      run?.proofId ||
+      run?.proof?.id ||
+      (
+        run?.task_key ||
+          run?.run_type
+          ? run?.id
+          : null
+      );
+
+    const runType = normaliseRunType(run, "manual");
+    const persistedRunType = String(
+      run?.persisted_run_type ||
+      run?.run_type ||
+      run?.run_source ||
+      runType
+    ).toLowerCase();
+
+    const removableTypes = [
+      "manual",
+      "file_upload",
+    ];
+
+    if (
+      !removableTypes.includes(
+        runType
+      )
+    ) {
+      alert(
+        "Only manual and uploaded runs can be removed."
+      );
+
+      return;
+    }
+
+    const runLabel =
+      runType === "file_upload"
+        ? "uploaded run"
+        : "manual run";
+
+    console.groupCollapsed(
+      "[run-delete]",
+      flowId
+    );
+
+    console.log(
+      "handler fired",
+      {
+        run,
+        proofId,
+        playerId,
+        activityId,
+        runType,
+        selectedPlayerId:
+          selectedPlayer?.id,
+      }
+    );
+
+    if (
+      !playerId ||
+      !activityId
+    ) {
+      console.error(
+        "Missing playerId or activityId",
+        {
+          proofId,
+          playerId,
+          activityId,
+          runType,
+          run,
+        }
+      );
+
+      console.groupEnd();
+
+      alert(
+        `Could not identify the ${runLabel} to remove.`
+      );
+
+      return;
+    }
+
+    const confirmed =
+      window.confirm(
+        `Remove this ${runLabel} and uncheck the activity?`
+      );
+
+    if (!confirmed) {
+      console.log(
+        "cancelled by user"
+      );
+
+      console.groupEnd();
+      return;
+    }
+
+    const previousSavedRuns =
+      savedRuns;
+
+    const previousCompletions =
+      completions;
+
+    const previousXpTransactions =
+      xpTransactions;
+
+    const previousXpTotal =
+      xpTotal;
+
+    const matchesRun =
+      item => {
+        if (
+          proofId &&
+          item.id === proofId
+        ) {
+          return true;
+        }
+
+        return (
+          String(item.player_id || "") === String(playerId || "") &&
+          String(item.task_key || "") === String(activityId || "")
+        );
+      };
+
+    const matchesCompletion =
+      item =>
+        String(item.player_id || "") === String(playerId || "") &&
+        String(item.activity_id || "") === String(activityId || "");
+
+    setSavedRuns(current =>
+      current.filter(
+        item => !matchesRun(item)
+      )
+    );
+
+    setCompletions(current =>
+      current.filter(
+        item =>
+          !matchesCompletion(item)
+      )
+    );
+
+    setXpTransactions(current =>
+      current.filter(
+        item =>
+          !(
+            item.player_id ===
+            playerId &&
+            item.activity_id ===
+            activityId
+          )
+      )
+    );
+
+    setXpTotal(currentTotal => {
+      const removedXp =
+        previousXpTransactions
+          .filter(
+            item =>
+              item.player_id ===
+              playerId &&
+              item.activity_id ===
+              activityId
+          )
+          .reduce(
+            (total, item) =>
+              total +
+              Number(item.xp || 0),
+            0
+          );
+
+      return Math.max(
+        0,
+        Number(
+          currentTotal || 0
+        ) - removedXp
+      );
+    });
+
+    try {
+      let deletedProofs = [];
+
+      if (proofId) {
+        const {
+          data,
+          error,
+        } = await supabase
+          .from("run_proofs")
+          .delete()
+          .eq("id", proofId)
+          .eq(
+            "player_id",
+            playerId
+          )
+          .select(
+            "id,player_id,task_key,run_type"
+          );
+
+        if (error) {
+          throw error;
+        }
+
+        deletedProofs =
+          data || [];
+      }
+
+      if (
+        !deletedProofs.length
+      ) {
+        const {
+          data,
+          error,
+        } = await supabase
+          .from("run_proofs")
+          .delete()
+          .eq(
+            "player_id",
+            playerId
+          )
+          .eq(
+            "task_key",
+            activityId
+          )
+          .select(
+            "id,player_id,task_key,run_type"
+          );
+
+        if (error) {
+          throw error;
+        }
+
+        deletedProofs =
+          data || [];
+      }
+
+      const {
+        data:
+        deletedCompletions,
+        error:
+        completionError,
+      } = await supabase
+        .from(
+          "activity_completions"
+        )
+        .delete()
+        .eq(
+          "player_id",
+          playerId
+        )
+        .eq(
+          "activity_id",
+          activityId
+        )
+        .select(
+          "id,player_id,activity_id,completion_type,gps_verified"
+        );
+
+      if (completionError) {
+        throw completionError;
+      }
+
+      const {
+        data: deletedXp,
+        error: xpError,
+      } = await supabase
+        .from("xp_transactions")
+        .delete()
+        .eq(
+          "player_id",
+          playerId
+        )
+        .eq(
+          "activity_id",
+          activityId
+        )
+        .select(
+          "id,player_id,activity_id,xp,source"
+        );
+
+      if (xpError) {
+        throw xpError;
+      }
+
+      await refreshPlayerData(
+        playerId
+      );
+
+      await logMigrationAudit(
+        runType ===
+          "file_upload"
+          ? "uploaded_run_removed"
+          : "manual_run_removed",
+        selectedPlayer,
+        {
+          activity_id:
+            activityId,
+
+          run_proof_id:
+            proofId || null,
+
+          run_type:
+            runType,
+
+          deleted_proofs:
+            deletedProofs.length,
+
+          deleted_completions:
+            (
+              deletedCompletions ||
+              []
+            ).length,
+
+          deleted_xp:
+            (deletedXp || [])
+              .length,
+        }
+      );
+
+      console.log(
+        "run removed",
+        {
+          deletedProofs,
+          deletedCompletions,
+          deletedXp,
+        }
+      );
+    } catch (error) {
+      console.error(
+        "run delete failed",
+        error
+      );
+
+      setSavedRuns(
+        previousSavedRuns
+      );
+
+      setCompletions(
+        previousCompletions
+      );
+
+      setXpTransactions(
+        previousXpTransactions
+      );
+
+      setXpTotal(
+        previousXpTotal
+      );
+
+      alert(
+        error?.message ||
+        `Could not remove this ${runLabel}.`
+      );
+    } finally {
+      console.groupEnd();
+    }
+  }
+
+  function openWeekFromProgress(week) {
+    setChallengeWeek(Math.min(8, Math.max(1, Number(week || currentWeek))));
+    onChangeParentView("challenge");
+  }
+
+  function renderChildSwitcherModal() {
+    if (!showChildSwitcher) return null;
+
+    const pool = allLinkedPlayers.length ? allLinkedPlayers : localPlayers;
+
+    return (
+      <div className="child-switcher-backdrop" onClick={() => setShowChildSwitcher(false)}>
+        <div className="child-switcher-modal" onClick={event => event.stopPropagation()}>
+          <button
+            className="child-switcher-close"
+            onClick={() => setShowChildSwitcher(false)}
+          >
+            ×
+          </button>
+
+          <h2>Select Child</h2>
+
+          <div className="child-switcher-list">
+            {pool.map(player => (
+              <button
+                key={player.id}
+                className={
+                  selectedPlayer && player.id === selectedPlayer.id
+                    ? "child-switcher-row active"
+                    : "child-switcher-row"
+                }
+                onClick={() => selectPlayer(player, { stayOnPage: true })}
+              >
+                <span>{getPlayerInitials(player.name)}</span>
+                <div>
+                  <strong>{player.name}</strong>
+                  <small>{player.squad_key}</small>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!localPlayers.length && !allLinkedPlayers.length) {
+    return (
+      <div className="page">
+        <div className="card">
+          <h2>Select your child</h2>
+          <p className="muted">Choose your child from {squadConfig.shortLabel}.</p>
+
+          {loadingAvailable ? (
+            <p className="muted">Loading players…</p>
+          ) : (
+            <>
+              <label className="label">Child name</label>
+
+              <select
+                className="select"
+                disabled={linking}
+                defaultValue=""
+                onChange={e => {
+                  const player = availablePlayers.find(
+                    p => p.id === e.target.value
+                  );
+
+                  if (player) linkChild(player);
+                }}
+              >
+                <option value="">Select your child</option>
+
+                {availablePlayers.map(player => (
+                  <option key={player.id} value={player.id}>
+                    {player.name}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if ((allLinkedPlayers.length > 1 || localPlayers.length > 1) && !selectedPlayer) {
+    const pool = allLinkedPlayers.length ? allLinkedPlayers : localPlayers;
+
+    return (
+      <div className="page">
+        <div className="card">
+          <h2>Select your child</h2>
+
+          <div className="squad-grid">
+            {pool.map(player => (
+              <button
+                key={player.id}
+                className="squad-card"
+                onClick={() => selectPlayer(player, { stayOnPage: true })}
+              >
+                {player.name}
+                <small>{player.squad_key}</small>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!selectedPlayer) return null;
+
+  if (parentView === "progress") {
+    return (
+      <>
+        <ProgressHome
+          squadConfig={squadConfig}
+          selectedPlayer={selectedPlayer}
+          hasMultipleChildren={(allLinkedPlayers.length || localPlayers.length) > 1}
+          onSwitchChild={() => setShowChildSwitcher(true)}
+          activities={weeks || []}
+          completions={completions}
+          savedRuns={savedRuns}
+          xpTotal={xpTotal}
+          xpTransactions={xpTransactions}
+          badges={badges}
+          onOpenWeek={openWeekFromProgress}
+        />
+        {renderChildSwitcherModal()}
+      </>
+    );
+  }
+
+  if (parentView === "skills") {
+    return (
+      <>
+        <SkillsLibrary
+          supabase={supabase}
+          squadConfig={squadConfig}
+          selectedPlayer={selectedPlayer}
+          hasMultipleChildren={(allLinkedPlayers.length || localPlayers.length) > 1}
+          onSwitchChild={() => setShowChildSwitcher(true)}
+        />
+        {renderChildSwitcherModal()}
+      </>
+    );
+  }
+
+  if (parentView === "settings") {
+    return (
+      <>
+        <SettingsHome
+          supabase={supabase}
+          session={session}
+          squadConfig={squadConfig}
+          selectedPlayer={selectedPlayer}
+          players={allLinkedPlayers.length ? allLinkedPlayers : localPlayers}
+          xpTotal={xpTotal}
+          badges={badges}
+          completions={completions}
+          termsAcceptedAt={termsAcceptedAt}
+          onSwitchChild={() => setShowChildSwitcher(true)}
+          onSelectChild={player => selectPlayer(player, { stayOnPage: true })}
+          onChildLinked={linkChild}
+          onRemoveChild={removeLinkedChild}
+          onSignOut={onSignOut}
+        />
+        {renderChildSwitcherModal()}
+      </>
+    );
+  }
+
+  return (
+    <div className="page">
+      {squadRank ? (
+        <div className="home-leaderboard-position-card">
+          <span>🏆</span>
+          <div>
+            <strong>Squad Leaderboard</strong>
+            <p>
+              {selectedPlayer.name} is <b>#{squadRank.position}</b> of {squadRank.total}
+              {squadRank.xp ? ` with ${squadRank.xp} XP` : ""}.
+            </p>
+          </div>
+        </div>
+      ) : null}
+
+      <ChallengeHome
+        supabase={supabase}
+        squadConfig={squadConfig}
+        selectedPlayer={selectedPlayer}
+        hasMultipleChildren={(allLinkedPlayers.length || localPlayers.length) > 1}
+        onSwitchChild={() => setShowChildSwitcher(true)}
+        activeWeek={challengeWeek}
+        currentWeek={currentWeek}
+        lockFutureWeeks={false}
+        onChangeWeek={week => setChallengeWeek(Math.min(8, Math.max(1, Number(week || 1))))}
+        savedRuns={savedRuns}
+        completions={completions}
+        xpTotal={xpTotal}
+        badges={badges}
+        onStartRun={activity => setRunActivity(activity)}
+        onDeleteManualRun={deleteRun}
+        onToggleActivity={handleToggleActivity}
+        onSubmitApproval={handleSubmitApproval}
+      />
+
+      {runActivity ? (
+        <RunLoggerModal
+          activity={runActivity}
+          selectedPlayer={selectedPlayer}
+          onClose={() => setRunActivity(null)}
+          onSaved={handleRunSaved}
+          onDeleted={deleteRun}
+          existingRuns={savedRuns}
+        />
+      ) : null}
+      {renderChildSwitcherModal()}
+    </div>
+  );
+}

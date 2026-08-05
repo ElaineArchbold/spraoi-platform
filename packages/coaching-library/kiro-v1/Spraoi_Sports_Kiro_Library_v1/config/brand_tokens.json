@@ -1,0 +1,40 @@
+{
+  "brand_name": "Spraoi Sports",
+  "tagline": "Growing Stronger Together",
+  "logo_full": "assets/logos/spraoi-logo-primary.png",
+  "logo_icon": "assets/logos/spraoi-icon-primary.png",
+  "colours": {
+    "navy": "#073B74",
+    "bright_blue": "#079CE0",
+    "green": "#2FAE3B",
+    "orange": "#FF7A00",
+    "red": "#EF2B24",
+    "purple": "#7B1DB8",
+    "gold": "#FFB400",
+    "white": "#FFFFFF",
+    "off_white": "#F7F9FC",
+    "light_grey": "#E7ECF2",
+    "charcoal": "#1C2733"
+  },
+  "typography": {
+    "primary": "Inter, Arial, sans-serif",
+    "display": "Inter, Arial, sans-serif"
+  },
+  "radius": {
+    "card": "20px",
+    "panel": "14px",
+    "pill": "999px"
+  },
+  "age_style_rules": {
+    "U7-U12": {
+      "child_card": "friendly animal mascots, bright accents, simple language",
+      "coach_card_diagram": "simple neutral boy/girl player figures",
+      "no_real_children_photos": true
+    },
+    "U13+": {
+      "child_card": "mature clean illustration or tactical graphics; no cartoons",
+      "coach_card_diagram": "simple mature player silhouettes or neutral figures",
+      "no_animal_mascots": true
+    }
+  }
+}

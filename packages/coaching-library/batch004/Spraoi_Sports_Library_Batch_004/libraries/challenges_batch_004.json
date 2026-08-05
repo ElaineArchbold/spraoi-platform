@@ -1,0 +1,97 @@
+[
+  {
+    "title": "Home Target Hits",
+    "skill": "Target Accuracy",
+    "sport": "hurling",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 10,
+    "description": "Choose a safe wall target and see how many controlled hits you can make.",
+    "target": "Hit the target 15 times from 30 attempts",
+    "video_url": ""
+  },
+  {
+    "title": "Keep It Up",
+    "skill": "Ball Control",
+    "sport": "hurling",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 8,
+    "description": "Use a balloon or light ball and try to keep it in the air with soft controlled touches.",
+    "target": "Complete 3 rounds of 20 seconds",
+    "video_url": ""
+  },
+  {
+    "title": "Find the Space",
+    "skill": "Spatial Awareness",
+    "sport": "athletic",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 6,
+    "description": "Move around a safe area and stop in a new free space every time someone calls stop.",
+    "target": "Complete 20 safe moves without touching another player or object",
+    "video_url": ""
+  },
+  {
+    "title": "Quick Colour Reaction",
+    "skill": "Reaction Speed",
+    "sport": "athletic",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 8,
+    "description": "Place four coloured markers around you and move to the colour called by a helper.",
+    "target": "Complete 25 correct reactions",
+    "video_url": ""
+  },
+  {
+    "title": "Support and Move",
+    "skill": "Support Play",
+    "sport": "hurling",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "developing",
+    "level": 1,
+    "duration_mins": 10,
+    "description": "Pass to a partner or wall, then move quickly to a new receiving position.",
+    "target": "Complete 20 pass-and-move repetitions",
+    "video_url": ""
+  }
+]

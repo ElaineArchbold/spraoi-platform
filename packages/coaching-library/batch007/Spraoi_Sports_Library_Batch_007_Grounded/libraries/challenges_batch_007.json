@@ -1,0 +1,70 @@
+[
+  {
+    "title": "Beanbag Balance Battle",
+    "skill": "Hurley Balance",
+    "sport": "hurling",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 8,
+    "description": "Balance a beanbag on the bas while walking through a safe space and changing direction.",
+    "target": "Complete 5 one-minute rounds without dropping it",
+    "video_url": ""
+  },
+  {
+    "title": "Cone Lift Challenge",
+    "skill": "Cone Lift",
+    "sport": "hurling",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 8,
+    "description": "Use the butt of the hurley to lift a cone and carry it back to a target area.",
+    "target": "Complete 10 controlled cone lifts",
+    "video_url": ""
+  },
+  {
+    "title": "Keep It Moving",
+    "skill": "Ground Strike",
+    "sport": "hurling",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 10,
+    "description": "Strike the sliotar along the ground and try to keep it moving between two safe markers.",
+    "target": "Complete 30 moving ground strikes",
+    "video_url": ""
+  },
+  {
+    "title": "Colour Gate Dribble",
+    "skill": "Dribble",
+    "sport": "hurling",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 8,
+    "description": "Set up coloured gates and dribble through the colour called by a helper.",
+    "target": "Complete 20 clean gate dribbles",
+    "video_url": ""
+  }
+]

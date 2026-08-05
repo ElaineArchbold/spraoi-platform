@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300">
+  <rect width="400" height="300" fill="#4a9835" rx="12"/>
+  <rect x="10" y="10" width="380" height="280" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" rx="6"/>
+  <line x1="200" y1="10" x2="200" y2="290" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+  <circle cx="200" cy="150" r="30" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1"/><polygon points="80,232 74,245 86,245" fill="#FF7A00" stroke="#fff" stroke-width="1"/><polygon points="140,152 134,165 146,165" fill="#FF7A00" stroke="#fff" stroke-width="1"/><polygon points="200,232 194,245 206,245" fill="#FF7A00" stroke="#fff" stroke-width="1"/><polygon points="260,152 254,165 266,165" fill="#FF7A00" stroke="#fff" stroke-width="1"/><polygon points="320,232 314,245 326,245" fill="#FF7A00" stroke="#fff" stroke-width="1"/>
+  <circle cx="50" cy="260" r="12" fill="#073B74" stroke="#fff" stroke-width="2"/>
+  <text x="50" y="264" text-anchor="middle" fill="#fff" font-size="9" font-weight="800" font-family="sans-serif">A</text>
+  <line x1="65" y1="255" x2="130" y2="170" stroke="#ffffff" stroke-width="2"  opacity="0.8"/>
+  <polygon points="130,170 127.99871128505244,177.7456338332911 123.04931111676649,173.9607984104842" fill="#ffffff" opacity="0.8"/>
+  <line x1="145" y1="165" x2="195" y2="235" stroke="#ffffff" stroke-width="2"  opacity="0.8"/>
+  <polygon points="195,235 188.18209145681806,230.81477323233176 193.2522152878323,227.19325621017873" fill="#ffffff" opacity="0.8"/>
+  <line x1="205" y1="235" x2="255" y2="165" stroke="#ffffff" stroke-width="2"  opacity="0.8"/>
+  <polygon points="255,165 253.2522152878323,172.80674378982127 248.18209145681806,169.18522676766824" fill="#ffffff" opacity="0.8"/>
+  <line x1="265" y1="165" x2="315" y2="235" stroke="#ffffff" stroke-width="2"  opacity="0.8"/>
+  <polygon points="315,235 308.18209145681806,230.81477323233176 313.2522152878323,227.19325621017873" fill="#ffffff" opacity="0.8"/><text x="200" y="25" text-anchor="middle" fill="#fff" font-size="11" font-weight="700" font-family="sans-serif" opacity="0.9">Agility / Zig-zag</text><text x="386" y="292" text-anchor="end" fill="rgba(255,255,255,0.5)" font-size="8" font-weight="700" font-family="sans-serif">SPRAOI SPORTS</text></svg>

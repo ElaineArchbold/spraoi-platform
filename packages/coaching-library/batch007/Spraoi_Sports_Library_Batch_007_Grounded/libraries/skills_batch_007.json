@@ -1,0 +1,58 @@
+[
+  {
+    "name": "Hurley Balance",
+    "sport": "hurling",
+    "category": "ball_control",
+    "description": "Carry and control a beanbag or sliotar on the bas of the hurley while stationary or moving.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ]
+  },
+  {
+    "name": "Cone Lift",
+    "sport": "hurling",
+    "category": "ball_control",
+    "description": "Use the butt of the hurley to lift and carry a cone with control.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ]
+  },
+  {
+    "name": "Ground Strike",
+    "sport": "hurling",
+    "category": "ground_hurling",
+    "description": "Strike the sliotar accurately and safely along the ground using balanced body position and controlled follow-through.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ]
+  },
+  {
+    "name": "Dribble",
+    "sport": "hurling",
+    "category": "ball_control",
+    "description": "Move the sliotar along the ground under control using short touches with the hurley.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ]
+  }
+]

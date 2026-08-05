@@ -1,0 +1,299 @@
+[
+  {
+    "title": "Aim and Shoot",
+    "skill": "Target Accuracy",
+    "secondary_skills": [
+      "Ball Control"
+    ],
+    "sport": "football",
+    "category": "kicking",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "format": "game",
+    "duration_mins": 8,
+    "players_min": 4,
+    "players_max": 20,
+    "equipment": "cones, footballs, hoops, markers, chutes",
+    "area_size": "10m x 15m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Two teams roll footballs down a chute towards standing cone targets. The team that knocks over the most cones in 30 seconds wins.",
+    "coaching_points": "Aim before releasing the football. Use controlled force rather than maximum power. Watch the target throughout the roll. Reset quickly and safely.",
+    "setup": "Mark two team lanes with cones. Place several standing cones as targets at the end of each lane. Put one chute and a supply of suitable balls at each starting line.",
+    "diagram_description": "Rectangle 10m x 15m split into two parallel lanes. One team queues at the bottom of each lane behind a start cone. A chute points from each start line toward a cluster of standing cone targets at the far end. Solid arrows show balls rolling down each chute toward the targets. The coach stands between the lanes near the target end."
+  },
+  {
+    "title": "Around the World Ball Control",
+    "skill": "Ball Control",
+    "secondary_skills": [
+      "Balance"
+    ],
+    "sport": "football",
+    "category": "ball_control",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "format": "warm_up",
+    "duration_mins": 6,
+    "players_min": 2,
+    "players_max": 24,
+    "equipment": "cones, one football per player",
+    "area_size": "15m x 15m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Each player moves a ball around different parts of the body, including between the legs and in figure-of-eight patterns.",
+    "coaching_points": "Keep movements slow and controlled first. Use both hands. Keep the head up when comfortable. Maintain a balanced stance.",
+    "setup": "Create a clear square with four cones. Give each player one suitable ball and spread players evenly with enough personal space.",
+    "diagram_description": "Square 15m x 15m with one cone at each corner. Players are spread evenly throughout the square, each with one ball. Small circular arrows around each player show the ball moving around the waist, legs and body. The coach stands just outside one side demonstrating."
+  },
+  {
+    "title": "Beanbag Balance Journey",
+    "skill": "Balance",
+    "secondary_skills": [
+      "Movement"
+    ],
+    "sport": "athletic",
+    "category": "coordination",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "format": "warm_up",
+    "duration_mins": 6,
+    "players_min": 2,
+    "players_max": 24,
+    "equipment": "beanbags, cones",
+    "area_size": "15m x 15m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Players travel around the area while balancing a beanbag on a body part chosen by the coach.",
+    "coaching_points": "Move under control. Keep the body tall and steady. Use small steps when balance is difficult. Stop safely to replace a dropped beanbag.",
+    "setup": "Mark a square with cones and give each player one beanbag. Leave enough space for players to move without contact.",
+    "diagram_description": "Square 15m x 15m with cones at all four corners. Players are distributed throughout the area with beanbags shown on different body parts such as head, shoulder, hand and knee. Curved arrows show players moving freely in different directions. The coach stands centrally giving instructions."
+  },
+  {
+    "title": "Beat the Circle",
+    "skill": "Passing",
+    "secondary_skills": [
+      "Movement"
+    ],
+    "sport": "football",
+    "category": "passing",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "developing",
+    "format": "game",
+    "duration_mins": 10,
+    "players_min": 8,
+    "players_max": 24,
+    "equipment": "cones, football",
+    "area_size": "15m diameter circle",
+    "indoor": false,
+    "outdoor": true,
+    "description": "One team passes a football around a circle while a player from the second team runs around the outside and tries to complete the lap first.",
+    "coaching_points": "Use accurate hand passes or short kick passes. Show hands early. Move the ball quickly without rushing technique. Runners should stay outside the circle.",
+    "setup": "Use cones to mark a large circle. Place one team evenly around the circle and the second team in a queue behind a start cone outside it.",
+    "diagram_description": "Large circle approximately 15m in diameter marked by cones. Team A players are evenly spaced around the perimeter. Dashed arrows show the ball passing clockwise from player to player. Team B queues behind a start cone outside the circle. A solid curved arrow shows the first runner travelling one full lap around the outside. The coach stands near the start cone."
+  },
+  {
+    "title": "Big Ball Bombardment",
+    "skill": "Target Accuracy",
+    "secondary_skills": [
+      "Passing"
+    ],
+    "sport": "football",
+    "category": "kicking",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "format": "game",
+    "duration_mins": 8,
+    "players_min": 6,
+    "players_max": 24,
+    "equipment": "cones, footballs, markers, one large exercise ball",
+    "area_size": "15m diameter circle",
+    "indoor": false,
+    "outdoor": true,
+    "description": "Players kick or throw footballs from outside a circle to move a large exercise ball beyond the boundary.",
+    "coaching_points": "Aim at the centre of the large ball. Wait until the kicking lane is clear. Use controlled force. Retrieve loose balls only on the coach's signal.",
+    "setup": "Mark a large circle with cones and place an exercise ball in the middle. Spread players around the outside with suitable smaller balls.",
+    "diagram_description": "Circle 15m in diameter marked by cones. One large exercise ball sits in the centre. Players are spaced evenly outside the circle with smaller balls. Dashed arrows point from each player toward the central ball. The coach stands outside the circle controlling starts and ball collection."
+  },
+  {
+    "title": "Boulder Bowling",
+    "skill": "Target Accuracy",
+    "secondary_skills": [
+      "Passing"
+    ],
+    "sport": "football",
+    "category": "kicking",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "format": "game",
+    "duration_mins": 8,
+    "players_min": 6,
+    "players_max": 24,
+    "equipment": "cones, footballs, markers, one large ball",
+    "area_size": "12m x 20m",
+    "indoor": false,
+    "outdoor": true,
+    "description": "Two teams send small balls towards a large central ball, trying to move it over the opposing team's end line.",
+    "coaching_points": "Aim through the centre of the target. Use an appropriate release or strike. Keep behind the team line. Communicate before collecting balls.",
+    "setup": "Mark a rectangle with an end line for each team. Place one large ball in the centre and give both teams an equal supply of smaller balls.",
+    "diagram_description": "Rectangle 12m x 20m with a team line at each short end. A large exercise ball sits on the centre line. Team A spreads across the left end and Team B across the right end. Dashed arrows from both teams point toward the central ball. End zones are labelled behind each team line. The coach stands on the halfway sideline."
+  },
+  {
+    "title": "Bubble World",
+    "skill": "Ball Control",
+    "secondary_skills": [
+      "Movement"
+    ],
+    "sport": "multi",
+    "category": "ball_control",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9"
+    ],
+    "difficulty": "foundation",
+    "format": "warm_up",
+    "duration_mins": 5,
+    "players_min": 2,
+    "players_max": 20,
+    "equipment": "markers, bubble machine, footballey",
+    "area_size": "10m x 10m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Players move through the area and burst bubbles using their hands or suitable equipment such as a footballey.",
+    "coaching_points": "Track the bubble before making contact. Use soft, controlled movements. Keep awareness of other players. Stop if the surface becomes slippery.",
+    "setup": "Mark a small safe area with cones or markers. Position the bubble machine or bubble maker outside the working space and check the surface before starting.",
+    "diagram_description": "Square 10m x 10m with markers at the corners. Players are spread throughout the square. Several bubble symbols appear at different heights. Short arrows show players moving toward nearby bubbles. The coach and bubble machine are positioned outside one side. A safety note marks the indoor floor-check area."
+  },
+  {
+    "title": "Captain Ball",
+    "skill": "Passing",
+    "secondary_skills": [
+      "Catching"
+    ],
+    "sport": "football",
+    "category": "passing",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "developing",
+    "format": "game",
+    "duration_mins": 10,
+    "players_min": 8,
+    "players_max": 24,
+    "equipment": "beanbags, cones, football, hoop, markers",
+    "area_size": "20m x 15m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Two teams move a football or beanbag towards their captain. A point is scored when the captain receives it safely and places it inside the hoop.",
+    "coaching_points": "Move into space before receiving. Use clear hand-pass targets. Keep passes controlled. Captains should show their hands and stay balanced inside the hoop.",
+    "setup": "Mark a rectangular playing area. Place one hoop at each end with a captain inside. Give each team a supply of balls or beanbags at the centre.",
+    "diagram_description": "Rectangle 20m x 15m with a hoop centred near each short end. One captain stands inside each hoop. Two teams are spread across the middle zone. Dashed arrows show passes toward each captain. A central supply of balls or beanbags is shown. The coach stands on the halfway sideline."
+  },
+  {
+    "title": "Chasing Shadows",
+    "skill": "Movement",
+    "secondary_skills": [
+      "Balance"
+    ],
+    "sport": "athletic",
+    "category": "agility",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "format": "warm_up",
+    "duration_mins": 6,
+    "players_min": 4,
+    "players_max": 24,
+    "equipment": "cones",
+    "area_size": "15m x 15m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Players work in pairs. One leads using different movement patterns while the partner follows and copies each action.",
+    "coaching_points": "Keep a safe following distance. Use controlled direction changes. Stay light on the feet. Swap leader roles regularly.",
+    "setup": "Mark a square with cones and arrange players in pairs. Give each pair enough space to move independently.",
+    "diagram_description": "Square 15m x 15m with cones at each corner. Pairs are spread around the area. In each pair, one player is labelled leader and the second follower. Curved arrows show varied paths with turns, hops and changes of direction. The coach stands centrally calling movement actions."
+  },
+  {
+    "title": "Clap Clap Catch",
+    "skill": "Catching",
+    "secondary_skills": [
+      "Coordination"
+    ],
+    "sport": "football",
+    "category": "catching",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "format": "warm_up",
+    "duration_mins": 6,
+    "players_min": 2,
+    "players_max": 24,
+    "equipment": "cones, one football or soft ball per player",
+    "area_size": "15m x 15m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Each player throws a ball, balloon or beanbag upwards, claps, and catches it before it reaches the ground.",
+    "coaching_points": "Keep eyes on the object. Use soft hands when catching. Throw to a manageable height. Stay balanced under the object.",
+    "setup": "Mark a clear square and give each player one suitable object. Spread players evenly with enough personal space.",
+    "diagram_description": "Square 15m x 15m with cones at the corners. Players are evenly spread, each holding one ball, balloon or beanbag. An upward arrow above each player shows the throw and a downward arrow shows the catch. Small hand-clap symbols appear between the arrows. The coach stands outside the square demonstrating."
+  }
+]

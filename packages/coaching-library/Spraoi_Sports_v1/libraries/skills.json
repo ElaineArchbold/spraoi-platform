@@ -1,0 +1,173 @@
+[
+  {
+    "id": "SK-HUR-001",
+    "name": "Target Accuracy",
+    "sport": "hurling",
+    "category": "striking",
+    "description": "Direct a ball or sliotar accurately toward a defined target.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "approved"
+  },
+  {
+    "id": "SK-HUR-002",
+    "name": "Ball Control",
+    "sport": "hurling",
+    "category": "ball_control",
+    "description": "Manipulate and control a ball or sliotar while stationary or moving.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "approved"
+  },
+  {
+    "id": "SK-ATH-001",
+    "name": "Balance",
+    "sport": "athletic",
+    "category": "coordination",
+    "description": "Maintain body control while stationary and moving.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "approved"
+  },
+  {
+    "id": "SK-HUR-003",
+    "name": "Passing",
+    "sport": "hurling",
+    "category": "passing",
+    "description": "Move the ball or sliotar accurately to a teammate using the activity's permitted technique.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "approved"
+  },
+  {
+    "id": "SK-HUR-004",
+    "name": "Striking Accuracy",
+    "sport": "hurling",
+    "category": "striking",
+    "description": "Strike a ball or sliotar with control toward a target or space.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "approved"
+  },
+  {
+    "id": "SK-HUR-005",
+    "name": "Ground Strike",
+    "sport": "hurling",
+    "category": "ground_hurling",
+    "description": "Strike the sliotar accurately and safely from the ground.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "approved"
+  },
+  {
+    "id": "SK-HUR-006",
+    "name": "Jab Lift",
+    "sport": "hurling",
+    "category": "ground_hurling",
+    "description": "Lift the sliotar from the ground using a quick controlled jab action.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "approved"
+  },
+  {
+    "id": "SK-HUR-007",
+    "name": "Roll Lift",
+    "sport": "hurling",
+    "category": "ground_hurling",
+    "description": "Lift the sliotar from the ground using the roll-lift technique.",
+    "age_groups": [
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "approved"
+  },
+  {
+    "id": "SK-HUR-008",
+    "name": "Strike from the Hand",
+    "sport": "hurling",
+    "category": "striking",
+    "description": "Strike the sliotar from the hand with balance, control and accuracy.",
+    "age_groups": [
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "approved"
+  },
+  {
+    "id": "SK-HUR-009",
+    "name": "Hand Pass",
+    "sport": "hurling",
+    "category": "passing",
+    "description": "Pass the sliotar from the hand accurately to a teammate.",
+    "age_groups": [
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "approved"
+  },
+  {
+    "id": "SK-HUR-010",
+    "name": "Solo Run",
+    "sport": "hurling",
+    "category": "movement",
+    "description": "Move while controlling the sliotar on the hurley.",
+    "age_groups": [
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "approved"
+  }
+]

@@ -1,0 +1,301 @@
+[
+  {
+    "title": "Clear the Circle",
+    "skill": "Passing",
+    "secondary_skills": [
+      "Movement"
+    ],
+    "sport": "hurling",
+    "category": "passing",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "developing",
+    "format": "game",
+    "duration_mins": 10,
+    "players_min": 8,
+    "players_max": 24,
+    "equipment": "cones, football",
+    "area_size": "20m x 20m",
+    "indoor": false,
+    "outdoor": true,
+    "description": "Players inside a central circle clear balls into the outer area while outside players return them as quickly as possible.",
+    "coaching_points": "Scan before sending the ball. Use controlled passing or striking. Keep moving after each action. Communicate when collecting or returning a ball.",
+    "setup": "Mark a large playing square and a cone circle in the centre. Place several balls inside the circle and split players evenly between the inside and outside areas.",
+    "diagram_description": "Square 20m x 20m with a cone circle approximately 6m in diameter at the centre. Several balls begin inside the circle. Half the players start inside and half are spread around the outer square. Solid arrows show inside players sending balls out. Dashed arrows show outside players returning balls. The coach stands at the edge of the circle."
+  },
+  {
+    "title": "Crazy Cars",
+    "skill": "Agility",
+    "secondary_skills": [
+      "Movement"
+    ],
+    "sport": "athletic",
+    "category": "agility",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9"
+    ],
+    "difficulty": "foundation",
+    "format": "warm_up",
+    "duration_mins": 7,
+    "players_min": 4,
+    "players_max": 24,
+    "equipment": "cones, markers, hoop",
+    "area_size": "15m x 15m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Players steer an imaginary car around the area and react to coloured traffic signals, speed bumps and reverse instructions.",
+    "coaching_points": "Keep eyes up while moving. Stop under control. Use small quick steps when changing direction. Leave space between players.",
+    "setup": "Mark a square with cones. Give each player a hoop or marker as their car. Place red, green and yellow cones around the area and add low cone speed bumps.",
+    "diagram_description": "Square 15m x 15m with red, green and yellow cones distributed throughout. Each player holds a hoop or marker and starts in open space. Curved arrows show varied driving routes. Two low-cone speed bumps cross separate routes. The coach stands centrally calling colours and actions."
+  },
+  {
+    "title": "Find the Goal",
+    "skill": "Passing",
+    "secondary_skills": [
+      "Movement",
+      "Target Accuracy"
+    ],
+    "sport": "hurling",
+    "category": "passing",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "format": "game",
+    "duration_mins": 10,
+    "players_min": 4,
+    "players_max": 24,
+    "equipment": "cones, football, markers, sliotar",
+    "area_size": "20m x 20m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Pairs move around the grid and score by passing a ball through as many different cone goals as possible.",
+    "coaching_points": "Move into a clear passing line. Call for the ball. Use controlled force through the gate. Accelerate to find the next goal.",
+    "setup": "Create several two-cone goals throughout the area. Divide players into pairs and give each pair one suitable ball.",
+    "diagram_description": "Square 20m x 20m with eight cone gates spread evenly and facing different directions. Pairs begin in open spaces with one ball. Dashed arrows show passes through gates. Solid arrows show pairs moving to a new gate after scoring. The coach stands centrally."
+  },
+  {
+    "title": "Frog Race",
+    "skill": "Coordination",
+    "secondary_skills": [
+      "Balance"
+    ],
+    "sport": "athletic",
+    "category": "coordination",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10"
+    ],
+    "difficulty": "foundation",
+    "format": "game",
+    "duration_mins": 6,
+    "players_min": 2,
+    "players_max": 16,
+    "equipment": "hoop, cones",
+    "area_size": "10m x 20m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Players move along a lane using two hoops, stepping into one hoop before lifting and placing the other ahead.",
+    "coaching_points": "Stay balanced before moving the next hoop. Place hoops flat and within reach. Use controlled steps. Remain in your own lane.",
+    "setup": "Mark parallel lanes with cones. Give each player two hoops and place them behind a common start line.",
+    "diagram_description": "Rectangle 10m x 20m divided into four parallel lanes. One player begins at the bottom of each lane with two hoops. One hoop is under the player and one is ahead. Repeating arrows show step forward, lift the rear hoop and place it in front. The coach stands near the finish line."
+  },
+  {
+    "title": "Hoop Hurrah",
+    "skill": "Target Accuracy",
+    "secondary_skills": [
+      "Passing",
+      "Coordination"
+    ],
+    "sport": "hurling",
+    "category": "passing",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "developing",
+    "format": "drill",
+    "duration_mins": 8,
+    "players_min": 2,
+    "players_max": 20,
+    "equipment": "football, hoop, sliotar",
+    "area_size": "10m x 15m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "One player rolls a hoop while their partner tries to send a ball cleanly through the moving target.",
+    "coaching_points": "Track the moving hoop before releasing. Lead the target slightly. Use controlled pace. Swap roles regularly.",
+    "setup": "Arrange players in pairs with one hoop and one suitable ball per pair. Give each pair a clear working lane.",
+    "diagram_description": "Rectangle 10m x 15m divided into parallel pair lanes. Player A rolls a hoop across the lane. Player B stands several metres away with a ball. A dashed arrow shows the ball travelling through the moving hoop. A solid arrow shows the hoop path. The coach stands between lanes."
+  },
+  {
+    "title": "Hula Hoop Loop",
+    "skill": "Team Coordination",
+    "secondary_skills": [
+      "Balance"
+    ],
+    "sport": "athletic",
+    "category": "coordination",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "format": "game",
+    "duration_mins": 6,
+    "players_min": 6,
+    "players_max": 24,
+    "equipment": "hoop",
+    "area_size": "10m diameter circle",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Players hold hands in a circle and move a hoop around the full group without breaking the chain.",
+    "coaching_points": "Communicate before moving. Step through the hoop carefully. Keep hands linked. Help neighbouring players maintain balance.",
+    "setup": "Place players in one or more circles and ask them to hold hands. Put one hoop over the joined hands of two adjacent players.",
+    "diagram_description": "Circle approximately 10m in diameter with players evenly spaced and linked hand-to-hand. One hoop is shown around the joined arms of two players. A curved arrow travels around the full circle to show its direction. The coach stands just outside."
+  },
+  {
+    "title": "Javelin Through the Hoops",
+    "skill": "Throwing Accuracy",
+    "secondary_skills": [
+      "Coordination"
+    ],
+    "sport": "athletic",
+    "category": "coordination",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "format": "drill",
+    "duration_mins": 8,
+    "players_min": 2,
+    "players_max": 20,
+    "equipment": "foam javelin, hoop, cones",
+    "area_size": "10m x 20m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Players throw foam javelins through hoop targets from a safe throwing line.",
+    "coaching_points": "Point the non-throwing side at the target. Throw forward with control. Follow through toward the hoop. Retrieve only on the coach's signal.",
+    "setup": "Create several throwing lanes with cones. Position hoop targets at the far end and place players behind marked throwing lines.",
+    "diagram_description": "Rectangle 10m x 20m divided into four throwing lanes. A hoop target is positioned at the far end of each lane. Players queue behind a start line with foam javelins. Arcing arrows show the throws. A retrieval zone is marked behind the targets. The coach stands along the side."
+  },
+  {
+    "title": "Keepie Uppies Circle",
+    "skill": "Ball Control",
+    "secondary_skills": [
+      "Team Coordination",
+      "Catching"
+    ],
+    "sport": "multi",
+    "category": "ball_control",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "format": "game",
+    "duration_mins": 8,
+    "players_min": 5,
+    "players_max": 16,
+    "equipment": "football",
+    "area_size": "10m diameter circle",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Players work together in a circle to keep a large soft ball in the air for as long as possible.",
+    "coaching_points": "Call before playing the ball. Use soft controlled touches. Move under the ball. Include every player in the sequence.",
+    "setup": "Place players in a wide circle with one large soft ball and enough room to step forward safely.",
+    "diagram_description": "Circle approximately 10m in diameter with players evenly spaced around the edge. One large soft ball is shown above the middle. Short upward arrows from several players show controlled touches. Dotted lines show players stepping toward the centre and returning. The coach counts touches outside the circle."
+  },
+  {
+    "title": "Knock the Cones",
+    "skill": "Target Accuracy",
+    "secondary_skills": [
+      "Passing"
+    ],
+    "sport": "hurling",
+    "category": "striking",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "format": "game",
+    "duration_mins": 8,
+    "players_min": 4,
+    "players_max": 24,
+    "equipment": "cones, football, markers, sliotar",
+    "area_size": "15m x 25m",
+    "indoor": false,
+    "outdoor": true,
+    "description": "Players from opposite sides aim balls at tall cones positioned in the centre and try to knock down as many targets as possible.",
+    "coaching_points": "Choose a clear target before striking or throwing. Keep behind the marked line. Use controlled accuracy. Retrieve only when the round stops.",
+    "setup": "Place tall cones along the centre of the area. Mark a line 10-15m away on both sides and divide players between the two lines.",
+    "diagram_description": "Rectangle 15m x 25m with a row of tall target cones across the centre. One player line is marked 10-15m to the left and another to the right. Teams queue behind each line with balls. Dashed arrows point toward the tall cones. The coach controls rounds from the side."
+  },
+  {
+    "title": "Minefield Movement",
+    "skill": "Agility",
+    "secondary_skills": [
+      "Coordination",
+      "Ball Control"
+    ],
+    "sport": "athletic",
+    "category": "agility",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "format": "warm_up",
+    "duration_mins": 8,
+    "players_min": 4,
+    "players_max": 24,
+    "equipment": "cones, football, markers, sliotar",
+    "area_size": "20m x 20m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Players move through coloured cones, react to colour and body-part tasks, then progress to ball skills at each cone.",
+    "coaching_points": "Keep eyes up to avoid collisions. Change direction under control. Use both sides of the body. Complete the called task before moving on.",
+    "setup": "Spread four or five cones of several colours throughout a square. Begin without balls, then add one suitable ball per player for progressions.",
+    "diagram_description": "Square 20m x 20m filled with evenly scattered cones in four or five colours. Players move through open gaps along curved routes. Colour callouts highlight one colour group and body-part icons show example touch tasks. In the progression, ball markers appear beside players. The coach stands centrally."
+  }
+]

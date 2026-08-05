@@ -1,0 +1,33 @@
+{
+  "name": "@spraoi/plus",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "latest",
+    "@vitejs/plugin-react": "latest",
+    "canvas-confetti": "latest",
+    "html-to-image": "^1.11.13",
+    "html2canvas": "^1.4.1",
+    "leaflet": "^1.9.4",
+    "lucide-react": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "react-icons": "^5.7.0",
+    "react-leaflet": "^5.0.0",
+    "vite": "latest"
+  },
+  "devDependencies": {
+    "@eslint/js": "latest",
+    "eslint": "latest",
+    "eslint-plugin-react-hooks": "latest",
+    "eslint-plugin-react-refresh": "latest",
+    "globals": "latest"
+  }
+}

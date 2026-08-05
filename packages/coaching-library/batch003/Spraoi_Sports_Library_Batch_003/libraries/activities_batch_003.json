@@ -1,0 +1,312 @@
+[
+  {
+    "title": "Mirror Mirror",
+    "skill": "Coordination",
+    "secondary_skills": [
+      "Balance",
+      "Movement"
+    ],
+    "sport": "athletic",
+    "category": "coordination",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "format": "warm_up",
+    "duration_mins": 6,
+    "players_min": 2,
+    "players_max": 24,
+    "equipment": "cones",
+    "area_size": "15m x 15m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Players work in pairs and copy each other's movements, including jumps, hops and balance actions.",
+    "coaching_points": "Face your partner throughout. Move under control. Keep a safe distance. Swap leader and follower roles regularly.",
+    "setup": "Mark a clear square with cones. Arrange players in pairs facing each other with enough space between pairs.",
+    "diagram_description": "Square 15m x 15m with pairs spread evenly throughout. Each pair faces one another. Matching movement icons show a star jump, one-leg hop and vertical jump. Short mirrored arrows appear beside both players. The coach stands centrally demonstrating."
+  },
+  {
+    "title": "Inclusive Obstacle Course",
+    "skill": "Obstacle Movement",
+    "secondary_skills": [
+      "Agility",
+      "Balance",
+      "Coordination"
+    ],
+    "sport": "athletic",
+    "category": "agility",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "format": "drill",
+    "duration_mins": 10,
+    "players_min": 2,
+    "players_max": 20,
+    "equipment": "beanbags, bibs, cones, football, goalposts, hoop, markers, tyre",
+    "area_size": "15m x 25m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Players travel through a sequence of adaptable obstacles to reach the finish area.",
+    "coaching_points": "Move at a safe controlled pace. Complete one obstacle before moving to the next. Keep eyes up. Adapt each task to suit the player.",
+    "setup": "Create a clear start and finish. Arrange available equipment into a simple route with stepping, weaving, balancing and target sections.",
+    "diagram_description": "Rectangle 15m x 25m. Players queue at the bottom behind a start cone. The route includes a cone slalom, two hoops, a tyre step, a beanbag balance section and a small goal target near the finish. Solid arrows show one continuous path. The coach stands midway beside the most difficult obstacle."
+  },
+  {
+    "title": "Parachute Play",
+    "skill": "Team Coordination",
+    "secondary_skills": [
+      "Movement",
+      "Ball Control"
+    ],
+    "sport": "athletic",
+    "category": "coordination",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "format": "game",
+    "duration_mins": 10,
+    "players_min": 6,
+    "players_max": 24,
+    "equipment": "beanbags, cones, football, parachute",
+    "area_size": "15m diameter circle",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Players work together around a parachute, moving left and right, making waves and keeping balls or beanbags on top.",
+    "coaching_points": "Hold the parachute securely. Move together on the coach's call. Use controlled lifts and shakes. Keep the centre area clear unless instructed.",
+    "setup": "Place the parachute flat in a clear area. Space players equally around the edge and keep balls or beanbags beside the coach until needed.",
+    "diagram_description": "Large circle approximately 15m in diameter with a parachute filling the centre. Players stand evenly around the edge holding it. Curved arrows show the group moving left and right. Small balls and beanbags sit on the parachute. Upward arrows show a coordinated lift. The coach stands just outside."
+  },
+  {
+    "title": "Partner Pass",
+    "skill": "Passing",
+    "secondary_skills": [
+      "Catching",
+      "Coordination"
+    ],
+    "sport": "hurling",
+    "category": "passing",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "format": "drill",
+    "duration_mins": 8,
+    "players_min": 2,
+    "players_max": 24,
+    "equipment": "beanbags, football, balloon",
+    "area_size": "10m x 15m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Players sit facing a partner with feet touching and pass a ball, balloon or beanbag back and forth.",
+    "coaching_points": "Show hands early. Pass directly to the partner. Use soft hands when receiving. Increase distance only when control is consistent.",
+    "setup": "Arrange players in pairs facing each other. Begin seated with legs apart and feet touching, with one suitable object per pair.",
+    "diagram_description": "Rectangle 10m x 15m divided into pair spaces. Two players sit facing each other in each space with feet touching. A dashed two-way arrow shows the object travelling between them. A standing progression is shown at the far side. The coach stands centrally."
+  },
+  {
+    "title": "Pot of Gold",
+    "skill": "Throwing Accuracy",
+    "secondary_skills": [
+      "Coordination"
+    ],
+    "sport": "athletic",
+    "category": "coordination",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "format": "game",
+    "duration_mins": 8,
+    "players_min": 3,
+    "players_max": 24,
+    "equipment": "beanbags, cones, hoop",
+    "area_size": "10m x 20m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Players throw beanbags into hoops placed at increasing distances and score more points for the furthest targets.",
+    "coaching_points": "Choose the target before throwing. Use controlled force. Follow through toward the hoop. Retrieve only when all throws are complete.",
+    "setup": "Create several lanes. Place three hoops at increasing distances in front of each start cone and give each group a supply of beanbags.",
+    "diagram_description": "Rectangle 10m x 20m divided into three lanes. A player queue begins behind a cone at the bottom of each lane. Three hoops are positioned at increasing distances and labelled 1, 2 and 3 points. Arcing arrows show beanbags travelling toward the hoops. The coach stands along one side."
+  },
+  {
+    "title": "Task Relay Races",
+    "skill": "Speed",
+    "secondary_skills": [
+      "Movement",
+      "Ball Control"
+    ],
+    "sport": "athletic",
+    "category": "speed",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "format": "game",
+    "duration_mins": 10,
+    "players_min": 6,
+    "players_max": 24,
+    "equipment": "cones, football",
+    "area_size": "15m x 25m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Teams race to a turning cone, complete a coach-selected task and return to release the next runner.",
+    "coaching_points": "Accelerate under control. Complete the task before turning. Use a clear high-five changeover. Keep team lines safely separated.",
+    "setup": "Mark parallel relay lanes with a start cone and a turning cone. Split players into equal teams and place one ball with each team for progressions.",
+    "diagram_description": "Rectangle 15m x 25m divided into four parallel lanes. Teams queue at the bottom behind start cones. A turning cone sits at the far end of each lane. Solid arrows show the outward and return run. A task icon appears beside each turning cone. The coach stands near the middle."
+  },
+  {
+    "title": "Rescue Ball Balance",
+    "skill": "Balance",
+    "secondary_skills": [
+      "Fine Motor Control",
+      "Obstacle Movement"
+    ],
+    "sport": "athletic",
+    "category": "coordination",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "format": "drill",
+    "duration_mins": 8,
+    "players_min": 2,
+    "players_max": 16,
+    "equipment": "beanbags, cones, hoop, markers, tennis racket",
+    "area_size": "10m x 20m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Players balance a ball or beanbag on a racket, cone or hand while following floor markers to a target hoop.",
+    "coaching_points": "Move slowly and stay balanced. Keep the object centred. Step accurately on the markers. Use an easier support when needed.",
+    "setup": "Create several marker paths from a start line to a hoop or basket. Give each player a racket, cone or suitable support and one ball or beanbag.",
+    "diagram_description": "Rectangle 10m x 20m with three parallel paths of coloured floor markers. Players start at the bottom balancing an object on a racket or cone. Solid arrows follow the marker paths toward a hoop at the far end. The coach stands beside the middle path."
+  },
+  {
+    "title": "Skill Stepping Stones",
+    "skill": "Ball Control",
+    "secondary_skills": [
+      "Catching",
+      "Passing",
+      "Coordination"
+    ],
+    "sport": "multi",
+    "category": "ball_control",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "format": "drill",
+    "duration_mins": 8,
+    "players_min": 2,
+    "players_max": 24,
+    "equipment": "beanbags, cones, football, markers",
+    "area_size": "15m x 15m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Players stand on floor markers and practise coach-called ball skills such as throw and catch, bounce or solo.",
+    "coaching_points": "Control the ball before changing skill. Keep a balanced stance. Use both sides where possible. Leave enough space between players.",
+    "setup": "Spread markers throughout a square and give each player one suitable ball or beanbag. Assign one player to each marker.",
+    "diagram_description": "Square 15m x 15m filled with evenly spaced floor markers. One player stands on or beside each marker with a ball. Skill icons show throw and catch, bounce and solo actions. Small arrows show controlled movement on the spot. The coach stands centrally."
+  },
+  {
+    "title": "Speed Lines Passing Race",
+    "skill": "Passing",
+    "secondary_skills": [
+      "Team Coordination",
+      "Catching"
+    ],
+    "sport": "hurling",
+    "category": "passing",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "developing",
+    "format": "game",
+    "duration_mins": 8,
+    "players_min": 9,
+    "players_max": 24,
+    "equipment": "beanbags, cones, football",
+    "area_size": "15m x 20m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Teams race to pass a ball or beanbag down a straight line and back to the captain without dropping it or skipping a player.",
+    "coaching_points": "Pass to every player in order. Show hands before receiving. Use quick controlled passes. Restart calmly if the object is dropped.",
+    "setup": "Create three straight team lines with players spaced evenly. Place a captain with one ball or beanbag at the front of each line.",
+    "diagram_description": "Rectangle 15m x 20m with three parallel player lines running bottom to top. A captain stands at the bottom of each line holding the object. Dashed arrows move from player to player to the far end and back. The coach stands beside the lines at halfway."
+  },
+  {
+    "title": "Steady Hand Rope Challenge",
+    "skill": "Fine Motor Control",
+    "secondary_skills": [
+      "Coordination"
+    ],
+    "sport": "athletic",
+    "category": "coordination",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "developing",
+    "format": "drill",
+    "duration_mins": 8,
+    "players_min": 2,
+    "players_max": 16,
+    "equipment": "cones, hoop, rope",
+    "area_size": "10m x 15m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Players guide a cone or hoop along a rope without touching it, then place the item into a target zone.",
+    "coaching_points": "Use slow precise movements. Keep eyes on the gap around the rope. Reset if contact is made. Use larger equipment for an easier version.",
+    "setup": "Secure or hold several ropes horizontally at a safe height. Place cones or hoops at the start and a target hoop or zone at the far end.",
+    "diagram_description": "Rectangle 10m x 15m with three parallel rope lanes. A player starts at the bottom of each lane holding a cone or hoop around the rope without contact. A target hoop sits at the far end. Solid arrows show travel along each rope. The coach stands between lanes."
+  }
+]

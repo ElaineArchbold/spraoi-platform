@@ -1,0 +1,34 @@
+[
+  {
+    "path": "apps/blitz",
+    "has_package_json": true
+  },
+  {
+    "path": "apps/challenge",
+    "has_package_json": true
+  },
+  {
+    "path": "apps/club",
+    "has_package_json": true
+  },
+  {
+    "path": "apps/coach",
+    "has_package_json": true
+  },
+  {
+    "path": "apps/connect",
+    "has_package_json": false
+  },
+  {
+    "path": "apps/design-system-preview",
+    "has_package_json": true
+  },
+  {
+    "path": "apps/journey",
+    "has_package_json": true
+  },
+  {
+    "path": "apps/website",
+    "has_package_json": false
+  }
+]
