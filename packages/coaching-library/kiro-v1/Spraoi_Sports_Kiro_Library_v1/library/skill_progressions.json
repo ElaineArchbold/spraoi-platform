@@ -1,0 +1,42 @@
+[
+  {
+    "from_skill": "Ground Strike",
+    "to_skill": "Ground Strike on the Run",
+    "relationship": "progresses_to"
+  },
+  {
+    "from_skill": "Ground Strike on the Run",
+    "to_skill": "Strike from the Hand",
+    "relationship": "progresses_to"
+  },
+  {
+    "from_skill": "Jab Lift",
+    "to_skill": "Solo Run",
+    "relationship": "progresses_to"
+  },
+  {
+    "from_skill": "Roll Lift",
+    "to_skill": "Solo Run",
+    "relationship": "progresses_to"
+  },
+  {
+    "from_skill": "Chest Catch",
+    "to_skill": "Overhead Catch",
+    "relationship": "progresses_to"
+  },
+  {
+    "from_skill": "Dribble",
+    "to_skill": "Controlling a Moving Ball",
+    "relationship": "progresses_to"
+  },
+  {
+    "from_skill": "Frontal Ground Block",
+    "to_skill": "Blocking a Ball Overhead",
+    "relationship": "progresses_to"
+  },
+  {
+    "from_skill": "Hook",
+    "to_skill": "Ground Flick",
+    "relationship": "progresses_to"
+  }
+]

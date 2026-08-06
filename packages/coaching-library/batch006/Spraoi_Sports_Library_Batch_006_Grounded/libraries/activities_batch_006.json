@@ -1,0 +1,245 @@
+[
+  {
+    "title": "Ground Flick - Skill Point Game",
+    "skill": "Ground Flick",
+    "secondary_skills": [
+      "Ground Strike",
+      "Dribble"
+    ],
+    "sport": "hurling",
+    "category": "tackling",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "developing",
+    "format": "game",
+    "duration_mins": 12,
+    "players_min": 8,
+    "players_max": 20,
+    "equipment": "cones, sliotar, whistle",
+    "area_size": "appropriate to player numbers",
+    "indoor": false,
+    "outdoor": true,
+    "description": "A conditioned game awards points when players perform a successful ground flick during normal play.",
+    "coaching_points": "Approach under control. Keep the hurley low and safe. Time the flick as the opponent exposes the sliotar. Recover quickly after the attempt.",
+    "setup": "Use cones to mark a playing area suited to the number and ability of the players. Divide the group into two equal teams and begin with one sliotar.",
+    "diagram_description": "Rectangle sized for the group with a goal at each short end. Two teams are spread throughout. One attacker controls the sliotar on the ground while a defender approaches from the side and uses a short low flicking action. A scoring label shows 3 points for a goal and 2 points for a successful ground flick. The coach stands on the sideline with a whistle."
+  },
+  {
+    "title": "Frontal Block - Chase and Block",
+    "skill": "Frontal Ground Block",
+    "secondary_skills": [
+      "Solo Run",
+      "Strike from the Hand"
+    ],
+    "sport": "hurling",
+    "category": "defending",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "developing",
+    "format": "drill",
+    "duration_mins": 10,
+    "players_min": 4,
+    "players_max": 20,
+    "equipment": "cones, sliotar",
+    "area_size": "goal area with 13m cones",
+    "indoor": false,
+    "outdoor": true,
+    "description": "An attacker solos toward a cone and strikes for a point while a chasing defender attempts a frontal block.",
+    "coaching_points": "Defender closes the distance under control. Get square to the striker. Place the hurley firmly in the striking line. Attacker protects the sliotar and strikes on the inside.",
+    "setup": "Place one cone 13m from the end line on each side of the goal area. Players line up in attacker-defender pairs to one side of the goals.",
+    "diagram_description": "Goalposts at the top of the diagram with two cones positioned 13m from the end line, one on each side. Attacker and defender pairs queue to one side of the goals. A solid arrow shows the attacker soloing toward the near cone and a second arrow shows the defender chasing. At the cone, the attacker strikes for a point while the defender steps into a frontal block. Repeat from both sides."
+  },
+  {
+    "title": "Hook - Catch Me If You Can",
+    "skill": "Hook",
+    "secondary_skills": [
+      "Ground Strike",
+      "Speed"
+    ],
+    "sport": "hurling",
+    "category": "defending",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "developing",
+    "format": "drill",
+    "duration_mins": 10,
+    "players_min": 6,
+    "players_max": 20,
+    "equipment": "cones, sliotar",
+    "area_size": "20m x 20m near goal",
+    "indoor": false,
+    "outdoor": true,
+    "description": "An attacker and defender race toward a sliotar, with the attacker trying to strike first and the defender attempting to hook.",
+    "coaching_points": "React quickly to the whistle. Defender approaches from a safe side angle. Keep the hooking action controlled. Attacker gets body between defender and sliotar where possible.",
+    "setup": "Create one line of attackers and one line of defenders facing the sideline from a position in front of goal. Place the sliotar closer to the attacking line initially.",
+    "diagram_description": "Two parallel queues face toward the sideline from a position in front of the goals. The attackers' line is closer to the goal and the defenders' line is slightly farther away. A sliotar is positioned ahead of both lines. Solid arrows show one attacker and one defender racing to the ball. The attacker prepares a ground strike and the defender approaches from behind to hook. The coach stands between the queues with a whistle."
+  },
+  {
+    "title": "Ground Flick - One on One",
+    "skill": "Ground Flick",
+    "secondary_skills": [
+      "Dribble",
+      "Ground Strike",
+      "Defending"
+    ],
+    "sport": "hurling",
+    "category": "tackling",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "developing",
+    "format": "drill",
+    "duration_mins": 10,
+    "players_min": 4,
+    "players_max": 20,
+    "equipment": "cones, sliotar",
+    "area_size": "20m channel toward goal",
+    "indoor": false,
+    "outdoor": true,
+    "description": "An attacker dribbles toward goal while a defender chases and attempts to dispossess using a ground flick.",
+    "coaching_points": "Attacker keeps the sliotar close while dribbling. Defender closes from a safe angle. Flick the sliotar rather than swinging at the opponent's hurley. Swap roles regularly.",
+    "setup": "Attackers line up 15-20m from goal with a sliotar each. Defenders line up 10-15m from goal on the same side. Place a marker directly in front of goal.",
+    "diagram_description": "Goalposts at the top with a marker directly in front of goal. The attackers' queue begins 15-20m from goal and the defenders' queue begins 10-15m from goal on the same side. A curved arrow shows the attacker dribbling toward the marker. A chasing arrow shows the defender attempting a ground flick. If the attacker reaches the marker in possession, an arrow continues toward an unopposed shot."
+  },
+  {
+    "title": "Overhead Striking - One on One",
+    "skill": "Overhead Strike",
+    "secondary_skills": [
+      "Frontal Ground Block",
+      "Defending"
+    ],
+    "sport": "hurling",
+    "category": "striking",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "advanced",
+    "format": "drill",
+    "duration_mins": 10,
+    "players_min": 6,
+    "players_max": 20,
+    "equipment": "sliotar, whistle",
+    "area_size": "goal area to 13m line",
+    "indoor": false,
+    "outdoor": true,
+    "description": "An attacker attempts an overhead strike for goal while a paired defender contests by blocking or batting the sliotar clear.",
+    "coaching_points": "Track the sliotar early. Attacker times the swing and keeps awareness of the defender. Defender contests from a safe position. Use controlled feeds from the coach.",
+    "setup": "Place attacking and defending teams in paired lines on the end line. The coach stands on the 13m line with a supply of sliotars.",
+    "diagram_description": "Goalposts at the top and two paired team lines on the end line below them. The coach stands on the 13m line. A pair jogs toward the coach. An arcing arrow shows the coach tossing the sliotar upward. The attacker prepares an overhead strike toward goal while the defender positions to block or bat the ball clear. Roles reverse after a set time."
+  },
+  {
+    "title": "Alien Attack",
+    "skill": "Underarm Throw",
+    "secondary_skills": [
+      "Target Accuracy"
+    ],
+    "sport": "athletic",
+    "category": "coordination",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10"
+    ],
+    "difficulty": "foundation",
+    "format": "game",
+    "duration_mins": 8,
+    "players_min": 4,
+    "players_max": 20,
+    "equipment": "beanbags, cones",
+    "area_size": "12m diameter circle",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Players stand around a circle and use underarm throws to knock down cone targets in the middle.",
+    "coaching_points": "Step toward the target. Swing the throwing arm smoothly. Release the beanbag toward the centre. Collect only when the coach signals.",
+    "setup": "Create a cone circle and place several upright target cones in the middle. Spread players around the outside with several beanbags each.",
+    "diagram_description": "Circle approximately 12m in diameter marked by cones. Several upright target cones stand in the centre as the aliens. Players are spaced around the outside with beanbags. Curved underarm-throw arrows point toward the central targets. A collection arrow shows players entering the middle only after the round ends. The coach stands outside the circle."
+  },
+  {
+    "title": "Beanbag Bonanza",
+    "skill": "Hurley Balance",
+    "secondary_skills": [
+      "Fine Motor Control",
+      "Speed"
+    ],
+    "sport": "hurling",
+    "category": "ball_control",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10"
+    ],
+    "difficulty": "foundation",
+    "format": "game",
+    "duration_mins": 8,
+    "players_min": 6,
+    "players_max": 24,
+    "equipment": "beanbags, cones, hoop, markers",
+    "area_size": "15m x 20m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Players race out, lift a cone with the butt of the hurley, collect any hidden beanbag and carry it back balanced on the bas.",
+    "coaching_points": "Use the butt of the hurley carefully to lift the cone. Pick up the beanbag with the free hand. Keep the bas level on the return. Release the next player only after returning.",
+    "setup": "Divide players into small teams behind start markers. Spread cones ahead of them, hide beanbags beneath selected cones and place a collection hoop beside each team.",
+    "diagram_description": "Rectangle 15m x 20m with three team queues at the bottom and a collection hoop beside each queue. Multiple cones are scattered across the far half, with beanbags hidden beneath some. Solid arrows show one player from each team running to a cone, lifting it with the butt of the hurley, placing a beanbag on the bas and returning to the team hoop. The coach stands centrally."
+  },
+  {
+    "title": "Beanbag Boogie",
+    "skill": "Hurley Balance",
+    "secondary_skills": [
+      "Movement",
+      "Passing",
+      "Catching"
+    ],
+    "sport": "hurling",
+    "category": "ball_control",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10"
+    ],
+    "difficulty": "foundation",
+    "format": "warm_up",
+    "duration_mins": 8,
+    "players_min": 4,
+    "players_max": 24,
+    "equipment": "beanbags, cones, markers, sliotar",
+    "area_size": "15m x 15m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Players move around a square with a beanbag balanced on the hurley, transfer it to the hand on command and progress to partner throws.",
+    "coaching_points": "Keep the bas level while moving. Change direction with small controlled steps. Transfer the beanbag softly into the hand. Find and communicate with a partner before throwing.",
+    "setup": "Mark a square and give each player a beanbag and hurley. Spread players evenly with enough space to change direction safely.",
+    "diagram_description": "Square 15m x 15m with players moving freely along curved paths while balancing beanbags on their hurleys. High-five symbols appear where players meet. A whistle icon marks the transfer from hurley to ball hand. A second whistle icon shows a self-throw. In the final progression, paired players throw the beanbag to one another before separating again. The coach stands centrally."
+  }
+]

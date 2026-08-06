@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300">
+  <rect width="400" height="300" fill="#4a9835" rx="12"/>
+  <rect x="10" y="10" width="380" height="280" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" rx="6"/>
+  <line x1="200" y1="10" x2="200" y2="290" stroke="rgba(255,255,255,0.4)" stroke-width="1"/>
+  <circle cx="200" cy="150" r="30" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1"/><rect x="60" y="50" width="80" height="60" fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.6)" stroke-width="1.5" rx="8"/>
+  <circle cx="85" cy="80" r="12" fill="#073B74" stroke="#fff" stroke-width="2"/>
+  <text x="85" y="84" text-anchor="middle" fill="#fff" font-size="9" font-weight="800" font-family="sans-serif">A</text>
+  <circle cx="115" cy="80" r="12" fill="#079CE0" stroke="#fff" stroke-width="2"/>
+  <text x="115" y="84" text-anchor="middle" fill="#fff" font-size="9" font-weight="800" font-family="sans-serif">B</text><polygon points="100,52 94,65 106,65" fill="#FF7A00" stroke="#fff" stroke-width="1"/><text x="100" y="125" text-anchor="middle" fill="#fff" font-size="9" font-weight="700" font-family="sans-serif" opacity="0.9">Stn 1</text><rect x="260" y="50" width="80" height="60" fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.6)" stroke-width="1.5" rx="8"/>
+  <circle cx="285" cy="80" r="12" fill="#073B74" stroke="#fff" stroke-width="2"/>
+  <text x="285" y="84" text-anchor="middle" fill="#fff" font-size="9" font-weight="800" font-family="sans-serif">A</text>
+  <circle cx="315" cy="80" r="12" fill="#079CE0" stroke="#fff" stroke-width="2"/>
+  <text x="315" y="84" text-anchor="middle" fill="#fff" font-size="9" font-weight="800" font-family="sans-serif">B</text><polygon points="300,52 294,65 306,65" fill="#FF7A00" stroke="#fff" stroke-width="1"/><text x="300" y="125" text-anchor="middle" fill="#fff" font-size="9" font-weight="700" font-family="sans-serif" opacity="0.9">Stn 2</text><rect x="60" y="190" width="80" height="60" fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.6)" stroke-width="1.5" rx="8"/>
+  <circle cx="85" cy="220" r="12" fill="#073B74" stroke="#fff" stroke-width="2"/>
+  <text x="85" y="224" text-anchor="middle" fill="#fff" font-size="9" font-weight="800" font-family="sans-serif">A</text>
+  <circle cx="115" cy="220" r="12" fill="#079CE0" stroke="#fff" stroke-width="2"/>
+  <text x="115" y="224" text-anchor="middle" fill="#fff" font-size="9" font-weight="800" font-family="sans-serif">B</text><polygon points="100,192 94,205 106,205" fill="#FF7A00" stroke="#fff" stroke-width="1"/><text x="100" y="265" text-anchor="middle" fill="#fff" font-size="9" font-weight="700" font-family="sans-serif" opacity="0.9">Stn 3</text><rect x="260" y="190" width="80" height="60" fill="rgba(255,255,255,0.1)" stroke="rgba(255,255,255,0.6)" stroke-width="1.5" rx="8"/>
+  <circle cx="285" cy="220" r="12" fill="#073B74" stroke="#fff" stroke-width="2"/>
+  <text x="285" y="224" text-anchor="middle" fill="#fff" font-size="9" font-weight="800" font-family="sans-serif">A</text>
+  <circle cx="315" cy="220" r="12" fill="#079CE0" stroke="#fff" stroke-width="2"/>
+  <text x="315" y="224" text-anchor="middle" fill="#fff" font-size="9" font-weight="800" font-family="sans-serif">B</text><polygon points="300,192 294,205 306,205" fill="#FF7A00" stroke="#fff" stroke-width="1"/><text x="300" y="265" text-anchor="middle" fill="#fff" font-size="9" font-weight="700" font-family="sans-serif" opacity="0.9">Stn 4</text>
+  <line x1="145" y1="80" x2="255" y2="80" stroke="#ffffff" stroke-width="2"  opacity="0.8"/>
+  <polygon points="255,80 247.6315120479769,83.1153467384692 247.6315120479769,76.8846532615308" fill="#ffffff" opacity="0.8"/>
+  <line x1="305" y1="125" x2="305" y2="175" stroke="#ffffff" stroke-width="2"  opacity="0.8"/>
+  <polygon points="305,175 301.8846532615308,167.6315120479769 308.1153467384692,167.6315120479769" fill="#ffffff" opacity="0.8"/>
+  <line x1="255" y1="220" x2="145" y2="220" stroke="#ffffff" stroke-width="2"  opacity="0.8"/>
+  <polygon points="145,220 152.3684879520231,216.8846532615308 152.3684879520231,223.1153467384692" fill="#ffffff" opacity="0.8"/>
+  <line x1="95" y1="175" x2="95" y2="125" stroke="#ffffff" stroke-width="2"  opacity="0.8"/>
+  <polygon points="95,125 98.1153467384692,132.3684879520231 91.8846532615308,132.3684879520231" fill="#ffffff" opacity="0.8"/><text x="200" y="155" text-anchor="middle" fill="#fff" font-size="10" font-weight="700" font-family="sans-serif" opacity="0.9">ROTATE</text><text x="386" y="292" text-anchor="end" fill="rgba(255,255,255,0.5)" font-size="8" font-weight="700" font-family="sans-serif">SPRAOI SPORTS</text></svg>

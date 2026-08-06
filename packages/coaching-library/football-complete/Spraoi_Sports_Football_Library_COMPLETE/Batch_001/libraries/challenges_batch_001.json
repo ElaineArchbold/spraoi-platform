@@ -1,0 +1,116 @@
+[
+  {
+    "title": "Passing Streak",
+    "skill": "Hand Passing",
+    "sport": "football",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 10,
+    "description": "Complete accurate passes with a partner or safe wall.",
+    "target": "Reach 20 accurate passes",
+    "video_url": ""
+  },
+  {
+    "title": "Kick-Pass Gates",
+    "skill": "Kick Passing",
+    "sport": "football",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 10,
+    "description": "Kick through a series of cone gates using controlled technique.",
+    "target": "Complete 10 accurate kick passes",
+    "video_url": ""
+  },
+  {
+    "title": "Body Catch Builder",
+    "skill": "Body Catch",
+    "sport": "football",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 10,
+    "description": "Throw or receive the ball and secure it safely against the body.",
+    "target": "Complete 15 clean catches",
+    "video_url": ""
+  },
+  {
+    "title": "High Catch Hero",
+    "skill": "High Catch",
+    "sport": "football",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 10,
+    "description": "Practise attacking the ball at its highest safe point.",
+    "target": "Complete 10 controlled high catches",
+    "video_url": ""
+  },
+  {
+    "title": "Solo Control",
+    "skill": "Soloing",
+    "sport": "football",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 10,
+    "description": "Move with the football while keeping each solo controlled.",
+    "target": "Complete 20 controlled solos",
+    "video_url": ""
+  },
+  {
+    "title": "Accuracy Finisher",
+    "skill": "Shooting",
+    "sport": "football",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 10,
+    "description": "Shoot at marked target zones using balanced technique.",
+    "target": "Hit the target 8 times",
+    "video_url": ""
+  }
+]

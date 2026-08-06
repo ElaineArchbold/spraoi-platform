@@ -1,0 +1,38 @@
+[
+  {
+    "from_skill": "Target Accuracy",
+    "to_skill": "Striking Accuracy",
+    "sport": "hurling",
+    "relationship": "supports"
+  },
+  {
+    "from_skill": "Ball Control",
+    "to_skill": "Jab Lift",
+    "sport": "hurling",
+    "relationship": "prepares_for"
+  },
+  {
+    "from_skill": "Balance",
+    "to_skill": "Solo Run",
+    "sport": "hurling",
+    "relationship": "supports"
+  },
+  {
+    "from_skill": "Passing",
+    "to_skill": "Hand Pass",
+    "sport": "hurling",
+    "relationship": "prepares_for"
+  },
+  {
+    "from_skill": "Ground Strike",
+    "to_skill": "Jab Lift",
+    "sport": "hurling",
+    "relationship": "progresses_to"
+  },
+  {
+    "from_skill": "Jab Lift",
+    "to_skill": "Strike from the Hand",
+    "sport": "hurling",
+    "relationship": "progresses_to"
+  }
+]

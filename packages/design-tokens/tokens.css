@@ -1,0 +1,7 @@
+
+:root {
+  --spraoi-navy:#0B1F3A; --spraoi-surface:#F7F9FC; --spraoi-text:#172033;
+  --module-coach:#7C3AED; --module-journey:#38BDF8; --module-challenge:#22C55E;
+  --module-blitz:#F97316; --module-connect:#FACC15; --module-club:#EF4444;
+  --radius-card:16px; --shadow-card:0 8px 24px rgba(11,31,58,.08);
+}

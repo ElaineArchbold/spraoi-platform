@@ -1,0 +1,17 @@
+{
+  "source_activities": 182,
+  "activities_generated": 182,
+  "skills_generated": 39,
+  "child_challenges_generated": 39,
+  "coach_card_html_files": 182,
+  "child_u12_card_html_files": 39,
+  "child_u13_plus_card_html_files": 39,
+  "diagram_policy": "Every coach card contains a source asset reference and a source-grounded diagram generation brief. Final original vector diagrams must be generated/reviewed before publication.",
+  "review_required": [
+    "Age-group mapping is inferred from source activity type.",
+    "Duration and player ranges are inferred where not explicit.",
+    "Child challenges are new Spraoi content and require coaching review.",
+    "Final diagrams must be newly drawn and checked against each source diagram.",
+    "Open RLS policies in the database are not production security."
+  ]
+}

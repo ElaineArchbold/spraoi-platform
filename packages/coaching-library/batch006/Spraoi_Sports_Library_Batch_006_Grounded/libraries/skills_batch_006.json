@@ -1,0 +1,58 @@
+[
+  {
+    "name": "Ground Flick",
+    "sport": "hurling",
+    "category": "tackling",
+    "description": "Use the hurley at ground level to dispossess or redirect the sliotar away from an opponent.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ]
+  },
+  {
+    "name": "Overhead Strike",
+    "sport": "hurling",
+    "category": "striking",
+    "description": "Strike a high sliotar overhead while maintaining balance, timing and awareness of nearby players.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ]
+  },
+  {
+    "name": "Underarm Throw",
+    "sport": "athletic",
+    "category": "coordination",
+    "description": "Send an object accurately toward a target using a controlled underarm throwing action.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ]
+  },
+  {
+    "name": "Hurley Balance",
+    "sport": "hurling",
+    "category": "ball_control",
+    "description": "Carry and control a beanbag or sliotar on the bas of the hurley while stationary or moving.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ]
+  }
+]

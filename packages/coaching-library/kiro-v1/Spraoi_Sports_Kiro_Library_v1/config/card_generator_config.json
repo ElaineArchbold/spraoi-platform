@@ -1,0 +1,60 @@
+{
+  "version": "1.0",
+  "input_files": {
+    "skills": "library/skills.json",
+    "activities": "library/activities.json",
+    "challenges": "library/challenges.json"
+  },
+  "templates": {
+    "coach": "templates/coach_card.html",
+    "child_u12": "templates/child_card_u12.html",
+    "child_u13_plus": "templates/child_card_u13_plus.html"
+  },
+  "rules": {
+    "coach_card": {
+      "logo": "approved full Spraoi logo",
+      "diagram_subjects": "simple boy and girl player figures",
+      "diagram_must_follow": "source_diagram_asset and diagram_description",
+      "fixed_sections": [
+        "header",
+        "overview",
+        "metadata",
+        "diagram",
+        "equipment",
+        "setup",
+        "coaching_points",
+        "progressions",
+        "regressions",
+        "questions_to_ask",
+        "safety",
+        "related_skills",
+        "footer"
+      ]
+    },
+    "child_u12": {
+      "logo": "approved full Spraoi logo",
+      "illustration": "friendly animal mascot",
+      "maximum_steps": 4,
+      "reading_age": "8-10",
+      "sections": [
+        "skill",
+        "mission",
+        "coach_tip",
+        "video",
+        "reward",
+        "complete"
+      ]
+    },
+    "child_u13_plus": {
+      "logo": "approved full Spraoi logo",
+      "illustration": "no cartoons; mature silhouette or tactical graphic",
+      "sections": [
+        "skill",
+        "target",
+        "technique_cue",
+        "video",
+        "complete"
+      ]
+    }
+  }
+}

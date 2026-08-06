@@ -1,0 +1,235 @@
+[
+  {
+    "title": "Beanbag Joust",
+    "skill": "Hurley Balance",
+    "secondary_skills": [
+      "Movement",
+      "Coordination"
+    ],
+    "sport": "hurling",
+    "category": "ball_control",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10"
+    ],
+    "difficulty": "foundation",
+    "format": "game",
+    "duration_mins": 8,
+    "players_min": 4,
+    "players_max": 20,
+    "equipment": "beanbags, cones, markers, sliotar",
+    "area_size": "15m x 15m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Players solo freely with a beanbag balanced on the hurley, then try to knock other players' beanbags off using the ball hand.",
+    "coaching_points": "Keep the bas level while moving. Use only the ball hand to challenge. Keep heads up and avoid body contact. Re-enter safely after completing the star jumps.",
+    "setup": "Mark a clear square. Give each player one hurley and one beanbag. Spread players evenly before starting the uncontested solo phase.",
+    "diagram_description": "Square 15m x 15m with players spread evenly, each balancing a beanbag on a hurley. Curved arrows show free movement. Short hand arrows show players attempting to knock another beanbag off without body contact. One player outside the grid performs star jumps before re-entering. The coach stands centrally."
+  },
+  {
+    "title": "Colour Criss Cross",
+    "skill": "Hurley Balance",
+    "secondary_skills": [
+      "Spatial Awareness",
+      "Speed"
+    ],
+    "sport": "hurling",
+    "category": "ball_control",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10"
+    ],
+    "difficulty": "foundation",
+    "format": "game",
+    "duration_mins": 8,
+    "players_min": 6,
+    "players_max": 24,
+    "equipment": "beanbags, cones, markers, sliotar",
+    "area_size": "20m x 20m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Small teams race around their own coloured cones while balancing a beanbag on the hurley, crossing paths with other teams.",
+    "coaching_points": "Keep the head up in the crossing area. Keep the bas flat. Run under control. High-five the next player before they start.",
+    "setup": "Create several coloured cone routes that cross through the same central area. Place one small team at the start of each colour route with one beanbag per team.",
+    "diagram_description": "Square 20m x 20m with four team queues at the corners. Each team follows a route marked by cones of its own colour. The routes cross through the centre. Solid arrows show one player per team travelling around the route while balancing a beanbag. The coach stands just outside the crossing area."
+  },
+  {
+    "title": "Cone Scoop",
+    "skill": "Cone Lift",
+    "secondary_skills": [
+      "Speed",
+      "Coordination"
+    ],
+    "sport": "hurling",
+    "category": "ball_control",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10"
+    ],
+    "difficulty": "foundation",
+    "format": "game",
+    "duration_mins": 8,
+    "players_min": 6,
+    "players_max": 24,
+    "equipment": "beanbags, cones, markers",
+    "area_size": "15m x 20m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Players race to scoop a selected item using the hurley hand and return it to their team hoop before passing the cone to the next player.",
+    "coaching_points": "Approach the item under control. Use the hurley hand to scoop cleanly. Keep the item secure on the return. Listen for colour calls before collecting.",
+    "setup": "Place several coloured beanbags or balls in the centre. Give each team one cone and one collection hoop at the start line.",
+    "diagram_description": "Rectangle 15m x 20m with three team queues at the bottom, each beside a hoop. Mixed coloured beanbags or balls are spread in the far half. One player from each team runs to collect an item using the hurley hand and returns it to the hoop. Colour labels show a progression where only the called colour can be collected. The coach stands centrally."
+  },
+  {
+    "title": "Don't Let the Ball Stop",
+    "skill": "Ground Strike",
+    "secondary_skills": [
+      "Reaction Speed",
+      "Team Coordination"
+    ],
+    "sport": "hurling",
+    "category": "ground_hurling",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10"
+    ],
+    "difficulty": "foundation",
+    "format": "game",
+    "duration_mins": 8,
+    "players_min": 8,
+    "players_max": 24,
+    "equipment": "beanbags, cones, markers",
+    "area_size": "20m x 20m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Two teams strike all available balls across a centre line and try to prevent any ball from stopping in their own half.",
+    "coaching_points": "Keep the ball moving with controlled ground strikes. Scan for stopped balls. Stay in your own half. Keep hurleys below knee height.",
+    "setup": "Divide a square into two equal halves with a line of cones. Place several balls in each half and split players into two teams.",
+    "diagram_description": "Square 20m x 20m divided by a line of cones across the centre. One team occupies each half. Several balls are scattered on both sides. Ground-level arrows show balls being struck across the centre line in both directions. A stopped-ball symbol in one half is labelled minus 5 points. The coach stands on the sideline."
+  },
+  {
+    "title": "Flip the Pancake",
+    "skill": "Hurley Balance",
+    "secondary_skills": [
+      "Solo Run",
+      "Catching",
+      "Speed"
+    ],
+    "sport": "hurling",
+    "category": "ball_control",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10"
+    ],
+    "difficulty": "foundation",
+    "format": "drill",
+    "duration_mins": 10,
+    "players_min": 6,
+    "players_max": 24,
+    "equipment": "beanbags, cones, markers, sliotar",
+    "area_size": "15m x 20m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Players progress through four relay rounds: run out and back, slide the beanbag into the hand, flip and catch it, then complete a relay race.",
+    "coaching_points": "Keep the hurley steady on the run. Slide the beanbag softly into the hand. Flip only to a manageable height. Regain control before returning.",
+    "setup": "Mark parallel team lanes with a start line and one turning cone in each lane. Give each team one beanbag and one hurley per player.",
+    "diagram_description": "Rectangle 15m x 20m divided into four relay lanes. Teams queue behind start cones at the bottom. One turning cone sits at the far end of each lane. Separate action icons show four rounds: run out and back, slide beanbag into hand, flip and catch, and full relay. The coach stands between the lanes."
+  },
+  {
+    "title": "Goals Galore",
+    "skill": "Ground Strike",
+    "secondary_skills": [
+      "Defending",
+      "Target Accuracy"
+    ],
+    "sport": "hurling",
+    "category": "ground_hurling",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10"
+    ],
+    "difficulty": "developing",
+    "format": "game",
+    "duration_mins": 10,
+    "players_min": 4,
+    "players_max": 16,
+    "equipment": "cones, goalposts, sliotar",
+    "area_size": "20m x 12m",
+    "indoor": false,
+    "outdoor": true,
+    "description": "Pairs play a 2v2 game across two halves, striking from their own area toward the opposition goal while the other pair defends.",
+    "coaching_points": "Strike before crossing the halfway line. Defenders stay active but do not stand directly in the goal. Retrieve quickly and transition to attack. Aim low and accurately.",
+    "setup": "Create a small pitch divided by a halfway line with one goal at each end. Organise players into pairs, with one pair beginning in each half.",
+    "diagram_description": "Rectangle 20m x 12m divided by a halfway line. One small goal sits at each short end. Two players occupy each half. Ground-level arrows show Team 1 striking from its own half toward Team 2's goal, then Team 2 retrieving and striking back. A no-standing zone is marked directly in front of each goal. The coach stands at halfway."
+  },
+  {
+    "title": "Goals Goals Goals",
+    "skill": "Dribble",
+    "secondary_skills": [
+      "Spatial Awareness",
+      "Reaction Speed"
+    ],
+    "sport": "hurling",
+    "category": "ball_control",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10"
+    ],
+    "difficulty": "foundation",
+    "format": "drill",
+    "duration_mins": 8,
+    "players_min": 2,
+    "players_max": 24,
+    "equipment": "cones, sliotar",
+    "area_size": "20m x 20m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Each player dribbles through as many coloured cone goals as possible, then reacts to colour-specific instructions.",
+    "coaching_points": "Use short touches to keep the sliotar close. Keep the head up. Change direction under control. Count only clean passages through the gates.",
+    "setup": "Create multiple coloured cone gates throughout a square. Give every player one sliotar and spread them around the outside.",
+    "diagram_description": "Square 20m x 20m containing many two-cone gates in several colours. Each player has a sliotar and moves along a curved route through different gates. One progression highlights only red gates, while another shows a different colour chosen at each turn. The coach stands centrally with a timer."
+  },
+  {
+    "title": "Hook a Duck",
+    "skill": "Cone Lift",
+    "secondary_skills": [
+      "Speed",
+      "Fine Motor Control"
+    ],
+    "sport": "hurling",
+    "category": "ball_control",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10"
+    ],
+    "difficulty": "foundation",
+    "format": "game",
+    "duration_mins": 8,
+    "players_min": 6,
+    "players_max": 24,
+    "equipment": "cones, hoop",
+    "area_size": "15m x 20m",
+    "indoor": true,
+    "outdoor": true,
+    "description": "Players race out, lift a cone using the butt of the hurley, return it to the team and continue until all cones are collected.",
+    "coaching_points": "Use the butt of the hurley carefully. Keep the lifted cone secure while running. High-five the next player before they begin. Progress to collecting two matching cones.",
+    "setup": "Place several cones in the far half of the area. Divide players into small teams behind start markers and place one collection hoop beside each team.",
+    "diagram_description": "Rectangle 15m x 20m with three team queues at the bottom and a collection hoop beside each queue. Many coloured cones are spread in the far half. Solid arrows show one player per team running out, lifting a cone with the butt of the hurley and returning it to the hoop. A progression shows one cone on the hurley and one in the ball hand. The coach stands centrally."
+  }
+]

@@ -1,0 +1,45 @@
+{
+  "library": "Spraoi Sports Football Library",
+  "version": "1.0",
+  "source_activity_count": 418,
+  "skill_count": 135,
+  "challenge_count": 6,
+  "batch_size": 100,
+  "batches": [
+    {
+      "batch": "001",
+      "activity_count": 100,
+      "first_activity": "99",
+      "last_activity": "Catching & Passing - High Bounce & Catch",
+      "folder": "Batch_001"
+    },
+    {
+      "batch": "002",
+      "activity_count": 100,
+      "first_activity": "Catching & Passing - Kneeling Hand Roll",
+      "last_activity": "Handling and Catching",
+      "folder": "Batch_002"
+    },
+    {
+      "batch": "003",
+      "activity_count": 100,
+      "first_activity": "High Catch - Move & Catch",
+      "last_activity": "Parachute Play",
+      "folder": "Batch_003"
+    },
+    {
+      "batch": "004",
+      "activity_count": 100,
+      "first_activity": "Partner Giant Step Relay",
+      "last_activity": "Throwing - Bounce & Shoot",
+      "folder": "Batch_004"
+    },
+    {
+      "batch": "005",
+      "activity_count": 18,
+      "first_activity": "Throwing - Bridge Ball",
+      "last_activity": "X's and O's",
+      "folder": "Batch_005"
+    }
+  ]
+}

@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spraoi Drill Card Editor</title>
+<style>
+:root { --navy: #073B74; --teal: #0d7377; --red: #EF2B24; --gold: #FFB400; --bg: #f5f7fa; --surface: #fff; --border: #e5e7eb; --text: #1c2733; }
+* { box-sizing: border-box; margin: 0; }
+body { font-family: Inter, -apple-system, sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
+.container { max-width: 900px; margin: 0 auto; }
+h1 { font-size: 24px; font-weight: 900; color: var(--navy); margin-bottom: 4px; }
+.subtitle { font-size: 13px; color: #6b7280; margin-bottom: 20px; }
+
+/* Navigation */
+.nav { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; padding: 12px 16px; background: var(--surface); border-radius: 12px; border: 1px solid var(--border); }
+.nav button { padding: 8px 16px; border-radius: 8px; border: 1.5px solid var(--teal); background: #e8f5f5; color: var(--teal); font-weight: 700; font-size: 13px; cursor: pointer; }
+.nav button:hover { background: var(--teal); color: #fff; }
+.nav button:disabled { opacity: 0.4; cursor: not-allowed; }
+.nav .counter { flex: 1; text-align: center; font-weight: 700; font-size: 14px; color: var(--navy); }
+.nav .jump { display: flex; gap: 6px; align-items: center; }
+.nav .jump input { width: 60px; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border); text-align: center; font-size: 13px; }
+.nav .jump button { padding: 6px 12px; font-size: 12px; }
+
+/* Status bar */
+.status-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.status-pill { padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+.status-pill.sport { background: var(--navy); color: #fff; text-transform: uppercase; }
+.status-pill.diff { background: #fef3c7; color: #92400e; }
+.status-pill.status { background: #fef2f2; color: var(--red); }
+.status-pill.cat { background: #e8f5f5; color: var(--teal); }
+
+/* Card */
+.card { background: var(--surface); border-radius: 16px; border: 1px solid var(--border); padding: 24px; margin-bottom: 16px; }
+.card-title { font-size: 11px; font-weight: 700; color: var(--teal); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+
+/* Form fields */
+.field { margin-bottom: 14px; }
+.field label { display: block; font-size: 11px; font-weight: 700; color: var(--teal); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.field input, .field textarea, .field select { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1.5px solid var(--border); font-size: 13px; font-family: inherit; color: var(--text); transition: border-color 0.2s; }
+.field input:focus, .field textarea:focus { outline: none; border-color: var(--teal); }
+.field textarea { resize: vertical; min-height: 60px; line-height: 1.5; }
+.field .hint { font-size: 10px; color: #9ca3af; margin-top: 2px; }
+
+/* Grid layouts */
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.row4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; }
+
+/* Pitch diagram section */
+.pitch-section { background: linear-gradient(135deg, #e8f5e9, #f1f8e9); border: 1.5px dashed #4caf5055; border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+.pitch-section label { color: #2e7d32 !important; }
+
+/* Actions */
+.actions { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+.actions button { padding: 10px 20px; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; border: none; }
+.btn-save { background: var(--teal); color: #fff; }
+.btn-save:hover { background: #094f52; }
+.btn-copy { background: #f3f4f6; color: var(--text); border: 1px solid var(--border) !important; }
+.btn-download { background: var(--navy); color: #fff; }
+.btn-mark { background: #10b981; color: #fff; }
+
+/* Changes indicator */
+.changed { border-color: var(--gold) !important; background: #fffbeb !important; }
+.save-indicator { position: fixed; top: 20px; right: 20px; background: #10b981; color: #fff; padding: 8px 16px; border-radius: 8px; font-weight: 700; font-size: 12px; opacity: 0; transition: opacity 0.3s; }
+.save-indicator.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Spraoi Drill Card Editor</h1>
+  <p class="subtitle">Navigate through all 182 cards. Edit any field, then download the updated JSON.</p>
+
+  <!-- Nav -->
+  <div class="nav">
+    <button id="prevBtn" onclick="go(-1)">← Prev</button>
+    <div class="counter" id="counter">1 / 182</div>
+    <button id="nextBtn" onclick="go(1)">Next →</button>
+    <div class="jump">
+      <input type="number" id="jumpInput" min="1" max="182" placeholder="#" />
+      <button onclick="jumpTo()">Go</button>
+    </div>
+  </div>
+
+  <!-- Status pills -->
+  <div class="status-bar" id="statusBar"></div>
+
+  <!-- Card fields -->
+  <div class="card" id="cardForm"></div>
+
+  <!-- Actions -->
+  <div class="actions">
+    <button class="btn-mark" onclick="markReviewed()">✓ Mark Reviewed</button>
+    <button class="btn-copy" onclick="copyJson()">Copy This Card JSON</button>
+    <button class="btn-download" onclick="downloadAll()">↓ Download All (JSON)</button>
+  </div>
+</div>
+
+<div class="save-indicator" id="saveIndicator">Saved ✓</div>
+
+<script>
+let activities = [];
+let currentIdx = 0;
+let hasChanges = {};
+
+// Load the activities JSON
+async function init() {
+  try {
+    const resp = await fetch('./kiro-v1/Spraoi_Sports_Kiro_Library_v1/library/activities.json');
+    activities = await resp.json();
+  } catch {
+    // Fallback: try loading from localStorage
+    const stored = localStorage.getItem('spraoi_activities');
+    if (stored) activities = JSON.parse(stored);
+  }
+  if (activities.length === 0) {
+    document.getElementById('cardForm').innerHTML = '<p>Could not load activities.json. Make sure this file is served from the spraoi-library folder (use a local server like "npx serve").</p>';
+    return;
+  }
+  render();
+}
+
+function go(dir) {
+  saveCurrentToMemory();
+  currentIdx = Math.max(0, Math.min(activities.length - 1, currentIdx + dir));
+  render();
+}
+
+function jumpTo() {
+  saveCurrentToMemory();
+  const val = parseInt(document.getElementById('jumpInput').value);
+  if (val >= 1 && val <= activities.length) {
+    currentIdx = val - 1;
+    render();
+  }
+  document.getElementById('jumpInput').value = '';
+}
+
+function render() {
+  const a = activities[currentIdx];
+  document.getElementById('counter').textContent = `${currentIdx + 1} / ${activities.length} — ${a.title}`;
+  document.getElementById('prevBtn').disabled = currentIdx === 0;
+  document.getElementById('nextBtn').disabled = currentIdx === activities.length - 1;
+
+  // Status pills
+  document.getElementById('statusBar').innerHTML = `
+    <span class="status-pill sport">${a.sport || 'hurling'}</span>
+    <span class="status-pill diff">${a.difficulty || 'foundation'}</span>
+    <span class="status-pill cat">${a.category || ''}</span>
+    <span class="status-pill status">${a.content_status || 'draft'}</span>
+  `;
+
+  // Build form
+  document.getElementById('cardForm').innerHTML = `
+    <div class="field">
+      <label>Title</label>
+      <input type="text" id="f_title" value="${esc(a.title)}" />
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label>Skill</label>
+        <input type="text" id="f_skill" value="${esc(a.skill)}" />
+      </div>
+      <div class="field">
+        <label>Category</label>
+        <input type="text" id="f_category" value="${esc(a.category)}" />
+      </div>
+    </div>
+
+    <div class="row4">
+      <div class="field">
+        <label>Sport</label>
+        <select id="f_sport">
+          <option value="hurling" ${a.sport === 'hurling' ? 'selected' : ''}>Hurling</option>
+          <option value="football" ${a.sport === 'football' ? 'selected' : ''}>Football</option>
+          <option value="athletic" ${a.sport === 'athletic' ? 'selected' : ''}>Athletic</option>
+          <option value="multi" ${a.sport === 'multi' ? 'selected' : ''}>Multi</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Difficulty</label>
+        <select id="f_difficulty">
+          <option value="foundation" ${a.difficulty === 'foundation' ? 'selected' : ''}>Foundation</option>
+          <option value="developing" ${a.difficulty === 'developing' ? 'selected' : ''}>Developing</option>
+          <option value="advanced" ${a.difficulty === 'advanced' ? 'selected' : ''}>Advanced</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Format</label>
+        <select id="f_format">
+          <option value="drill" ${a.format === 'drill' ? 'selected' : ''}>Drill</option>
+          <option value="game" ${a.format === 'game' ? 'selected' : ''}>Game</option>
+          <option value="warm_up" ${a.format === 'warm_up' ? 'selected' : ''}>Warm Up</option>
+          <option value="cool_down" ${a.format === 'cool_down' ? 'selected' : ''}>Cool Down</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Duration (min)</label>
+        <input type="number" id="f_duration_mins" value="${a.duration_mins || ''}" />
+      </div>
+    </div>
+
+    <div class="row3">
+      <div class="field">
+        <label>Players Min</label>
+        <input type="number" id="f_players_min" value="${a.players_min || ''}" />
+      </div>
+      <div class="field">
+        <label>Players Max</label>
+        <input type="number" id="f_players_max" value="${a.players_max || ''}" />
+      </div>
+      <div class="field">
+        <label>Area Size</label>
+        <input type="text" id="f_area_size" value="${esc(a.area_size)}" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Age Groups (comma separated)</label>
+      <input type="text" id="f_age_groups" value="${(a.age_groups || []).join(', ')}" />
+    </div>
+
+    <div class="field">
+      <label>Description</label>
+      <textarea id="f_description" rows="2">${esc(a.description)}</textarea>
+    </div>
+
+    <div class="field">
+      <label>Equipment</label>
+      <input type="text" id="f_equipment" value="${esc(a.equipment)}" />
+    </div>
+
+    <div class="field">
+      <label>Setup</label>
+      <textarea id="f_setup" rows="3">${esc(a.setup)}</textarea>
+      <div class="hint">How to set up the drill. Step by step.</div>
+    </div>
+
+    <div class="field">
+      <label>Coaching Points (separate with •)</label>
+      <textarea id="f_coaching_points" rows="4">${esc(a.coaching_points)}</textarea>
+      <div class="hint">Key things the coach should watch for. Use • to separate points.</div>
+    </div>
+
+    <div class="pitch-section">
+      <div class="field">
+        <label>Pitch Setup / Diagram Description</label>
+        <textarea id="f_diagram_description" rows="4">${esc(a.diagram_description)}</textarea>
+        <div class="hint">Describe the pitch layout for diagram generation.</div>
+      </div>
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label>Source URL</label>
+        <input type="text" id="f_source_url" value="${esc(a.source_url)}" />
+      </div>
+      <div class="field">
+        <label>Content Status</label>
+        <select id="f_content_status">
+          <option value="draft_review_required" ${a.content_status === 'draft_review_required' ? 'selected' : ''}>Draft - Review Required</option>
+          <option value="reviewed" ${a.content_status === 'reviewed' ? 'selected' : ''}>Reviewed ✓</option>
+          <option value="approved" ${a.content_status === 'approved' ? 'selected' : ''}>Approved ✓✓</option>
+          <option value="needs_rewrite" ${a.content_status === 'needs_rewrite' ? 'selected' : ''}>Needs Rewrite</option>
+        </select>
+      </div>
+    </div>
+  `;
+}
+
+function esc(val) {
+  if (!val) return '';
+  return String(val).replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function saveCurrentToMemory() {
+  if (activities.length === 0) return;
+  const a = activities[currentIdx];
+  const get = (id) => document.getElementById(id)?.value || '';
+
+  a.title = get('f_title');
+  a.skill = get('f_skill');
+  a.category = get('f_category');
+  a.sport = get('f_sport');
+  a.difficulty = get('f_difficulty');
+  a.format = get('f_format');
+  a.duration_mins = parseInt(get('f_duration_mins')) || null;
+  a.players_min = parseInt(get('f_players_min')) || null;
+  a.players_max = parseInt(get('f_players_max')) || null;
+  a.area_size = get('f_area_size');
+  a.age_groups = get('f_age_groups').split(',').map(s => s.trim()).filter(Boolean);
+  a.description = get('f_description');
+  a.equipment = get('f_equipment');
+  a.setup = get('f_setup');
+  a.coaching_points = get('f_coaching_points');
+  a.diagram_description = get('f_diagram_description');
+  a.source_url = get('f_source_url');
+  a.content_status = get('f_content_status');
+
+  // Auto-save to localStorage
+  localStorage.setItem('spraoi_activities', JSON.stringify(activities));
+}
+
+function markReviewed() {
+  document.getElementById('f_content_status').value = 'reviewed';
+  saveCurrentToMemory();
+  flash();
+  // Auto-advance
+  if (currentIdx < activities.length - 1) {
+    setTimeout(() => go(1), 300);
+  }
+}
+
+function copyJson() {
+  saveCurrentToMemory();
+  const json = JSON.stringify(activities[currentIdx], null, 2);
+  navigator.clipboard?.writeText(json);
+  flash();
+}
+
+function downloadAll() {
+  saveCurrentToMemory();
+  const blob = new Blob([JSON.stringify(activities, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'activities_edited.json';
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function flash() {
+  const el = document.getElementById('saveIndicator');
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 1500);
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+  if (e.key === 'ArrowLeft') go(-1);
+  if (e.key === 'ArrowRight') go(1);
+});
+
+init();
+</script>
+</body>
+</html>

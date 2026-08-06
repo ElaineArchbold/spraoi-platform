@@ -1,0 +1,78 @@
+[
+  {
+    "title": "Copy My Moves",
+    "skill": "Coordination",
+    "sport": "athletic",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 6,
+    "description": "Ask someone to lead a short movement pattern and copy every action like a mirror.",
+    "target": "Complete 3 rounds of 6 movements",
+    "video_url": ""
+  },
+  {
+    "title": "Steady Hands",
+    "skill": "Fine Motor Control",
+    "sport": "athletic",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 8,
+    "description": "Carry a small object along a safe line without letting it touch the sides or fall.",
+    "target": "Complete 5 controlled journeys",
+    "video_url": ""
+  },
+  {
+    "title": "Quick Relay",
+    "skill": "Speed",
+    "sport": "athletic",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 8,
+    "description": "Sprint to a marker, complete one simple task and return as quickly as you can with good control.",
+    "target": "Complete 6 controlled relay runs",
+    "video_url": ""
+  },
+  {
+    "title": "Home Obstacle Journey",
+    "skill": "Obstacle Movement",
+    "sport": "athletic",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 10,
+    "description": "Build a safe mini obstacle route using household markers and travel through it in different ways.",
+    "target": "Complete the route 4 times using 4 movement styles",
+    "video_url": ""
+  }
+]

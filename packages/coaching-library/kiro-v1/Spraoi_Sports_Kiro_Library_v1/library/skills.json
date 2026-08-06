@@ -1,0 +1,626 @@
+[
+  {
+    "code": "SK-HUR-001",
+    "name": "Agility",
+    "sport": "hurling",
+    "category": "agility",
+    "description": "Controlled Spraoi skill grouping for activities focused on agility.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-002",
+    "name": "Balance",
+    "sport": "hurling",
+    "category": "ball_control",
+    "description": "Controlled Spraoi skill grouping for activities focused on balance.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-003",
+    "name": "Ball Control",
+    "sport": "hurling",
+    "category": "ball_control",
+    "description": "Controlled Spraoi skill grouping for activities focused on ball control.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-004",
+    "name": "Batting a Ball Overhead",
+    "sport": "hurling",
+    "category": "striking",
+    "description": "Controlled Spraoi skill grouping for activities focused on batting a ball overhead.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-005",
+    "name": "Blocking a Ball Overhead",
+    "sport": "hurling",
+    "category": "defending",
+    "description": "Controlled Spraoi skill grouping for activities focused on blocking a ball overhead.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-006",
+    "name": "Catching",
+    "sport": "hurling",
+    "category": "catching",
+    "description": "Controlled Spraoi skill grouping for activities focused on catching.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-007",
+    "name": "Chest Catch",
+    "sport": "hurling",
+    "category": "catching",
+    "description": "Controlled Spraoi skill grouping for activities focused on chest catch.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-008",
+    "name": "Cone Lift",
+    "sport": "hurling",
+    "category": "ball_control",
+    "description": "Controlled Spraoi skill grouping for activities focused on cone lift.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-009",
+    "name": "Controlling a Moving Ball",
+    "sport": "hurling",
+    "category": "ball_control",
+    "description": "Controlled Spraoi skill grouping for activities focused on controlling a moving ball.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-010",
+    "name": "Coordination",
+    "sport": "hurling",
+    "category": "coordination",
+    "description": "Controlled Spraoi skill grouping for activities focused on coordination.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-011",
+    "name": "Doubling Back",
+    "sport": "hurling",
+    "category": "striking",
+    "description": "Controlled Spraoi skill grouping for activities focused on doubling back.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-012",
+    "name": "Dribble",
+    "sport": "hurling",
+    "category": "ball_control",
+    "description": "Controlled Spraoi skill grouping for activities focused on dribble.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-013",
+    "name": "Fine Motor Control",
+    "sport": "hurling",
+    "category": "ball_control",
+    "description": "Controlled Spraoi skill grouping for activities focused on fine motor control.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-014",
+    "name": "Frontal Ground Block",
+    "sport": "hurling",
+    "category": "ground_hurling",
+    "description": "Controlled Spraoi skill grouping for activities focused on frontal ground block.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-015",
+    "name": "Ground Flick",
+    "sport": "hurling",
+    "category": "ground_hurling",
+    "description": "Controlled Spraoi skill grouping for activities focused on ground flick.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-016",
+    "name": "Ground Strike",
+    "sport": "hurling",
+    "category": "ground_hurling",
+    "description": "Controlled Spraoi skill grouping for activities focused on ground strike.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-017",
+    "name": "Ground Strike on the Run",
+    "sport": "hurling",
+    "category": "ground_hurling",
+    "description": "Controlled Spraoi skill grouping for activities focused on ground strike on the run.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-018",
+    "name": "Hand Pass",
+    "sport": "hurling",
+    "category": "passing",
+    "description": "Controlled Spraoi skill grouping for activities focused on hand pass.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-019",
+    "name": "Hook",
+    "sport": "hurling",
+    "category": "defending",
+    "description": "Controlled Spraoi skill grouping for activities focused on hook.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-020",
+    "name": "Hurley Balance",
+    "sport": "hurling",
+    "category": "ball_control",
+    "description": "Controlled Spraoi skill grouping for activities focused on hurley balance.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-021",
+    "name": "Jab Lift",
+    "sport": "hurling",
+    "category": "ground_hurling",
+    "description": "Controlled Spraoi skill grouping for activities focused on jab lift.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-022",
+    "name": "Movement",
+    "sport": "hurling",
+    "category": "movement",
+    "description": "Controlled Spraoi skill grouping for activities focused on movement.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-023",
+    "name": "Obstacle Movement",
+    "sport": "hurling",
+    "category": "movement",
+    "description": "Controlled Spraoi skill grouping for activities focused on obstacle movement.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-024",
+    "name": "Overhead Catch",
+    "sport": "hurling",
+    "category": "catching",
+    "description": "Controlled Spraoi skill grouping for activities focused on overhead catch.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-025",
+    "name": "Overhead Striking",
+    "sport": "hurling",
+    "category": "coordination",
+    "description": "Controlled Spraoi skill grouping for activities focused on overhead striking.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-026",
+    "name": "Passing",
+    "sport": "hurling",
+    "category": "passing",
+    "description": "Controlled Spraoi skill grouping for activities focused on passing.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-027",
+    "name": "Reaction Speed",
+    "sport": "hurling",
+    "category": "speed",
+    "description": "Controlled Spraoi skill grouping for activities focused on reaction speed.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-028",
+    "name": "Roll Lift",
+    "sport": "hurling",
+    "category": "ground_hurling",
+    "description": "Controlled Spraoi skill grouping for activities focused on roll lift.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-029",
+    "name": "Shoulder Clash",
+    "sport": "hurling",
+    "category": "defending",
+    "description": "Controlled Spraoi skill grouping for activities focused on shoulder clash.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-030",
+    "name": "Solo Run",
+    "sport": "hurling",
+    "category": "movement",
+    "description": "Controlled Spraoi skill grouping for activities focused on solo run.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-031",
+    "name": "Spatial Awareness",
+    "sport": "hurling",
+    "category": "movement",
+    "description": "Controlled Spraoi skill grouping for activities focused on spatial awareness.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-032",
+    "name": "Speed",
+    "sport": "hurling",
+    "category": "speed",
+    "description": "Controlled Spraoi skill grouping for activities focused on speed.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-033",
+    "name": "Stopping a Ground Ball",
+    "sport": "hurling",
+    "category": "defending",
+    "description": "Controlled Spraoi skill grouping for activities focused on stopping a ground ball.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-034",
+    "name": "Strike from the Hand",
+    "sport": "hurling",
+    "category": "striking",
+    "description": "Controlled Spraoi skill grouping for activities focused on strike from the hand.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-035",
+    "name": "Support Play",
+    "sport": "hurling",
+    "category": "movement",
+    "description": "Controlled Spraoi skill grouping for activities focused on support play.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-036",
+    "name": "Target Accuracy",
+    "sport": "hurling",
+    "category": "coordination",
+    "description": "Controlled Spraoi skill grouping for activities focused on target accuracy.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-037",
+    "name": "Team Coordination",
+    "sport": "hurling",
+    "category": "coordination",
+    "description": "Controlled Spraoi skill grouping for activities focused on team coordination.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-038",
+    "name": "Throwing Accuracy",
+    "sport": "hurling",
+    "category": "coordination",
+    "description": "Controlled Spraoi skill grouping for activities focused on throwing accuracy.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  },
+  {
+    "code": "SK-HUR-039",
+    "name": "Underarm Throw",
+    "sport": "hurling",
+    "category": "coordination",
+    "description": "Controlled Spraoi skill grouping for activities focused on underarm throw.",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "status": "draft_review_required"
+  }
+]

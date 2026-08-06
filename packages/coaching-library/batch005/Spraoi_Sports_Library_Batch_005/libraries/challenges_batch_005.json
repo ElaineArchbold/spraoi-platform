@@ -1,0 +1,154 @@
+[
+  {
+    "title": "20 Chest Catches",
+    "skill": "Chest Catch",
+    "sport": "hurling",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 10,
+    "description": "Use a soft ball or rolled-up socks and practise bringing each catch safely into your chest.",
+    "target": "Complete 20 clean chest catches",
+    "video_url": ""
+  },
+  {
+    "title": "Hook Footwork Practice",
+    "skill": "Hook",
+    "sport": "hurling",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 8,
+    "description": "Practise approaching from a safe angle and placing your hurley into the hook position without making contact.",
+    "target": "Complete 10 controlled approaches from each side",
+    "video_url": ""
+  },
+  {
+    "title": "Solo End-Line Challenge",
+    "skill": "Solo Run",
+    "sport": "hurling",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "developing",
+    "level": 1,
+    "duration_mins": 10,
+    "description": "Solo through a safe lane and keep the sliotar balanced until you cross the finish line.",
+    "target": "Complete 10 controlled solo runs over 15m",
+    "video_url": ""
+  },
+  {
+    "title": "Dribble Through Gates",
+    "skill": "Dribble",
+    "sport": "hurling",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 10,
+    "description": "Use short touches to dribble the sliotar through a set of small gates.",
+    "target": "Complete 5 clean circuits through 4 gates",
+    "video_url": ""
+  },
+  {
+    "title": "Four Corner Strikes",
+    "skill": "Ground Strike",
+    "sport": "hurling",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 10,
+    "description": "Set four safe targets and practise striking the sliotar along the ground toward each one.",
+    "target": "Hit each target 5 times",
+    "video_url": ""
+  },
+  {
+    "title": "Block Position Reps",
+    "skill": "Frontal Ground Block",
+    "sport": "hurling",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "foundation",
+    "level": 1,
+    "duration_mins": 8,
+    "description": "Practise stepping into a balanced frontal block position with your hurley safely placed.",
+    "target": "Complete 10 controlled block positions from each side",
+    "video_url": ""
+  },
+  {
+    "title": "Strike for Points",
+    "skill": "Strike from the Hand",
+    "sport": "hurling",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "developing",
+    "level": 1,
+    "duration_mins": 12,
+    "description": "Strike from the hand toward a safe target and count your accurate attempts.",
+    "target": "Complete 20 strikes and hit the target at least 10 times",
+    "video_url": ""
+  },
+  {
+    "title": "High Catch Challenge",
+    "skill": "Overhead Catch",
+    "sport": "hurling",
+    "age_groups": [
+      "U7",
+      "U8",
+      "U9",
+      "U10",
+      "U11",
+      "U12"
+    ],
+    "difficulty": "developing",
+    "level": 1,
+    "duration_mins": 10,
+    "description": "Ask a partner to throw a soft ball above head height and practise moving underneath it before catching.",
+    "target": "Complete 15 clean overhead catches",
+    "video_url": ""
+  }
+]
