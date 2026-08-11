@@ -95,6 +95,7 @@ const APP_MODULE = import.meta.env.VITE_APP_MODULE || "academy";
 const MODULE_URLS = {
   coach: import.meta.env.VITE_COACH_URL || "http://localhost:5173",
   academy: import.meta.env.VITE_ACADEMY_ADMIN_URL || "http://localhost:5176",
+  club: import.meta.env.VITE_CLUB_URL || "http://localhost:5174",
 };
 
 const MODULES = {

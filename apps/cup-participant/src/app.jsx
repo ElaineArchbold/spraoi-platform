@@ -1,24 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Home, CalendarDays, Trophy, Shield, Info, MapPin, Bell, Utensils, ChevronRight, Users, Clock3 } from "lucide-react";
+import { Home, CalendarDays, Trophy, Shield, Info, MapPin, Bell, Utensils, ChevronRight, Users, Clock3, Sparkles, CircleDot, Medal } from "lucide-react";
 import { supabase } from "./supabaseClient";
+import { CLUB_SPRAOI, CLUB_SPRAOI_THEME, getClubBrand } from "./clubBrand";
 
-const THEME = {
-  navy: "#10243E",
-  navy2: "#0A1D35",
-  teal: "#2E9D74",
-  orange: "#E65100",
-  gold: "#F4B400",
-  cream: "#FFF8EE",
-  white: "#FFFFFF",
-  ink: "#13243B",
-  muted: "#66758A",
-  line: "#E1E8EF",
-  soft: "#F5F8FB",
-};
+const THEME = CLUB_SPRAOI_THEME;
 
 const EVENT = {
   name: "Summer Hurling Cup",
-  host: "Club Spraoi",
+  host: CLUB_SPRAOI.name,
   date: "Saturday 22 August 2026",
   venue: "Spraoi Grounds",
   registration: "9:15",
@@ -27,14 +16,14 @@ const EVENT = {
 };
 
 const DEFAULT_CLUBS = [
-  { id: "fing", name: "Fingallians GAA", town: "Swords", county: "Dublin" },
-  { id: "finian", name: "St. Finian's GAA", town: "Swords", county: "Dublin" },
-  { id: "rathvilly", name: "Rathvilly GAA", town: "Rathvilly", county: "Carlow" },
-  { id: "knockbridge", name: "Knockbridge Hurling Club", town: "Knockbridge", county: "Louth" },
-  { id: "naomheoin", name: "Naomh Eoin CLG / St. John's GAA", town: "Belfast", county: "Antrim" },
-  { id: "navanom", name: "Navan O'Mahony's", town: "Navan", county: "Meath" },
-  { id: "ratoath", name: "Ratoath GAA", town: "Ratoath", county: "Meath" },
-  { id: "brayemmets", name: "Bray Emmets GAA", town: "Bray", county: "Wicklow" },
+  { id: "fing", name: "Fingallians GAA", town: "Swords", county: "Dublin", logo_url: null, primary_color: "#C62828", secondary_color: "#FFFFFF", accent_color: "#C62828" },
+  { id: "finian", name: "St. Finian's GAA", town: "Swords", county: "Dublin", logo_url: null, primary_color: "#1F5A3B", secondary_color: "#FFFFFF", accent_color: "#1F5A3B" },
+  { id: "rathvilly", name: "Rathvilly GAA", town: "Rathvilly", county: "Carlow", logo_url: null, primary_color: "#14532D", secondary_color: "#FFFFFF", accent_color: "#FACC15" },
+  { id: "knockbridge", name: "Knockbridge Hurling Club", town: "Knockbridge", county: "Louth", logo_url: null, primary_color: "#1D4ED8", secondary_color: "#FFFFFF", accent_color: "#FACC15" },
+  { id: "naomheoin", name: "Naomh Eoin CLG / St. John's GAA", town: "Belfast", county: "Antrim", logo_url: null, primary_color: "#111827", secondary_color: "#FFFFFF", accent_color: "#F59E0B" },
+  { id: "navanom", name: "Navan O'Mahony's", town: "Navan", county: "Meath", logo_url: null, primary_color: "#1D4ED8", secondary_color: "#FFFFFF", accent_color: "#FACC15" },
+  { id: "ratoath", name: "Ratoath GAA", town: "Ratoath", county: "Meath", logo_url: null, primary_color: "#FACC15", secondary_color: "#1F2937", accent_color: "#1F2937" },
+  { id: "brayemmets", name: "Bray Emmets GAA", town: "Bray", county: "Wicklow", logo_url: null, primary_color: "#2563EB", secondary_color: "#FFFFFF", accent_color: "#16A34A" },
 ];
 
 function buildTeams(clubs) {
@@ -58,6 +47,13 @@ async function loadShared(key, fallback) {
     return fallback;
   }
 }
+
+async function saveShared(key, value) {
+  const { error } = await supabase.from("kv_store").upsert({ key, value }, { onConflict: "key" });
+  if (error) throw error;
+  return value;
+}
+const eventKey = (eventId, section) => `cup:event:${eventId}:${section}`;
 
 function scoreTotal(goals = 0, points = 0) { return Number(goals) * 3 + Number(points); }
 function scoreLabel(goals = 0, points = 0) { return `${Number(goals)}-${String(Number(points)).padStart(2, "0")}`; }
@@ -102,9 +98,17 @@ function ShellCard({ children, style = {} }) {
   return <div style={{ background: THEME.white, border: `1px solid ${THEME.line}`, borderRadius: 22, boxShadow: "0 10px 28px rgba(16,36,62,.08)", ...style }}>{children}</div>;
 }
 
-function ClubMark({ name, size = 48 }) {
-  const initials = name.replace(/GAA|CLG|Hurling Club/gi, "").trim().split(/\s+/).map((x) => x[0]).slice(0, 2).join("").toUpperCase();
-  return <div style={{ width: size, height: size, borderRadius: size * .32, background: `linear-gradient(135deg, ${THEME.teal}, ${THEME.navy})`, color: "#fff", display: "grid", placeItems: "center", fontFamily: "Nunito", fontWeight: 900, fontSize: size * .34, boxShadow: "0 6px 16px rgba(16,36,62,.18)", flexShrink: 0 }}>{initials}</div>;
+function ClubMark({ club, size = 48 }) {
+  const brand = getClubBrand(club);
+  const initials = brand.name.replace(/GAA|CLG|Hurling Club/gi, "").trim().split(/\s+/).map((x) => x[0]).slice(0, 2).join("").toUpperCase();
+
+  if (brand.logoUrl) {
+    return <div style={{ width: size, height: size, borderRadius: size * .28, background: brand.secondary, border: `1px solid ${THEME.line}`, display: "grid", placeItems: "center", overflow: "hidden", boxShadow: "0 6px 16px rgba(16,36,62,.16)", flexShrink: 0 }}>
+      <img src={brand.logoUrl} alt={brand.name} style={{ width: "86%", height: "86%", objectFit: "contain" }} />
+    </div>;
+  }
+
+  return <div style={{ width: size, height: size, borderRadius: size * .32, background: `linear-gradient(135deg, ${brand.accent}, ${brand.primary})`, color: "#fff", display: "grid", placeItems: "center", fontFamily: "Nunito", fontWeight: 900, fontSize: size * .34, boxShadow: "0 6px 16px rgba(16,36,62,.18)", flexShrink: 0 }}>{initials}</div>;
 }
 
 function BottomNav({ screen, setScreen }) {
@@ -113,6 +117,7 @@ function BottomNav({ screen, setScreen }) {
     ["fixtures", "Fixtures", CalendarDays],
     ["standings", "Standings", Trophy],
     ["team", "My Team", Shield],
+    ["food", "Food", Utensils],
     ["info", "Info", Info],
   ];
   return <div style={{ position: "fixed", left: "50%", transform: "translateX(-50%)", bottom: 0, width: "min(100%, 540px)", background: "rgba(255,255,255,.96)", backdropFilter: "blur(14px)", borderTop: `1px solid ${THEME.line}`, display: "flex", padding: "8px 6px calc(8px + env(safe-area-inset-bottom, 0px))", zIndex: 40, boxShadow: "0 -10px 30px rgba(16,36,62,.08)" }}>
@@ -125,30 +130,51 @@ function BottomNav({ screen, setScreen }) {
   </div>;
 }
 
-function BrandHeader({ club, onChangeClub }) {
+function BrandHeader({ club, event, onChangeClub, liveCount = 0 }) {
   return <>
-    <div style={{ background: `linear-gradient(145deg, ${THEME.navy} 0%, #173E63 58%, ${THEME.teal} 140%)`, color: "white", padding: "16px 18px 34px", position: "relative", overflow: "hidden" }}>
-      <div style={{ position: "absolute", width: 190, height: 190, borderRadius: "50%", right: -70, top: -80, background: "rgba(46,157,116,.18)" }} />
-      <div style={{ position: "absolute", width: 120, height: 120, borderRadius: "50%", left: -55, bottom: -70, background: "rgba(230,81,0,.13)" }} />
+    <div style={{ background: "linear-gradient(145deg,#7A2A00 0%,#B84000 38%,#E65100 78%,#FB8C00 125%)", color: "white", padding: "16px 18px 42px", position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", width: 220, height: 220, borderRadius: "50%", right: -82, top: -92, background: "rgba(255,255,255,.10)" }} />
+      <div style={{ position: "absolute", width: 150, height: 150, borderRadius: "50%", left: -65, bottom: -90, background: "rgba(16,36,62,.18)" }} />
+
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, position: "relative" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 58, height: 66, borderRadius: 18, background: "rgba(255,255,255,.97)", display: "grid", placeItems: "center", boxShadow: "0 10px 28px rgba(0,0,0,.18)" }}><img src="/club-spraoi-crest.svg" alt="Club Spraoi" style={{ width: 49, height: 57, objectFit: "contain" }} /></div>
-          <div><div style={{ fontFamily: "Nunito", fontWeight: 900, fontSize: 18 }}>{EVENT.host}</div><div style={{ fontFamily: "Work Sans", fontSize: 10, color: "rgba(255,255,255,.7)", marginTop: 2 }}>Powered by Spraoi Cup</div></div>
+        <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+          <div style={{ width: 62, height: 70, borderRadius: 19, background: "rgba(255,255,255,.98)", display: "grid", placeItems: "center", boxShadow: "0 12px 30px rgba(0,0,0,.20)" }}>
+            <img src={CLUB_SPRAOI.crest} alt={CLUB_SPRAOI.name} style={{ width: 52, height: 60, objectFit: "contain" }} />
+          </div>
+          <div>
+            <div style={{ fontFamily: "Nunito", fontWeight: 900, fontSize: 19, lineHeight: 1 }}>{event?.host || EVENT.host}</div>
+            <div style={{ fontFamily: "Work Sans", fontSize: 10, color: "rgba(255,255,255,.70)", marginTop: 5 }}>Powered by Spraoi Cup</div>
+          </div>
         </div>
-        <button onClick={onChangeClub} style={{ border: "1px solid rgba(255,255,255,.24)", background: "rgba(255,255,255,.09)", color: "white", borderRadius: 999, padding: "7px 10px", fontFamily: "Work Sans", fontSize: 9, fontWeight: 800, cursor: "pointer" }}>{club ? "Change club" : "Choose club"}</button>
+        <button onClick={onChangeClub} style={{ border: "1px solid rgba(255,255,255,.24)", background: "rgba(255,255,255,.10)", color: "white", borderRadius: 999, padding: "8px 11px", fontFamily: "Work Sans", fontSize: 9, fontWeight: 800, cursor: "pointer" }}>{club ? "Change club" : "Choose club"}</button>
       </div>
-      <div style={{ position: "relative", marginTop: 26 }}>
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(244,180,0,.16)", color: "#FFE59A", border: "1px solid rgba(244,180,0,.35)", padding: "5px 9px", borderRadius: 999, fontFamily: "Work Sans", fontWeight: 800, fontSize: 9, letterSpacing: ".05em" }}><Trophy size={12} /> CLUB SPRAOI CUP</div>
-        <div style={{ fontFamily: "Nunito", fontSize: 31, lineHeight: 1.02, fontWeight: 900, marginTop: 10, maxWidth: 330 }}>{EVENT.name}</div>
-        <div style={{ fontFamily: "Work Sans", fontSize: 11, color: "rgba(255,255,255,.76)", marginTop: 8, display: "flex", gap: 12, flexWrap: "wrap" }}><span>{EVENT.date}</span><span>•</span><span>{EVENT.firstThrowIn} throw-in</span></div>
+
+      <div style={{ position: "relative", marginTop: 27 }}>
+        <div style={{ display: "flex", gap: 7, flexWrap: "wrap", alignItems: "center" }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,.16)", color: "#FFFFFF", border: "1px solid rgba(255,255,255,.28)", padding: "5px 9px", borderRadius: 999, fontFamily: "Work Sans", fontWeight: 800, fontSize: 9, letterSpacing: ".05em" }}><Trophy size={12} /> CLUB SPRAOI CUP</div>
+          {liveCount > 0 && <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,.12)", border: "1px solid rgba(255,255,255,.18)", padding: "5px 9px", borderRadius: 999, fontFamily: "Work Sans", fontSize: 9, fontWeight: 800 }}><CircleDot size={11} color="#FFD54F" /> {liveCount} LIVE</div>}
+        </div>
+        <div style={{ fontFamily: "Nunito", fontSize: 33, lineHeight: 1.01, fontWeight: 900, marginTop: 11, maxWidth: 350, letterSpacing: "-.02em" }}>{event?.name || EVENT.name}</div>
+        <div style={{ fontFamily: "Work Sans", fontSize: 11, color: "rgba(255,255,255,.78)", marginTop: 9, display: "flex", gap: 10, flexWrap: "wrap" }}><span>{event?.date || EVENT.date}</span><span>•</span><span>{event?.firstThrowIn || EVENT.firstThrowIn} throw-in</span></div>
       </div>
     </div>
-    <div style={{ height: 20, background: THEME.cream, borderRadius: "22px 22px 0 0", marginTop: -20, position: "relative", zIndex: 2 }} />
+    <div style={{ height: 22, background: THEME.cream, borderRadius: "24px 24px 0 0", marginTop: -22, position: "relative", zIndex: 2 }} />
   </>;
 }
 
 export default function App() {
+  const params = new URLSearchParams(location.search);
+  const requestedEventId = params.get("event") || "";
+  const previewMode = params.get("preview") === "1";
+  const refId = params.get("ref") || "";
+  const [eventId, setEventId] = useState(requestedEventId);
+  const [event, setEvent] = useState(EVENT);
+  const [eventInfo, setEventInfo] = useState({});
+  const [foodMenu, setFoodMenu] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [refAccess, setRefAccess] = useState(null);
   const [screen, setScreen] = useState("home");
+  const [clubs, setClubs] = useState(DEFAULT_CLUBS);
   const [teams, setTeams] = useState(DEFAULT_TEAMS);
   const [matches, setMatches] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
@@ -156,30 +182,114 @@ export default function App() {
   const [lunchWindows, setLunchWindows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [chooseOpen, setChooseOpen] = useState(false);
+  const [clock, setClock] = useState(Date.now());
+  const [announcementToast, setAnnouncementToast] = useState(null);
   const [myClub, setMyClub] = useState(() => localStorage.getItem("spraoi_cup_following_club") || "");
 
   useEffect(() => {
-    Promise.all([
-      loadShared("teams", DEFAULT_TEAMS),
-      loadShared("matches", []),
-      loadShared("announcements", []),
-      loadShared("sponsors", []),
-      loadShared("lunchWindows", []),
-    ]).then(([t, m, a, s, l]) => {
+    let cancelled = false;
+
+    const loadEventData = async () => {
+      setLoading(true);
+
+      const es = await loadShared("cup:events", []);
+      const allEvents = Array.isArray(es) ? es : [];
+
+      let resolvedId = requestedEventId;
+      if (!resolvedId || !allEvents.some((e) => e.id === resolvedId)) {
+        const live = allEvents.find((e) => e.status === "live");
+        const published = allEvents.find((e) => e.status === "published");
+        const previewDraft = previewMode ? allEvents.find((e) => e.status === "draft") : null;
+        resolvedId = live?.id || published?.id || previewDraft?.id || allEvents[0]?.id || "";
+      }
+
+      if (cancelled) return;
+      setEventId(resolvedId);
+
+      if (!resolvedId) {
+        setEvent(EVENT);
+        setEventInfo({});
+        setFoodMenu([]);
+        setMatches([]);
+        setAnnouncements([]);
+        setSponsors([]);
+        setLunchWindows([]);
+        setLoading(false);
+        return;
+      }
+
+      const prefix = `cup:event:${resolvedId}:`;
+      const [c,t,m,a,sp,inf,fm,ord,ra,l] = await Promise.all([
+        loadShared(prefix + "clubs", DEFAULT_CLUBS),
+        loadShared(prefix + "teams", DEFAULT_TEAMS),
+        loadShared(prefix + "matches", []),
+        loadShared(prefix + "announcements", []),
+        loadShared(prefix + "sponsors", []),
+        loadShared(prefix + "eventInfo", {}),
+        loadShared(prefix + "foodMenu", []),
+        loadShared(prefix + "orders", []),
+        loadShared(prefix + "refereeAccess", []),
+        loadShared(prefix + "lunchWindows", []),
+      ]);
+
+      if (cancelled) return;
+
+      const ev = allEvents.find((e) => e.id === resolvedId);
+      if (ev) setEvent({ ...EVENT, ...ev });
+
+      setClubs(Array.isArray(c) && c.length ? c : DEFAULT_CLUBS);
       setTeams(Array.isArray(t) && t.length ? t : DEFAULT_TEAMS);
       setMatches(Array.isArray(m) ? m : []);
       setAnnouncements(Array.isArray(a) ? a : []);
-      setSponsors(Array.isArray(s) ? s : []);
+      setSponsors(Array.isArray(sp) ? sp : []);
+      setEventInfo(inf || {});
+      setFoodMenu(Array.isArray(fm) ? fm : []);
+      setOrders(Array.isArray(ord) ? ord : []);
+      setRefAccess((ra || []).find((r) => r.id === refId) || null);
       setLunchWindows(Array.isArray(l) ? l : []);
       setLoading(false);
-    });
-  }, []);
 
-  const clubs = useMemo(() => {
-    const by = {};
-    teams.forEach((t) => { if (!by[t.clubId]) by[t.clubId] = { id: t.clubId, name: t.name.replace(/\s+[AB]$/, "") }; });
-    return Object.values(by).length ? Object.values(by) : DEFAULT_CLUBS;
-  }, [teams]);
+      if (!requestedEventId && resolvedId) {
+        const next = new URLSearchParams(location.search);
+        next.set("event", resolvedId);
+        history.replaceState(null, "", `${location.pathname}?${next.toString()}`);
+      }
+    };
+
+    loadEventData().catch((error) => {
+      console.error("Cup participant event load failed", error);
+      if (!cancelled) setLoading(false);
+    });
+
+    return () => { cancelled = true; };
+  }, [requestedEventId, refId, previewMode]);
+
+  useEffect(() => {
+    if (!eventId) return;
+    const prefix = `cup:event:${eventId}:`;
+    const refresh = async () => {
+      const [m,a,sp,inf,fm,ord,l] = await Promise.all([
+        loadShared(prefix+"matches", []),
+        loadShared(prefix+"announcements", []),
+        loadShared(prefix+"sponsors", []),
+        loadShared(prefix+"eventInfo", {}),
+        loadShared(prefix+"foodMenu", []),
+        loadShared(prefix+"orders", []),
+        loadShared(prefix+"lunchWindows", []),
+      ]);
+      setMatches(Array.isArray(m)?m:[]);
+      setAnnouncements(Array.isArray(a)?a:[]);
+      setSponsors(Array.isArray(sp)?sp:[]);
+      setEventInfo(inf||{});
+      setFoodMenu(Array.isArray(fm)?fm:[]);
+      setOrders(Array.isArray(ord)?ord:[]);
+      setLunchWindows(Array.isArray(l)?l:[]);
+      setClock(Date.now());
+    };
+    const timer=setInterval(refresh,15000);
+    return ()=>clearInterval(timer);
+  }, [eventId]);
+
   const club = clubs.find((c) => c.id === myClub) || null;
   const teamIds = teams.filter((t) => t.clubId === myClub).map((t) => t.id);
   const myMatches = matches.filter((m) => teamIds.includes(m.teamA) || teamIds.includes(m.teamB));
@@ -187,8 +297,41 @@ export default function App() {
   const myUpcoming = myMatches.filter((m) => m.status !== "finished");
   const nextMatch = myUpcoming[0] || upcoming[0];
   const groups = computeGroups(teams, matches);
-  const teamById = (id) => teams.find((t) => t.id === id) || { name: id || "TBC" };
-  const lunch = lunchWindows.find((w) => (w.clubs || []).includes(myClub));
+  const teamById = (id) => {
+    const team = teams.find((t) => t.id === id);
+    if (!team) return { name: id || "TBC", club: null };
+    return { ...team, club: clubs.find((c) => c.id === team.clubId) || null };
+  };
+  const lunch = lunchWindows.find((w) => (w.clubs || w.clubIds || []).includes(myClub));
+  const now = new Date(clock);
+  const activeAnnouncements = announcements.filter((a) => {
+    if (a.active === false || a.status === "draft") return false;
+    const publish = a.publishAt || a.startsAt;
+    const expiry = a.expiresAt || a.endsAt;
+    const start = publish ? new Date(publish) : null;
+    const end = expiry ? new Date(expiry) : null;
+    if (a.status === "scheduled" && start && start > now) return false;
+    return (!start || start <= now) && (!end || end >= now);
+  }).sort((a,b)=>new Date(b.publishAt||b.createdAt||0)-new Date(a.publishAt||a.createdAt||0));
+  const activeSponsors = sponsors.filter((s)=>s.active!==false).sort((a,b)=>(a.sort_order||999)-(b.sort_order||999));
+  const mainSponsors = activeSponsors.filter((s)=>s.label==="Main Sponsor");
+
+  useEffect(() => {
+    const newest=activeAnnouncements[0];
+    if(!newest)return;
+    const seenKey=`cup_seen_announcement_${eventId}`;
+    let seen="";
+    try{seen=localStorage.getItem(seenKey)||""}catch{}
+    if(seen!==newest.id){
+      setAnnouncementToast(newest);
+      try{localStorage.setItem(seenKey,newest.id)}catch{}
+      const timer=setTimeout(()=>setAnnouncementToast(null),5000);
+      return ()=>clearTimeout(timer);
+    }
+  }, [activeAnnouncements[0]?.id, eventId]);
+
+  const liveMatches = matches.filter((m) => m.status === "live");
+  const finishedCount = matches.filter((m) => m.status === "finished").length;
 
   function chooseClub(id) {
     setMyClub(id);
@@ -198,12 +341,14 @@ export default function App() {
 
   function HomeScreen() {
     return <div style={{ padding: "0 16px 110px", marginTop: -4 }}>
-      {announcements[0] && <div style={{ background: "linear-gradient(135deg,#FFF4DE,#FFE7BD)", border: "1px solid #F5D49D", borderRadius: 18, padding: 13, display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 14 }}><div style={{ width: 34, height: 34, borderRadius: 12, background: THEME.gold, display: "grid", placeItems: "center", color: THEME.navy }}><Bell size={17} /></div><div><div style={{ fontFamily: "Nunito", fontSize: 12, fontWeight: 900, color: THEME.ink }}>Latest update</div><div style={{ fontFamily: "Work Sans", fontSize: 10, lineHeight: 1.5, color: THEME.ink, marginTop: 3 }}>{announcements[0].text}</div></div></div>}
+      {mainSponsors.length>0 && <ShellCard style={{padding:12,marginBottom:12}}><div style={{fontFamily:"Work Sans",fontSize:8,fontWeight:900,color:THEME.muted,textTransform:"uppercase",letterSpacing:".08em",textAlign:"center"}}>Proudly supported by</div><div style={{display:"flex",justifyContent:"center",gap:12,flexWrap:"wrap",marginTop:8}}>{mainSponsors.map(sp=><div key={sp.id} style={{width:150,height:58,display:"grid",placeItems:"center"}}>{sp.logo_url?<img src={sp.logo_url} alt={sp.name} style={{maxWidth:"92%",maxHeight:50,objectFit:"contain"}}/>:<b style={{fontSize:10}}>{sp.name}</b>}</div>)}</div></ShellCard>}
+      {activeAnnouncements[0] && <div style={{ background: "linear-gradient(135deg,#FFF4DE,#FFE7BD)", border: "1px solid #F5D49D", borderRadius: 18, padding: 13, display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 14 }}><div style={{ width: 34, height: 34, borderRadius: 12, background: THEME.gold, display: "grid", placeItems: "center", color: THEME.navy, fontSize:18 }}>{activeAnnouncements[0].emoji || <Bell size={17} />}</div><div><div style={{ fontFamily: "Nunito", fontSize: 12, fontWeight: 900, color: THEME.ink }}>{activeAnnouncements[0].title || "Latest update"}</div><div style={{ fontFamily: "Work Sans", fontSize: 10, lineHeight: 1.5, color: THEME.ink, marginTop: 3 }} dangerouslySetInnerHTML={{__html:activeAnnouncements[0].html||activeAnnouncements[0].text||""}} /></div></div>}
 
+      {eventInfo.welcomeMessage && <ShellCard style={{padding:15,marginBottom:14,borderLeft:`4px solid ${THEME.orange}`}}><div style={{fontFamily:"Nunito",fontSize:16,fontWeight:900,color:THEME.ink}}>Welcome</div><div style={{fontFamily:"Work Sans",fontSize:10,lineHeight:1.55,color:THEME.muted,marginTop:5}}>{eventInfo.welcomeMessage}</div></ShellCard>}
       <ShellCard style={{ padding: 16, marginBottom: 14, background: `linear-gradient(135deg,#fff,${THEME.cream})` }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <div><div style={{ fontFamily: "Work Sans", fontSize: 9, color: THEME.muted, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".08em" }}>Following</div><div style={{ fontFamily: "Nunito", fontSize: 18, color: THEME.ink, fontWeight: 900, marginTop: 3 }}>{club?.name || "Choose your club"}</div></div>
-          {club ? <ClubMark name={club.name} size={50} /> : <button onClick={() => setChooseOpen(true)} style={{ border: 0, background: THEME.orange, color: "white", borderRadius: 12, padding: "9px 12px", fontFamily: "Work Sans", fontWeight: 800 }}>Choose</button>}
+          {club ? <ClubMark club={club} size={50} /> : <button onClick={() => setChooseOpen(true)} style={{ border: 0, background: THEME.orange, color: "white", borderRadius: 12, padding: "9px 12px", fontFamily: "Work Sans", fontWeight: 800 }}>Choose</button>}
         </div>
         {club && nextMatch && <div style={{ marginTop: 14, borderRadius: 15, background: THEME.navy, color: "white", padding: 14 }}><div style={{ fontFamily: "Work Sans", color: "rgba(255,255,255,.66)", fontSize: 9, fontWeight: 800, textTransform: "uppercase" }}>Next match</div><div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 8 }}><div><div style={{ fontFamily: "Nunito", fontSize: 16, fontWeight: 900 }}>{nextMatch.time || "TBC"} · {nextMatch.pitch || "Pitch TBC"}</div><div style={{ fontFamily: "Work Sans", fontSize: 10, color: "rgba(255,255,255,.72)", marginTop: 3 }}>{teamById(nextMatch.teamA).name} v {teamById(nextMatch.teamB).name}</div></div><ChevronRight /></div></div>}
       </ShellCard>
@@ -213,9 +358,24 @@ export default function App() {
         <button onClick={() => setScreen("standings")} style={{ border: 0, background: "linear-gradient(135deg,#EAF8F3,#D7F1E6)", borderRadius: 20, padding: 15, textAlign: "left", cursor: "pointer" }}><Trophy color={THEME.teal} /><div style={{ fontFamily: "Nunito", fontSize: 14, fontWeight: 900, color: THEME.ink, marginTop: 10 }}>Standings</div><div style={{ fontFamily: "Work Sans", fontSize: 9, color: THEME.muted, marginTop: 3 }}>Live group tables</div></button>
       </div>
 
-      <ShellCard style={{ padding: 16, marginBottom: 14 }}><div style={{ fontFamily: "Nunito", fontWeight: 900, color: THEME.ink, fontSize: 16 }}>Today at a glance</div><div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginTop: 12 }}>{[[Clock3,"Registration",EVENT.registration],[Trophy,"Throw-in",EVENT.firstThrowIn],[MapPin,"Venue",EVENT.venue]].map(([Icon,label,value]) => <div key={label} style={{ background: THEME.soft, borderRadius: 14, padding: 11 }}><Icon size={16} color={THEME.orange}/><div style={{ fontFamily: "Work Sans", fontSize: 8, color: THEME.muted, fontWeight: 800, marginTop: 7, textTransform: "uppercase" }}>{label}</div><div style={{ fontFamily: "Nunito", fontSize: 11, color: THEME.ink, fontWeight: 900, marginTop: 3 }}>{value}</div></div>)}</div></ShellCard>
+      {liveMatches.length > 0 && <div style={{ marginBottom: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 9 }}>
+          <div style={{ fontFamily: "Nunito", fontWeight: 900, color: THEME.ink, fontSize: 16 }}>Live now</div>
+          <span style={{ background: "#FFF2C9", color: "#8A6500", padding: "5px 9px", borderRadius: 999, fontFamily: "Work Sans", fontSize: 8, fontWeight: 900 }}>{liveMatches.length} LIVE</span>
+        </div>
+        <div style={{ display: "grid", gap: 9 }}>{liveMatches.slice(0,2).map((m,i)=><ShellCard key={m.id||i} style={{ padding: 13, border: "1px solid #F3CA63", boxShadow: "0 12px 30px rgba(244,180,0,.14)" }}><div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}><div><div style={{ fontFamily: "Nunito", fontWeight: 900, color: THEME.ink }}>{m.time || "TBC"} <span style={{ color: THEME.muted, fontSize: 10 }}>· {m.pitch || "Pitch TBC"}</span></div><div style={{ fontFamily: "Work Sans", fontSize: 10, color: THEME.ink, fontWeight: 700, marginTop: 6 }}>{teamById(m.teamA).name} v {teamById(m.teamB).name}</div></div><CircleDot size={17} color={THEME.gold}/></div></ShellCard>)}</div>
+      </div>}
 
-      {club && <ShellCard style={{ padding: 16 }}><div style={{ fontFamily: "Nunito", fontSize: 16, fontWeight: 900, color: THEME.ink }}>Your event day</div><div style={{ marginTop: 11, display: "grid", gap: 8 }}>{[[Utensils,"Lunch break",lunch ? `${lunch.from}–${lunch.to}` : "TBC"],[Users,"Teams",teams.filter((t)=>t.clubId===myClub).map((t)=>t.grade).join(" & ") || "A & B"],[Info,"Need help?","Open Info for venue & contacts"]].map(([Icon,label,value]) => <div key={label} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderTop: `1px solid ${THEME.line}` }}><div style={{ width: 34, height: 34, borderRadius: 11, background: THEME.soft, display: "grid", placeItems: "center" }}><Icon size={16} color={THEME.teal}/></div><div><div style={{ fontFamily: "Work Sans", fontSize: 9, color: THEME.muted, fontWeight: 800 }}>{label}</div><div style={{ fontFamily: "Nunito", fontSize: 12, color: THEME.ink, fontWeight: 800, marginTop: 2 }}>{value}</div></div></div>)}</div></ShellCard>}
+      <ShellCard style={{ padding: 16, marginBottom: 14 }}><div style={{ fontFamily: "Nunito", fontWeight: 900, color: THEME.ink, fontSize: 16 }}>Today at a glance</div><div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginTop: 12 }}>{[[Clock3,"Registration",event.registration||EVENT.registration],[Trophy,"Throw-in",event.firstThrowIn||EVENT.firstThrowIn],[MapPin,"Venue",event.venue||EVENT.venue]].map(([Icon,label,value]) => <div key={label} style={{ background: THEME.soft, borderRadius: 14, padding: 11 }}><Icon size={16} color={THEME.orange}/><div style={{ fontFamily: "Work Sans", fontSize: 8, color: THEME.muted, fontWeight: 800, marginTop: 7, textTransform: "uppercase" }}>{label}</div><div style={{ fontFamily: "Nunito", fontSize: 11, color: THEME.ink, fontWeight: 900, marginTop: 3 }}>{value}</div></div>)}</div></ShellCard>
+
+      {club && <ShellCard style={{ padding: 16, marginBottom:14 }}><div style={{ fontFamily: "Nunito", fontSize: 16, fontWeight: 900, color: THEME.ink }}>Your event day</div><div style={{ marginTop: 11, display: "grid", gap: 8 }}>{[
+        [Utensils,"Lunch break",lunch ? `${lunch.from}–${lunch.to}` : "Lunch time will appear here once the schedule is generated"],
+        [Users,"Your teams",teams.filter((t)=>t.clubId===myClub).map((t)=>t.grade||t.name).filter(Boolean).join(" & ") || "No teams added yet"],
+        [CalendarDays,"Next match",nextMatch ? `${nextMatch.time||"TBC"} · ${nextMatch.pitch||"Pitch TBC"}` : "No upcoming match"],
+        [Info,"Need help?","Open Info for parking, facilities & contacts"]
+      ].map(([Icon,label,value]) => <div key={label} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderTop: `1px solid ${THEME.line}` }}><div style={{ width: 34, height: 34, borderRadius: 11, background: THEME.soft, display: "grid", placeItems: "center" }}><Icon size={16} color={THEME.teal}/></div><div><div style={{ fontFamily: "Work Sans", fontSize: 9, color: THEME.muted, fontWeight: 800 }}>{label}</div><div style={{ fontFamily: "Nunito", fontSize: 12, color: THEME.ink, fontWeight: 800, marginTop: 2 }}>{value}</div></div></div>)}</div></ShellCard>}
+      {(eventInfo.parking||eventInfo.facilities) && <ShellCard style={{padding:15,marginBottom:14}}><div style={{fontFamily:"Nunito",fontSize:16,fontWeight:900,color:THEME.ink}}>Before you arrive</div>{eventInfo.parking&&<div style={{marginTop:9}}><div style={{fontFamily:"Work Sans",fontSize:9,fontWeight:900,color:THEME.orange}}>PARKING</div><div style={{fontFamily:"Work Sans",fontSize:10,lineHeight:1.5,color:THEME.muted,marginTop:3}}>{eventInfo.parking}</div></div>}{eventInfo.facilities&&<button onClick={()=>setScreen("info")} style={{marginTop:10,border:0,background:"transparent",padding:0,color:THEME.orange,fontWeight:900,fontSize:10}}>View facilities & full event info →</button>}</ShellCard>}
+      {activeSponsors.length>0 && <ShellCard style={{padding:15,marginBottom:14}}><div style={{fontFamily:"Nunito",fontSize:16,fontWeight:900,color:THEME.ink,textAlign:"center"}}>Thanks to our event supporters</div><div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginTop:10}}>{activeSponsors.slice(0,6).map(sp=><div key={sp.id} style={{height:72,borderRadius:13,background:THEME.soft,display:"grid",placeItems:"center",padding:8}}>{sp.logo_url?<img src={sp.logo_url} alt={sp.name} style={{maxWidth:"90%",maxHeight:48,objectFit:"contain"}}/>:<span style={{fontSize:8,fontWeight:800,textAlign:"center"}}>{sp.name}</span>}</div>)}</div></ShellCard>}
     </div>;
   }
 
@@ -231,18 +391,151 @@ export default function App() {
   }
 
   function TeamScreen() {
-    return <div style={{ padding: "0 16px 110px" }}><div style={{ fontFamily: "Nunito", fontSize: 24, fontWeight: 900, color: THEME.ink, marginBottom: 14 }}>My Team</div>{club ? <><ShellCard style={{ padding: 18, marginBottom: 12 }}><div style={{ display: "flex", alignItems: "center", gap: 12 }}><ClubMark name={club.name} size={58}/><div><div style={{ fontFamily: "Nunito", fontSize: 18, fontWeight: 900, color: THEME.ink }}>{club.name}</div><div style={{ fontFamily: "Work Sans", fontSize: 10, color: THEME.muted, marginTop: 3 }}>Following for event updates</div></div></div></ShellCard><ShellCard style={{ padding: 16 }}><div style={{ fontFamily: "Nunito", fontWeight: 900, color: THEME.ink }}>Schedule snapshot</div>{myMatches.slice(0,6).map((m,i)=><div key={m.id||i} style={{ display: "grid", gridTemplateColumns: "60px 1fr", gap: 10, padding: "10px 0", borderTop: `1px solid ${THEME.line}`, fontFamily: "Work Sans", fontSize: 10 }}><strong>{m.time}</strong><span>{teamById(m.teamA).name} v {teamById(m.teamB).name}</span></div>)}</ShellCard></> : <ShellCard style={{ padding: 20, textAlign: "center" }}><Shield size={34} color={THEME.orange}/><div style={{ fontFamily: "Nunito", fontSize: 17, fontWeight: 900, color: THEME.ink, marginTop: 10 }}>Choose your club</div><button onClick={()=>setChooseOpen(true)} style={{ marginTop: 12, border: 0, background: THEME.orange, color: "white", borderRadius: 12, padding: "10px 14px", fontFamily: "Work Sans", fontWeight: 800 }}>Choose club</button></ShellCard>}</div>;
+    return <div style={{ padding: "0 16px 110px" }}><div style={{ fontFamily: "Nunito", fontSize: 24, fontWeight: 900, color: THEME.ink, marginBottom: 14 }}>My Team</div>{club ? <><ShellCard style={{ padding: 18, marginBottom: 12 }}><div style={{ display: "flex", alignItems: "center", gap: 12 }}><ClubMark club={club} size={58} /><div><div style={{ fontFamily: "Nunito", fontSize: 18, fontWeight: 900, color: THEME.ink }}>{club.name}</div><div style={{ fontFamily: "Work Sans", fontSize: 10, color: THEME.muted, marginTop: 3 }}>Following for event updates</div></div></div></ShellCard><ShellCard style={{ padding: 16 }}><div style={{ fontFamily: "Nunito", fontWeight: 900, color: THEME.ink }}>Schedule snapshot</div>{myMatches.slice(0,6).map((m,i)=><div key={m.id||i} style={{ display: "grid", gridTemplateColumns: "60px 1fr", gap: 10, padding: "10px 0", borderTop: `1px solid ${THEME.line}`, fontFamily: "Work Sans", fontSize: 10 }}><strong>{m.time}</strong><span>{teamById(m.teamA).name} v {teamById(m.teamB).name}</span></div>)}</ShellCard></> : <ShellCard style={{ padding: 20, textAlign: "center" }}><Shield size={34} color={THEME.orange}/><div style={{ fontFamily: "Nunito", fontSize: 17, fontWeight: 900, color: THEME.ink, marginTop: 10 }}>Choose your club</div><button onClick={()=>setChooseOpen(true)} style={{ marginTop: 12, border: 0, background: THEME.orange, color: "white", borderRadius: 12, padding: "10px 14px", fontFamily: "Work Sans", fontWeight: 800 }}>Choose club</button></ShellCard>}</div>;
   }
 
   function InfoScreen() {
-    return <div style={{ padding: "0 16px 110px" }}><div style={{ fontFamily: "Nunito", fontSize: 24, fontWeight: 900, color: THEME.ink, marginBottom: 14 }}>Event info</div><ShellCard style={{ padding: 16, marginBottom: 12 }}><div style={{ display: "flex", gap: 10 }}><MapPin color={THEME.orange}/><div><div style={{ fontFamily: "Nunito", fontWeight: 900, color: THEME.ink }}>{EVENT.venue}</div><div style={{ fontFamily: "Work Sans", fontSize: 10, color: THEME.muted, marginTop: 3 }}>Parking, pitches and event-day directions can be published here.</div></div></div></ShellCard><ShellCard style={{ padding: 16, marginBottom: 12 }}><div style={{ fontFamily: "Nunito", fontWeight: 900, color: THEME.ink }}>Sponsors</div><div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginTop: 12 }}>{(sponsors.length?sponsors.slice(0,6):[{name:"Local Sponsor"},{name:"Club Partner"},{name:"Event Partner"}]).map((s,i)=><div key={s.id||i} style={{ minHeight: 68, borderRadius: 14, background: THEME.soft, display: "grid", placeItems: "center", textAlign: "center", padding: 8, fontFamily: "Work Sans", fontSize: 9, fontWeight: 800, color: THEME.muted }}>{s.name}</div>)}</div></ShellCard></div>;
+    const myLunch=lunch
+      ? `${lunch.from}–${lunch.to}`
+      : (lunchWindows.length
+          ? lunchWindows.map((w,i)=>`Lunch ${i+1}: ${w.from}–${w.to}`).join(" · ")
+          : "");
+
+    const placeholder = {
+      welcomeMessage: "A welcome message from the event organiser will appear here.",
+      arrivalRegistration: "Arrival time, registration and check-in instructions will appear here once confirmed.",
+      facilities: "Facilities information such as toilets, changing areas and team bases will appear here once confirmed.",
+      parking: "Parking, coach/bus drop-off and walking directions will appear here once confirmed.",
+      venueInfo: "Pitch layout, meeting points and venue information will appear here once confirmed.",
+      foodAndDrink: "Food, refreshments, water and pre-order information will appear here when available.",
+      lunch: "Your allocated lunch time will appear here once the event schedule has been generated.",
+      healthAndSafety: "Medical cover, emergency information and event-day health & safety guidance will appear here.",
+      playingRules: "Competition rules, match duration, substitutions and tie-break information will appear here.",
+      contacts: "Event-day contact and communications information will appear here once confirmed.",
+      other: "Any additional event information will appear here."
+    };
+
+    const sections=[
+      ["Welcome",eventInfo.welcomeMessage || placeholder.welcomeMessage],
+      ["Arrival & Registration",eventInfo.arrivalRegistration || placeholder.arrivalRegistration],
+      ["Facilities",eventInfo.facilities || placeholder.facilities],
+      ["Parking & Directions",eventInfo.parking || placeholder.parking],
+      ["Pitch / Venue Information",eventInfo.venueInfo || placeholder.venueInfo],
+      ["Food & Drink",eventInfo.foodAndDrink || placeholder.foodAndDrink],
+      ["Your Lunch Time",myLunch || placeholder.lunch],
+      ["Health & Safety / Medical",eventInfo.healthAndSafety || placeholder.healthAndSafety],
+      ["Playing Rules",eventInfo.playingRules || placeholder.playingRules],
+      ["Contacts / Communications",eventInfo.contacts || placeholder.contacts],
+      ["Other Information",eventInfo.other || placeholder.other],
+      ...(Array.isArray(eventInfo.customSections)
+        ? eventInfo.customSections
+            .filter((section)=>String(section?.heading||"").trim() || String(section?.content||"").trim())
+            .map((section)=>[
+              section.heading || "Additional Information",
+              section.content || "More information will appear here once confirmed."
+            ])
+        : [])
+    ];
+
+    return <div style={{ padding: "0 16px 110px" }}>
+      <div style={{ fontFamily: "Nunito", fontSize: 24, fontWeight: 900, color: THEME.ink, marginBottom: 14 }}>Event info</div>
+      {sections.map(([label,text])=><ShellCard key={label} style={{padding:16,marginBottom:12,borderLeft:`4px solid ${THEME.orange}`}}><div style={{fontFamily:"Nunito",fontWeight:900,color:THEME.ink}}>{label}</div><div style={{fontFamily:"Work Sans",fontSize:10,lineHeight:1.55,color:THEME.muted,marginTop:5,whiteSpace:"pre-wrap"}}>{text}</div></ShellCard>)}
+      {activeAnnouncements.length>0&&<ShellCard style={{padding:16,marginBottom:12}}><div style={{fontFamily:"Nunito",fontWeight:900,color:THEME.ink}}>Latest announcements</div>{activeAnnouncements.map(a=><div key={a.id} style={{padding:"10px 0",borderTop:`1px solid ${THEME.line}`}}><div style={{fontFamily:"Nunito",fontSize:12,fontWeight:900}}>{a.emoji||"📣"} {a.title||"Update"}</div><div style={{fontFamily:"Work Sans",fontSize:10,lineHeight:1.5,color:THEME.muted,marginTop:4}} dangerouslySetInnerHTML={{__html:a.html||a.text||""}}/></div>)}</ShellCard>}
+      {activeSponsors.length>0&&<ShellCard style={{padding:16}}><div style={{fontFamily:"Nunito",fontWeight:900,color:THEME.ink}}>Sponsors & Event Partners</div><div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10,marginTop:12}}>{activeSponsors.map((sp,i)=><div key={sp.id||i} style={{minHeight:100,borderRadius:14,background:THEME.soft,display:"grid",placeItems:"center",padding:10,textAlign:"center"}}>{sp.logo_url?<div><img src={sp.logo_url} alt={sp.name} style={{maxWidth:"92%",maxHeight:58,objectFit:"contain"}}/><div style={{fontSize:8,fontWeight:800,color:THEME.muted,marginTop:4}}>{sp.label||""}</div></div>:<span style={{fontSize:9,fontWeight:800,color:THEME.muted}}>{sp.name}</span>}</div>)}</div></ShellCard>}
+    </div>;
   }
+
+  function FoodScreen(){
+    const clubTeams=teams.filter(t=>t.clubId===myClub);
+    const [teamId,setTeamId]=useState(clubTeams[0]?.id||"");
+    const [code,setCode]=useState("");
+    const [contact,setContact]=useState("");
+    const [mobile,setMobile]=useState("");
+    const [qty,setQty]=useState({});
+    const [msg,setMsg]=useState("");
+    const [reviewOpen,setReviewOpen]=useState(false);
+    const [reviewedTeam,setReviewedTeam]=useState("");
+    const [toast,setToast]=useState("");
+    const team=teams.find(t=>t.id===teamId);
+    const teamLunch=lunchWindows.find(w=>(w.clubIds||w.clubs||[]).includes(team?.clubId));
+    const existing=orders.find(o=>o.teamId===teamId)||null;
+    const total=foodMenu.reduce((n,f)=>n+(qty[f.id]||0)*(f.price==null?0:+f.price||0),0);
+
+    useEffect(()=>{
+      if(teamId&&existing&&reviewedTeam!==teamId){setReviewOpen(true);setReviewedTeam(teamId)}
+    },[teamId,existing?.id]);
+
+    async function submit(){
+      setMsg("");
+      if(!team){setMsg("Choose a team.");return}
+      if(String(code)!==String(team.foodCode||"")){setMsg("Incorrect team order code.");return}
+      if(contact.trim().split(/\s+/).length<2){setMsg("Please enter your full name.");return}
+      if(!mobile.trim()){setMsg("Please enter a mobile number.");return}
+      const added=foodMenu.map(f=>({foodId:f.id,name:f.name,qty:qty[f.id]||0,price:f.price==null?null:+f.price||0})).filter(x=>x.qty>0);
+      if(!added.length){setMsg("Add at least one food item.");return}
+      let next;
+      if(existing){
+        const byId={};
+        for(const item of (existing.items||[]))byId[item.foodId]={...item};
+        for(const item of added){
+          if(byId[item.foodId])byId[item.foodId]={...byId[item.foodId],qty:(byId[item.foodId].qty||0)+item.qty,price:item.price,name:item.name};
+          else byId[item.foodId]=item;
+        }
+        const items=Object.values(byId);
+        const newTotal=items.reduce((n,x)=>n+(x.qty||0)*(x.price==null?0:+x.price||0),0);
+        next=orders.map(o=>o.id===existing.id?{...o,contactName:contact.trim(),mobile:mobile.trim(),items,total:newTotal,updatedAt:new Date().toISOString()}:o);
+      }else{
+        const order={id:`order-${Date.now()}`,teamId,contactName:contact.trim(),mobile:mobile.trim(),items:added,total,createdAt:new Date().toISOString()};
+        next=[...orders,order];
+      }
+      await saveShared(eventKey(eventId,"orders"),next);
+      setOrders(next);
+      setQty({});
+      setToast(`Order saved${teamLunch?` · collection ${teamLunch.from}–${teamLunch.to}`:""}`);
+      setTimeout(()=>setToast(""),4500);
+    }
+
+    if(!foodMenu.length)return <div style={{padding:"0 16px 110px"}}>
+      <div style={{fontFamily:"Nunito",fontSize:24,fontWeight:900,marginBottom:14}}>Food & drink</div>
+      <ShellCard style={{padding:18,borderLeft:`4px solid ${THEME.orange}`}}>
+        <div style={{fontFamily:"Nunito",fontSize:15,fontWeight:900,color:THEME.ink}}>Food orders are not enabled yet</div>
+        <div style={{fontFamily:"Work Sans",fontSize:10,lineHeight:1.55,color:THEME.muted,marginTop:6}}>
+          {eventInfo.foodAndDrink || "Food, refreshments and pre-order information will appear here when the event organiser adds it."}
+        </div>
+      </ShellCard>
+    </div>;
+    return <div style={{padding:"0 16px 110px"}}>
+      <div style={{fontFamily:"Nunito",fontSize:24,fontWeight:900,marginBottom:14}}>Food orders</div>
+      {teamLunch&&<ShellCard style={{padding:15,marginBottom:10,background:"linear-gradient(135deg,#FFF4DE,#FFFFFF)",border:`1px solid #F5D49D`}}><div style={{fontFamily:"Nunito",fontSize:15,fontWeight:900,color:THEME.ink}}>🍔 Your lunch: {teamLunch.from}–{teamLunch.to}</div><div style={{fontFamily:"Work Sans",fontSize:10,lineHeight:1.5,color:THEME.muted,marginTop:4}}>Everything pre-ordered for your team will be ready for the lead mentor to collect at your allocated lunch time.</div></ShellCard>}
+      <ShellCard style={{padding:14,marginBottom:10}}>
+        <select value={teamId} onChange={e=>{setTeamId(e.target.value);setReviewedTeam("")}} style={{width:"100%",padding:9,borderRadius:10,border:`1px solid ${THEME.line}`}}><option value="">Choose team</option>{clubTeams.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}</select>
+        <input value={code} onChange={e=>setCode(e.target.value)} placeholder="Team order code" style={{width:"100%",padding:9,borderRadius:10,border:`1px solid ${THEME.line}`,marginTop:8,boxSizing:"border-box"}}/>
+        <input value={contact} onChange={e=>setContact(e.target.value)} placeholder="Full name" style={{width:"100%",padding:9,borderRadius:10,border:`1px solid ${THEME.line}`,marginTop:8,boxSizing:"border-box"}}/>
+        <input value={mobile} onChange={e=>setMobile(e.target.value)} placeholder="Mobile number" inputMode="tel" style={{width:"100%",padding:9,borderRadius:10,border:`1px solid ${THEME.line}`,marginTop:8,boxSizing:"border-box"}}/>
+      </ShellCard>
+      {existing&&<div style={{fontFamily:"Work Sans",fontSize:9,color:THEME.orange,fontWeight:800,margin:"2px 2px 10px"}}>This team already has an order. Enter only the additional quantities needed; they will be added to the existing total.</div>}
+      {foodMenu.filter(f=>f.active!==false).map(f=><ShellCard key={f.id} style={{padding:12,marginBottom:8,display:"grid",gridTemplateColumns:"1fr 70px",gap:8,alignItems:"center"}}><div><b>{f.name}</b><div style={{fontSize:9,color:THEME.muted}}>{f.price===null||f.price===undefined||f.price===""?"Price not listed":Number(f.price)===0?"Free":`€${Number(f.price).toFixed(2)}`}</div></div><input type="number" min="0" value={qty[f.id]||0} onChange={e=>setQty({...qty,[f.id]:+e.target.value})} style={{padding:8,borderRadius:9,border:`1px solid ${THEME.line}`,width:"100%",boxSizing:"border-box"}}/></ShellCard>)}
+      <button onClick={submit} style={{width:"100%",border:0,background:THEME.orange,color:"white",borderRadius:12,padding:11,fontWeight:900}}>Submit order{total>0?` · €${total.toFixed(2)}`:""}</button>
+      {msg&&<div style={{fontSize:10,fontWeight:800,marginTop:8,color:"#b91c1c"}}>{msg}</div>}
+      {reviewOpen&&existing&&<div onClick={()=>setReviewOpen(false)} style={{position:"fixed",inset:0,background:"rgba(4,18,34,.65)",zIndex:120,display:"grid",placeItems:"center",padding:18}}><ShellCard style={{width:"min(100%,430px)",padding:18}}><div onClick={e=>e.stopPropagation()}><div style={{fontFamily:"Nunito",fontSize:20,fontWeight:900}}>You already have an order</div><div style={{fontFamily:"Work Sans",fontSize:10,color:THEME.muted,marginTop:4}}>{team?.name} · {existing.contactName}{existing.mobile?` · ${existing.mobile}`:""}</div><div style={{marginTop:12}}>{(existing.items||[]).map(x=><div key={x.foodId} style={{display:"flex",justifyContent:"space-between",fontSize:10,padding:"7px 0",borderTop:`1px solid ${THEME.line}`}}><span>{x.name}</span><b>{x.qty}</b></div>)}</div>{Number(existing.total||0)>0&&<div style={{textAlign:"right",fontFamily:"Nunito",fontWeight:900,marginTop:8}}>Current total €{Number(existing.total).toFixed(2)}</div>}<div style={{fontFamily:"Work Sans",fontSize:10,lineHeight:1.5,color:THEME.muted,marginTop:10}}>Enter only what you want to add. The quantities you submit next will be added to this existing order.</div><button onClick={()=>setReviewOpen(false)} style={{width:"100%",border:0,background:THEME.orange,color:"white",borderRadius:11,padding:10,fontWeight:900,marginTop:12}}>Add more</button></div></ShellCard></div>}
+      {toast&&<div style={{position:"fixed",left:"50%",transform:"translateX(-50%)",bottom:88,zIndex:150,width:"min(calc(100% - 28px),500px)",background:"#143D32",color:"white",borderRadius:14,padding:"12px 14px",boxShadow:"0 12px 30px rgba(0,0,0,.22)",fontFamily:"Work Sans",fontSize:10,fontWeight:800}}>✓ {toast}</div>}
+    </div>;
+  }
+
+  function RefereeScreen(){const [accessCode,setAccessCode]=useState("");const [fullName,setFullName]=useState("");const key=refAccess?`cup_ref_${eventId}_${refAccess.id}_${refAccess.version||1}`:"";const [verified,setVerified]=useState(()=>{try{return JSON.parse(localStorage.getItem(key)||"null")?.name||""}catch{return""}});const [err,setErr]=useState("");async function score(m,patch){const next=matches.map(x=>x.id===m.id?{...x,...patch,lastEditedBy:verified,lastEditedAt:new Date().toISOString()}:x);setMatches(next);await saveShared(eventKey(eventId,"matches"),next)}if(!refAccess||!refAccess.active)return <div style={{padding:20}}>This referee link is no longer active.</div>;if(!verified)return <div style={{padding:20}}><ShellCard style={{padding:18}}><div style={{fontFamily:"Nunito",fontSize:22,fontWeight:900}}>Referee Access</div><input value={accessCode} onChange={e=>setAccessCode(e.target.value.replace(/\D/g,"").slice(0,6))} placeholder="6-digit code" style={{width:"100%",padding:10,marginTop:12,boxSizing:"border-box"}}/><input value={fullName} onChange={e=>setFullName(e.target.value)} placeholder="Full name" style={{width:"100%",padding:10,marginTop:8,boxSizing:"border-box"}}/><button onClick={()=>{if(accessCode!==String(refAccess.code))return setErr("Incorrect code.");if(fullName.trim().split(/\s+/).length<2)return setErr("Enter your full name.");localStorage.setItem(key,JSON.stringify({name:fullName.trim()}));setVerified(fullName.trim())}} style={{width:"100%",padding:10,marginTop:10,border:0,borderRadius:10,background:THEME.orange,color:"white",fontWeight:900}}>Open matches</button>{err&&<div style={{fontSize:10,color:"#b91c1c",marginTop:8}}>{err}</div>}</ShellCard></div>;const allowed=matches.filter(m=>!refAccess.pitches?.length||refAccess.pitches.includes(m.pitchId));return <div style={{padding:"0 16px 40px"}}><div style={{fontFamily:"Nunito",fontSize:22,fontWeight:900,marginBottom:12}}>{verified} · Referee</div>{allowed.map(m=><ShellCard key={m.id} style={{padding:13,marginBottom:9}}><b>{m.time} · {m.pitch}</b>{[["A",m.teamA,"goalsA","pointsA"],["B",m.teamB,"goalsB","pointsB"]].map(([k,id,g,p])=><div key={k} style={{display:"grid",gridTemplateColumns:"1fr 55px 55px",gap:7,marginTop:8,alignItems:"center"}}><span style={{fontSize:10,fontWeight:800}}>{teamById(id).name}</span><input type="number" min="0" value={m[g]||0} onChange={e=>score(m,{[g]:+e.target.value})}/><input type="number" min="0" value={m[p]||0} onChange={e=>score(m,{[p]:+e.target.value})}/></div>)}<select value={m.status||"scheduled"} onChange={e=>score(m,{status:e.target.value})} style={{marginTop:8}}><option value="scheduled">Scheduled</option><option value="live">Live</option><option value="finished">Finished</option></select></ShellCard>)}</div>}
 
   let body = <HomeScreen/>;
   if (screen === "fixtures") body = <FixturesScreen/>;
   else if (screen === "standings") body = <StandingsScreen/>;
   else if (screen === "team") body = <TeamScreen/>;
   else if (screen === "info") body = <InfoScreen/>;
+  else if (screen === "food") body = <FoodScreen/>;
+  if (refId) body = <RefereeScreen/>;
 
-  return <div style={{ minHeight: "100dvh", background: THEME.cream, fontFamily: "Work Sans", color: THEME.ink }}><div style={{ width: "min(100%, 540px)", minHeight: "100dvh", margin: "0 auto", background: THEME.cream, boxShadow: "0 0 50px rgba(16,36,62,.08)" }}><BrandHeader club={club} onChangeClub={()=>setChooseOpen(true)}/>{loading ? <div style={{ padding: 30, textAlign: "center", color: THEME.muted }}>Loading Cup…</div> : body}<BottomNav screen={screen} setScreen={setScreen}/></div>{chooseOpen && <div onClick={()=>setChooseOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(4,18,34,.62)", zIndex: 100, display: "flex", alignItems: "flex-end", justifyContent: "center" }}><div onClick={(e)=>e.stopPropagation()} style={{ width: "min(100%,540px)", maxHeight: "80dvh", overflow: "auto", background: "white", borderRadius: "26px 26px 0 0", padding: 18 }}><div style={{ width: 42, height: 4, borderRadius: 4, background: THEME.line, margin: "0 auto 14px" }}/><div style={{ fontFamily: "Nunito", fontSize: 21, fontWeight: 900, color: THEME.ink }}>Choose your club</div><div style={{ fontFamily: "Work Sans", fontSize: 10, color: THEME.muted, marginTop: 4, marginBottom: 12 }}>We’ll highlight your fixtures, lunch break and event updates.</div><div style={{ display: "grid", gap: 8 }}>{clubs.map((c)=><button key={c.id} onClick={()=>chooseClub(c.id)} style={{ border: `1px solid ${THEME.line}`, background: myClub===c.id?"#EEF8F4":"white", borderRadius: 16, padding: 11, display: "flex", alignItems: "center", gap: 10, textAlign: "left", cursor: "pointer" }}><ClubMark name={c.name} size={42}/><div style={{ fontFamily: "Nunito", fontWeight: 900, color: THEME.ink }}>{c.name}</div></button>)}</div></div></div>}</div>;
+  const preview=params.get("preview")==="1";
+  if(!refId && event?.status==="draft" && !preview && !loading){
+    return <div style={{minHeight:"100dvh",background:"#E9EDF1",display:"grid",placeItems:"center",padding:18,fontFamily:"Work Sans"}}><ShellCard style={{width:"min(100%,430px)",padding:22,textAlign:"center"}}><div style={{fontFamily:"Nunito",fontSize:22,fontWeight:900}}>This event is still in draft</div><div style={{fontSize:10,color:THEME.muted,lineHeight:1.55,marginTop:7}}>The organiser has not published the participant app yet.</div></ShellCard></div>;
+  }
+
+  return <div style={{ minHeight: "100dvh", background: "#E9EDF1", fontFamily: "Work Sans", color: THEME.ink }}><div style={{ width: "min(100%, 540px)", minHeight: "100dvh", margin: "0 auto", background: THEME.cream, boxShadow: "0 0 50px rgba(16,36,62,.08)" }}><BrandHeader club={club} event={event} onChangeClub={()=>setChooseOpen(true)} liveCount={liveMatches.length}/>{loading ? <div style={{ padding: 30, textAlign: "center", color: THEME.muted }}>Loading Cup…</div> : body}{!refId && <BottomNav screen={screen} setScreen={setScreen}/>}</div>{announcementToast&&<div style={{position:"fixed",left:"50%",transform:"translateX(-50%)",top:18,zIndex:180,width:"min(calc(100% - 28px),500px)",background:"#10243E",color:"white",borderRadius:16,padding:14,boxShadow:"0 16px 38px rgba(0,0,0,.25)"}}><div style={{display:"flex",gap:10,alignItems:"flex-start"}}><div style={{fontSize:22}}>{announcementToast.emoji||"📣"}</div><div style={{flex:1}}><div style={{fontFamily:"Nunito",fontSize:14,fontWeight:900}}>{announcementToast.title||"Update"}</div><div style={{fontFamily:"Work Sans",fontSize:10,lineHeight:1.45,opacity:.85,marginTop:3}} dangerouslySetInnerHTML={{__html:announcementToast.html||announcementToast.text||""}}/></div><button onClick={()=>setAnnouncementToast(null)} style={{border:0,background:"transparent",color:"white",fontSize:18,cursor:"pointer"}}>×</button></div></div>}{chooseOpen && <div onClick={()=>setChooseOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(4,18,34,.62)", zIndex: 100, display: "flex", alignItems: "flex-end", justifyContent: "center" }}><div onClick={(e)=>e.stopPropagation()} style={{ width: "min(100%,540px)", maxHeight: "80dvh", overflow: "auto", background: "white", borderRadius: "26px 26px 0 0", padding: 18 }}><div style={{ width: 42, height: 4, borderRadius: 4, background: THEME.line, margin: "0 auto 14px" }}/><div style={{ fontFamily: "Nunito", fontSize: 21, fontWeight: 900, color: THEME.ink }}>Choose your club</div><div style={{ fontFamily: "Work Sans", fontSize: 10, color: THEME.muted, marginTop: 4, marginBottom: 12 }}>We’ll highlight your fixtures, lunch break and event updates.</div><div style={{ display: "grid", gap: 8 }}>{clubs.map((c)=><button key={c.id} onClick={()=>chooseClub(c.id)} style={{ border: `1px solid ${THEME.line}`, background: myClub===c.id?"#EEF8F4":"white", borderRadius: 16, padding: 11, display: "flex", alignItems: "center", gap: 10, textAlign: "left", cursor: "pointer" }}><ClubMark club={c} size={42} /><div style={{ fontFamily: "Nunito", fontWeight: 900, color: THEME.ink }}>{c.name}</div></button>)}</div></div></div>}</div>;
 }

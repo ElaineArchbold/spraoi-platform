@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabaseClient";
 import html2canvas from "html2canvas";
-import { CUP_EVENTS_KEY, cupRead, cupWriteSection, cupActiveEvent, cupSetActiveEvent, cupCreateEvent, cupUpdateEvent, cupDuplicateEvent, cupRefAccess, cupRefLink, cupGenerateSchedule, cupResolveFinals } from "./cupEventStore";
+import { CUP_EVENTS_KEY, cupRead, cupReadSection, cupWriteSection, cupActiveEvent, cupSetActiveEvent, cupCreateEvent, cupUpdateEvent, cupDuplicateEvent, cupRefAccess, cupRefLink, cupGenerateSchedule, cupResolveFinals } from "./cupEventStore";
 
 /* ============================================================
    SPRAOI COACH — Desktop-first redesign
@@ -92,7 +92,7 @@ function getCategoryIcon(activity) {
 /* ============================================================
    MODULE CONFIG
    ============================================================ */
-const APP_MODULE = import.meta.env.VITE_APP_MODULE || "cup";
+const APP_MODULE = import.meta.env.VITE_APP_MODULE || "coach";
 const MODULE_URLS = {
   coach: import.meta.env.VITE_COACH_URL || "http://localhost:5173",
   academy: import.meta.env.VITE_ACADEMY_ADMIN_URL || "http://localhost:5176",
@@ -197,23 +197,31 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
     (async () => {
       const es = await cupRead(CUP_EVENTS_KEY, []);
       if (cancelled) return;
-      setCupSidebarEvents(Array.isArray(es) ? es : []);
-      const current = cupActiveEvent() || es?.[0]?.id || "";
+      const teamId = selectedTeam?.id || "";
+      const scoped = teamId
+        ? (Array.isArray(es) ? es : []).filter((e) => e.ownerTeamId === teamId || !e.ownerTeamId)
+        : [];
+      setCupSidebarEvents(scoped);
+
+      const remembered = cupActiveEvent();
+      const current = scoped.some((e) => e.id === remembered)
+        ? remembered
+        : "";
+
       setCupSidebarEventId(current);
     })();
     return () => { cancelled = true; };
-  }, [activeModule, activeScreen]);
+  }, [activeModule, activeScreen, selectedTeam?.id]);
 
-  const cupSidebarEvent = cupSidebarEvents.find((e) => e.id === cupSidebarEventId) || cupSidebarEvents[0] || null;
+  const cupSidebarEvent = cupSidebarEvents.find((e) => e.id === cupSidebarEventId) || null;
 
   function openModule(key, module) {
-    const externalUrl = MODULE_URLS[key];
-    if (key !== APP_MODULE && externalUrl) {
-      window.location.assign(externalUrl);
-      return;
+    if (key === "cup" && activeModule !== "cup") {
+      cupSetActiveEvent("");
+      setCupSidebarEventId("");
     }
     setActiveModule(key);
-    onNav(module.nav[0].id);
+    onNav(enabledModules.includes(key) ? module.nav[0].id : `access-denied-${key}`);
   }
 
   return (
@@ -255,89 +263,168 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
         <div style={{ margin: "11px 12px 4px" }}>
           {activeModule === "cup" ? (
             <div>
-         <div style={{ marginBottom: 10 }}>
-  <div
-    style={{
-      fontFamily: F.body,
-      fontSize: 8,
-      fontWeight: 900,
-      textTransform: "uppercase",
-      letterSpacing: ".08em",
-      color: "rgba(255,255,255,.68)",
-      margin: "0 2px 5px"
-    }}
-  >
-    Current team
-  </div>
+              <div style={{ marginBottom: 10 }}>
+                <div
+                  style={{
+                    fontFamily: F.body,
+                    fontSize: 8,
+                    fontWeight: 900,
+                    textTransform: "uppercase",
+                    letterSpacing: ".08em",
+                    color: "rgba(255,255,255,.68)",
+                    margin: "0 2px 5px"
+                  }}
+                >
+                  Current team
+                </div>
 
-  {visibleTeams.length > 1 ? (
-    <select
-      value={selectedTeam?.id || ""}
-      onChange={(e) => {
-        const ag = ageGroups?.find((a) => a.id === e.target.value);
-        if (ag) onSelectTeam(ag);
-      }}
-      style={{
-        width: "100%",
-        padding: "9px 10px",
-        borderRadius: 9,
-        border: "1px solid rgba(255,255,255,.2)",
-        background: "rgba(255,255,255,.14)",
-        fontFamily: F.body,
-        fontSize: 11,
-        fontWeight: 700,
-        color: "#fff",
-        cursor: "pointer"
-      }}
-    >
-      {visibleTeams.map((ag) => (
-        <option key={ag.id} value={ag.id} style={{ color: P.ink }}>
-          {ag.label} {ag.gender === "girls" ? "Girls" : "Boys"}
-        </option>
-      ))}
-    </select>
-  ) : selectedTeam ? (
-    <div
-      style={{
-        padding: "9px 10px",
-        borderRadius: 9,
-        background: "rgba(255,255,255,.14)",
-        fontFamily: F.body,
-        fontSize: 11,
-        fontWeight: 700
-      }}
-    >
-      {selectedTeam.label} {selectedTeam.gender === "girls" ? "Girls" : "Boys"}
-    </div>
-  ) : null}
+                {visibleTeams.length > 1 ? (
+                  <select
+                    value={selectedTeam?.id || ""}
+                    onChange={(e) => {
+                      const ag = ageGroups?.find((a) => a.id === e.target.value);
+                      if (ag) {
+                        cupSetActiveEvent("");
+                        setCupSidebarEventId("");
+                        onSelectTeam(ag);
+                      }
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "9px 10px",
+                      borderRadius: 9,
+                      border: "1px solid rgba(255,255,255,.22)",
+                      background: "rgba(255,255,255,.15)",
+                      fontFamily: F.body,
+                      fontSize: 10,
+                      fontWeight: 800,
+                      color: "#fff",
+                      cursor: "pointer"
+                    }}
+                  >
+                    {visibleTeams.map((ag) => (
+                      <option key={ag.id} value={ag.id} style={{ color: P.ink }}>
+                        {ag.label} {ag.gender === "girls" ? "Girls" : "Boys"}
+                      </option>
+                    ))}
+                  </select>
+                ) : selectedTeam ? (
+                  <div
+                    style={{
+                      padding: "9px 10px",
+                      borderRadius: 9,
+                      background: "rgba(255,255,255,.15)",
+                      fontFamily: F.body,
+                      fontSize: 10,
+                      fontWeight: 800
+                    }}
+                  >
+                    {selectedTeam.label} {selectedTeam.gender === "girls" ? "Girls" : "Boys"}
+                  </div>
+                ) : null}
 
-  <div
-    style={{
-      fontFamily: F.body,
-      fontSize: 8,
-      color: "rgba(255,255,255,.68)",
-      marginTop: 5,
-      paddingLeft: 2
-    }}
-  >
-    Cup events are managed in this team context
-  </div>
-
+                <div
+                  style={{
+                    fontFamily: F.body,
+                    fontSize: 8,
+                    color: "rgba(255,255,255,.68)",
+                    marginTop: 5,
+                    paddingLeft: 2
+                  }}
+                >
+                  Cup events are managed in this team context
+                </div>
               </div>
-              <div style={{ fontFamily: F.body, fontSize: 8, fontWeight: 900, textTransform: "uppercase", letterSpacing: ".08em", color: "rgba(255,255,255,.68)", margin: "0 2px 5px" }}>Current event</div>
-              <select
-                value={cupSidebarEventId}
-                onChange={(e) => {
-                  const id = e.target.value;
-                  setCupSidebarEventId(id);
-                  cupSetActiveEvent(id);
-                  window.location.reload();
+
+              <div
+                style={{
+                  fontFamily: F.body,
+                  fontSize: 8,
+                  fontWeight: 900,
+                  textTransform: "uppercase",
+                  letterSpacing: ".08em",
+                  color: "rgba(255,255,255,.72)",
+                  margin: "0 2px 5px"
                 }}
-                style={{ width: "100%", padding: "9px 10px", borderRadius: 9, border: "1px solid rgba(255,255,255,.22)", background: "rgba(255,255,255,.15)", fontFamily: F.body, fontSize: 10, fontWeight: 800, color: "#fff", cursor: "pointer" }}
               >
-                {cupSidebarEvents.map((ev) => <option key={ev.id} value={ev.id} style={{ color: P.ink }}>{ev.name}</option>)}
-              </select>
-              {cupSidebarEvent && <div style={{ fontFamily: F.body, fontSize: 8, color: "rgba(255,255,255,.72)", lineHeight: 1.45, padding: "5px 3px 0" }}>{cupSidebarEvent.date || "Date TBC"}{cupSidebarEvent.venue ? ` · ${cupSidebarEvent.venue}` : ""}</div>}
+                Working on
+              </div>
+
+              {cupSidebarEvents.length ? (
+                <select
+                  value={cupSidebarEventId}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    setCupSidebarEventId(id);
+                    cupSetActiveEvent(id);
+
+                    if (id) {
+                      window.dispatchEvent(
+                        new CustomEvent("spraoi-cup-event-selected", {
+                          detail: { eventId: id }
+                        })
+                      );
+                      setActiveModule("cup");
+                      onNav("cup-dashboard");
+                    } else {
+                      onNav("cup-events");
+                    }
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "9px 10px",
+                    borderRadius: 9,
+                    border: "1px solid rgba(255,255,255,.30)",
+                    background: cupSidebarEventId ? "rgba(255,255,255,.18)" : "rgba(16,36,62,.28)",
+                    fontFamily: F.body,
+                    fontSize: 10,
+                    fontWeight: 800,
+                    color: "#fff",
+                    cursor: "pointer"
+                  }}
+                >
+                  <option value="" style={{ color: P.ink }}>Select an event…</option>
+                  {cupSidebarEvents.map((ev) => (
+                    <option key={ev.id} value={ev.id} style={{ color: P.ink }}>
+                      {ev.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <button
+                  onClick={() => onNav("cup-events")}
+                  style={{
+                    width: "100%",
+                    padding: "10px",
+                    borderRadius: 9,
+                    border: "1px dashed rgba(255,255,255,.38)",
+                    background: "rgba(16,36,62,.22)",
+                    color: "#fff",
+                    fontFamily: F.body,
+                    fontSize: 10,
+                    fontWeight: 800,
+                    cursor: "pointer",
+                    textAlign: "left"
+                  }}
+                >
+                  No events yet · Create one
+                </button>
+              )}
+
+              {cupSidebarEvent && (
+                <div
+                  style={{
+                    fontFamily: F.body,
+                    fontSize: 8,
+                    color: "rgba(255,255,255,.72)",
+                    lineHeight: 1.45,
+                    padding: "5px 3px 0"
+                  }}
+                >
+                  {cupSidebarEvent.date || "Date TBC"}
+                  {cupSidebarEvent.venue ? ` · ${cupSidebarEvent.venue}` : ""}
+                </div>
+              )}
             </div>
           ) : visibleTeams.length > 1 ? (
             <select value={selectedTeam?.id || ""} onChange={(e) => { const ag = ageGroups?.find((a) => a.id === e.target.value); if (ag) onSelectTeam(ag); }} style={{ width: "100%", padding: "9px 10px", borderRadius: 9, border: activeModule === "connect" ? "1px solid rgba(51,40,0,.2)" : "1px solid rgba(255,255,255,.2)", background: activeModule === "connect" ? "rgba(255,255,255,.5)" : "rgba(255,255,255,.14)", fontFamily: F.body, fontSize: 11, fontWeight: 700, color: activeModule === "connect" ? "#332800" : "#fff", cursor: "pointer" }}>
@@ -2088,6 +2175,316 @@ function SessionsListScreen({ club, selectedTeam, onOpenSession, onNav, onEditSe
 /* ============================================================
    CLUB PERMISSIONS — RBAC matrix and user role management
    ============================================================ */
+const CLUB_RED = "#d32f2f";
+const CLUB_RED_DARK = "#a91f1f";
+const CLUB_SOFT = "#fff1f1";
+
+function ClubPage({ title, sub, children, actions }) {
+  return (
+    <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
+      <TopBar title={title} sub={sub} moduleKey="club">{actions}</TopBar>
+      <div style={{ padding: "22px 24px", maxWidth: 1220, margin: "0 auto" }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function ClubCard({ children, style }) {
+  return (
+    <div style={{
+      background: P.white,
+      border: `1px solid ${P.line}`,
+      borderRadius: 16,
+      padding: 18,
+      boxShadow: Sh.card,
+      ...style,
+    }}>
+      {children}
+    </div>
+  );
+}
+
+function ClubDashboardScreen({ club, ageGroups, coaches, selectedTeam, onNav }) {
+  return (
+    <ClubPage
+      title="Club Dashboard"
+      sub={`${club?.name || "Club Spraoi"} · Operating centre`}
+      actions={<Btn label="Manage Teams" onClick={() => onNav("club-teams")} style={{ background: CLUB_RED }} />}
+    >
+      <div style={{
+        borderRadius: 20,
+        padding: "24px 26px",
+        marginBottom: 18,
+        background: "linear-gradient(135deg, #fff1f1 0%, #ffffff 58%, #ffe0e0 100%)",
+        border: "1px solid #f3caca",
+        display: "grid",
+        gridTemplateColumns: "auto minmax(0,1fr)",
+        gap: 18,
+        alignItems: "center",
+      }}>
+        <div style={{
+          width: 82, height: 82, borderRadius: 22, background: "#fff",
+          border: "1px solid #f1caca", display: "grid", placeItems: "center",
+          boxShadow: "0 12px 28px rgba(211,47,47,.14)",
+        }}>
+          <img src="/spraoi-club-icon.png" alt="" style={{ width: 58, height: 58, objectFit: "contain" }} />
+        </div>
+        <div>
+          <div style={{ fontFamily: F.body, fontSize: 10, fontWeight: 900, color: CLUB_RED, textTransform: "uppercase", letterSpacing: ".08em" }}>Club Admin</div>
+          <div style={{ fontFamily: F.display, fontSize: 34, fontWeight: 900, color: P.ink, marginTop: 3 }}>{club?.name || "Club Spraoi"}</div>
+          <div style={{ fontFamily: F.body, fontSize: 12, color: P.muted, marginTop: 5 }}>
+            Manage persistent teams, coaches, members and permissions from one place.
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12, marginBottom: 18 }}>
+        <StatCard label="Teams" value={String(ageGroups?.length || 0)} sub="Persistent club teams" color={CLUB_RED} icon="◆" />
+        <StatCard label="Coaches" value={String(coaches?.length || 0)} sub="Club staff records" color={CLUB_RED_DARK} icon="●" />
+        <StatCard label="Active Team" value={selectedTeam?.label || "—"} sub="Shared across modules" color="#e57373" icon="↔" />
+        <StatCard label="Access Model" value="3 roles" sub="Admin, lead, mentor" color="#ef5350" icon="◇" />
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 14 }}>
+        <ClubCard>
+          <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink, marginBottom: 10 }}>Quick actions</div>
+          {[
+            ["Assign coaches to teams", "club-teams"],
+            ["Review roles and permissions", "club-permissions"],
+            ["Manage club members", "club-members"],
+            ["Update club branding", "club-branding"],
+          ].map(([label, route]) => (
+            <button key={route} onClick={() => onNav(route)} style={{
+              width: "100%", padding: "11px 0", border: "none", borderTop: `1px solid ${P.line}`,
+              background: "transparent", display: "flex", justifyContent: "space-between",
+              cursor: "pointer", fontFamily: F.body, fontSize: 12, fontWeight: 700, color: P.ink,
+            }}>
+              <span>{label}</span><span style={{ color: CLUB_RED }}>›</span>
+            </button>
+          ))}
+        </ClubCard>
+
+        <ClubCard>
+          <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink, marginBottom: 10 }}>Active team context</div>
+          <div style={{ padding: 14, borderRadius: 12, background: CLUB_SOFT, border: "1px solid #f4caca" }}>
+            <div style={{ fontFamily: F.body, fontSize: 10, fontWeight: 900, color: CLUB_RED, textTransform: "uppercase" }}>Currently selected</div>
+            <div style={{ fontFamily: F.display, fontSize: 23, fontWeight: 900, color: P.ink, marginTop: 4 }}>{selectedTeam?.label || "No team selected"}</div>
+            <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 6 }}>
+              Coach, Academy, Cup, Connect and Plus use this same team selection.
+            </div>
+          </div>
+        </ClubCard>
+      </div>
+    </ClubPage>
+  );
+}
+
+function ClubTeamsScreen({ club, ageGroups, coaches, selectedTeam, onSelectTeam }) {
+  const [staff, setStaff] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [savingId, setSavingId] = useState("");
+  const [error, setError] = useState("");
+
+  const roles = [
+    { value: "club_admin", label: "Club Admin" },
+    { value: "lead_coach", label: "Lead Coach" },
+    { value: "coach_mentor", label: "Coach / Mentor" },
+  ];
+
+  async function loadStaff() {
+    if (!club?.id) return;
+    setLoading(true);
+    const { data, error: loadError } = await supabase
+      .from("team_staff")
+      .select("*, coach:coaches(id,name,email,user_id)")
+      .eq("club_id", club.id)
+      .order("created_at");
+    if (loadError) setError(loadError.message);
+    else { setStaff(data || []); setError(""); }
+    setLoading(false);
+  }
+
+  useEffect(() => { loadStaff(); }, [club?.id]);
+
+  async function setRole(coach, role) {
+    if (!selectedTeam?.id || !club?.id) return;
+    setSavingId(coach.id);
+    setError("");
+    const existing = staff.find((row) => row.age_group_id === selectedTeam.id && row.coach_id === coach.id);
+
+    if (!role) {
+      if (existing) {
+        const { error: deleteError } = await supabase.from("team_staff").delete().eq("id", existing.id);
+        if (deleteError) setError(deleteError.message);
+        else setStaff((rows) => rows.filter((row) => row.id !== existing.id));
+      }
+      setSavingId("");
+      return;
+    }
+
+    const payload = {
+      club_id: club.id,
+      age_group_id: selectedTeam.id,
+      coach_id: coach.id,
+      user_id: coach.user_id || null,
+      role,
+      status: "active",
+      updated_at: new Date().toISOString(),
+    };
+
+    if (existing) {
+      const { data, error: updateError } = await supabase
+        .from("team_staff").update(payload).eq("id", existing.id)
+        .select("*, coach:coaches(id,name,email,user_id)").single();
+      if (updateError) setError(updateError.message);
+      else setStaff((rows) => rows.map((row) => row.id === existing.id ? data : row));
+    } else {
+      const { data, error: insertError } = await supabase
+        .from("team_staff").insert(payload)
+        .select("*, coach:coaches(id,name,email,user_id)").single();
+      if (insertError) setError(insertError.message);
+      else setStaff((rows) => [...rows, data]);
+    }
+    setSavingId("");
+  }
+
+  const selectedStaff = staff.filter((row) => row.age_group_id === selectedTeam?.id);
+
+  return (
+    <ClubPage title="Teams" sub="Persistent teams retain their staff as they move age group each season">
+      {error && <div style={{ marginBottom: 12, padding: 11, borderRadius: 10, background: "#fff1f2", color: "#b42318", fontFamily: F.body, fontSize: 11 }}>{error}</div>}
+      <div className="club-teams-layout" style={{ display: "grid", gridTemplateColumns: "minmax(220px,.7fr) minmax(360px,1.5fr)", gap: 15 }}>
+        <ClubCard>
+          <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink, marginBottom: 10 }}>Club teams</div>
+          {(ageGroups || []).map((team) => {
+            const active = selectedTeam?.id === team.id;
+            const count = staff.filter((row) => row.age_group_id === team.id).length;
+            return (
+              <button key={team.id} onClick={() => onSelectTeam(team)} style={{
+                width: "100%", padding: "11px 12px", marginBottom: 6, borderRadius: 11,
+                border: `1px solid ${active ? CLUB_RED : P.line}`,
+                background: active ? CLUB_SOFT : P.white, cursor: "pointer", textAlign: "left",
+                display: "flex", alignItems: "center", gap: 9,
+              }}>
+                <span style={{ color: active ? CLUB_RED : P.muted }}>◆</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontFamily: F.body, fontSize: 12, fontWeight: 900, color: P.ink }}>{team.label} {team.gender === "girls" ? "Girls" : team.gender === "boys" ? "Boys" : ""}</div>
+                  <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted, marginTop: 2 }}>{count} staff assigned</div>
+                </div>
+                {active && <span style={{ color: CLUB_RED, fontWeight: 900 }}>✓</span>}
+              </button>
+            );
+          })}
+        </ClubCard>
+
+        <ClubCard>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 4 }}>
+            <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink }}>
+              {selectedTeam ? `Staff for ${selectedTeam.label}` : "Select a team"}
+            </div>
+            {!loading && selectedTeam && <span style={{ fontFamily: F.body, fontSize: 10, fontWeight: 900, color: CLUB_RED, background: CLUB_SOFT, padding: "5px 8px", borderRadius: 999 }}>{selectedStaff.length} assigned</span>}
+          </div>
+          <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginBottom: 14 }}>
+            Lead Coaches can create Coach plans and amend Academy weeks. Coach/Mentors are read-only.
+          </div>
+
+          {!selectedTeam ? (
+            <div style={{ padding: 16, borderRadius: 12, background: P.soft, color: P.muted, fontFamily: F.body, fontSize: 11 }}>Choose a team from the left.</div>
+          ) : loading ? (
+            <div style={{ padding: 16, color: P.muted, fontFamily: F.body, fontSize: 11 }}>Loading team access…</div>
+          ) : (
+            (coaches || []).map((coach) => {
+              const assignment = selectedStaff.find((row) => row.coach_id === coach.id);
+              return (
+                <div key={coach.id} className="club-staff-row" style={{
+                  display: "grid", gridTemplateColumns: "minmax(160px,1fr) minmax(180px,.8fr)",
+                  gap: 12, alignItems: "center", padding: "11px 0", borderTop: `1px solid ${P.line}`,
+                }}>
+                  <div>
+                    <div style={{ fontFamily: F.body, fontSize: 12, fontWeight: 900, color: P.ink }}>{coach.name}</div>
+                    <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted, marginTop: 2 }}>{coach.email || "No login email"}</div>
+                  </div>
+                  <select value={assignment?.role || ""} disabled={savingId === coach.id} onChange={(e) => setRole(coach, e.target.value)} style={{
+                    width: "100%", padding: "9px 10px", borderRadius: 9, border: `1px solid ${P.line}`,
+                    background: P.white, fontFamily: F.body, fontSize: 11,
+                  }}>
+                    <option value="">No access</option>
+                    {roles.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}
+                  </select>
+                </div>
+              );
+            })
+          )}
+        </ClubCard>
+      </div>
+      <style>{`
+        @media(max-width:900px){.club-teams-layout{grid-template-columns:1fr!important}}
+        @media(max-width:560px){.club-staff-row{grid-template-columns:1fr!important}}
+      `}</style>
+    </ClubPage>
+  );
+}
+
+function ClubMembersScreen({ club, ageGroups, coaches, selectedTeam, onReloadCoaches }) {
+  const [name, setName] = useState("");
+  const [emailValue, setEmailValue] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+
+  async function addCoach() {
+    if (!name.trim() || !club?.id) return;
+    setSaving(true);
+    const { error } = await supabase.from("coaches").insert({
+      club_id: club.id,
+      name: name.trim(),
+      email: emailValue.trim() || null,
+      age_group_id: selectedTeam?.id || null,
+      role: "coach",
+    });
+    setMessage(error ? error.message : "Coach added.");
+    if (!error) {
+      setName(""); setEmailValue("");
+      await onReloadCoaches?.();
+    }
+    setSaving(false);
+  }
+
+  return (
+    <ClubPage title="Members" sub="Manage coaches now; player and parent records will use the same club directory">
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(280px,.8fr) minmax(360px,1.3fr)", gap: 15 }} className="club-members-layout">
+        <ClubCard>
+          <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink, marginBottom: 12 }}>Add coach</div>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Coach name" style={{ width: "100%", boxSizing: "border-box", padding: 10, borderRadius: 9, border: `1px solid ${P.line}`, marginBottom: 8 }} />
+          <input value={emailValue} onChange={(e) => setEmailValue(e.target.value)} placeholder="Login email" type="email" style={{ width: "100%", boxSizing: "border-box", padding: 10, borderRadius: 9, border: `1px solid ${P.line}`, marginBottom: 8 }} />
+          <div style={{ padding: 10, borderRadius: 9, background: CLUB_SOFT, fontFamily: F.body, fontSize: 10, color: P.muted, marginBottom: 10 }}>
+            New coaches can be assigned to Lead Coach or Coach/Mentor under Teams.
+          </div>
+          <Btn label={saving ? "Adding…" : "Add Coach"} onClick={addCoach} style={{ background: CLUB_RED }} />
+          {message && <div style={{ fontFamily: F.body, fontSize: 10, color: message === "Coach added." ? "#16803c" : "#b42318", marginTop: 9 }}>{message}</div>}
+        </ClubCard>
+
+        <ClubCard>
+          <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink, marginBottom: 10 }}>Club coaches</div>
+          {(coaches || []).length === 0 ? (
+            <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted }}>No coaches added yet.</div>
+          ) : (coaches || []).map((coach) => (
+            <div key={coach.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderTop: `1px solid ${P.line}` }}>
+              <div style={{ width: 34, height: 34, borderRadius: "50%", background: CLUB_SOFT, color: CLUB_RED, display: "grid", placeItems: "center", fontFamily: F.display, fontWeight: 900 }}>{coach.name?.[0] || "?"}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: F.body, fontSize: 12, fontWeight: 900, color: P.ink }}>{coach.name}</div>
+                <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted }}>{coach.email || "No login email"}</div>
+              </div>
+              <span style={{ fontFamily: F.body, fontSize: 9, fontWeight: 900, color: CLUB_RED, background: CLUB_SOFT, borderRadius: 999, padding: "5px 8px" }}>Coach</span>
+            </div>
+          ))}
+        </ClubCard>
+      </div>
+      <style>{`@media(max-width:820px){.club-members-layout{grid-template-columns:1fr!important}}`}</style>
+    </ClubPage>
+  );
+}
+
 function ClubPermissionsScreen({ club, userRole }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -3237,7 +3634,7 @@ function CupStatCard({ label, value, sub, icon, color = CUP_ORANGE }) {
   );
 }
 
-function CupModuleScreen({ screen, onNav, contextTeam, canEditSchedule = false }) {
+function CupModuleScreen({ screen, onNav, contextTeam, canEditSchedule = false, canManageAllEvents = false }) {
   const DEFAULT_CONFIG={startTime:"10:00",targetFinish:"15:00",matchDurationMins:20,turnaroundMins:5,lunchMinutes:30,presentationMinutes:15,groupCount:2,pitches:[{id:"p1",name:"Pitch 1"},{id:"p2",name:"Pitch 2"},{id:"p3",name:"Pitch 3"}],placements:[{id:"cup",label:"Cup",enabled:true,rank:1},{id:"shield",label:"Shield",enabled:true,rank:2},{id:"plate",label:"Plate",enabled:false,rank:3},{id:"bowl",label:"Bowl",enabled:false,rank:4}],stages:[]};
   const DEFAULT_INFO={
     welcomeMessage:"Teams are to arrive by 9:15 a.m. for registration at Lawless Park, Fingallians. On arrival, register your team then proceed to the club ball wall for a team photo. Opening procession at 9:30 a.m., first throw-in at 10:00 a.m., with a target finish of 3:00 p.m.",
@@ -3261,88 +3658,299 @@ function CupModuleScreen({ screen, onNav, contextTeam, canEditSchedule = false }
     try{await cupWriteSection(eventId,section,value);setSaveState("saved")}
     catch(error){console.error(`Cup ${section} save failed`,error);setSaveState("error");throw error}
   };
+  const contextTeamId=contextTeam?.id||"";
+  const rawContextTeamLabel=contextTeam?.label||contextTeam?.name||"";
+  const contextGender=String(contextTeam?.gender||"").toLowerCase();
+  const genderLabel=contextGender==="girls"?"Girls":contextGender==="boys"?"Boys":"";
+  const contextTeamLabel=rawContextTeamLabel && genderLabel && !new RegExp(`\\b${genderLabel}$`,"i").test(rawContextTeamLabel)
+    ? `${rawContextTeamLabel} ${genderLabel}`
+    : rawContextTeamLabel;
+
+  const scopeEvents=(list)=>{
+    const all=Array.isArray(list)?list:[];
+    if(!contextTeamId) return canManageAllEvents ? all : [];
+    if(canManageAllEvents) return all.filter((e)=>!e.ownerTeamId || e.ownerTeamId===contextTeamId);
+    return all.filter((e)=>e.ownerTeamId===contextTeamId);
+  };
+
   const loadEvent=async(id)=>{
-    if(!id){setLoading(false);return}
+    if(!id){setEvent(null);setLoading(false);return}
     setLoading(true);
     try {
       const es=await cupRead(CUP_EVENTS_KEY,[]);
-      setEvents(es);
-      setEvent(es.find(e=>e.id===id)||{id,name:CUP_EVENT.name,date:CUP_EVENT.date,venue:CUP_EVENT.venue,status:"draft"});
+      const scoped=scopeEvents(es);
+      setEvents(scoped);
+      const selected=scoped.find(e=>e.id===id)||null;
+      if(!selected){
+        setEvent(null);
+        setEventId("");
+        setLoading(false);
+        onNav("cup-events");
+        return;
+      }
+      setEvent(selected);
       const vals=await Promise.all([["clubs",CUP_DEFAULT_CLUBS],["teams",CUP_DEFAULT_TEAMS],["matches",[]],["config",DEFAULT_CONFIG],["refereeAccess",[]],["announcements",[]],["eventInfo",DEFAULT_INFO],["sponsors",[]],["foodMenu",[]],["orders",[]],["lunchWindows",[]]].map(([k,f])=>cupReadSection(id,k,f)));
       setClubs(vals[0]?.length?vals[0]:CUP_DEFAULT_CLUBS);setTeams(vals[1]?.length?vals[1]:CUP_DEFAULT_TEAMS);setMatches(vals[2]||[]);setConfig({...DEFAULT_CONFIG,...(vals[3]||{})});setRefs(vals[4]||[]);setAnnouncements(vals[5]||[]);setInfo({...DEFAULT_INFO,...(vals[6]||{})});setSponsors(vals[7]||[]);setFood(vals[8]||[]);setOrders(vals[9]||[]);setLunchWindows(vals[10]||[]);
     } catch (error) {
       console.error("Cup event load failed",error);
-      setEvent({id,name:CUP_EVENT.name,date:CUP_EVENT.date,venue:CUP_EVENT.venue,status:"draft"});
+      setEvent(null);
       setClubs(CUP_DEFAULT_CLUBS);setTeams(CUP_DEFAULT_TEAMS);
     } finally { setLoading(false); }
   };
+
+  useEffect(()=>{
+    const handleCupEventSelected = async (evt) => {
+      const id = evt?.detail?.eventId;
+      if(!id) return;
+
+      const es = await cupRead(CUP_EVENTS_KEY,[]);
+      const scoped = scopeEvents(es);
+      const chosen = scoped.find((e)=>e.id===id);
+
+      if(!chosen) return;
+
+      setEvents(scoped);
+      setEventId(id);
+      setEvent(chosen);
+      cupSetActiveEvent(id);
+      await loadEvent(id);
+    };
+
+    window.addEventListener("spraoi-cup-event-selected", handleCupEventSelected);
+    return () => window.removeEventListener("spraoi-cup-event-selected", handleCupEventSelected);
+  }, [contextTeamId]);
+
   useEffect(()=>{(async()=>{
     setLoading(true);
     try {
-      let es=await cupRead(CUP_EVENTS_KEY,[]);
-      if(!es.length){
-        try {
-          const e=await cupCreateEvent({name:CUP_EVENT.name,date:CUP_EVENT.date,venue:CUP_EVENT.venue});
-          es=[e];
-          await Promise.all([cupWriteSection(e.id,"clubs",CUP_DEFAULT_CLUBS),cupWriteSection(e.id,"teams",CUP_DEFAULT_TEAMS)]);
-        } catch(error) {
-          console.error("Cup first-event migration failed",error);
-          const fallbackId=`local-${Date.now()}`;
-          es=[{id:fallbackId,name:CUP_EVENT.name,date:CUP_EVENT.date,venue:CUP_EVENT.venue,status:"draft"}];
-        }
+      if(!contextTeamId){
+        setEvents([]);
+        setEvent(null);
+        setEventId("");
+        setLoading(false);
+        return;
       }
-      setEvents(es);
-      const id=eventId&&es.some(e=>e.id===eventId)?eventId:es[0]?.id;
-      if(!id){setLoading(false);return}
-      setEventId(id);cupSetActiveEvent(id);await loadEvent(id);
+
+      let es=await cupRead(CUP_EVENTS_KEY,[]);
+
+      const scoped=scopeEvents(es);
+      setEvents(scoped);
+
+      /*
+       * If the user has explicitly selected an event, keep that event context
+       * while they move between Dashboard / Teams / Competition / Matchday /
+       * Event Content / Food & Orders.
+       *
+       * openModule() and the Cup team selector clear cupActiveEvent() when the
+       * user deliberately enters Cup fresh or changes team, so a blank active
+       * event still correctly lands on the Event Hub.
+       */
+      const activeId=cupActiveEvent();
+      const activeEvent=scoped.find((e)=>e.id===activeId);
+
+      if(activeEvent){
+        setEventId(activeId);
+        setEvent(activeEvent);
+        setLoading(false);
+        await loadEvent(activeId);
+        return;
+      }
+
+      setEventId("");
+      setEvent(null);
+      setMatches([]);
+      setAnnouncements([]);
+      setSponsors([]);
+      setFood([]);
+      setOrders([]);
+      setLunchWindows([]);
+      setLoading(false);
+      if(screen!=="cup-events") onNav("cup-events");
+      return;
     } catch(error) {
       console.error("Cup initialisation failed",error);
       setLoading(false);
     }
-  })()},[]);
-  const switchEvent=async(id)=>{setEventId(id);cupSetActiveEvent(id);await loadEvent(id);onNav("cup-dashboard")};
-  const createEvent=async()=>{const name=prompt("Event name");if(!name)return;const date=prompt("Event date (YYYY-MM-DD)","")||"";const venue=prompt("Venue","")||"";const e=await cupCreateEvent({name,date,venue,ownerTeamId:contextTeam?.id||"",ownerTeamLabel:contextTeam?.label||contextTeam?.name||""});setEvents(await cupRead(CUP_EVENTS_KEY,[]));await switchEvent(e.id)};
-  const duplicate=async(e)=>{const name=prompt("New event name",`${e.name} Copy`);if(!name)return;const date=prompt("New event date (YYYY-MM-DD)","")||"";const n=await cupDuplicateEvent(e,{name,date,venue:e.venue});setEvents(await cupRead(CUP_EVENTS_KEY,[]));await switchEvent(n.id)};
+  })()},[contextTeamId]);
+
+  const switchEvent=async(id)=>{
+    const chosen=events.find((e)=>e.id===id);
+    if(!chosen)return;
+
+    // Set the context immediately so every Cup screen knows which event is open.
+    setEventId(id);
+    setEvent(chosen);
+    cupSetActiveEvent(id);
+
+    await loadEvent(id);
+    onNav("cup-dashboard");
+  };
+
+  const createEvent=async()=>{
+    if(!contextTeamId){alert("Choose a team before creating a Cup event.");return}
+    const name=prompt("Event name");if(!name)return;
+    const date=prompt("Event date (YYYY-MM-DD)","")||"";
+    const venue=prompt("Venue","")||"";
+    const e=await cupCreateEvent({
+      name,date,venue,
+      ownerTeamId:contextTeamId,
+      ownerTeamLabel:contextTeamLabel
+    });
+    const es=await cupRead(CUP_EVENTS_KEY,[]);
+    setEvents(scopeEvents(es));
+    await switchEvent(e.id);
+  };
+
+  const duplicate=async(e)=>{
+    if(!contextTeamId)return;
+    const name=prompt("New event name",`${e.name} Copy`);if(!name)return;
+    const date=prompt("New event date (YYYY-MM-DD)","")||"";
+    const n=await cupDuplicateEvent(e,{
+      name,date,venue:e.venue,
+      ownerTeamId:contextTeamId,
+      ownerTeamLabel:contextTeamLabel
+    });
+    const es=await cupRead(CUP_EVENTS_KEY,[]);
+    setEvents(scopeEvents(es));
+    await switchEvent(n.id);
+  };
   const teamById=id=>teams.find(t=>t.id===id)||{name:id||"TBC"}; const finished=matches.filter(m=>m.status==="finished"),live=matches.filter(m=>m.status==="live"),pitches=config.pitches||[];
   const field=(label,child)=><label style={{display:"grid",gap:5,fontFamily:F.body,fontSize:9,fontWeight:800,color:P.muted,textTransform:"uppercase"}}>{label}{child}</label>;
   const setEventStatus=async(status)=>{
     const updated=await cupUpdateEvent(eventId,{status});
     setEvent(updated);
-    setEvents(await cupRead(CUP_EVENTS_KEY,[]));
+    setEvents(scopeEvents(await cupRead(CUP_EVENTS_KEY,[])));
   };
-  const statusLabel=String(event?.status||"draft").toUpperCase();
-  const statusColor=event?.status==="live"?"#c62828":event?.status==="published"?"#2e7d32":event?.status==="completed"?P.muted:CUP_ORANGE;
+  const bannerEvent = event || events.find((e)=>e.id===eventId) || events.find((e)=>e.id===cupActiveEvent()) || null;
+  const statusLabel=String(bannerEvent?.status||"draft").toUpperCase();
+  const statusColor=bannerEvent?.status==="live"?"#c62828":bannerEvent?.status==="published"?"#2e7d32":bannerEvent?.status==="completed"?P.muted:CUP_ORANGE;
+  const eventContextTeamLabel = bannerEvent?.ownerTeamId === contextTeamId
+    ? contextTeamLabel
+    : (bannerEvent?.ownerTeamLabel || contextTeamLabel || "Team not assigned");
   const sectionWrap=(title,sub,children,action)=><div style={{flex:1,overflow:"auto",background:P.soft}}>
-    <CupTopBar title={title} sub={sub}>{action}</CupTopBar>
-    {event && <div style={{margin:"16px 24px 0",padding:"13px 16px",borderRadius:14,background:"linear-gradient(135deg,#FFF3EA,#FFFFFF)",border:`1px solid ${CUP_ORANGE}35`,boxShadow:"0 5px 18px rgba(230,81,0,.06)",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
+    <CupTopBar title={title} sub={bannerEvent && screen!=="cup-events" ? `${bannerEvent.name} · ${eventContextTeamLabel}` : sub}>{action}</CupTopBar>
+    {bannerEvent && screen!=="cup-events" && <div style={{margin:"16px 24px 0",padding:"15px 17px",borderRadius:16,background:"linear-gradient(135deg,#FFF0E5 0%,#FFF8F2 48%,#FFFFFF 100%)",border:`2px solid ${CUP_ORANGE}45`,boxShadow:"0 7px 22px rgba(230,81,0,.09)",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
       <div style={{minWidth:0}}>
         <div style={{display:"flex",alignItems:"center",gap:7,flexWrap:"wrap"}}>
-          <div style={{fontFamily:F.body,fontSize:8,fontWeight:900,color:CUP_ORANGE,textTransform:"uppercase",letterSpacing:".1em"}}>Editing event</div>
+          <div style={{fontFamily:F.body,fontSize:8,fontWeight:900,color:CUP_ORANGE,textTransform:"uppercase",letterSpacing:".12em"}}>Working on this event</div>
           <span style={{fontFamily:F.body,fontSize:8,fontWeight:900,color:statusColor,background:`${statusColor}12`,border:`1px solid ${statusColor}30`,borderRadius:999,padding:"3px 7px"}}>{statusLabel}</span>
           <span style={{fontFamily:F.body,fontSize:8,fontWeight:800,color:saveState==="error"?"#b91c1c":P.muted}}>{saveState==="saving"?"Saving…":saveState==="error"?"Save failed":"✓ Autosaved"}</span>
         </div>
-        <div style={{fontFamily:F.display,fontSize:18,fontWeight:900,color:P.ink,marginTop:3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{event.name}</div>
-        <div style={{fontFamily:F.body,fontSize:9,color:P.muted,marginTop:3}}>{event.date || "Date TBC"}{event.venue ? ` · ${event.venue}` : ""}{(event.ownerTeamLabel||contextTeam?.label||contextTeam?.name)?` · ${event.ownerTeamLabel||contextTeam?.label||contextTeam?.name}`:""}</div>
+        <div style={{fontFamily:F.display,fontSize:18,fontWeight:900,color:P.ink,marginTop:3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{bannerEvent.name}</div>
+        <div style={{fontFamily:F.body,fontSize:9,color:P.muted,marginTop:3}}>{eventContextTeamLabel} · {bannerEvent.date || "Date TBC"}{bannerEvent.venue ? ` · ${bannerEvent.venue}` : ""}</div>
       </div>
       <div style={{display:"flex",alignItems:"center",gap:7,flexWrap:"wrap",justifyContent:"flex-end"}}>
-        {event.status==="draft"&&<CupBtn label="Publish Event" onClick={()=>confirm("Publish this event to the participant app?")&&setEventStatus("published")}/>}
-        {event.status==="published"&&<CupBtn label="Go Live" onClick={()=>confirm("Mark this event LIVE?")&&setEventStatus("live")}/>}
-        {event.status==="live"&&<CupBtn label="Complete Event" onClick={()=>confirm("Complete this event?")&&setEventStatus("completed")}/>}
-        {event.status==="completed"&&<CupBtn label="Reopen" variant="ghost" onClick={()=>setEventStatus("published")}/>}
-        <select value={eventId} onChange={e=>switchEvent(e.target.value)} style={{...inp,width:205,fontWeight:800,borderColor:`${CUP_ORANGE}55`}}>
-          {events.map(ev=><option key={ev.id} value={ev.id}>{ev.name}</option>)}
-        </select>
+        {bannerEvent?.status==="draft"&&<CupBtn label="Publish Event" onClick={()=>confirm("Publish this event to the participant app?")&&setEventStatus("published")}/>}
+        {bannerEvent?.status==="published"&&<CupBtn label="Go Live" onClick={()=>confirm("Mark this event LIVE?")&&setEventStatus("live")}/>}
+        {bannerEvent?.status==="live"&&<CupBtn label="Complete Event" onClick={()=>confirm("Complete this event?")&&setEventStatus("completed")}/>}
+        {bannerEvent?.status==="completed"&&<CupBtn label="Reopen" variant="ghost" onClick={()=>setEventStatus("published")}/>}
+        <button onClick={()=>onNav("cup-events")} style={{height:36,padding:"0 14px",borderRadius:10,border:`1.5px solid ${CUP_ORANGE}55`,background:"#fff",color:CUP_ORANGE,fontFamily:F.body,fontSize:11,fontWeight:900,cursor:"pointer"}}>Change Event</button>
       </div>
     </div>}
     <div style={{padding:24}}>{children}</div>
   </div>;
   if(loading)return sectionWrap("Cup","Loading tournament data…",<div style={{color:P.muted}}>Loading…</div>);
   if(screen==="cup-matchday")return sectionWrap("Matchday","Scores and referee access in one place",<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}><CupCard style={{padding:18}}><div style={{fontFamily:F.display,fontSize:18,fontWeight:900}}>Results & Scoring</div><div style={{fontFamily:F.body,fontSize:10,color:P.muted,lineHeight:1.6,margin:"6px 0 14px"}}>Lead coaches can enter or correct any match score and status.</div><CupBtn label="Open Results" onClick={()=>onNav("cup-results")}/></CupCard><CupCard style={{padding:18}}><div style={{fontFamily:F.display,fontSize:18,fontWeight:900}}>Referee Access</div><div style={{fontFamily:F.body,fontSize:10,color:P.muted,lineHeight:1.6,margin:"6px 0 14px"}}>Create pitch-only referee links, codes and reset access.</div><CupBtn label="Manage Referees" onClick={()=>onNav("cup-referees")}/></CupCard></div>);
+  if(screen==="cup-events")return sectionWrap(
+    "Cup Events",
+    `${contextTeamLabel||"Selected team"} · choose an event before making changes`,
+    <div style={{display:"grid",gap:16}}>
+      <CupCard style={{padding:22,background:"linear-gradient(135deg,#FFF3EA 0%,#FFFFFF 72%)",border:`1px solid ${CUP_ORANGE}45`}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:18,flexWrap:"wrap"}}>
+          <div style={{maxWidth:650}}>
+            <div style={{fontFamily:F.body,fontSize:9,fontWeight:900,color:CUP_ORANGE,textTransform:"uppercase",letterSpacing:".12em"}}>Event Hub</div>
+            <div style={{fontFamily:F.display,fontSize:24,fontWeight:900,color:P.ink,marginTop:4}}>Which event are you working on?</div>
+            <div style={{fontFamily:F.body,fontSize:10.5,color:P.muted,lineHeight:1.65,marginTop:7}}>
+              Select an existing Cup event below or create a new one. The full tournament workspace only opens after you choose an event, so there is no risk of editing the wrong event by mistake.
+            </div>
+            <div style={{fontFamily:F.body,fontSize:9,fontWeight:800,color:P.ink,marginTop:10}}>
+              Team context: <span style={{color:CUP_ORANGE}}>{contextTeamLabel||"No team selected"}</span>
+            </div>
+          </div>
+          <CupBtn label="+ Create New Event" onClick={createEvent}/>
+        </div>
+      </CupCard>
+
+      {!events.length ? (
+        <CupCard style={{padding:30,textAlign:"center",border:`1px dashed ${CUP_ORANGE}66`,background:"#FFF8F2"}}>
+          <div style={{fontFamily:F.display,fontSize:20,fontWeight:900,color:P.ink}}>No Cup events for {contextTeamLabel||"this team"}</div>
+          <div style={{fontFamily:F.body,fontSize:10,color:P.muted,lineHeight:1.6,margin:"7px auto 15px",maxWidth:500}}>
+            Create the first event for this team. Once created, its Dashboard, Teams, Competition, Matchday, Event Content and Food & Orders workspace will become available.
+          </div>
+          <CupBtn label="+ Create Event" onClick={createEvent}/>
+        </CupCard>
+      ) : (
+        <>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
+            <div>
+              <div style={{fontFamily:F.display,fontSize:18,fontWeight:900,color:P.ink}}>Existing events</div>
+              <div style={{fontFamily:F.body,fontSize:9,color:P.muted,marginTop:3}}>{events.length} event{events.length===1?"":"s"} available for {contextTeamLabel||"this team"}</div>
+            </div>
+          </div>
+
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(310px,1fr))",gap:14}}>
+            {events.map(e=>{
+              const ownerLabel = e.ownerTeamId===contextTeamId ? contextTeamLabel : (e.ownerTeamLabel||contextTeamLabel||"Unassigned team");
+              const status = String(e.status||"draft").toUpperCase();
+              const color = e.status==="live"?"#c62828":e.status==="published"?"#2e7d32":e.status==="completed"?P.muted:CUP_ORANGE;
+              return <CupCard key={e.id} style={{padding:18,borderTop:`4px solid ${color}`}}>
+                <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"flex-start"}}>
+                  <div style={{minWidth:0}}>
+                    <div style={{display:"flex",gap:7,alignItems:"center",flexWrap:"wrap"}}>
+                      <span style={{fontFamily:F.body,fontSize:8,fontWeight:900,color,background:`${color}12`,border:`1px solid ${color}30`,borderRadius:999,padding:"3px 7px"}}>{status}</span>
+                      <span style={{fontFamily:F.body,fontSize:8,fontWeight:900,color:CUP_ORANGE,background:"#FFF1E8",borderRadius:999,padding:"3px 7px"}}>{ownerLabel}</span>
+                    </div>
+                    <div style={{fontFamily:F.display,fontSize:19,fontWeight:900,color:P.ink,marginTop:9,lineHeight:1.15}}>{e.name}</div>
+                    <div style={{fontFamily:F.body,fontSize:10,color:P.muted,marginTop:6,lineHeight:1.5}}>
+                      {e.date||"Date TBC"}{e.venue?` · ${e.venue}`:" · Venue TBC"}
+                    </div>
+                  </div>
+                  <div style={{width:48,height:48,borderRadius:15,background:"#FFF1E8",display:"grid",placeItems:"center",fontSize:22}}>🏆</div>
+                </div>
+
+                <div style={{display:"flex",gap:7,marginTop:16,flexWrap:"wrap"}}>
+                  <CupBtn label="Open Event" onClick={()=>switchEvent(e.id)}/>
+                  <CupBtn label="Duplicate" variant="ghost" onClick={()=>duplicate(e)}/>
+                  {e.status!=="completed"&&<CupBtn label="Complete" variant="ghost" onClick={async()=>{await cupUpdateEvent(e.id,{status:"completed"});setEvents(scopeEvents(await cupRead(CUP_EVENTS_KEY,[])))}}/>}
+                </div>
+              </CupCard>
+            })}
+          </div>
+        </>
+      )}
+    </div>,
+    <CupBtn label="+ Create Event" onClick={createEvent}/>
+  );
+
+  const storedCupEventId = cupActiveEvent();
+  const selectedEventForRender =
+    event ||
+    events.find((e)=>e.id===eventId) ||
+    events.find((e)=>e.id===storedCupEventId) ||
+    null;
+
+  if(screen!=="cup-events" && !selectedEventForRender){
+    return sectionWrap(
+      "Select an Event",
+      `${contextTeamLabel||"Selected team"} · no Cup event is currently open`,
+      <CupCard style={{padding:30,textAlign:"center",maxWidth:720,margin:"30px auto",border:`1px solid ${CUP_ORANGE}45`,background:"#FFF8F2"}}>
+        <div style={{fontSize:34}}>🏆</div>
+        <div style={{fontFamily:F.display,fontSize:22,fontWeight:900,color:P.ink,marginTop:10}}>Choose an event before editing Cup</div>
+        <div style={{fontFamily:F.body,fontSize:10.5,color:P.muted,lineHeight:1.65,margin:"8px auto 16px",maxWidth:520}}>
+          Dashboard, Teams, Competition, Matchday, Event Content and Food & Orders all belong to a specific event. Go to the Event Hub and choose the event you want to work on first.
+        </div>
+        <CupBtn label="Go to Event Hub" onClick={()=>onNav("cup-events")}/>
+      </CupCard>
+    );
+  }
+
+
   if(screen==="cup-content"){
     const infoItems=[
       ["Welcome",info.welcomeMessage],["Arrival & Registration",info.arrivalRegistration],["Facilities",info.facilities],
       ["Parking & Directions",info.parking],["Pitch / Venue Information",info.venueInfo],["Food & Drink",info.foodAndDrink],
-      ["Health & Safety / Medical",info.healthAndSafety],["Playing Rules",info.playingRules],["Contacts",info.contacts],["Other",info.other]
+      ["Health & Safety / Medical",info.healthAndSafety],["Playing Rules",info.playingRules],["Contacts",info.contacts],["Other",info.other],
+      ...(Array.isArray(info.customSections)?info.customSections.map((section)=>[section.heading||"Additional Information",section.content]):[])
     ].filter(([,v])=>String(v||"").trim());
     return sectionWrap("Event Content","See what participants will receive without opening each editor",<>
       <div style={{display:"grid",gridTemplateColumns:"1.25fr 1fr 1fr",gap:14}}>
@@ -3365,7 +3973,7 @@ function CupModuleScreen({ screen, onNav, contextTeam, canEditSchedule = false }
       </CupCard>
     </>);
   }
-  if(screen==="cup-events")return sectionWrap("Events","Create, duplicate, edit and retain your tournament history",<div style={{display:"grid",gap:14}}><CupCard style={{padding:16}}><div style={{fontFamily:F.display,fontSize:17,fontWeight:900,marginBottom:10}}>Current event details</div><div style={{display:"grid",gridTemplateColumns:"1.3fr .8fr 1fr",gap:10}}>{field("Event name",<input value={event?.name||""} onChange={e=>setEvent({...event,name:e.target.value})} onBlur={async()=>{const n=await cupUpdateEvent(eventId,{name:event.name});setEvent(n);setEvents(await cupRead(CUP_EVENTS_KEY,[]))}} style={inp}/>)}{field("Date",<input type="date" value={event?.date||""} onChange={e=>setEvent({...event,date:e.target.value})} onBlur={async()=>{const n=await cupUpdateEvent(eventId,{date:event.date});setEvent(n);setEvents(await cupRead(CUP_EVENTS_KEY,[]))}} style={inp}/>)}{field("Venue",<input value={event?.venue||""} onChange={e=>setEvent({...event,venue:e.target.value})} onBlur={async()=>{const n=await cupUpdateEvent(eventId,{venue:event.venue});setEvent(n);setEvents(await cupRead(CUP_EVENTS_KEY,[]))}} style={inp}/>)}</div></CupCard><div style={{display:"grid",gap:12}}>{events.map(e=><CupCard key={e.id} style={{padding:16,borderLeft:e.id===eventId?`4px solid ${CUP_ORANGE}`:undefined}}><div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center"}}><div><div style={{fontFamily:F.display,fontSize:17,fontWeight:900}}>{e.name}</div><div style={{fontSize:10,color:P.muted,marginTop:4}}>{e.date} · {e.venue} · {e.status}</div></div><div style={{display:"flex",gap:7}}><CupBtn label="Open" variant="ghost" onClick={()=>switchEvent(e.id)}/><CupBtn label="Duplicate" variant="ghost" onClick={()=>duplicate(e)}/>{e.id===eventId&&e.status!=="completed"&&<CupBtn label="Complete" onClick={async()=>{await cupUpdateEvent(e.id,{status:"completed"});await loadEvent(e.id)}}/>}</div></div></CupCard>)}</div></div>,<CupBtn label="+ Create Event" onClick={createEvent}/>);
+  
   if(screen==="cup-teams"){
     const grades=["A","B","C","D"];
     const toggleGrade=async(club,grade,enabled)=>{
@@ -3525,18 +4133,227 @@ function CupModuleScreen({ screen, onNav, contextTeam, canEditSchedule = false }
       </div></div>}
     </div>,<CupBtn label="+ Create Announcement" onClick={createDraft}/>);
   }
-  if(screen==="cup-information")return sectionWrap("Event Information","Every populated section is mirrored in the participant app",<div style={{display:"grid",gap:10,maxWidth:900}}>{[
-    ["welcomeMessage","Welcome"],
-    ["arrivalRegistration","Arrival & Registration"],
-    ["facilities","Facilities"],
-    ["parking","Parking & Directions"],
-    ["venueInfo","Pitch / Venue Information"],
-    ["foodAndDrink","Food & Drink"],
-    ["healthAndSafety","Health & Safety / Medical"],
-    ["playingRules","Playing Rules"],
-    ["contacts","Contacts / Communications"],
-    ["other","Other Information"]
-  ].map(([k,l])=><CupCard key={k} style={{padding:14}}>{field(l,<textarea rows={k==="welcomeMessage"?4:3} value={info[k]||""} onChange={e=>save("eventInfo",{...info,[k]:e.target.value},setInfo)} style={inp}/>)}</CupCard>)}</div>);
+if(screen==="cup-information"){
+  const customSections = Array.isArray(info.customSections)
+    ? info.customSections
+    : [];
+
+  const addCustomSection = async () => {
+    const next = [
+      ...customSections,
+      {
+        id: uid("info"),
+        heading: "New section",
+        content: ""
+      }
+    ];
+
+    await save(
+      "eventInfo",
+      { ...info, customSections: next },
+      setInfo
+    );
+  };
+
+  const updateCustomSection = async (id, patch) => {
+    const next = customSections.map((section) =>
+      section.id === id ? { ...section, ...patch } : section
+    );
+
+    await save(
+      "eventInfo",
+      { ...info, customSections: next },
+      setInfo
+    );
+  };
+
+  const removeCustomSection = async (id) => {
+    if (!confirm("Remove this section?")) return;
+
+    const next = customSections.filter((section) => section.id !== id);
+
+    await save(
+      "eventInfo",
+      { ...info, customSections: next },
+      setInfo
+    );
+  };
+
+  const moveCustomSection = async (index, direction) => {
+    const target = index + direction;
+    if (target < 0 || target >= customSections.length) return;
+
+    const next = [...customSections];
+    [next[index], next[target]] = [next[target], next[index]];
+
+    await save(
+      "eventInfo",
+      { ...info, customSections: next },
+      setInfo
+    );
+  };
+
+  return sectionWrap(
+    "Event Information",
+    "Every populated section is mirrored in the participant app",
+    <div style={{ display:"grid", gap:10, maxWidth:900 }}>
+
+      {[
+        ["welcomeMessage","Welcome"],
+        ["arrivalRegistration","Arrival & Registration"],
+        ["facilities","Facilities"],
+        ["parking","Parking & Directions"],
+        ["venueInfo","Pitch / Venue Information"],
+        ["foodAndDrink","Food & Drink"],
+        ["healthAndSafety","Health & Safety / Medical"],
+        ["playingRules","Playing Rules"],
+        ["contacts","Contacts / Communications"],
+        ["other","Other Information"]
+      ].map(([k,l]) => (
+        <CupCard key={k} style={{ padding:14 }}>
+          {field(
+            l,
+            <textarea
+              rows={k==="welcomeMessage" ? 4 : 3}
+              value={info[k] || ""}
+              onChange={(e) =>
+                save(
+                  "eventInfo",
+                  { ...info, [k]:e.target.value },
+                  setInfo
+                )
+              }
+              style={inp}
+            />
+          )}
+        </CupCard>
+      ))}
+
+      <div
+        style={{
+          display:"flex",
+          alignItems:"center",
+          justifyContent:"space-between",
+          gap:10,
+          marginTop:8
+        }}
+      >
+        <div>
+          <div
+            style={{
+              fontFamily:F.display,
+              fontSize:17,
+              fontWeight:900
+            }}
+          >
+            Custom sections
+          </div>
+
+          <div
+            style={{
+              fontFamily:F.body,
+              fontSize:9,
+              color:P.muted,
+              marginTop:3
+            }}
+          >
+            Add any extra heading and information needed for this event.
+          </div>
+        </div>
+
+        <CupBtn
+          label="+ Add Section"
+          onClick={addCustomSection}
+        />
+      </div>
+
+      {customSections.map((section,index) => (
+        <CupCard
+          key={section.id}
+          style={{
+            padding:14,
+            borderLeft:`4px solid ${CUP_ORANGE}`
+          }}
+        >
+          <div
+            style={{
+              display:"grid",
+              gridTemplateColumns:"1fr auto",
+              gap:8,
+              alignItems:"start"
+            }}
+          >
+            <div>
+              {field(
+                "Heading",
+                <input
+                  value={section.heading || ""}
+                  onChange={(e) =>
+                    updateCustomSection(
+                      section.id,
+                      { heading:e.target.value }
+                    )
+                  }
+                  style={{
+                    ...inp,
+                    fontWeight:900,
+                    textTransform:"none"
+                  }}
+                />
+              )}
+
+              <div style={{ marginTop:8 }}>
+                {field(
+                  "Content",
+                  <textarea
+                    rows={4}
+                    value={section.content || ""}
+                    onChange={(e) =>
+                      updateCustomSection(
+                        section.id,
+                        { content:e.target.value }
+                      )
+                    }
+                    style={{
+                      ...inp,
+                      textTransform:"none"
+                    }}
+                  />
+                )}
+              </div>
+            </div>
+
+            <div
+              style={{
+                display:"flex",
+                gap:5,
+                flexDirection:"column"
+              }}
+            >
+              <CupBtn
+                label="↑"
+                variant="ghost"
+                onClick={() => moveCustomSection(index,-1)}
+              />
+
+              <CupBtn
+                label="↓"
+                variant="ghost"
+                onClick={() => moveCustomSection(index,1)}
+              />
+
+              <CupBtn
+                label="Delete"
+                variant="ghost"
+                onClick={() => removeCustomSection(section.id)}
+              />
+            </div>
+          </div>
+        </CupCard>
+      ))}
+    </div>
+  );
+}
   if(screen==="cup-sponsors"){
     const editing=sponsors.find(s=>s.id===editingSponsorId);
     const updateSponsor=(id,patch)=>save("sponsors",sponsors.map(s=>s.id===id?{...s,...patch}:s),setSponsors);
@@ -3556,7 +4373,7 @@ function CupModuleScreen({ screen, onNav, contextTeam, canEditSchedule = false }
   }
   if(screen==="cup-food") {const pc=teams.reduce((n,t)=>n+(t.playerCount||0),0),mc=teams.reduce((n,t)=>n+(t.mentorCount||0),0);return sectionWrap("Food & Orders","Optional menu, team codes, advance orders and voucher planning",<div style={{display:"grid",gridTemplateColumns:"1.2fr .8fr",gap:14}}><CupCard style={{padding:16}}><b style={{fontFamily:F.display}}>Menu</b>{food.map((f,i)=><div key={f.id} style={{display:"grid",gridTemplateColumns:"1fr 90px 100px 100px",gap:7,alignItems:"center",marginTop:8}}><input value={f.name} onChange={e=>save("foodMenu",food.map((x,j)=>j===i?{...x,name:e.target.value}:x),setFood)} style={inp}/><input type="number" step=".5" placeholder="Optional €" value={f.price??""} onChange={e=>save("foodMenu",food.map((x,j)=>j===i?{...x,price:e.target.value===""?null:+e.target.value}:x),setFood)} style={inp}/><label style={{fontSize:9}}><input type="checkbox" checked={!!f.freeForPlayers} onChange={e=>save("foodMenu",food.map((x,j)=>j===i?{...x,freeForPlayers:e.target.checked}:x),setFood)}/> Free/player</label><label style={{fontSize:9}}><input type="checkbox" checked={!!f.freeForMentors} onChange={e=>save("foodMenu",food.map((x,j)=>j===i?{...x,freeForMentors:e.target.checked}:x),setFood)}/> Free/mentor</label></div>)}<div style={{marginTop:10}}><CupBtn label="+ Food item" variant="ghost" onClick={()=>save("foodMenu",[...food,{id:uid("food"),name:"New item",price:null,active:true,freeForPlayers:false,freeForMentors:false}],setFood)}/></div></CupCard><CupCard style={{padding:16}}><b style={{fontFamily:F.display}}>Voucher planning</b><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:10}}><CupStatCard label="Players" value={pc}/><CupStatCard label="Mentors" value={mc} color={P.green}/></div></CupCard><CupCard style={{padding:16,gridColumn:"1 / -1"}}><b style={{fontFamily:F.display}}>Advance orders · {orders.length}</b>{orders.map(o=>{const t=teams.find(x=>x.id===o.teamId);const lw=lunchWindows.find(w=>(w.clubIds||w.clubs||[]).includes(t?.clubId));return <div key={o.id} style={{fontSize:10,padding:"9px 0",borderTop:`1px solid ${P.line}`}}><b>{teamById(o.teamId).name}</b> · {o.contactName}{o.mobile?` · ${o.mobile}`:""}{Number(o.total||0)>0?` · €${Number(o.total||0).toFixed(2)}`:""}<div style={{fontSize:8.5,color:P.muted,marginTop:3}}>Collection: {lw?`${lw.from}–${lw.to}`:"Lunch time TBC"} · {(o.items||[]).map(x=>`${x.qty} × ${x.name}`).join(", ")}</div></div>})}</CupCard></div>)}
   if(screen==="cup-participant-view") {const url=`${import.meta.env.VITE_CUP_PARTICIPANT_URL||"http://localhost:5178"}/?event=${encodeURIComponent(eventId)}${event?.status==="draft"?"&preview=1":""}`;return sectionWrap("Participant View","Mobile event-day experience for parents, players and team mentors",<CupCard style={{padding:18}}><div style={{fontFamily:"monospace",fontSize:10,background:P.soft,padding:10,borderRadius:9,wordBreak:"break-all"}}>{url}</div><div style={{marginTop:12}}><CupBtn label="Open Participant App" onClick={()=>window.open(url,"_blank")}/></div></CupCard>)}
-  if(screen==="cup-settings")return sectionWrap("Settings","Current event details",<CupCard style={{padding:18,maxWidth:760}}><div style={{display:"grid",gap:10}}>{field("Event name",<input value={event?.name||""} onChange={e=>setEvent({...event,name:e.target.value})} onBlur={async()=>{const n=await cupUpdateEvent(eventId,{name:event.name});setEvent(n);setEvents(await cupRead(CUP_EVENTS_KEY,[]))}} style={inp}/>)}{field("Date",<input type="date" value={event?.date||""} onChange={e=>setEvent({...event,date:e.target.value})} onBlur={async()=>{const n=await cupUpdateEvent(eventId,{date:event.date});setEvent(n);setEvents(await cupRead(CUP_EVENTS_KEY,[]))}} style={inp}/>)}{field("Venue",<input value={event?.venue||""} onChange={e=>setEvent({...event,venue:e.target.value})} onBlur={async()=>{const n=await cupUpdateEvent(eventId,{venue:event.venue});setEvent(n);setEvents(await cupRead(CUP_EVENTS_KEY,[]))}} style={inp}/>)}</div></CupCard>);
+  if(screen==="cup-settings")return sectionWrap("Settings","Current event details",<CupCard style={{padding:18,maxWidth:760}}><div style={{display:"grid",gap:10}}>{field("Event name",<input value={event?.name||""} onChange={e=>setEvent({...event,name:e.target.value})} onBlur={async()=>{const n=await cupUpdateEvent(eventId,{name:event.name});setEvent(n);setEvents(scopeEvents(await cupRead(CUP_EVENTS_KEY,[])))}} style={inp}/>)}{field("Date",<input type="date" value={event?.date||""} onChange={e=>setEvent({...event,date:e.target.value})} onBlur={async()=>{const n=await cupUpdateEvent(eventId,{date:event.date});setEvent(n);setEvents(scopeEvents(await cupRead(CUP_EVENTS_KEY,[])))}} style={inp}/>)}{field("Venue",<input value={event?.venue||""} onChange={e=>setEvent({...event,venue:e.target.value})} onBlur={async()=>{const n=await cupUpdateEvent(eventId,{venue:event.venue});setEvent(n);setEvents(scopeEvents(await cupRead(CUP_EVENTS_KEY,[])))}} style={inp}/>)}</div></CupCard>);
   const upcoming=matches.filter(m=>m.status!=="finished").slice(0,6);return sectionWrap("Dashboard",`${event?.name||"Cup"} · ${event?.date||""}`,<><div className="cup-dashboard-stats" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:20}}><CupStatCard label="Clubs" value={clubs.length} sub={`${teams.length} competition teams`} icon="🏑"/><CupStatCard label="Fixtures" value={matches.length} sub={`${finished.length} finished · ${live.length} live`} color="#fb8c00" icon="📅"/><CupStatCard label="Pitches" value={pitches.length} sub={pitches.map(p=>p.name).join(" · ")} color="#29b6f6" icon="📍"/><CupStatCard label="Event Status" value={event?.status||"draft"} sub={`${announcements.length} announcements · ${sponsors.filter(s=>s.active!==false).length} sponsors`} color="#43a047" icon="✓"/></div><div className="cup-dashboard-main" style={{display:"grid",gridTemplateColumns:"1.3fr .8fr",gap:20}}><CupCard style={{padding:18}}><div style={{fontFamily:F.display,fontSize:17,fontWeight:900}}>Upcoming fixtures</div>{upcoming.length?upcoming.map((m,i)=><div key={m.id} style={{display:"grid",gridTemplateColumns:"65px 85px 1fr",gap:9,padding:"10px 0",borderTop:i?`1px solid ${P.line}`:"none",fontSize:10}}><b>{m.time}</b><span>{m.pitch}</span><span>{teamById(m.teamA).name} v {teamById(m.teamB).name}</span></div>):<div style={{padding:14,color:P.muted}}>No fixtures generated yet.</div>}</CupCard><CupCard style={{padding:18}}><div style={{fontFamily:F.display,fontSize:17,fontWeight:900}}>Event setup</div>{[["Venue",event?.venue],["Start",config.startTime],["Target finish",config.targetFinish],["Pitches",pitches.length]].map(([l,v])=><div key={l} style={{display:"flex",justifyContent:"space-between",padding:"9px 0",borderTop:`1px solid ${P.line}`,fontSize:10}}><span style={{color:P.muted}}>{l}</span><b>{v||"—"}</b></div>)}</CupCard></div></>,<CupBtn label="+ New Event" onClick={createEvent}/>);
 }
 
@@ -3582,8 +4399,8 @@ export default function App() {
   }, []);
 
   // App state
-  const [screen, setScreen] = useState("cup-dashboard");
-  const [activeModule, setActiveModule] = useState("cup");
+  const [screen, setScreen] = useState("coach-dashboard");
+  const [activeModule, setActiveModule] = useState("coach");
 
   useEffect(() => {
     const prefix = String(screen || "").split("-")[0];
@@ -4015,18 +4832,36 @@ export default function App() {
       <div style={{ minHeight: "100vh", background: P.navy, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F.body, padding: 16 }}>
         <div style={{ maxWidth: 380, width: "100%" }}>
           <div style={{ textAlign: "center", marginBottom: 28 }}>
-            <div aria-label="Spraoi Sports" style={{ marginBottom: 12 }}>
-              <div style={{ fontFamily: F.display, fontSize: 34, fontWeight: 1000, letterSpacing: "-0.05em", color: "#fff", lineHeight: 1 }}>SPRAOI</div>
-              <div style={{ fontFamily: F.body, fontSize: 11, fontWeight: 900, letterSpacing: "0.28em", color: "rgba(255,255,255,.72)", marginTop: 7 }}>SPORTS</div>
-            </div>
-            <div style={{ fontFamily: F.body, fontSize: 12, color: "rgba(255,255,255,.5)", marginTop: 4 }}>Coach Platform</div>
-          </div>
+          <img
+  src="/spraoi-logo-white.png"
+  alt="Spraoi Sports"
+  style={{
+    width: 180,
+    maxWidth: "80%",
+    height: "auto",
+    objectFit: "contain",
+    marginBottom: 12
+  }}
+/>
+<div
+  style={{
+    fontFamily: F.body,
+    fontSize: 12,
+    fontWeight: 700,
+    color: "rgba(255,255,255,.72)",
+    marginTop: 10,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase"
+  }}
+>
+  Your club. One platform.
+</div>          </div>
           <div style={{ background: P.white, borderRadius: 18, padding: 28, boxShadow: Sh.lift }}>
             <div style={{ fontFamily: F.display, fontSize: 17, fontWeight: 800, color: P.ink, marginBottom: 16 }}>Sign In</div>
             <label style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>Email</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="coach@email.com" style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 13, marginTop: 4, marginBottom: 12, background: P.soft }} />
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="coach@email.com" style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 13, marginTop: 4, marginBottom: 12, background: P.soft, boxSizing: "border-box" }} />
             <label style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>Password</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" onKeyDown={(e) => e.key === "Enter" && login()} style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 13, marginTop: 4, marginBottom: 16, background: P.soft }} />
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" onKeyDown={(e) => e.key === "Enter" && login()} style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 13, marginTop: 4, marginBottom: 16, background: P.soft, boxSizing: "border-box" }} />
             {authError && <div style={{ color: P.coral, fontSize: 12, fontWeight: 700, marginBottom: 12, textAlign: "center" }}>{authError}</div>}
             <button onClick={login} disabled={loggingIn || !email || !password} style={{ width: "100%", padding: 14, borderRadius: 12, border: "none", fontFamily: F.display, fontSize: 14, fontWeight: 800, background: P.p600, color: "#fff", cursor: "pointer", boxShadow: "0 4px 14px rgba(142,36,170,.3)" }}>
               {loggingIn ? "Signing in..." : "Sign In"}
@@ -4158,11 +4993,14 @@ export default function App() {
       {screen === "coach-players" && <PlayersScreen club={club} ageGroups={ageGroups} selectedTeam={selectedTeam} />}
 
       {/* CLUB screens */}
+      {screen === "club-dashboard" && <ClubDashboardScreen club={club} ageGroups={ageGroups} coaches={coaches} selectedTeam={selectedTeam} onNav={setScreen} />}
+      {screen === "club-teams" && <ClubTeamsScreen club={club} ageGroups={ageGroups} coaches={coaches} selectedTeam={selectedTeam} onSelectTeam={selectTeam} />}
+      {screen === "club-members" && <ClubMembersScreen club={club} ageGroups={ageGroups} coaches={coaches} selectedTeam={selectedTeam} onReloadCoaches={() => loadCoaches(club?.id)} />}
       {screen === "club-permissions" && <ClubPermissionsScreen club={club} userRole={userRole} />}
-      {screen.startsWith("club-") && screen !== "club-permissions" && <ModulePlaceholder module={MODULES.club} screen={screen} club={club} />}
+      {screen.startsWith("club-") && !["club-dashboard","club-teams","club-members","club-permissions"].includes(screen) && <ModulePlaceholder module={MODULES.club} screen={screen} club={club} />}
 
       {/* CUP screens */}
-      {screen.startsWith("cup-") && <CupModuleScreen screen={screen} onNav={setScreen} contextTeam={selectedTeam} canEditSchedule={permissions.isLeadCoach || permissions.isClubAdmin} />}
+      {screen.startsWith("cup-") && <CupModuleScreen screen={screen} onNav={setScreen} contextTeam={selectedTeam} canEditSchedule={permissions.isLeadCoach || permissions.isClubAdmin} canManageAllEvents={permissions.isClubAdmin} />}
 
       {/* CONNECT screens */}
       {screen.startsWith("connect-") && <ModulePlaceholder module={MODULES.connect} screen={screen} club={club} />}

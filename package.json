@@ -14,10 +14,11 @@
     "clean": "turbo run clean && rimraf node_modules",
     "dev:coach": "npm --workspace apps/coach run dev",
     "dev:club": "npm --workspace apps/club run dev",
-    "dev:admin": "npm --workspace apps/coach run dev",
+    "dev:admin": "npm --workspace apps/admin run dev",
     "dev:academy-child": "npm --workspace apps/academy-child run dev",
     "dev:cup": "npm --workspace apps/cup run dev",
-    "dev:plus": "npm --workspace apps/plus run dev"
+    "dev:plus": "npm --workspace apps/plus run dev",
+    "build:admin": "npm --workspace apps/admin run build"
   },
   "devDependencies": {
     "turbo": "^2.5.5",
