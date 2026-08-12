@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "./supabaseClient";
 import { CheckCircle, Circle, Trophy, Flame, Target, Zap, Home, Award, BookOpen, LogOut, Plus, ChevronDown, ChevronUp, User } from "lucide-react";
 import { registerSW } from "virtual:pwa-register";
@@ -42,100 +42,21 @@ const C = {
   successBg: "#f0fdf4",
 };
 
-const BRAND_LOGO = "/spraoi-logo.png";
+const BRAND_LOGO = "/spraoi-academy-icon.png";
 const APP_ICON = "/spraoi-academy-icon.png";
+
+// Icon-only Academy sections. Mascots intentionally removed.
+const SECTIONS = {
+  missions: { icon: "/spraoi-academy-icon.png", color: C.primary, bg: "#e0f2fe", border: "#bae6fd" },
+  skills: { icon: "/spraoi-academy-icon.png", color: C.primaryDark, bg: "#eff6ff", border: "#bfdbfe" },
+  fitness: { icon: "/speed-mechanics-icon.png", color: C.athletic, bg: C.athleticBg, border: "#fde68a" },
+  recovery: { icon: "/rest-and-recovery-icon.png", color: "#0f766e", bg: "#f0fdfa", border: "#99f6e4" },
+  events: { icon: "/spraoi-academy-icon.png", color: C.primaryDark, bg: "#e0f2fe", border: "#bae6fd" },
+};
 
 const XP_PER_LEVEL = 100;
 function getLevel(xp) { return Math.floor((xp || 0) / XP_PER_LEVEL) + 1; }
 function xpInLevel(xp) { return (xp || 0) % XP_PER_LEVEL; }
-
-/* Mascot system   each mascot demonstrates different skills */
-const MASCOTS = [
-  { name: "Bella", img: "/mascots/bella/bella-standing.png", sport: "football", tagline: "Together we play. Together we win!", color: "#005BBB" },
-  { name: "Finn", img: "/mascots/finn/finn-standing.png", sport: "hurling", tagline: "Together we play. Learn. Grow.", color: "#F58220" },
-  { name: "Hazel", img: "/mascots/hazel/hazel-running.png", sport: "athletic", tagline: "Be brave. Be fast. Be you!", color: "#E53935" },
-  { name: "Otis", img: "/mascots/otis/otis-standing.png", sport: "hurling", tagline: "Play hard. Have fun. Never give up!", color: "#1E63B6" },
-  { name: "Rory", img: "/mascots/rory/rory-standing.png", sport: "hurling", tagline: "Strong together. Better every day.", color: "#4CAF50" },
-  { name: "Shelly", img: "/mascots/shelly/shelly-standing.png", sport: "football", tagline: "Kind heart. Strong mind. Together we grow.", color: "#7B3FA1" },
-];
-const RORY_POSES = {
-  standing: "/mascots/rory/rory-standing.png",
-  running: "/mascots/rory/rory-running.png",
-  runningWithBall: "/mascots/rory/rory-running-with-ball.png",
-  runningWithHurley: "/mascots/rory/rory-running-with-hurley.png",
-  kicking: "/mascots/rory/rory-kicking.png",
-  passing: "/mascots/rory/rory-passing.png",
-  lift: "/mascots/rory/rory-lift.png",
-};
-const OTIS_POSES = {
-  standing: "/mascots/otis/otis-standing.png",
-  running: "/mascots/otis/otis-running.png",
-  runningWithBall: "/mascots/otis/otis-running-with-ball.png",
-  runningWithHurley: "/mascots/otis/otis-running-with-hurley.png",
-  kicking: "/mascots/otis/otis-kicking.png",
-  passing: "/mascots/otis/otis-passing.png",
-  lift: "/mascots/otis/otis-lift.png",
-  ready: "/mascots/otis/otis-ready-position.png",
-};
-const FINN_POSES = {
-  standing: "/mascots/finn/finn-standing.png",
-  running: "/mascots/finn/finn-running.png",
-  runningWithBall: "/mascots/finn/finn-running-with-ball.png",
-  kicking: "/mascots/finn/finn-kicking.png",
-  lift: "/mascots/finn/finn-lift.png",
-  striking: "/mascots/finn/finn-striking.png",
-  ready: "/mascots/finn/finn-ready-position.png",
-  carrying: "/mascots/finn/finn-carrying-the-sliotar.png",
-};
-const HAZEL_POSES = {
-  running: "/mascots/hazel/hazel-running.png",
-  runningWithBall: "/mascots/hazel/hazel-running-with-ball.png",
-  runningWithHurley: "/mascots/hazel/hazel-running-with-hurl.png",
-  kicking: "/mascots/hazel/hazel-kicking.png",
-  lift: "/mascots/hazel/hazel-lift.png",
-  striking: "/mascots/hazel/hazel-striking.png",
-  carrying: "/mascots/hazel/hazel-carrying-the-sliotar.png",
-};
-const SHELLY_POSES = {
-  standing: "/mascots/shelly/shelly-standing.png",
-  running: "/mascots/shelly/shelly-running.png",
-  runningWithBall: "/mascots/shelly/shelly-running-with-the-ball.png",
-  kicking: "/mascots/shelly/shelly-kicking.png",
-  passing: "/mascots/shelly/shelly-passing.png",
-  lift: "/mascots/shelly/shelly-lift.png",
-  striking: "/mascots/shelly/shelly-striking.png",
-  ready: "/mascots/shelly/shelly-ready-position.png",
-  carrying: "/mascots/shelly/shelly-carrying-the-sliotar.png",
-};
-const BELLA_POSES = {
-  standing: "/mascots/bella/bella-standing.png",
-  running: "/mascots/bella/bella-running.png",
-  runningWithBall: "/mascots/bella/bella-running-with-ball.png",
-  runningWithHurley: "/mascots/bella/bella-running-with-hurley.png",
-  kicking: "/mascots/bella/bella-kicking.png",
-  passing: "/mascots/bella/bella-passing.png",
-  lift: "/mascots/bella/bella-lift.png",
-  striking: "/mascots/bella/bella-striking.png",
-  ready: "/mascots/bella/bella-ready-positon.png",
-};
-
-/* Section colour system   split-complementary from sky blue */
-const SECTIONS = {
-  skills: { color: "#F58220", bg: "#fff8f0", border: "#F5822033", mascot: "finn", label: "Skills" },
-  fitness: { color: "#E53935", bg: "#fef2f2", border: "#E5393533", mascot: "hazel", label: "Fitness" },
-  recovery: { color: "#7B3FA1", bg: "#f5f0fa", border: "#7B3FA133", mascot: "shelly", label: "Recovery" },
-  events: { color: "#2E7D32", bg: "#f0f9f1", border: "#2E7D3233", mascot: "rory", label: "Events" },
-  missions: { color: "#0277bd", bg: "#f0f7fc", border: "#0277bd33", mascot: "otis", label: "Missions" },
-};
-function getMascotImg(name, pose) {
-  const poses = { finn: FINN_POSES, hazel: HAZEL_POSES, shelly: SHELLY_POSES, rory: RORY_POSES, otis: OTIS_POSES, bella: BELLA_POSES };
-  return poses[name]?.[pose] || poses[name]?.standing || RORY_POSES.standing;
-}
-function getMascotForSport(sport) {
-  const matches = MASCOTS.filter((m) => m.sport === sport);
-  return matches[Math.floor(Math.random() * matches.length)] || MASCOTS[0];
-}
-function getRandomMascot() { return MASCOTS[Math.floor(Math.random() * MASCOTS.length)]; }
 
 /* Recovery stretches   weekly rotation */
 const RECOVERY_STRETCHES = [
@@ -148,6 +69,30 @@ const RECOVERY_STRETCHES = [
   { title: "Child's Pose", how: "Kneel on the floor, sit back on your heels and stretch your arms out in front while lowering your chest.", stretches: "Back, shoulders and hips" },
   { title: "Shoulder & Chest Stretch", how: "Clasp your hands behind your back, straighten your arms and gently lift them while opening your chest.", stretches: "Chest and shoulders" },
 ];
+
+const ACADEMY_QUOTES = {
+  young: [
+    "Small steps every day make a big difference.",
+    "Be brave, be kind, and keep trying.",
+    "A great teammate helps everyone enjoy the game.",
+    "You do not have to be perfect — just keep practising.",
+  ],
+  older: [
+    "Progress comes from showing up, practising and helping your teammates.",
+    "Focus on what you can control: your effort, attitude and teamwork.",
+    "Confidence grows when you practise the things that challenge you.",
+    "The best teams improve together, not just individually.",
+  ],
+};
+
+function academyQuoteFor(player, weeklyPlan) {
+  const label = String(player?.age_group?.label || player?.age_group_label || "");
+  const match = label.match(/U(\d+)/i);
+  const age = match ? Number(match[1]) : 10;
+  const pool = age <= 9 ? ACADEMY_QUOTES.young : ACADEMY_QUOTES.older;
+  const week = Number(weeklyPlan?.week_number || 1);
+  return pool[(week - 1) % pool.length];
+}
 
 /* ============================================================
    COACH EXERCISE MANAGER   set fitness tasks for a team
@@ -403,7 +348,9 @@ export default function App() {
   const [availablePlayers, setAvailablePlayers] = useState([]);
   const [loadingPlayers, setLoadingPlayers] = useState(true);
   const [showChildSwitch, setShowChildSwitch] = useState(false);
-  const isAdminUrl = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("admin") === "true";
+  const urlParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : new URLSearchParams();
+  const isAdminUrl = urlParams.get("admin") === "true";
+  const inviteTeamId = urlParams.get("team") || "";
   const [userRole, setUserRole] = useState(isAdminUrl ? { role: "super_admin" } : null); // coach/admin role if any
   const [coachTeams, setCoachTeams] = useState([]); // teams this coach manages
   const [coachSelectedTeam, setCoachSelectedTeam] = useState(null);
@@ -415,7 +362,6 @@ export default function App() {
   const [allSkills, setAllSkills] = useState([]); // full skill library for Learn tab
   const [allChallenges, setAllChallenges] = useState([]); // all challenges
   const [learnFilter, setLearnFilter] = useState("all"); // all | hurling | football
-  const dailyMascotRef = useRef(MASCOTS[Math.floor(Math.random() * MASCOTS.length)]); // picked once per session
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session: s } }) => {
@@ -432,9 +378,16 @@ export default function App() {
     setClub(clubData);
     if (clubData) { const { data: ag } = await supabase.from("age_groups").select("*").eq("club_id", clubData.id).order("label"); setAgeGroups(ag || []); if (isAdminUrl) setCoachTeams(ag || []); }
     // Check if user is a coach/admin
-    const { data: roleData, error: roleErr } = await supabase.from("user_roles").select("*").eq("user_id", userId).limit(1).single();
+    // user_roles has existed with different identity column names across platform builds.
+    // Do not query a column that may not exist; load rows and match the available identity field.
+    const { data: roleRows, error: roleErr } = await supabase.from("user_roles").select("*");
     if (roleErr) console.log("Role query error:", roleErr.message);
-    if (roleData && (roleData.role === "super_admin" || roleData.role === "club_admin" || roleData.role === "coach")) {
+    const roleData = (roleRows || []).find((row) =>
+      [row.user_id, row.auth_user_id, row.profile_id, row.id]
+        .filter(Boolean)
+        .some((value) => String(value) === String(userId))
+    ) || null;
+    if (roleData && (roleData.role === "super_admin" || roleData.role === "club_admin" || roleData.role === "coach" || roleData.role === "lead_coach" || roleData.role === "coach_mentor")) {
       setUserRole(roleData);
       // Load teams this coach is assigned to
       const { data: assignments } = await supabase.from("coach_assignments").select("age_group_id").eq("user_id", userId);
@@ -472,11 +425,47 @@ export default function App() {
         const plan = plans && plans.length > 0 ? plans[0] : null;
         setWeeklyPlan(plan);
         if (plan) {
+          // First preference: explicitly saved homework challenge IDs on the weekly plan.
           const hw = [];
           if (plan.hurling_challenge_id) { const { data: ch } = await supabase.from("challenges").select("*").eq("id", plan.hurling_challenge_id).single(); if (ch) hw.push({ ...ch, type: "hurling" }); }
           if (plan.football_challenge_id) { const { data: ch } = await supabase.from("challenges").select("*").eq("id", plan.football_challenge_id).single(); if (ch) hw.push({ ...ch, type: "football" }); }
           if (plan.athletic_challenge_id) { const { data: ch } = await supabase.from("challenges").select("*").eq("id", plan.athletic_challenge_id).single(); if (ch) hw.push({ ...ch, type: "athletic" }); }
+
+          // Academy Admin saves the selected Coach-plan skill under the code keys
+          // `football` and `hurling` in academy_video_overrides. Resolve those exact
+          // skills here so the child app follows the Admin choice rather than a generic fallback.
+          const academySelections = plan.academy_video_overrides || {};
+          const selectedSkillPairs = [
+            ["football", academySelections.football],
+            ["hurling", academySelections.hurling],
+          ].filter(([, id]) => Boolean(id));
+          let selectedSkills = [];
+          if (selectedSkillPairs.length) {
+            const selectedIds = [...new Set(selectedSkillPairs.map(([, id]) => id))];
+            const { data: chosenSkills } = await supabase.from("skills").select("*").in("id", selectedIds);
+            const byId = Object.fromEntries((chosenSkills || []).map((skill) => [skill.id, skill]));
+            selectedSkills = selectedSkillPairs.map(([type, id]) => byId[id] ? { ...byId[id], academyType: type } : null).filter(Boolean);
+          }
+
+          // If no challenge was explicitly saved, resolve the child challenge attached
+          // to each selected Academy skill. This is the agreed:
+          // Skill -> Coach Activity/Drill -> Child Challenge/Homework model.
+          if (hw.length === 0 && selectedSkills.length) {
+            const selectedIds = selectedSkills.map((skill) => skill.id);
+            const { data: linkedChallenges } = await supabase.from("challenges").select("*").in("skill_id", selectedIds);
+            selectedSkills.forEach((skill) => {
+              const challenge = (linkedChallenges || []).find((item) => item.skill_id === skill.id);
+              if (challenge) hw.push({ ...challenge, type: skill.academyType });
+            });
+          }
           setHomework(hw);
+
+          const assignedSkillIds = [...new Set(hw.map((ch)=>ch.skill_id).filter(Boolean))];
+          let assignedSkills = [];
+          if (assignedSkillIds.length) {
+            const { data: linkedSkills } = await supabase.from("skills").select("*").in("id", assignedSkillIds);
+            assignedSkills = linkedSkills || [];
+          }
           const { data: bonus } = await supabase.from("bonus_tasks").select("*").eq("plan_id", plan.id); setBonusTasks(bonus || []);
           // Load training drills from coach's sessions for this plan
           const { data: sessions } = await supabase.from("sessions").select("id, notes, session_date, session_activities(*, activity:activities(id, title, description, coaching_points, setup, equipment, sport, category, difficulty, duration_mins, skill_id, skill:skills!activities_skill_id_fkey(id, name, sport, category, video_url)))").eq("plan_id", plan.id);
@@ -498,10 +487,13 @@ export default function App() {
             const { data: ch } = await supabase.from("challenges").select("*").in("skill_id", skillIds);
             matchedChallenges = ch || [];
           }
-          setWeekSkills(Object.values(skillMap));
-          setSkillChallenges(matchedChallenges);
-          // If no skills from coach drills, load fallback from library (1 hurling + 1 football with videos)
-          if (skillIds.length === 0) {
+          // Exact Academy selections win, followed by explicitly assigned challenge skills.
+          // Coach-session skills are only the fallback when Academy has not selected a skill.
+          const selectedSkillList = selectedSkills.map(({ academyType, ...skill }) => skill);
+          setWeekSkills(selectedSkillList.length ? selectedSkillList : assignedSkills.length ? assignedSkills : Object.values(skillMap));
+          setSkillChallenges(hw.length ? hw : matchedChallenges);
+          // Only use a library fallback when there is genuinely no Academy selection and no Coach drill skill.
+          if (selectedSkillList.length === 0 && assignedSkills.length === 0 && skillIds.length === 0) {
             const { data: fallbackSkills } = await supabase.from("skills").select("*").not("video_url", "is", null).order("name");
             const fb = [];
             const hurling = (fallbackSkills || []).find((s) => s.sport === "hurling");
@@ -546,10 +538,19 @@ export default function App() {
   }
   async function completeBonus(task) {
     if (!selectedPlayer || !weeklyPlan) return;
-    if (progress.find((p) => p.bonus_task_id === task.id) && !task.repeatable) return;
+    const existing = progress.find((p) => p.bonus_task_id === task.id);
+    if (existing && !task.repeatable) {
+      setProgress((prev) => prev.filter((p) => p.id !== existing.id));
+      await addXp(-(existing.xp_earned || task.xp_reward || 15));
+      if (!String(existing.id).startsWith("local-")) {
+        await supabase.from("player_progress").delete().eq("id", existing.id);
+      }
+      return;
+    }
     const xp = task.xp_reward || 15;
     const { data } = await supabase.from("player_progress").insert({ player_id: selectedPlayer.id, club_id: selectedPlayer.club_id, age_group_id: selectedPlayer.age_group_id, bonus_task_id: task.id, plan_id: weeklyPlan.id, xp_earned: xp }).select().single();
     if (data) { setProgress((prev) => [...prev, data]); await addXp(xp); flashXp(); }
+    else { setProgress((prev) => [...prev, { id: "local-" + Date.now(), bonus_task_id: task.id, xp_earned: xp }]); await addXp(xp); flashXp(); }
   }
   async function completeExercise(exercise) {
     if (!selectedPlayer) return;
@@ -734,8 +735,9 @@ export default function App() {
     async function loadAvailable() {
       if (!club) return;
       const { data } = await supabase.from("journey_players").select("*, age_group:age_groups(label)").eq("club_id", club.id).order("name");
-      const mine = (data || []).filter((p) => p.parent_user_id === session.user.id);
-      const unclaimed = (data || []).filter((p) => p.parent_user_id === "00000000-0000-0000-0000-000000000000");
+      const scoped = inviteTeamId ? (data || []).filter((p) => p.age_group_id === inviteTeamId) : (data || []);
+      const mine = scoped.filter((p) => p.parent_user_id === session.user.id);
+      const unclaimed = scoped.filter((p) => p.parent_user_id === "00000000-0000-0000-0000-000000000000");
       setAvailablePlayers([...mine, ...unclaimed]); setPlayers(mine);
       if (mine.length > 0) selectPlayer(mine[0]);
       setLoadingPlayers(false);
@@ -777,7 +779,6 @@ export default function App() {
     if (screen !== "coach") setScreen("coach");
   }
   function MissionCard({ challenge, done, onComplete, sportColor, sportBg, sportLabel }) {
-    const mascot = getMascotForSport(sportLabel);
     // Category icon mapping
     const iconMap = { hurling: "/hurling-icon.png", camogie: "/hurling-icon.png", football: "/football-icon.png", athletic: "/speed-mechanics-icon.png" };
     const catIcon = iconMap[sportLabel] || "/football-icon.png";
@@ -785,8 +786,6 @@ export default function App() {
       <div style={{ background: sportBg, border: `2px solid ${done ? C.success : sportColor}33`, borderRadius: 16, padding: 16, marginBottom: 12, position: "relative", overflow: "hidden" }}>
         {/* Category icon watermark */}
         <img src={catIcon} alt="" style={{ position: "absolute", right: 8, top: 8, width: 40, height: 40, objectFit: "contain", opacity: 0.2, pointerEvents: "none" }} />
-        {/* Mascot watermark */}
-        <img src={mascot.img} alt={mascot.name} style={{ position: "absolute", right: -10, bottom: -10, width: 80, height: 80, objectFit: "contain", opacity: 0.15, pointerEvents: "none" }} />
         {/* Sport label */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -821,49 +820,43 @@ export default function App() {
   }
 
   function renderMissions() {
-    const tipMascot = dailyMascotRef.current;
-    // Swap hurling?camogie for girls based on age group sport
+    // Swap hurling/camogie for girls based on age group sport
     const isGirlsGroup = selectedPlayer?.age_group_id && ageGroups.find((ag) => ag.id === selectedPlayer.age_group_id)?.gender === "girls";
     function displaySport(sport) {
       if (isGirlsGroup && sport === "hurling") return "camogie";
       return sport;
     }
-
-    // Section mascots   each section gets a different character
-    const skillsMascot = { img: getMascotImg("finn", "striking"), name: "Finn", color: SECTIONS.skills.color };
-    const fitnessMascot = { img: getMascotImg("hazel", "running"), name: "Hazel", color: SECTIONS.fitness.color };
-    const recoveryMascot = { img: getMascotImg("shelly", "standing"), name: "Shelly", color: SECTIONS.recovery.color };
-    const eventsMascot = { img: getMascotImg("rory", "standing"), name: "Rory", color: SECTIONS.events.color };
-
     return (<>
-      {/* Mascot tip */}
-      <div style={{ background: `${tipMascot.color}10`, border: `1.5px solid ${tipMascot.color}33`, borderRadius: 14, padding: "10px 14px", marginBottom: 14, display: "flex", alignItems: "center", gap: 12 }}>
-        <img src={tipMascot.img} alt={tipMascot.name} style={{ width: 44, height: 44, objectFit: "contain" }} />
+      {/* Academy weekly intro */}
+      <div style={{ background: C.surface, border: `1.5px solid ${C.border}`, borderRadius: 14, padding: "10px 14px", marginBottom: 14, display: "flex", alignItems: "center", gap: 12 }}>
+        <img src={APP_ICON} alt="Spraoi Academy" style={{ width: 42, height: 42, objectFit: "contain" }} />
         <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 12, color: tipMascot.color }}>{tipMascot.name} says:</div>
-          <div style={{ fontSize: 11, color: C.text, lineHeight: 1.4, marginTop: 2 }}>"{tipMascot.tagline}"</div>
+          <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 12, color: C.primary }}>This week in Academy</div>
+          <div style={{ fontSize: 12, color: C.textSecondary, lineHeight: 1.45, marginTop: 3, fontStyle: "italic" }}>“{academyQuoteFor(selectedPlayer, weeklyPlan)}”</div>
         </div>
       </div>
 
       {/* This Week's Skills   from coach drills or library fallback */}
       {weekSkills.length > 0 && (
         <div style={{ marginBottom: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-            <img src={skillsMascot.img} alt="" style={{ width: 32, height: 32, objectFit: "contain" }} />
-            <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 15, color: skillsMascot.color, textTransform: "uppercase", flex: 1 }}>Skills to Practise</div>
-            <span style={{ fontSize: 10, color: C.textSecondary, background: C.surfaceAlt, padding: "3px 8px", borderRadius: 6 }}>+XP for watching</span>
-          </div>
+          <div style={{ fontSize: 10, color: C.textSecondary, marginBottom: 10 }}>Your Coach-selected skills for this week.</div>
           {weekSkills.map((skill) => {
             const isHurling = skill.sport === "hurling" || skill.sport === "camogie";
             const sportColor = isHurling ? C.hurling : C.football;
             const sportBg = isHurling ? C.hurlingBg : C.footballBg;
             const catIcon = isHurling ? "/hurling-icon.png" : "/football-icon.png";
-            const mascotPose = isHurling ? RORY_POSES.runningWithHurley : (skill.category?.includes("catch") || skill.name.toLowerCase().includes("catch")) ? OTIS_POSES.runningWithBall : OTIS_POSES.kicking;
             const relatedChallenges = skillChallenges.filter((ch) => ch.skill_id === skill.id);
+            const previousSkills = weekSkills.slice(0, weekSkills.indexOf(skill));
+            const firstOfSport = !previousSkills.some((item) => (item.sport === "hurling" || item.sport === "camogie") === isHurling);
             return (
-              <div key={skill.id} style={{ background: sportBg, border: `2px solid ${sportColor}22`, borderRadius: 16, marginBottom: 12, overflow: "hidden", position: "relative" }}>
-                {/* Mascot */}
-                <img src={mascotPose} alt="" style={{ position: "absolute", right: 6, top: 6, width: 50, height: 50, objectFit: "contain", opacity: 0.15, pointerEvents: "none" }} />
+              <div key={skill.id}>
+                {firstOfSport && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "14px 0 10px" }}>
+                    <img src={catIcon} alt="" style={{ width: 32, height: 32, objectFit: "contain" }} />
+                    <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 15, color: sportColor, textTransform: "uppercase", flex: 1 }}>{isHurling ? (skill.sport === "camogie" ? "Camogie" : "Hurling") : "Football"}</div>
+                  </div>
+                )}
+              <div style={{ background: sportBg, border: `2px solid ${sportColor}22`, borderRadius: 16, marginBottom: 12, overflow: "hidden", position: "relative" }}>
                 {/* Header */}
                 <div style={{ padding: "14px 14px 10px", display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{ width: 38, height: 38, borderRadius: 10, background: sportColor + "18", border: `1.5px solid ${sportColor}33`, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -874,7 +867,7 @@ export default function App() {
                     <div style={{ fontSize: 10, color: C.textSecondary, textTransform: "capitalize" }}>{skill.category?.replace(/_/g, " ") || skill.sport}</div>
                   </div>
                 </div>
-                {/* Video iframe or mascot fallback */}
+                {/* Video iframe or icon fallback */}
                 {skill.video_url ? (
                   <div style={{ padding: "0 14px 8px" }}>
                     <div style={{ borderRadius: 12, overflow: "hidden", border: `1.5px solid ${sportColor}22`, background: "#000" }}>
@@ -884,7 +877,7 @@ export default function App() {
                 ) : (
                   <div style={{ padding: "0 14px 8px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: "rgba(255,255,255,0.7)", borderRadius: 12, border: `1px solid ${sportColor}11` }}>
-                      <img src={mascotPose} alt="" style={{ width: 50, height: 50, objectFit: "contain" }} />
+                      <img src={catIcon} alt="" style={{ width: 42, height: 42, objectFit: "contain" }} />
                       <div style={{ flex: 1 }}>
                         <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 700, fontSize: 12, color: C.text, marginBottom: 3 }}>Practise: {skill.name}</div>
                         <div style={{ fontSize: 10, color: C.textSecondary, lineHeight: 1.4 }}>Ask a parent or friend to help you practise your {skill.name.toLowerCase()}. Try 10 repetitions and focus on good technique!</div>
@@ -934,6 +927,7 @@ export default function App() {
                   </div>
                 )}
               </div>
+              </div>
             );
           })}
         </div>
@@ -943,15 +937,15 @@ export default function App() {
       {fitnessExercises.length > 0 && (
         <div style={{ marginBottom: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-            <img src={fitnessMascot.img} alt="" style={{ width: 32, height: 32, objectFit: "contain" }} />
-            <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 14, color: fitnessMascot.color, textTransform: "uppercase", flex: 1 }}>Fitness</div>
+            <img src={SECTIONS.fitness.icon} alt="" style={{ width: 32, height: 32, objectFit: "contain" }} />
+            <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 14, color: SECTIONS.fitness.color, textTransform: "uppercase", flex: 1 }}>Fitness</div>
             <img src="/speed-mechanics-icon.png" alt="" style={{ width: 20, height: 20, objectFit: "contain", opacity: 0.5 }} />
           </div>
           {fitnessExercises.map((ex) => {
             const done = progress.find((p) => p.exercise_id === ex.id);
             return (
               <div key={ex.id} style={{ background: done ? C.successBg : C.athleticBg, border: `1.5px solid ${done ? C.success + "44" : C.athletic + "33"}`, borderRadius: 12, padding: "10px 14px", marginBottom: 8, display: "flex", alignItems: "center", gap: 10 }}>
-                <button onClick={() => !done && completeExercise(ex)} style={{ background: "none", border: "none", cursor: done ? "default" : "pointer", padding: 0 }}>
+                <button onClick={() => completeExercise(ex)} title={done ? "Mark as not done" : "Mark complete"} style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}>
                   {done ? <CheckCircle size={22} color={C.success} /> : <Circle size={22} color={C.athletic} />}
                 </button>
                 <div style={{ flex: 1 }}>
@@ -965,13 +959,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Missions header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-        <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 16, color: C.text, textTransform: "uppercase" }}>Your Missions</div>
-        {weeklyPlan && <span style={{ background: C.primary, color: "#fff", borderRadius: 20, padding: "4px 10px", fontSize: 11, fontFamily: "'League Spartan', sans-serif", fontWeight: 700 }}>Week {weeklyPlan.week_number}</span>}
-      </div>
-
-      {/* Mission cards */}
+      {/* Selected Football / Hurling homework */}
       {homework.map((ch) => {
         const done = completedChallengeIds.has(ch.id);
         const sport = displaySport(ch.type);
@@ -991,7 +979,7 @@ export default function App() {
           <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 14, color: C.gold }}>+25 XP</div>
           {bonusTasks.map((t) => { const done = completedBonusIds.has(t.id); return (
             <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, padding: "8px 0", borderTop: `1px solid ${C.gold}22` }}>
-              <button onClick={() => !done && completeBonus(t)} style={{ background: "none", border: "none", cursor: done ? "default" : "pointer", padding: 0 }}>{done ? <CheckCircle size={22} color={C.gold} /> : <Circle size={22} color={C.gold + "66"} />}</button>
+              <button onClick={() => completeBonus(t)} title={done ? "Mark as not done" : "Mark complete"} style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}>{done ? <CheckCircle size={22} color={C.gold} /> : <Circle size={22} color={C.gold + "66"} />}</button>
               <div style={{ flex: 1, fontSize: 12, fontWeight: 600, color: done ? C.textSecondary : C.text }}>{t.title}</div>
               <span style={{ fontSize: 11, fontWeight: 700, color: C.gold }}>+{t.xp_reward || 15}</span>
             </div>
@@ -1002,8 +990,8 @@ export default function App() {
       {/* Rest & Recovery */}
       <div style={{ marginBottom: 14 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-          <img src={recoveryMascot.img} alt="" style={{ width: 32, height: 32, objectFit: "contain" }} />
-          <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 14, color: recoveryMascot.color, textTransform: "uppercase", flex: 1 }}>Rest & Recovery</div>
+          <img src={SECTIONS.recovery.icon} alt="" style={{ width: 32, height: 32, objectFit: "contain" }} />
+          <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 14, color: SECTIONS.recovery.color, textTransform: "uppercase", flex: 1 }}>Rest & Recovery</div>
           <img src="/rest-and-recovery-icon.png" alt="" style={{ width: 20, height: 20, objectFit: "contain", opacity: 0.6 }} />
         </div>
         {(() => {
@@ -1012,7 +1000,6 @@ export default function App() {
           const recoveryDone = progress.find((p) => p.bonus_task_id === `recovery-${weekNum}`);
           return (
             <div style={{ background: SECTIONS.recovery.bg, border: `2px solid ${SECTIONS.recovery.border}`, borderRadius: 14, padding: 14, position: "relative", overflow: "hidden" }}>
-              <img src={getMascotImg("shelly", "ready")} alt="" style={{ position: "absolute", right: 4, bottom: -4, width: 50, height: 50, objectFit: "contain", opacity: 0.12, pointerEvents: "none" }} />
               <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 14, color: SECTIONS.recovery.color, marginBottom: 6 }}>{stretch.title}</div>
               <div style={{ fontSize: 10, color: "#166534", fontWeight: 600, marginBottom: 4 }}>Stretches: {stretch.stretches}</div>
               <div style={{ fontSize: 11, color: C.text, lineHeight: 1.5, marginBottom: 10, padding: "8px 10px", background: "rgba(255,255,255,0.7)", borderRadius: 8 }}>
@@ -1024,7 +1011,7 @@ export default function App() {
                   <CheckCircle size={14} /> I Did My Stretches! (+5 XP)
                 </button>
               ) : (
-                <div style={{ textAlign: "center", padding: "8px", fontFamily: "'League Spartan', sans-serif", fontWeight: 700, fontSize: 12, color: "#16a34a" }}>? Recovery done this week</div>
+                <button onClick={() => completeBonus({ id: `recovery-${weekNum}`, xp_reward: 5 })} style={{ width: "100%", padding: "10px", borderRadius: 10, background: C.successBg, border: `1.5px solid ${C.success}44`, textAlign: "center", fontFamily: "'League Spartan', sans-serif", fontWeight: 700, fontSize: 12, color: C.success, cursor: "pointer" }}><CheckCircle size={14} /> Done — tap to undo</button>
               )}
             </div>
           );
@@ -1035,8 +1022,8 @@ export default function App() {
       {events.length > 0 && (
         <div style={{ marginBottom: 14 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-            <img src={eventsMascot.img} alt="" style={{ width: 32, height: 32, objectFit: "contain" }} />
-            <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 14, color: eventsMascot.color, textTransform: "uppercase", flex: 1 }}>Sessions & Events</div>
+            <img src={SECTIONS.events.icon} alt="" style={{ width: 32, height: 32, objectFit: "contain" }} />
+            <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 14, color: SECTIONS.events.color, textTransform: "uppercase", flex: 1 }}>Sessions & Events</div>
           </div>
           {events.map((evt) => {
             const isSignedUp = eventSignups.find((s) => s.event_id === evt.id);
@@ -1088,8 +1075,8 @@ export default function App() {
       {/* Empty state */}
       {!weeklyPlan && homework.length === 0 && (
         <div style={{ background: C.surface, borderRadius: 16, padding: 28, textAlign: "center", border: `1px solid ${C.border}` }}>
-          <img src={getRandomMascot().img} alt="Mascot" style={{ width: 80, height: 80, objectFit: "contain", marginBottom: 10 }} />
-          <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 16, color: C.text, textTransform: "uppercase" }}>No Missions Yet</div>
+          <img src={APP_ICON} alt="Spraoi Academy" style={{ width: 72, height: 72, objectFit: "contain", marginBottom: 10 }} />
+          <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 16, color: C.text, textTransform: "uppercase" }}>Nothing Set Yet</div>
           <p style={{ fontSize: 12, color: C.textSecondary, margin: "6px 0 0" }}>Your coach hasn't set this week's missions. Check back soon!</p>
         </div>
       )}
@@ -1097,9 +1084,9 @@ export default function App() {
       {/* All done */}
       {totalTasks > 0 && doneTasks === totalTasks && (
         <div style={{ background: C.primary, borderRadius: 16, padding: 20, textAlign: "center", color: "#fff", marginTop: 12, boxShadow: "0 8px 24px rgba(26,92,45,0.3)" }}>
-          <img src={getRandomMascot().img} alt="Mascot celebrating" style={{ width: 70, height: 70, objectFit: "contain", marginBottom: 8 }} />
+          <img src={APP_ICON} alt="Spraoi Academy" style={{ width: 62, height: 62, objectFit: "contain", marginBottom: 8 }} />
           <Trophy size={28} style={{ marginBottom: 6 }} />
-          <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 900, fontSize: 18, textTransform: "uppercase" }}>All Missions Complete!</div>
+          <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 900, fontSize: 18, textTransform: "uppercase" }}>All Done for This Week!</div>
           <p style={{ margin: "6px 0 0", fontSize: 12, opacity: 0.9 }}>Great work, {selectedPlayer.name}!</p>
         </div>
       )}
@@ -1363,7 +1350,7 @@ export default function App() {
       {/* Bottom nav */}
       <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, background: "#fff", borderTop: `1px solid ${C.border}`, display: "flex", justifyContent: "center", alignItems: "center", padding: "8px 0 12px", zIndex: 900, boxShadow: "0 -4px 20px rgba(0,0,0,0.08)" }}>
         <div style={{ display: "flex", justifyContent: "space-around", alignItems: "center", width: "100%", maxWidth: 500 }}>
-        {[{ key: "home", icon: Target, label: "Missions", color: SECTIONS.missions.color }, { key: "progress", icon: Award, label: "Me", color: C.gold }, { key: "learn", icon: BookOpen, label: "Learn", color: SECTIONS.skills.color }, { key: "profile", icon: User, label: "Profile", color: C.primary }].map((item) => {
+        {[{ key: "home", icon: Home, label: "Home", color: C.primary }, { key: "progress", icon: Award, label: "Me", color: C.gold }, { key: "learn", icon: BookOpen, label: "Learn", color: SECTIONS.skills.color }, { key: "profile", icon: User, label: "Profile", color: C.primary }].map((item) => {
           const active = screen === item.key;
           return (<button key={item.key} onClick={() => setScreen(item.key)} style={{ flex: 1, border: 0, background: active ? item.color : "transparent", color: active ? "#fff" : C.textSecondary, display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 8px", borderRadius: 12, cursor: "pointer", gap: 2, boxShadow: active ? `0 3px 10px ${item.color}33` : "none", transition: "all .15s" }}><item.icon size={18} /><span style={{ fontSize: 9, fontWeight: active ? 800 : 500 }}>{item.label}</span></button>);
         })}

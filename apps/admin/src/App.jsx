@@ -454,14 +454,16 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
   );
 }
 
-function TopBar({ title, sub, children }) {
+function TopBar({ title, sub, children, moduleKey }) {
   const lower = `${title || ""} ${sub || ""}`.toLowerCase();
-  let key = "coach";
-  if (lower.includes("academy")) key = "academy";
-  else if (lower.includes("cup") || lower.includes("tournament") || lower.includes("fixture")) key = "cup";
-  else if (lower.includes("connect") || lower.includes("message") || lower.includes("audience") || lower.includes("inbox")) key = "connect";
-  else if (lower.includes("club") || lower.includes("permission") || lower.includes("member")) key = "club";
-  else if (lower.includes("plus") || lower.includes("challenge") || lower.includes("leaderboard")) key = "plus";
+  let key = moduleKey || "coach";
+  if (!moduleKey) {
+    if (lower.includes("academy")) key = "academy";
+    else if (lower.includes("cup") || lower.includes("tournament") || lower.includes("fixture")) key = "cup";
+    else if (lower.includes("connect") || lower.includes("message") || lower.includes("audience") || lower.includes("inbox")) key = "connect";
+    else if (lower.includes("club") || lower.includes("permission") || lower.includes("member") || lower.includes("team")) key = "club";
+    else if (lower.includes("plus") || lower.includes("challenge") || lower.includes("leaderboard")) key = "plus";
+  }
   const module = MODULES[key];
   const isConnect = key === "connect";
   const isAcademy = key === "academy";
@@ -3244,14 +3246,15 @@ const inputStyle={width:"100%",height:38,border:`1px solid ${P.line}`,borderRadi
 function AcademyPlayers({ selectedTeam }) { const players=Array.from({length:12},(_,i)=>({id:i,name:["Aoife Murphy","Cian Byrne","Saoirse Kelly","Rory Walsh","Niamh Doyle","Oisín Ryan","Emma Nolan","Darragh Flynn","Lucy Brennan","Conor Murray","Mia O'Brien","Sean Gallagher"][i],xp:420-i*21,streak:(i%5)+1})); return <div style={{flex:1,overflow:"auto",background:P.soft}}><AcademyPageHeader title="Players" sub={`${selectedTeam?.label||"Team"} · Academy profiles and progress`} /><div style={{padding:24,maxWidth:1180,margin:"0 auto"}}><AcademyCard><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:10}}>{players.map(p=><div key={p.id} style={{border:`1px solid ${P.line}`,borderRadius:13,padding:13,display:"flex",alignItems:"center",gap:11}}><div style={{width:40,height:40,borderRadius:"50%",background:ACADEMY_SOFT,color:ACADEMY_BLUE,display:"grid",placeItems:"center",fontWeight:900}}>{p.name[0]}</div><div style={{flex:1}}><div style={{fontFamily:F.body,fontSize:12,fontWeight:900,color:P.ink}}>{p.name}</div><div style={{fontFamily:F.body,fontSize:10,color:P.muted,marginTop:2}}>{p.xp} XP · {p.streak} day streak</div></div><span style={{fontSize:17}}>🔥</span></div>)}</div></AcademyCard></div></div>; }
 
 function AcademyParents({ selectedTeam, parentRows, setParentRows }) {
-  const [teamLink] = useState(()=>`${window.location.origin}/academy/join/${selectedTeam?.id||"club-spraoi"}`);
-  const parseFile = (file) => { const r=new FileReader(); r.onload=()=>{ const lines=String(r.result||"").split(/\r?\n/).filter(Boolean); const headers=lines.shift()?.split(",").map(h=>h.trim().toLowerCase())||[]; const find=(names)=>headers.findIndex(h=>names.includes(h)); const pi=find(["parent name","parent","guardian name"]), ei=find(["parent email","email","guardian email"]), ci=find(["child name","child","player name"]); const rows=lines.map((l,i)=>{const c=l.split(",").map(x=>x.trim());return{id:`upload-${Date.now()}-${i}`,parent:c[pi]||"",email:c[ei]||"",child:c[ci]||"",status:c[ei]&&c[ci]?"Ready":"Needs review",link:`${teamLink}?invite=${i+1}`}}); setParentRows(rows); }; r.readAsText(file); };
-  const copy=(text)=>navigator.clipboard?.writeText(text);
+  const teamLink = `${import.meta.env.VITE_ACADEMY_CHILD_URL || "https://academy.spraoisports.com"}/?team=${encodeURIComponent(selectedTeam?.id || "")}`;
+  const [copyToast,setCopyToast]=useState("");
+  const parseFile = (file) => { const r=new FileReader(); r.onload=()=>{ const lines=String(r.result||"").split(/\r?\n/).filter(Boolean); const headers=lines.shift()?.split(",").map(h=>h.trim().toLowerCase())||[]; const find=(names)=>headers.findIndex(h=>names.includes(h)); const pi=find(["parent name","parent","guardian name"]), ei=find(["parent email","email","guardian email"]), ci=find(["child name","child","player name"]); const rows=lines.map((l,i)=>{const c=l.split(",").map(x=>x.trim());return{id:`upload-${Date.now()}-${i}`,parent:c[pi]||"",email:c[ei]||"",child:c[ci]||"",status:c[ei]&&c[ci]?"Ready":"Needs review",link:`${teamLink}&invite=${i+1}`}}); setParentRows(rows); }; r.readAsText(file); };
+  const copy=async(text)=>{ try{ await navigator.clipboard.writeText(text); setCopyToast("Link copied"); setTimeout(()=>setCopyToast(""),2200); }catch{ setCopyToast("Copy failed — select and copy the link below"); } };
   return <div style={{flex:1,overflow:"auto",background:P.soft}}><AcademyPageHeader title="Parent Access" sub={`${selectedTeam?.label||"Team"} · Upload families and send child-app invitations`} actions={<Btn label="Copy team link" variant="primary" icon="⧉" onClick={()=>copy(teamLink)} style={{background:ACADEMY_BLUE}}/>}/><div style={{padding:24,maxWidth:1180,margin:"0 auto",display:"grid",gap:16}}>
     <AcademyCard><div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:16,alignItems:"center"}}><div><div style={{fontFamily:F.display,fontSize:18,fontWeight:900,color:P.ink}}>Upload parent and child list</div><div style={{fontFamily:F.body,fontSize:11,color:P.muted,marginTop:4}}>CSV columns: Parent Name, Parent Email, Child Name. One parent can appear on multiple rows for multiple children.</div></div><label style={{height:38,padding:"0 14px",borderRadius:10,background:ACADEMY_BLUE,color:"#fff",display:"flex",alignItems:"center",fontFamily:F.body,fontSize:11,fontWeight:900,cursor:"pointer"}}>Upload CSV<input type="file" accept=".csv,text/csv" onChange={(e)=>e.target.files?.[0]&&parseFile(e.target.files[0])} style={{display:"none"}}/></label></div></AcademyCard>
     <AcademyCard><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap"}}><div><div style={{fontFamily:F.display,fontSize:17,fontWeight:900,color:P.ink}}>Invitation review</div><div style={{fontFamily:F.body,fontSize:10,color:P.muted,marginTop:3}}>{parentRows.length} family links prepared</div></div><button onClick={()=>setParentRows(rows=>rows.map(r=>({...r,status:r.email&&r.child?"Sent":r.status})))} style={{height:36,border:0,borderRadius:9,background:parentRows.length?ACADEMY_BLUE:"#cbd5e1",color:"#fff",padding:"0 13px",fontFamily:F.body,fontSize:10,fontWeight:900,cursor:parentRows.length?"pointer":"default"}}>Send all ready invitations</button></div>
     <div style={{overflowX:"auto",marginTop:14}}><table style={{width:"100%",borderCollapse:"collapse",minWidth:720}}><thead><tr>{["Parent","Email","Child","Status","App link"].map(h=><th key={h} style={{textAlign:"left",padding:"9px 8px",borderBottom:`1px solid ${P.line}`,fontFamily:F.body,fontSize:9,color:P.muted,textTransform:"uppercase"}}>{h}</th>)}</tr></thead><tbody>{parentRows.length===0?<tr><td colSpan="5" style={{padding:22,textAlign:"center",fontFamily:F.body,fontSize:11,color:P.muted}}>Upload a CSV to review parent-child links.</td></tr>:parentRows.map(r=><tr key={r.id}><td style={td}>{r.parent}</td><td style={td}>{r.email}</td><td style={td}>{r.child}</td><td style={td}><AcademyBadge color={r.status==="Sent"?"#15803d":r.status==="Ready"?ACADEMY_BLUE:"#b45309"} bg={r.status==="Sent"?"#dcfce7":r.status==="Ready"?ACADEMY_SOFT:"#fff7ed"}>{r.status}</AcademyBadge></td><td style={td}><button onClick={()=>copy(r.link)} style={{border:`1px solid ${P.line}`,background:P.white,borderRadius:8,padding:"6px 9px",fontFamily:F.body,fontSize:9,fontWeight:800,cursor:"pointer"}}>Copy link</button></td></tr>)}</tbody></table></div></AcademyCard>
-  </div></div>;
+  {copyToast&&<div style={{position:"fixed",right:18,bottom:82,zIndex:9000,background:"#16324a",color:"#fff",padding:"10px 13px",borderRadius:10,fontFamily:F.body,fontSize:10,fontWeight:800,boxShadow:Sh.lift}}>✓ {copyToast}</div>}</div></div>;
 }
 const td={padding:"10px 8px",borderBottom:`1px solid ${P.line}`,fontFamily:F.body,fontSize:10,color:P.ink};
 
@@ -3260,6 +3263,13 @@ function AcademyPreview({ planSessions, extras, skills = [], overrides = {}, pub
 
 
 function AcademyEngagement() { return <div style={{flex:1,overflow:"auto",background:P.soft}}><AcademyPageHeader title="Engagement" sub="Completion, activity and invitation health" /><div style={{padding:24,maxWidth:1180,margin:"0 auto",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(210px,1fr))",gap:12}}><MetricCard label="Active children" value="17" detail="of 24 this week" accent={ACADEMY_BLUE} icon="✓"/><MetricCard label="Completion" value="68%" detail="across all missions" accent="#0ea5e9" icon="◒"/><MetricCard label="XP earned" value="4,820" detail="this week" accent="#7c3aed" icon="★"/><MetricCard label="Parent opens" value="83%" detail="invitation and app links" accent="#16a34a" icon="↗"/></div></div>; }
+
+function AcademyLeaderboard({ extras = [] }) {
+  const demo = [
+    {name:"Aoife M.",xp:520,streak:6},{name:"Cian B.",xp:485,streak:5},{name:"Saoirse K.",xp:450,streak:7},{name:"Rory W.",xp:420,streak:4},{name:"Niamh D.",xp:395,streak:3}
+  ];
+  return <div style={{flex:1,overflow:"auto",background:P.soft}}><AcademyPageHeader title="Leaderboard" sub="Weekly Academy progress · privacy-safe player names" /><div style={{padding:24,maxWidth:900,margin:"0 auto"}}><AcademyCard><div style={{display:"grid",gap:8}}>{demo.map((p,i)=><div key={p.name} style={{display:"grid",gridTemplateColumns:"42px 1fr auto auto",gap:10,alignItems:"center",padding:"11px 8px",borderBottom:i===demo.length-1?"none":`1px solid ${P.line}`}}><div style={{width:34,height:34,borderRadius:"50%",background:i<3?ACADEMY_SOFT:P.soft,display:"grid",placeItems:"center",fontFamily:F.display,fontWeight:900,color:ACADEMY_BLUE}}>{i+1}</div><div style={{fontFamily:F.body,fontSize:12,fontWeight:900,color:P.ink}}>{p.name}</div><div style={{fontFamily:F.body,fontSize:10,color:P.muted}}>🔥 {p.streak}</div><div style={{fontFamily:F.display,fontSize:13,fontWeight:900,color:ACADEMY_BLUE}}>{p.xp} XP</div></div>)}</div><div style={{fontFamily:F.body,fontSize:9,color:P.muted,marginTop:12}}>Live player totals will replace these placeholders as Academy progress data is collected.</div></AcademyCard></div></div>;
+}
 
 function AcademySettings({ published }) { return <div style={{flex:1,overflow:"auto",background:P.soft}}><AcademyPageHeader title="Settings" sub="Publishing, XP, privacy and parent access defaults" /><div style={{padding:24,maxWidth:900,margin:"0 auto",display:"grid",gap:12}}>{[["Publishing","Only published weeks are visible in the child app.",published?"Published":"Draft"],["Leaderboard privacy","Use first name plus surname initial by default.","Enabled"],["Default XP","Coach foundations receive 20 XP unless changed.","20 XP"],["Parent claiming","Parents can link multiple children using one account.","Enabled"]].map(x=><AcademyCard key={x[0]}><div style={{display:"flex",justifyContent:"space-between",gap:16,alignItems:"center"}}><div><div style={{fontFamily:F.body,fontSize:12,fontWeight:900,color:P.ink}}>{x[0]}</div><div style={{fontFamily:F.body,fontSize:10,color:P.muted,marginTop:3}}>{x[1]}</div></div><AcademyBadge>{x[2]}</AcademyBadge></div></AcademyCard>)}</div></div>; }
 
@@ -3287,6 +3297,7 @@ function ModulePlaceholder({ module, screen, club }) {
           <div style={{ maxWidth: 650 }}>
             <div style={{ fontFamily: F.body, fontSize: 10, fontWeight: 900, letterSpacing: ".14em", textTransform: "uppercase", opacity: .72, marginBottom: 8 }}>{module.label} module</div>
             <div style={{ fontFamily: F.display, fontSize: 30, fontWeight: 900, lineHeight: 1.05, marginBottom: 8 }}>{screenLabel}</div>
+            {module.label === "Connect" && <div style={{display:"inline-flex",margin:"0 0 10px",padding:"5px 9px",borderRadius:999,background:"rgba(255,255,255,.72)",color:"#5b4600",fontFamily:F.body,fontSize:10,fontWeight:900,textTransform:"uppercase"}}>Coming soon</div>}
             <div style={{ fontFamily: F.body, fontSize: 14, lineHeight: 1.55, opacity: .88 }}>{module.tagline}</div>
           </div>
           <div style={{ width: 120, height: 120, borderRadius: 30, background: "#fff", border: "1px solid rgba(15,23,42,.08)", display: "grid", placeItems: "center", flexShrink: 0, boxShadow: "0 16px 34px rgba(15,23,42,.16)" }}>
@@ -3330,10 +3341,11 @@ function AccessDeniedScreen({ module, club }) {
 /* ============================================================
    MOBILE BOTTOM NAV — shows modules
    ============================================================ */
-function MobileHeader({ activeModule, setActiveModule, onNav, enabledModules, club, selectedTeam }) {
+function MobileHeader({ activeModule, setActiveModule, onNav, enabledModules, club, selectedTeam, ageGroups = [], myTeams = [], onSelectTeam, onShowProfile }) {
   const [open, setOpen] = useState(false);
   const mod = MODULES[activeModule];
   const clubName = club?.name || "Club Spraoi";
+  const mobileTeams = myTeams?.length ? ageGroups.filter((ag)=>myTeams.includes(ag.id)) : ageGroups;
   function openModule(key, module) {
     setActiveModule(key);
     onNav(enabledModules.includes(key) ? module.nav[0].id : `access-denied-${key}`);
@@ -3345,11 +3357,11 @@ function MobileHeader({ activeModule, setActiveModule, onNav, enabledModules, cl
         <button onClick={() => setOpen(true)} style={{ border: "none", background: "rgba(255,255,255,.16)", width: 42, height: 42, borderRadius: 12, display: "grid", placeItems: "center", cursor: "pointer" }}>
           <img src={mod.icon} alt={mod.label} style={{ width: 31, height: 31, objectFit: "contain" }} />
         </button>
-        <div style={{ textAlign: "center" }}>
+        <div style={{ textAlign: "center", minWidth:0, flex:1, padding:"0 8px" }}>
           <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900 }}>{mod.label}</div>
-          <div style={{ fontFamily: F.body, fontSize: 9, opacity: .78 }}>{selectedTeam ? `${selectedTeam.label} ${selectedTeam.gender === "girls" ? "Girls" : "Boys"}` : clubName}</div>
+          {mobileTeams.length > 1 ? <select aria-label="Current team" value={selectedTeam?.id || ""} onChange={(e)=>{const ag=ageGroups.find(a=>String(a.id)===String(e.target.value)); if(ag&&onSelectTeam)onSelectTeam(ag)}} style={{maxWidth:190,width:"100%",marginTop:3,border:"1px solid rgba(255,255,255,.28)",background:"rgba(255,255,255,.14)",color:"#fff",borderRadius:7,padding:"3px 6px",fontFamily:F.body,fontSize:9,fontWeight:800}}>{mobileTeams.map(ag=><option key={ag.id} value={ag.id} style={{color:P.ink}}>{ag.label} {ag.gender === "girls" ? "Girls" : "Boys"}</option>)}</select> : <div style={{ fontFamily: F.body, fontSize: 9, opacity: .78 }}>{selectedTeam ? `${selectedTeam.label} ${selectedTeam.gender === "girls" ? "Girls" : "Boys"}` : clubName}</div>}
         </div>
-        <div style={{ width: 42, height: 42, borderRadius: 12, background: "rgba(255,255,255,.14)", display: "grid", placeItems: "center", fontFamily: F.display, fontWeight: 900 }}>{clubName[0]}</div>
+        <button onClick={onShowProfile} aria-label="Open profile" style={{ width: 42, height: 42, borderRadius: 12, border:"1px solid rgba(255,255,255,.18)", background: "rgba(255,255,255,.14)", color:"#fff", display: "grid", placeItems: "center", fontFamily: F.display, fontWeight: 900, cursor:"pointer" }}>{clubName[0]}</button>
       </div>
       {open && (
         <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(5,18,34,.62)", padding: 16, display: "flex", alignItems: "flex-start", justifyContent: "center" }}>
@@ -3648,14 +3660,14 @@ function CupModuleScreen({ screen, onNav, contextTeam, canEditSchedule = false, 
     contacts:"Add event-day contact details or instructions here. Announcements can also be used for live updates.",
     other:"Updates during the day can be circulated to lead mentors and published as announcements in the participant app. The organising committee may amend the event structure where necessary to keep the day running safely and on time."
   };
-  const [events,setEvents]=useState([]),[eventId,setEventId]=useState(cupActiveEvent()),[event,setEvent]=useState(null),[clubs,setClubs]=useState(CUP_DEFAULT_CLUBS),[teams,setTeams]=useState(CUP_DEFAULT_TEAMS),[matches,setMatches]=useState([]),[config,setConfig]=useState(DEFAULT_CONFIG),[refs,setRefs]=useState([]),[announcements,setAnnouncements]=useState([]),[info,setInfo]=useState(DEFAULT_INFO),[sponsors,setSponsors]=useState([]),[food,setFood]=useState([]),[orders,setOrders]=useState([]),[lunchWindows,setLunchWindows]=useState([]),[loading,setLoading]=useState(true),[saveState,setSaveState]=useState("saved"),[editingAnnouncementId,setEditingAnnouncementId]=useState(null),[editingSponsorId,setEditingSponsorId]=useState(null);
+  const [events,setEvents]=useState([]),[eventId,setEventId]=useState(cupActiveEvent()),[event,setEvent]=useState(null),[clubs,setClubs]=useState(CUP_DEFAULT_CLUBS),[teams,setTeams]=useState(CUP_DEFAULT_TEAMS),[matches,setMatches]=useState([]),[config,setConfig]=useState(DEFAULT_CONFIG),[refs,setRefs]=useState([]),[announcements,setAnnouncements]=useState([]),[info,setInfo]=useState(DEFAULT_INFO),[sponsors,setSponsors]=useState([]),[food,setFood]=useState([]),[orders,setOrders]=useState([]),[lunchWindows,setLunchWindows]=useState([]),[loading,setLoading]=useState(true),[saveState,setSaveState]=useState("saved"),[editingAnnouncementId,setEditingAnnouncementId]=useState(null),[editingSponsorId,setEditingSponsorId]=useState(null),[cupToast,setCupToast]=useState(""),[publishedDirty,setPublishedDirty]=useState(false);
   const inp={border:`1px solid ${P.line}`,borderRadius:9,padding:"8px 9px",fontFamily:F.body,fontSize:11,color:P.ink,background:P.white,width:"100%",boxSizing:"border-box"};
   const uid=(p="x")=>`${p}-${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
   const save=async(section,value,setter)=>{
     setter(value);
     if(!eventId)return;
     setSaveState("saving");
-    try{await cupWriteSection(eventId,section,value);setSaveState("saved")}
+    try{await cupWriteSection(eventId,section,value);setSaveState("saved");if(["published","live"].includes(String(event?.status||"")))setPublishedDirty(true)}
     catch(error){console.error(`Cup ${section} save failed`,error);setSaveState("error");throw error}
   };
   const contextTeamId=contextTeam?.id||"";
@@ -3689,6 +3701,7 @@ function CupModuleScreen({ screen, onNav, contextTeam, canEditSchedule = false, 
         return;
       }
       setEvent(selected);
+      setPublishedDirty(false);
       const vals=await Promise.all([["clubs",CUP_DEFAULT_CLUBS],["teams",CUP_DEFAULT_TEAMS],["matches",[]],["config",DEFAULT_CONFIG],["refereeAccess",[]],["announcements",[]],["eventInfo",DEFAULT_INFO],["sponsors",[]],["foodMenu",[]],["orders",[]],["lunchWindows",[]]].map(([k,f])=>cupReadSection(id,k,f)));
       setClubs(vals[0]?.length?vals[0]:CUP_DEFAULT_CLUBS);setTeams(vals[1]?.length?vals[1]:CUP_DEFAULT_TEAMS);setMatches(vals[2]||[]);setConfig({...DEFAULT_CONFIG,...(vals[3]||{})});setRefs(vals[4]||[]);setAnnouncements(vals[5]||[]);setInfo({...DEFAULT_INFO,...(vals[6]||{})});setSponsors(vals[7]||[]);setFood(vals[8]||[]);setOrders(vals[9]||[]);setLunchWindows(vals[10]||[]);
     } catch (error) {
@@ -3820,6 +3833,9 @@ function CupModuleScreen({ screen, onNav, contextTeam, canEditSchedule = false, 
     const updated=await cupUpdateEvent(eventId,{status});
     setEvent(updated);
     setEvents(scopeEvents(await cupRead(CUP_EVENTS_KEY,[])));
+    setPublishedDirty(false);
+    setCupToast(status === "published" ? "Event published" : `Event status updated to ${status}`);
+    setTimeout(()=>setCupToast(""),2600);
   };
   const bannerEvent = event || events.find((e)=>e.id===eventId) || events.find((e)=>e.id===cupActiveEvent()) || null;
   const statusLabel=String(bannerEvent?.status||"draft").toUpperCase();
@@ -3841,13 +3857,15 @@ function CupModuleScreen({ screen, onNav, contextTeam, canEditSchedule = false, 
       </div>
       <div style={{display:"flex",alignItems:"center",gap:7,flexWrap:"wrap",justifyContent:"flex-end"}}>
         {bannerEvent?.status==="draft"&&<CupBtn label="Publish Event" onClick={()=>confirm("Publish this event to the participant app?")&&setEventStatus("published")}/>}
-        {bannerEvent?.status==="published"&&<CupBtn label="Go Live" onClick={()=>confirm("Mark this event LIVE?")&&setEventStatus("live")}/>}
+        {bannerEvent?.status==="published"&&publishedDirty&&<CupBtn label="Update Published Event" onClick={()=>{if(confirm("Publish these changes to the live participant event?")){setPublishedDirty(false);setCupToast("Event updated successfully");setTimeout(()=>setCupToast(""),2600)}}}/>}
+        {bannerEvent?.status==="published"&&<CupBtn label="Go Live" variant={publishedDirty?"ghost":undefined} onClick={()=>confirm("Mark this event LIVE?")&&setEventStatus("live")}/>}
         {bannerEvent?.status==="live"&&<CupBtn label="Complete Event" onClick={()=>confirm("Complete this event?")&&setEventStatus("completed")}/>}
         {bannerEvent?.status==="completed"&&<CupBtn label="Reopen" variant="ghost" onClick={()=>setEventStatus("published")}/>}
         <button onClick={()=>onNav("cup-events")} style={{height:36,padding:"0 14px",borderRadius:10,border:`1.5px solid ${CUP_ORANGE}55`,background:"#fff",color:CUP_ORANGE,fontFamily:F.body,fontSize:11,fontWeight:900,cursor:"pointer"}}>Change Event</button>
       </div>
     </div>}
     <div style={{padding:24}}>{children}</div>
+    {cupToast&&<div style={{position:"fixed",right:20,bottom:24,zIndex:12000,background:"#16324a",color:"#fff",borderRadius:12,padding:"11px 14px",fontFamily:F.body,fontSize:10,fontWeight:900,boxShadow:Sh.lift}}>✓ {cupToast}</div>}
   </div>;
   if(loading)return sectionWrap("Cup","Loading tournament data…",<div style={{color:P.muted}}>Loading…</div>);
   if(screen==="cup-matchday")return sectionWrap("Matchday","Scores and referee access in one place",<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}><CupCard style={{padding:18}}><div style={{fontFamily:F.display,fontSize:18,fontWeight:900}}>Results & Scoring</div><div style={{fontFamily:F.body,fontSize:10,color:P.muted,lineHeight:1.6,margin:"6px 0 14px"}}>Lead coaches can enter or correct any match score and status.</div><CupBtn label="Open Results" onClick={()=>onNav("cup-results")}/></CupCard><CupCard style={{padding:18}}><div style={{fontFamily:F.display,fontSize:18,fontWeight:900}}>Referee Access</div><div style={{fontFamily:F.body,fontSize:10,color:P.muted,lineHeight:1.6,margin:"6px 0 14px"}}>Create pitch-only referee links, codes and reset access.</div><CupBtn label="Manage Referees" onClick={()=>onNav("cup-referees")}/></CupCard></div>);
@@ -4115,6 +4133,7 @@ function CupModuleScreen({ screen, onNav, contextTeam, canEditSchedule = false, 
     const emojis=["📣","⚠️","🚗","🅿️","🍔","☕","🏑","⚽","🏆","🌧️","⏰","📍","🚑","✅","ℹ️","🎉"];
     const createDraft=async()=>{const draft={id:uid("ann"),emoji:"📣",title:"New announcement",html:"",text:"",status:"draft",publishAt:"",expiresAt:"",active:true,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};await save("announcements",[draft,...announcements],setAnnouncements);setEditingAnnouncementId(draft.id)};
     const updateAnnouncement=async(id,patch)=>save("announcements",announcements.map(a=>a.id===id?{...a,...patch,updatedAt:new Date().toISOString()}:a),setAnnouncements);
+    const finishAnnouncement=async(id,patch,message)=>{await updateAnnouncement(id,patch);setEditingAnnouncementId(null);setCupToast(message);setTimeout(()=>setCupToast(""),2600)};
     const editing=announcements.find(a=>a.id===editingAnnouncementId);
     return sectionWrap("Announcements","Draft, schedule and publish event updates",<div style={{display:"grid",gap:10}}>
       {announcements.length===0&&<CupCard style={{padding:18,color:P.muted,fontSize:10}}>No announcements yet.</CupCard>}
@@ -4129,7 +4148,7 @@ function CupModuleScreen({ screen, onNav, contextTeam, canEditSchedule = false, 
         <div style={{display:"grid",gridTemplateColumns:"85px 1fr",gap:8,marginTop:12}}><label style={{display:"grid",gap:5,fontSize:9,fontWeight:800,color:P.muted}}>Emoji<select value={editing.emoji||"📣"} onChange={e=>updateAnnouncement(editing.id,{emoji:e.target.value})} style={{...inp,textTransform:"none"}}>{emojis.map(x=><option key={x} value={x}>{x}</option>)}</select></label><label style={{display:"grid",gap:5,fontSize:9,fontWeight:800,color:P.muted}}>Title<input value={editing.title||""} onChange={e=>updateAnnouncement(editing.id,{title:e.target.value})} style={{...inp,textTransform:"none"}}/></label></div>
         <div style={{marginTop:10,textTransform:"none"}}><div style={{fontSize:9,fontWeight:800,color:P.muted,marginBottom:5}}>Message</div><CupRichTextEditor value={editing.html||editing.text||""} onChange={html=>updateAnnouncement(editing.id,{html,text:html.replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim()})}/></div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:10}}><label style={{display:"grid",gap:5,fontSize:9,fontWeight:800,color:P.muted}}>Publish date & time<input type="datetime-local" value={editing.publishAt||editing.startsAt||""} onChange={e=>updateAnnouncement(editing.id,{publishAt:e.target.value})} style={{...inp,textTransform:"none"}}/></label><label style={{display:"grid",gap:5,fontSize:9,fontWeight:800,color:P.muted}}>Optional expiry<input type="datetime-local" value={editing.expiresAt||editing.endsAt||""} onChange={e=>updateAnnouncement(editing.id,{expiresAt:e.target.value})} style={{...inp,textTransform:"none"}}/></label></div>
-        <div style={{display:"flex",gap:7,marginTop:12,flexWrap:"wrap"}}><CupBtn label="Save Draft" variant="ghost" onClick={()=>updateAnnouncement(editing.id,{status:"draft"})}/><CupBtn label="Publish Now" onClick={()=>updateAnnouncement(editing.id,{status:"published",publishAt:new Date().toISOString().slice(0,16)})}/><CupBtn label="Schedule" variant="ghost" onClick={()=>{if(!editing.publishAt){alert("Choose a publish date and time first.");return}updateAnnouncement(editing.id,{status:"scheduled"})}}/><CupBtn label="Delete" variant="ghost" onClick={()=>{if(confirm("Delete this announcement?")){save("announcements",announcements.filter(x=>x.id!==editing.id),setAnnouncements);setEditingAnnouncementId(null)}}}/></div>
+        <div style={{display:"flex",gap:7,marginTop:12,flexWrap:"wrap"}}><CupBtn label="Save Draft" variant="ghost" onClick={()=>finishAnnouncement(editing.id,{status:"draft"},"Announcement saved as draft")}/><CupBtn label="Publish Now" onClick={()=>finishAnnouncement(editing.id,{status:"published",publishAt:new Date().toISOString().slice(0,16)},"Announcement published")}/><CupBtn label="Schedule" variant="ghost" onClick={()=>{if(!editing.publishAt){alert("Choose a publish date and time first.");return}finishAnnouncement(editing.id,{status:"scheduled"},`Announcement scheduled for ${new Date(editing.publishAt).toLocaleString()}`)}}/><CupBtn label="Delete" variant="ghost" onClick={()=>{if(confirm("Delete this announcement?")){save("announcements",announcements.filter(x=>x.id!==editing.id),setAnnouncements);setEditingAnnouncementId(null)}}}/></div>
       </div></div>}
     </div>,<CupBtn label="+ Create Announcement" onClick={createDraft}/>);
   }
@@ -4226,6 +4245,11 @@ if(screen==="cup-information"){
               style={inp}
             />
           )}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:8}}>
+            <input value={info[`${k}Link`]||""} onChange={(e)=>save("eventInfo",{...info,[`${k}Link`]:e.target.value},setInfo)} placeholder="Optional link URL (https://…)" style={{...inp,textTransform:"none"}}/>
+            <label style={{height:36,border:`1px solid ${P.line}`,borderRadius:9,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:900,color:CUP_ORANGE,cursor:"pointer",background:"#fff"}}>Add / replace image<input hidden type="file" accept="image/*" onChange={(e)=>{const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=()=>save("eventInfo",{...info,[`${k}Image`]:String(r.result)},setInfo);r.readAsDataURL(f)}}/></label>
+          </div>
+          {info[`${k}Image`]&&<div style={{display:"flex",alignItems:"center",gap:9,marginTop:8}}><img src={info[`${k}Image`]} alt="" style={{width:110,height:70,objectFit:"cover",borderRadius:9,border:`1px solid ${P.line}`}}/><button onClick={()=>save("eventInfo",{...info,[`${k}Image`]:""},setInfo)} style={{border:0,background:"transparent",color:"#b91c1c",fontSize:9,fontWeight:800,cursor:"pointer"}}>Remove image</button></div>}
         </CupCard>
       ))}
 
@@ -4371,7 +4395,7 @@ if(screen==="cup-information"){
       </div></div>}
     </div>,<CupBtn label="+ Sponsor" onClick={addSponsor}/>);
   }
-  if(screen==="cup-food") {const pc=teams.reduce((n,t)=>n+(t.playerCount||0),0),mc=teams.reduce((n,t)=>n+(t.mentorCount||0),0);return sectionWrap("Food & Orders","Optional menu, team codes, advance orders and voucher planning",<div style={{display:"grid",gridTemplateColumns:"1.2fr .8fr",gap:14}}><CupCard style={{padding:16}}><b style={{fontFamily:F.display}}>Menu</b>{food.map((f,i)=><div key={f.id} style={{display:"grid",gridTemplateColumns:"1fr 90px 100px 100px",gap:7,alignItems:"center",marginTop:8}}><input value={f.name} onChange={e=>save("foodMenu",food.map((x,j)=>j===i?{...x,name:e.target.value}:x),setFood)} style={inp}/><input type="number" step=".5" placeholder="Optional €" value={f.price??""} onChange={e=>save("foodMenu",food.map((x,j)=>j===i?{...x,price:e.target.value===""?null:+e.target.value}:x),setFood)} style={inp}/><label style={{fontSize:9}}><input type="checkbox" checked={!!f.freeForPlayers} onChange={e=>save("foodMenu",food.map((x,j)=>j===i?{...x,freeForPlayers:e.target.checked}:x),setFood)}/> Free/player</label><label style={{fontSize:9}}><input type="checkbox" checked={!!f.freeForMentors} onChange={e=>save("foodMenu",food.map((x,j)=>j===i?{...x,freeForMentors:e.target.checked}:x),setFood)}/> Free/mentor</label></div>)}<div style={{marginTop:10}}><CupBtn label="+ Food item" variant="ghost" onClick={()=>save("foodMenu",[...food,{id:uid("food"),name:"New item",price:null,active:true,freeForPlayers:false,freeForMentors:false}],setFood)}/></div></CupCard><CupCard style={{padding:16}}><b style={{fontFamily:F.display}}>Voucher planning</b><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:10}}><CupStatCard label="Players" value={pc}/><CupStatCard label="Mentors" value={mc} color={P.green}/></div></CupCard><CupCard style={{padding:16,gridColumn:"1 / -1"}}><b style={{fontFamily:F.display}}>Advance orders · {orders.length}</b>{orders.map(o=>{const t=teams.find(x=>x.id===o.teamId);const lw=lunchWindows.find(w=>(w.clubIds||w.clubs||[]).includes(t?.clubId));return <div key={o.id} style={{fontSize:10,padding:"9px 0",borderTop:`1px solid ${P.line}`}}><b>{teamById(o.teamId).name}</b> · {o.contactName}{o.mobile?` · ${o.mobile}`:""}{Number(o.total||0)>0?` · €${Number(o.total||0).toFixed(2)}`:""}<div style={{fontSize:8.5,color:P.muted,marginTop:3}}>Collection: {lw?`${lw.from}–${lw.to}`:"Lunch time TBC"} · {(o.items||[]).map(x=>`${x.qty} × ${x.name}`).join(", ")}</div></div>})}</CupCard></div>)}
+  if(screen==="cup-food") {const pc=teams.reduce((n,t)=>n+(t.playerCount||0),0),mc=teams.reduce((n,t)=>n+(t.mentorCount||0),0);return sectionWrap("Food & Orders","Optional menu, team codes, advance orders and voucher planning",<div style={{display:"grid",gridTemplateColumns:"1.2fr .8fr",gap:14}}><CupCard style={{padding:16}}><b style={{fontFamily:F.display}}>Menu</b>{food.map((f,i)=><div key={f.id} style={{display:"grid",gridTemplateColumns:"1fr 90px 100px 100px",gap:7,alignItems:"center",marginTop:8}}><input value={f.name} onChange={e=>save("foodMenu",food.map((x,j)=>j===i?{...x,name:e.target.value}:x),setFood)} style={inp}/><input type="number" step=".5" placeholder="Optional €" value={f.price??""} onChange={e=>save("foodMenu",food.map((x,j)=>j===i?{...x,price:e.target.value===""?null:+e.target.value}:x),setFood)} style={inp}/><label style={{fontSize:9}}><input type="checkbox" checked={!!f.freeForPlayers} onChange={e=>save("foodMenu",food.map((x,j)=>j===i?{...x,freeForPlayers:e.target.checked}:x),setFood)}/> Free/player</label><label style={{fontSize:9}}><input type="checkbox" checked={!!f.freeForMentors} onChange={e=>save("foodMenu",food.map((x,j)=>j===i?{...x,freeForMentors:e.target.checked}:x),setFood)}/> Free/mentor</label></div>)}<div style={{marginTop:10}}><CupBtn label="+ Food item" variant="ghost" onClick={()=>save("foodMenu",[...food,{id:uid("food"),name:"New item",price:null,active:true,freeForPlayers:false,freeForMentors:false}],setFood)}/></div></CupCard><CupCard style={{padding:16}}><b style={{fontFamily:F.display}}>Voucher planning</b><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:10}}><CupStatCard label="Players" value={pc}/><CupStatCard label="Mentors" value={mc} color={P.green}/></div><div style={{fontFamily:F.display,fontSize:14,fontWeight:900,marginTop:16}}>Lunch time slots</div>{lunchWindows.length?lunchWindows.map((w,i)=><div key={w.id||i} style={{padding:"8px 0",borderTop:`1px solid ${P.line}`,fontSize:9}}><b>{w.from}–{w.to}</b><div style={{color:P.muted,marginTop:2}}>{(w.clubIds||w.clubs||[]).map(id=>clubs.find(c=>c.id===id)?.name||id).join(" · ")||"No clubs assigned"}</div></div>):<div style={{fontSize:9,color:P.muted,marginTop:8}}>Generate the schedule to create lunch slots.</div>}</CupCard><CupCard style={{padding:16,gridColumn:"1 / -1"}}><b style={{fontFamily:F.display}}>Advance orders · {orders.length}</b>{orders.map(o=>{const t=teams.find(x=>x.id===o.teamId);const lw=lunchWindows.find(w=>(w.clubIds||w.clubs||[]).includes(t?.clubId));return <div key={o.id} style={{fontSize:10,padding:"9px 0",borderTop:`1px solid ${P.line}`}}><b>{teamById(o.teamId).name}</b> · {o.contactName}{o.mobile?` · ${o.mobile}`:""}{Number(o.total||0)>0?` · €${Number(o.total||0).toFixed(2)}`:""}<div style={{fontSize:8.5,color:P.muted,marginTop:3}}>Collection: {lw?`${lw.from}–${lw.to}`:"Lunch time TBC"} · {(o.items||[]).map(x=>`${x.qty} × ${x.name}`).join(", ")}</div></div>})}</CupCard></div>)}
   if(screen==="cup-participant-view") {const url=`${import.meta.env.VITE_CUP_PARTICIPANT_URL||"http://localhost:5178"}/?event=${encodeURIComponent(eventId)}${event?.status==="draft"?"&preview=1":""}`;return sectionWrap("Participant View","Mobile event-day experience for parents, players and team mentors",<CupCard style={{padding:18}}><div style={{fontFamily:"monospace",fontSize:10,background:P.soft,padding:10,borderRadius:9,wordBreak:"break-all"}}>{url}</div><div style={{marginTop:12}}><CupBtn label="Open Participant App" onClick={()=>window.open(url,"_blank")}/></div></CupCard>)}
   if(screen==="cup-settings")return sectionWrap("Settings","Current event details",<CupCard style={{padding:18,maxWidth:760}}><div style={{display:"grid",gap:10}}>{field("Event name",<input value={event?.name||""} onChange={e=>setEvent({...event,name:e.target.value})} onBlur={async()=>{const n=await cupUpdateEvent(eventId,{name:event.name});setEvent(n);setEvents(scopeEvents(await cupRead(CUP_EVENTS_KEY,[])))}} style={inp}/>)}{field("Date",<input type="date" value={event?.date||""} onChange={e=>setEvent({...event,date:e.target.value})} onBlur={async()=>{const n=await cupUpdateEvent(eventId,{date:event.date});setEvent(n);setEvents(scopeEvents(await cupRead(CUP_EVENTS_KEY,[])))}} style={inp}/>)}{field("Venue",<input value={event?.venue||""} onChange={e=>setEvent({...event,venue:e.target.value})} onBlur={async()=>{const n=await cupUpdateEvent(eventId,{venue:event.venue});setEvent(n);setEvents(scopeEvents(await cupRead(CUP_EVENTS_KEY,[])))}} style={inp}/>)}</div></CupCard>);
   const upcoming=matches.filter(m=>m.status!=="finished").slice(0,6);return sectionWrap("Dashboard",`${event?.name||"Cup"} · ${event?.date||""}`,<><div className="cup-dashboard-stats" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:20}}><CupStatCard label="Clubs" value={clubs.length} sub={`${teams.length} competition teams`} icon="🏑"/><CupStatCard label="Fixtures" value={matches.length} sub={`${finished.length} finished · ${live.length} live`} color="#fb8c00" icon="📅"/><CupStatCard label="Pitches" value={pitches.length} sub={pitches.map(p=>p.name).join(" · ")} color="#29b6f6" icon="📍"/><CupStatCard label="Event Status" value={event?.status||"draft"} sub={`${announcements.length} announcements · ${sponsors.filter(s=>s.active!==false).length} sponsors`} color="#43a047" icon="✓"/></div><div className="cup-dashboard-main" style={{display:"grid",gridTemplateColumns:"1.3fr .8fr",gap:20}}><CupCard style={{padding:18}}><div style={{fontFamily:F.display,fontSize:17,fontWeight:900}}>Upcoming fixtures</div>{upcoming.length?upcoming.map((m,i)=><div key={m.id} style={{display:"grid",gridTemplateColumns:"65px 85px 1fr",gap:9,padding:"10px 0",borderTop:i?`1px solid ${P.line}`:"none",fontSize:10}}><b>{m.time}</b><span>{m.pitch}</span><span>{teamById(m.teamA).name} v {teamById(m.teamB).name}</span></div>):<div style={{padding:14,color:P.muted}}>No fixtures generated yet.</div>}</CupCard><CupCard style={{padding:18}}><div style={{fontFamily:F.display,fontSize:17,fontWeight:900}}>Event setup</div>{[["Venue",event?.venue],["Start",config.startTime],["Target finish",config.targetFinish],["Pitches",pitches.length]].map(([l,v])=><div key={l} style={{display:"flex",justifyContent:"space-between",padding:"9px 0",borderTop:`1px solid ${P.line}`,fontSize:10}}><span style={{color:P.muted}}>{l}</span><b>{v||"—"}</b></div>)}</CupCard></div></>,<CupBtn label="+ New Event" onClick={createEvent}/>);
@@ -4760,7 +4784,7 @@ export default function App() {
   if (authLoading && !shareToken) {
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: P.navy, fontFamily: F.body }}>
-        <img src="/spraoi-icon.png" alt="Spraoi" style={{ width: 48, height: 48, opacity: 0.7 }} />
+        <img src="/spraoi-logo-white.png" alt="Spraoi Sports" style={{ width: 150, height: "auto", opacity: 0.95 }} />
       </div>
     );
   }
@@ -4972,7 +4996,14 @@ export default function App() {
           {String(userRole.role).replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase())}
         </div>
       )}
-      {showMobile && <MobileHeader activeModule={activeModule} setActiveModule={setActiveModule} onNav={setScreen} enabledModules={enabledModules} club={club} selectedTeam={selectedTeam} />}
+      <style id="spraoi-mobile-fixes">{`
+        @media(max-width:760px){
+          .cup-dashboard-stats,.cup-dashboard-main,.club-teams-layout{grid-template-columns:1fr!important}
+          .cup-responsive-grid{grid-template-columns:1fr!important}
+          main,section{min-width:0}
+        }
+      `}</style>
+      {showMobile && <MobileHeader activeModule={activeModule} setActiveModule={setActiveModule} onNav={setScreen} enabledModules={enabledModules} club={club} selectedTeam={selectedTeam} ageGroups={ageGroups} myTeams={myTeams} onSelectTeam={selectTeam} onShowProfile={()=>setShowProfile(true)} />}
 
       {/* Sidebar — desktop only */}
       {!showMobile && <Sidebar activeModule={activeModule} setActiveModule={setActiveModule} activeScreen={screen} onNav={setScreen} club={club} selectedTeam={selectedTeam} onSelectTeam={selectTeam} enabledModules={enabledModules} onLogout={logout} ageGroups={ageGroups} myTeams={myTeams} onShowProfile={() => setShowProfile(true)} />}

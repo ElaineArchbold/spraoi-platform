@@ -138,12 +138,10 @@ function BrandHeader({ club, event, onChangeClub, liveCount = 0 }) {
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, position: "relative" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-          <div style={{ width: 62, height: 70, borderRadius: 19, background: "rgba(255,255,255,.98)", display: "grid", placeItems: "center", boxShadow: "0 12px 30px rgba(0,0,0,.20)" }}>
-            <img src={CLUB_SPRAOI.crest} alt={CLUB_SPRAOI.name} style={{ width: 52, height: 60, objectFit: "contain" }} />
-          </div>
+          {club ? <ClubMark club={club} size={62} /> : <div style={{ width: 62, height: 62, borderRadius: 19, background: "rgba(255,255,255,.98)", display: "grid", placeItems: "center", boxShadow: "0 12px 30px rgba(0,0,0,.20)" }}><img src="/spraoi-cup-icon.png" alt="Spraoi Cup" style={{ width: 50, height: 50, objectFit: "contain" }} /></div>}
           <div>
-            <div style={{ fontFamily: "Nunito", fontWeight: 900, fontSize: 19, lineHeight: 1 }}>{event?.host || EVENT.host}</div>
-            <div style={{ fontFamily: "Work Sans", fontSize: 10, color: "rgba(255,255,255,.70)", marginTop: 5 }}>Powered by Spraoi Cup</div>
+            <div style={{ fontFamily: "Nunito", fontWeight: 900, fontSize: 19, lineHeight: 1 }}>Spraoi Cup</div>
+            <div style={{ fontFamily: "Work Sans", fontSize: 10, color: "rgba(255,255,255,.78)", marginTop: 5 }}>{club?.name || "Choose your club"}</div>
           </div>
         </div>
         <button onClick={onChangeClub} style={{ border: "1px solid rgba(255,255,255,.24)", background: "rgba(255,255,255,.10)", color: "white", borderRadius: 999, padding: "8px 11px", fontFamily: "Work Sans", fontSize: 9, fontWeight: 800, cursor: "pointer" }}>{club ? "Change club" : "Choose club"}</button>
@@ -151,7 +149,7 @@ function BrandHeader({ club, event, onChangeClub, liveCount = 0 }) {
 
       <div style={{ position: "relative", marginTop: 27 }}>
         <div style={{ display: "flex", gap: 7, flexWrap: "wrap", alignItems: "center" }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,.16)", color: "#FFFFFF", border: "1px solid rgba(255,255,255,.28)", padding: "5px 9px", borderRadius: 999, fontFamily: "Work Sans", fontWeight: 800, fontSize: 9, letterSpacing: ".05em" }}><Trophy size={12} /> CLUB SPRAOI CUP</div>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,.16)", color: "#FFFFFF", border: "1px solid rgba(255,255,255,.28)", padding: "5px 9px", borderRadius: 999, fontFamily: "Work Sans", fontWeight: 800, fontSize: 9, letterSpacing: ".05em" }}><Trophy size={12} /> SPRAOI CUP</div>
           {liveCount > 0 && <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,.12)", border: "1px solid rgba(255,255,255,.18)", padding: "5px 9px", borderRadius: 999, fontFamily: "Work Sans", fontSize: 9, fontWeight: 800 }}><CircleDot size={11} color="#FFD54F" /> {liveCount} LIVE</div>}
         </div>
         <div style={{ fontFamily: "Nunito", fontSize: 33, lineHeight: 1.01, fontWeight: 900, marginTop: 11, maxWidth: 350, letterSpacing: "-.02em" }}>{event?.name || EVENT.name}</div>
@@ -163,6 +161,7 @@ function BrandHeader({ club, event, onChangeClub, liveCount = 0 }) {
 }
 
 export default function App() {
+  const [welcomeExpanded, setWelcomeExpanded] = useState(false);
   const params = new URLSearchParams(location.search);
   const requestedEventId = params.get("event") || "";
   const previewMode = params.get("preview") === "1";
@@ -185,6 +184,16 @@ export default function App() {
   const [clock, setClock] = useState(Date.now());
   const [announcementToast, setAnnouncementToast] = useState(null);
   const [myClub, setMyClub] = useState(() => localStorage.getItem("spraoi_cup_following_club") || "");
+  // Keep food-order form state at App level so parent data refreshes do not wipe what the user typed.
+  const [foodTeamId,setFoodTeamId]=useState("");
+  const [foodCode,setFoodCode]=useState("");
+  const [foodContact,setFoodContact]=useState("");
+  const [foodMobile,setFoodMobile]=useState("");
+  const [foodQty,setFoodQty]=useState({});
+  const [foodMsg,setFoodMsg]=useState("");
+  const [foodReviewOpen,setFoodReviewOpen]=useState(false);
+  const [foodReviewedTeam,setFoodReviewedTeam]=useState("");
+  const [foodToast,setFoodToast]=useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -344,7 +353,7 @@ export default function App() {
       {mainSponsors.length>0 && <ShellCard style={{padding:12,marginBottom:12}}><div style={{fontFamily:"Work Sans",fontSize:8,fontWeight:900,color:THEME.muted,textTransform:"uppercase",letterSpacing:".08em",textAlign:"center"}}>Proudly supported by</div><div style={{display:"flex",justifyContent:"center",gap:12,flexWrap:"wrap",marginTop:8}}>{mainSponsors.map(sp=><div key={sp.id} style={{width:150,height:58,display:"grid",placeItems:"center"}}>{sp.logo_url?<img src={sp.logo_url} alt={sp.name} style={{maxWidth:"92%",maxHeight:50,objectFit:"contain"}}/>:<b style={{fontSize:10}}>{sp.name}</b>}</div>)}</div></ShellCard>}
       {activeAnnouncements[0] && <div style={{ background: "linear-gradient(135deg,#FFF4DE,#FFE7BD)", border: "1px solid #F5D49D", borderRadius: 18, padding: 13, display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 14 }}><div style={{ width: 34, height: 34, borderRadius: 12, background: THEME.gold, display: "grid", placeItems: "center", color: THEME.navy, fontSize:18 }}>{activeAnnouncements[0].emoji || <Bell size={17} />}</div><div><div style={{ fontFamily: "Nunito", fontSize: 12, fontWeight: 900, color: THEME.ink }}>{activeAnnouncements[0].title || "Latest update"}</div><div style={{ fontFamily: "Work Sans", fontSize: 10, lineHeight: 1.5, color: THEME.ink, marginTop: 3 }} dangerouslySetInnerHTML={{__html:activeAnnouncements[0].html||activeAnnouncements[0].text||""}} /></div></div>}
 
-      {eventInfo.welcomeMessage && <ShellCard style={{padding:15,marginBottom:14,borderLeft:`4px solid ${THEME.orange}`}}><div style={{fontFamily:"Nunito",fontSize:16,fontWeight:900,color:THEME.ink}}>Welcome</div><div style={{fontFamily:"Work Sans",fontSize:10,lineHeight:1.55,color:THEME.muted,marginTop:5}}>{eventInfo.welcomeMessage}</div></ShellCard>}
+      {eventInfo.welcomeMessage && <ShellCard style={{padding:15,marginBottom:14,borderLeft:`4px solid ${THEME.orange}`}}><div style={{fontFamily:"Nunito",fontSize:16,fontWeight:900,color:THEME.ink}}>Welcome</div><div style={{fontFamily:"Work Sans",fontSize:10,lineHeight:1.55,color:THEME.muted,marginTop:5,maxHeight:welcomeExpanded?"none":62,overflow:"hidden",position:"relative"}}>{eventInfo.welcomeMessage}</div>{String(eventInfo.welcomeMessage||"").length>170&&<button onClick={()=>setWelcomeExpanded(v=>!v)} style={{border:0,background:"transparent",padding:"7px 0 0",color:THEME.orange,fontFamily:"Work Sans",fontSize:9,fontWeight:900,cursor:"pointer"}}>{welcomeExpanded?"Show less":"Read more"}</button>}</ShellCard>}
       <ShellCard style={{ padding: 16, marginBottom: 14, background: `linear-gradient(135deg,#fff,${THEME.cream})` }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <div><div style={{ fontFamily: "Work Sans", fontSize: 9, color: THEME.muted, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".08em" }}>Following</div><div style={{ fontFamily: "Nunito", fontSize: 18, color: THEME.ink, fontWeight: 900, marginTop: 3 }}>{club?.name || "Choose your club"}</div></div>
@@ -401,45 +410,28 @@ export default function App() {
           ? lunchWindows.map((w,i)=>`Lunch ${i+1}: ${w.from}–${w.to}`).join(" · ")
           : "");
 
-    const placeholder = {
-      welcomeMessage: "A welcome message from the event organiser will appear here.",
-      arrivalRegistration: "Arrival time, registration and check-in instructions will appear here once confirmed.",
-      facilities: "Facilities information such as toilets, changing areas and team bases will appear here once confirmed.",
-      parking: "Parking, coach/bus drop-off and walking directions will appear here once confirmed.",
-      venueInfo: "Pitch layout, meeting points and venue information will appear here once confirmed.",
-      foodAndDrink: "Food, refreshments, water and pre-order information will appear here when available.",
-      lunch: "Your allocated lunch time will appear here once the event schedule has been generated.",
-      healthAndSafety: "Medical cover, emergency information and event-day health & safety guidance will appear here.",
-      playingRules: "Competition rules, match duration, substitutions and tie-break information will appear here.",
-      contacts: "Event-day contact and communications information will appear here once confirmed.",
-      other: "Any additional event information will appear here."
-    };
-
     const sections=[
-      ["Welcome",eventInfo.welcomeMessage || placeholder.welcomeMessage],
-      ["Arrival & Registration",eventInfo.arrivalRegistration || placeholder.arrivalRegistration],
-      ["Facilities",eventInfo.facilities || placeholder.facilities],
-      ["Parking & Directions",eventInfo.parking || placeholder.parking],
-      ["Pitch / Venue Information",eventInfo.venueInfo || placeholder.venueInfo],
-      ["Food & Drink",eventInfo.foodAndDrink || placeholder.foodAndDrink],
-      ["Your Lunch Time",myLunch || placeholder.lunch],
-      ["Health & Safety / Medical",eventInfo.healthAndSafety || placeholder.healthAndSafety],
-      ["Playing Rules",eventInfo.playingRules || placeholder.playingRules],
-      ["Contacts / Communications",eventInfo.contacts || placeholder.contacts],
-      ["Other Information",eventInfo.other || placeholder.other],
+      ["Welcome",eventInfo.welcomeMessage,{image_url:eventInfo.welcomeMessageImage,link_url:eventInfo.welcomeMessageLink}],
+      ["Arrival & Registration",eventInfo.arrivalRegistration,{image_url:eventInfo.arrivalRegistrationImage,link_url:eventInfo.arrivalRegistrationLink}],
+      ["Facilities",eventInfo.facilities,{image_url:eventInfo.facilitiesImage,link_url:eventInfo.facilitiesLink}],
+      ["Parking & Directions",eventInfo.parking,{image_url:eventInfo.parkingImage,link_url:eventInfo.parkingLink}],
+      ["Pitch / Venue Information",eventInfo.venueInfo,{image_url:eventInfo.venueInfoImage,link_url:eventInfo.venueInfoLink}],
+      ["Food & Drink",eventInfo.foodAndDrink,{image_url:eventInfo.foodAndDrinkImage,link_url:eventInfo.foodAndDrinkLink}],
+      ["Your Lunch Time",myLunch],
+      ["Health & Safety / Medical",eventInfo.healthAndSafety,{image_url:eventInfo.healthAndSafetyImage,link_url:eventInfo.healthAndSafetyLink}],
+      ["Playing Rules",eventInfo.playingRules,{image_url:eventInfo.playingRulesImage,link_url:eventInfo.playingRulesLink}],
+      ["Contacts / Communications",eventInfo.contacts,{image_url:eventInfo.contactsImage,link_url:eventInfo.contactsLink}],
+      ["Other Information",eventInfo.other,{image_url:eventInfo.otherImage,link_url:eventInfo.otherLink}],
       ...(Array.isArray(eventInfo.customSections)
         ? eventInfo.customSections
-            .filter((section)=>String(section?.heading||"").trim() || String(section?.content||"").trim())
-            .map((section)=>[
-              section.heading || "Additional Information",
-              section.content || "More information will appear here once confirmed."
-            ])
+            .filter((section)=>String(section?.heading||"").trim() && (String(section?.content||"").trim() || section?.image_url || section?.link_url))
+            .map((section)=>[section.heading,section.content,section])
         : [])
-    ];
+    ].filter(([,text,meta])=>String(text||"").trim() || meta?.image_url || meta?.link_url);
 
     return <div style={{ padding: "0 16px 110px" }}>
       <div style={{ fontFamily: "Nunito", fontSize: 24, fontWeight: 900, color: THEME.ink, marginBottom: 14 }}>Event info</div>
-      {sections.map(([label,text])=><ShellCard key={label} style={{padding:16,marginBottom:12,borderLeft:`4px solid ${THEME.orange}`}}><div style={{fontFamily:"Nunito",fontWeight:900,color:THEME.ink}}>{label}</div><div style={{fontFamily:"Work Sans",fontSize:10,lineHeight:1.55,color:THEME.muted,marginTop:5,whiteSpace:"pre-wrap"}}>{text}</div></ShellCard>)}
+      {sections.map(([label,text,meta])=><ShellCard key={label} style={{padding:16,marginBottom:12,borderLeft:`4px solid ${THEME.orange}`}}><div style={{fontFamily:"Nunito",fontWeight:900,color:THEME.ink}}>{label}</div>{meta?.image_url&&<img src={meta.image_url} alt={label} style={{width:"100%",maxHeight:240,objectFit:"cover",borderRadius:12,marginTop:10}}/>}<div style={{fontFamily:"Work Sans",fontSize:10,lineHeight:1.55,color:THEME.muted,marginTop:5,whiteSpace:"pre-wrap"}}>{text}</div>{meta?.link_url&&<a href={meta.link_url} target="_blank" rel="noopener noreferrer" style={{display:"inline-block",marginTop:9,color:THEME.orange,fontFamily:"Work Sans",fontSize:10,fontWeight:900}}>{meta.link_label||"Open link"} ↗</a>}</ShellCard>)}
       {activeAnnouncements.length>0&&<ShellCard style={{padding:16,marginBottom:12}}><div style={{fontFamily:"Nunito",fontWeight:900,color:THEME.ink}}>Latest announcements</div>{activeAnnouncements.map(a=><div key={a.id} style={{padding:"10px 0",borderTop:`1px solid ${THEME.line}`}}><div style={{fontFamily:"Nunito",fontSize:12,fontWeight:900}}>{a.emoji||"📣"} {a.title||"Update"}</div><div style={{fontFamily:"Work Sans",fontSize:10,lineHeight:1.5,color:THEME.muted,marginTop:4}} dangerouslySetInnerHTML={{__html:a.html||a.text||""}}/></div>)}</ShellCard>}
       {activeSponsors.length>0&&<ShellCard style={{padding:16}}><div style={{fontFamily:"Nunito",fontWeight:900,color:THEME.ink}}>Sponsors & Event Partners</div><div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:10,marginTop:12}}>{activeSponsors.map((sp,i)=><div key={sp.id||i} style={{minHeight:100,borderRadius:14,background:THEME.soft,display:"grid",placeItems:"center",padding:10,textAlign:"center"}}>{sp.logo_url?<div><img src={sp.logo_url} alt={sp.name} style={{maxWidth:"92%",maxHeight:58,objectFit:"contain"}}/><div style={{fontSize:8,fontWeight:800,color:THEME.muted,marginTop:4}}>{sp.label||""}</div></div>:<span style={{fontSize:9,fontWeight:800,color:THEME.muted}}>{sp.name}</span>}</div>)}</div></ShellCard>}
     </div>;
@@ -447,15 +439,8 @@ export default function App() {
 
   function FoodScreen(){
     const clubTeams=teams.filter(t=>t.clubId===myClub);
-    const [teamId,setTeamId]=useState(clubTeams[0]?.id||"");
-    const [code,setCode]=useState("");
-    const [contact,setContact]=useState("");
-    const [mobile,setMobile]=useState("");
-    const [qty,setQty]=useState({});
-    const [msg,setMsg]=useState("");
-    const [reviewOpen,setReviewOpen]=useState(false);
-    const [reviewedTeam,setReviewedTeam]=useState("");
-    const [toast,setToast]=useState("");
+    const teamId=foodTeamId || clubTeams[0]?.id || "";
+    const setTeamId=setFoodTeamId, code=foodCode, setCode=setFoodCode, contact=foodContact, setContact=setFoodContact, mobile=foodMobile, setMobile=setFoodMobile, qty=foodQty, setQty=setFoodQty, msg=foodMsg, setMsg=setFoodMsg, reviewOpen=foodReviewOpen, setReviewOpen=setFoodReviewOpen, reviewedTeam=foodReviewedTeam, setReviewedTeam=setFoodReviewedTeam, toast=foodToast, setToast=setFoodToast;
     const team=teams.find(t=>t.id===teamId);
     const teamLunch=lunchWindows.find(w=>(w.clubIds||w.clubs||[]).includes(team?.clubId));
     const existing=orders.find(o=>o.teamId===teamId)||null;
@@ -537,5 +522,5 @@ export default function App() {
     return <div style={{minHeight:"100dvh",background:"#E9EDF1",display:"grid",placeItems:"center",padding:18,fontFamily:"Work Sans"}}><ShellCard style={{width:"min(100%,430px)",padding:22,textAlign:"center"}}><div style={{fontFamily:"Nunito",fontSize:22,fontWeight:900}}>This event is still in draft</div><div style={{fontSize:10,color:THEME.muted,lineHeight:1.55,marginTop:7}}>The organiser has not published the participant app yet.</div></ShellCard></div>;
   }
 
-  return <div style={{ minHeight: "100dvh", background: "#E9EDF1", fontFamily: "Work Sans", color: THEME.ink }}><div style={{ width: "min(100%, 540px)", minHeight: "100dvh", margin: "0 auto", background: THEME.cream, boxShadow: "0 0 50px rgba(16,36,62,.08)" }}><BrandHeader club={club} event={event} onChangeClub={()=>setChooseOpen(true)} liveCount={liveMatches.length}/>{loading ? <div style={{ padding: 30, textAlign: "center", color: THEME.muted }}>Loading Cup…</div> : body}{!refId && <BottomNav screen={screen} setScreen={setScreen}/>}</div>{announcementToast&&<div style={{position:"fixed",left:"50%",transform:"translateX(-50%)",top:18,zIndex:180,width:"min(calc(100% - 28px),500px)",background:"#10243E",color:"white",borderRadius:16,padding:14,boxShadow:"0 16px 38px rgba(0,0,0,.25)"}}><div style={{display:"flex",gap:10,alignItems:"flex-start"}}><div style={{fontSize:22}}>{announcementToast.emoji||"📣"}</div><div style={{flex:1}}><div style={{fontFamily:"Nunito",fontSize:14,fontWeight:900}}>{announcementToast.title||"Update"}</div><div style={{fontFamily:"Work Sans",fontSize:10,lineHeight:1.45,opacity:.85,marginTop:3}} dangerouslySetInnerHTML={{__html:announcementToast.html||announcementToast.text||""}}/></div><button onClick={()=>setAnnouncementToast(null)} style={{border:0,background:"transparent",color:"white",fontSize:18,cursor:"pointer"}}>×</button></div></div>}{chooseOpen && <div onClick={()=>setChooseOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(4,18,34,.62)", zIndex: 100, display: "flex", alignItems: "flex-end", justifyContent: "center" }}><div onClick={(e)=>e.stopPropagation()} style={{ width: "min(100%,540px)", maxHeight: "80dvh", overflow: "auto", background: "white", borderRadius: "26px 26px 0 0", padding: 18 }}><div style={{ width: 42, height: 4, borderRadius: 4, background: THEME.line, margin: "0 auto 14px" }}/><div style={{ fontFamily: "Nunito", fontSize: 21, fontWeight: 900, color: THEME.ink }}>Choose your club</div><div style={{ fontFamily: "Work Sans", fontSize: 10, color: THEME.muted, marginTop: 4, marginBottom: 12 }}>We’ll highlight your fixtures, lunch break and event updates.</div><div style={{ display: "grid", gap: 8 }}>{clubs.map((c)=><button key={c.id} onClick={()=>chooseClub(c.id)} style={{ border: `1px solid ${THEME.line}`, background: myClub===c.id?"#EEF8F4":"white", borderRadius: 16, padding: 11, display: "flex", alignItems: "center", gap: 10, textAlign: "left", cursor: "pointer" }}><ClubMark club={c} size={42} /><div style={{ fontFamily: "Nunito", fontWeight: 900, color: THEME.ink }}>{c.name}</div></button>)}</div></div></div>}</div>;
+  return <div style={{ minHeight: "100dvh", background: "#E9EDF1", fontFamily: "Work Sans", color: THEME.ink }}><div style={{ width: "min(100%, 540px)", minHeight: "100dvh", margin: "0 auto", background: THEME.cream, boxShadow: "0 0 50px rgba(16,36,62,.08)" }}><BrandHeader club={club} event={event} onChangeClub={()=>setChooseOpen(true)} liveCount={liveMatches.length}/>{loading ? <div style={{ padding: 36, textAlign: "center", color: THEME.muted }}><img src="/spraoi-cup-icon.png" alt="Spraoi Cup" style={{width:64,height:64,objectFit:"contain",display:"block",margin:"0 auto 10px"}}/><div style={{fontFamily:"Nunito",fontWeight:900,color:THEME.ink}}>Loading Spraoi Cup…</div></div> : body}{!refId && <BottomNav screen={screen} setScreen={setScreen}/>}</div>{announcementToast&&<div style={{position:"fixed",left:"50%",transform:"translateX(-50%)",top:18,zIndex:180,width:"min(calc(100% - 28px),500px)",background:"#10243E",color:"white",borderRadius:16,padding:14,boxShadow:"0 16px 38px rgba(0,0,0,.25)"}}><div style={{display:"flex",gap:10,alignItems:"flex-start"}}><div style={{fontSize:22}}>{announcementToast.emoji||"📣"}</div><div style={{flex:1}}><div style={{fontFamily:"Nunito",fontSize:14,fontWeight:900}}>{announcementToast.title||"Update"}</div><div style={{fontFamily:"Work Sans",fontSize:10,lineHeight:1.45,opacity:.85,marginTop:3}} dangerouslySetInnerHTML={{__html:announcementToast.html||announcementToast.text||""}}/></div><button onClick={()=>setAnnouncementToast(null)} style={{border:0,background:"transparent",color:"white",fontSize:18,cursor:"pointer"}}>×</button></div></div>}{chooseOpen && <div onClick={()=>setChooseOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(4,18,34,.62)", zIndex: 100, display: "flex", alignItems: "flex-end", justifyContent: "center" }}><div onClick={(e)=>e.stopPropagation()} style={{ width: "min(100%,540px)", maxHeight: "80dvh", overflow: "auto", background: "white", borderRadius: "26px 26px 0 0", padding: 18 }}><div style={{ width: 42, height: 4, borderRadius: 4, background: THEME.line, margin: "0 auto 14px" }}/><div style={{ fontFamily: "Nunito", fontSize: 21, fontWeight: 900, color: THEME.ink }}>Choose your club</div><div style={{ fontFamily: "Work Sans", fontSize: 10, color: THEME.muted, marginTop: 4, marginBottom: 12 }}>We’ll highlight your fixtures, lunch break and event updates.</div><div style={{ display: "grid", gap: 8 }}>{clubs.map((c)=><button key={c.id} onClick={()=>chooseClub(c.id)} style={{ border: `1px solid ${THEME.line}`, background: myClub===c.id?"#EEF8F4":"white", borderRadius: 16, padding: 11, display: "flex", alignItems: "center", gap: 10, textAlign: "left", cursor: "pointer" }}><ClubMark club={c} size={42} /><div style={{ fontFamily: "Nunito", fontWeight: 900, color: THEME.ink }}>{c.name}</div></button>)}</div></div></div>}</div>;
 }
