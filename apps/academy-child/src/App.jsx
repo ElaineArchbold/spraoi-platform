@@ -14,9 +14,9 @@ registerSW({
 });
 
 /* ============================================================
-   SPRAOI ACADEMY   Kid-facing missions & progress
+   SPRAOI ACADEMY   Kid-facing weekly practice & progress
    Green brand (matches spraoisports.com), sport-colored cards,
-   missions language, streaks, XP, badges.
+   practice, streaks, XP, badges.
    ============================================================ */
 const C = {
   // Spraoi Academy blue
@@ -24,8 +24,8 @@ const C = {
   primaryBright: "#38BDF8",
   primaryDark: "#0369A1",
   // Sport colors
-  hurling: "#c51417",
-  hurlingBg: "#fef2f2",
+  hurling: "#16A34A",
+  hurlingBg: "#F0FDF4",
   football: "#1d4ed8",
   footballBg: "#eff6ff",
   athletic: "#d97706",
@@ -47,10 +47,10 @@ const APP_ICON = "/spraoi-academy-icon.png";
 
 // Icon-only Academy sections. Mascots intentionally removed.
 const SECTIONS = {
-  missions: { icon: "/spraoi-academy-icon.png", color: C.primary, bg: "#e0f2fe", border: "#bae6fd" },
+  weekly: { icon: "/spraoi-academy-icon.png", color: C.primary, bg: "#e0f2fe", border: "#bae6fd" },
   skills: { icon: "/spraoi-academy-icon.png", color: C.primaryDark, bg: "#eff6ff", border: "#bfdbfe" },
   fitness: { icon: "/speed-mechanics-icon.png", color: C.athletic, bg: C.athleticBg, border: "#fde68a" },
-  recovery: { icon: "/rest-and-recovery-icon.png", color: "#0f766e", bg: "#f0fdfa", border: "#99f6e4" },
+  recovery: { icon: "/rest-and-recovery-icon.png", color: "#7C3AED", bg: "#F5F3FF", border: "#C4B5FD" },
   events: { icon: "/spraoi-academy-icon.png", color: C.primaryDark, bg: "#e0f2fe", border: "#bae6fd" },
 };
 
@@ -85,6 +85,15 @@ const ACADEMY_QUOTES = {
   ],
 };
 
+function mondayKeyForDate(value) {
+  const d=value?new Date(`${String(value).slice(0,10)}T12:00:00`):new Date();
+  if(Number.isNaN(d.getTime())) return null;
+  const diff=d.getDay()===0?-6:1-d.getDay(); d.setDate(d.getDate()+diff);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+function weekKeyFromOffset(offset=0){ const base=new Date(`${mondayKeyForDate(new Date().toISOString().slice(0,10))}T12:00:00`); base.setDate(base.getDate()+(offset*7)); return `${base.getFullYear()}-${String(base.getMonth()+1).padStart(2,"0")}-${String(base.getDate()).padStart(2,"0")}`; }
+function weekCommencingLabel(offset=0){ const d=new Date(`${weekKeyFromOffset(offset)}T12:00:00`); return `Week starting ${d.toLocaleDateString("en-IE",{day:"numeric",month:"short",year:d.getFullYear()!==new Date().getFullYear()?"numeric":undefined})}`; }
+
 function academyQuoteFor(player, weeklyPlan) {
   const label = String(player?.age_group?.label || player?.age_group_label || "");
   const match = label.match(/U(\d+)/i);
@@ -108,6 +117,8 @@ function CoachExerciseManager({ coachTeams, coachSelectedTeam, coachPlan, coachE
   const [evtTime, setEvtTime] = useState("");
   const [evtLocation, setEvtLocation] = useState("");
   const [evtRecurring, setEvtRecurring] = useState(false);
+  const [evtVerification, setEvtVerification] = useState("coach");
+  const [evtRequired, setEvtRequired] = useState(false);
   const [previewDrills, setPreviewDrills] = useState([]);
 
   // Load preview drills when plan changes
@@ -247,7 +258,7 @@ function CoachExerciseManager({ coachTeams, coachSelectedTeam, coachPlan, coachE
                     <div style={{ width: 24, height: 24, borderRadius: 6, background: C.primary + "15", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11 }}>??</div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 12, fontWeight: 700, color: C.text }}>{evt.title}</div>
-                      <div style={{ fontSize: 10, color: C.textSecondary }}>{evt.event_date ? new Date(evt.event_date).toLocaleDateString("en-IE", { weekday: "short", day: "numeric", month: "short" }) : ""} {evt.event_time || ""} {evt.recurring ? "  Weekly" : ""}</div>
+                      <div style={{ fontSize: 10, color: C.textSecondary }}>{evt.event_date ? new Date(evt.event_date).toLocaleDateString("en-IE", { weekday: "short", day: "numeric", month: "short" }) : ""} {evt.event_time || ""} {evt.recurring ? " · Weekly" : ""} · {(evt.verification_type || "self") === "coach" ? "Coach verified" : "Player verified"}{evt.required ? " · Required" : ""}</div>
                     </div>
                     <button onClick={() => onRemoveEvent(evt.id)} style={{ background: "none", border: "none", color: "#e64a19", cursor: "pointer", fontSize: 16 }}> </button>
                   </div>
@@ -268,7 +279,14 @@ function CoachExerciseManager({ coachTeams, coachSelectedTeam, coachPlan, coachE
                   <input type="checkbox" checked={evtRecurring} onChange={(e) => setEvtRecurring(e.target.checked)} /> Weekly
                 </label>
               </div>
-              <button onClick={() => { if (!evtTitle.trim()) return; onAddEvent({ title: evtTitle.trim(), description: evtDesc || null, event_date: evtDate || null, event_time: evtTime || null, location: evtLocation || null, recurring: evtRecurring, xp_reward: 15 }); setEvtTitle(""); setEvtDesc(""); setEvtDate(""); setEvtTime(""); setEvtLocation(""); setEvtRecurring(false); }} disabled={!evtTitle.trim()} style={{ width: "100%", padding: "10px", borderRadius: 10, border: "none", background: evtTitle.trim() ? C.primary : C.border, color: "#fff", fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 12, cursor: evtTitle.trim() ? "pointer" : "default" }}>
+              <div style={{ background:C.surfaceAlt, border:`1px solid ${C.border}`, borderRadius:10, padding:10, marginBottom:8 }}>
+                <div style={{fontSize:10,fontWeight:800,color:C.textSecondary,textTransform:"uppercase",marginBottom:6}}>Completion verification</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:8}}>
+                  {[{id:"self",label:"Player verified"},{id:"coach",label:"Coach verified"}].map(opt=><button key={opt.id} onClick={()=>setEvtVerification(opt.id)} style={{padding:"8px",borderRadius:8,border:`1.5px solid ${evtVerification===opt.id?C.primary:C.border}`,background:evtVerification===opt.id?C.primary+"12":C.surface,color:evtVerification===opt.id?C.primary:C.textSecondary,fontSize:10,fontWeight:800,cursor:"pointer"}}>{opt.label}</button>)}
+                </div>
+                <label style={{display:"flex",alignItems:"center",gap:6,fontSize:10,color:C.textSecondary,cursor:"pointer"}}><input type="checkbox" checked={evtRequired} onChange={(e)=>setEvtRequired(e.target.checked)} /> Required for weekly completion</label>
+              </div>
+              <button onClick={() => { if (!evtTitle.trim()) return; onAddEvent({ title: evtTitle.trim(), description: evtDesc || null, event_date: evtDate || null, event_time: evtTime || null, location: evtLocation || null, recurring: evtRecurring, xp_reward: 15, verification_type: evtVerification, required: evtRequired }); setEvtTitle(""); setEvtDesc(""); setEvtDate(""); setEvtTime(""); setEvtLocation(""); setEvtRecurring(false); setEvtVerification("coach"); setEvtRequired(false); }} disabled={!evtTitle.trim()} style={{ width: "100%", padding: "10px", borderRadius: 10, border: "none", background: evtTitle.trim() ? C.primary : C.border, color: "#fff", fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 12, cursor: evtTitle.trim() ? "pointer" : "default" }}>
                 Add Event
               </button>
             </div>
@@ -333,12 +351,11 @@ export default function App() {
   const [ageGroups, setAgeGroups] = useState([]);
   const [club, setClub] = useState(null);
   const [weeklyPlan, setWeeklyPlan] = useState(null);
-  const [homework, setHomework] = useState([]);
+  const [weekOffset, setWeekOffset] = useState(0);
   const [bonusTasks, setBonusTasks] = useState([]);
   const [trainingDrills, setTrainingDrills] = useState([]); // drills from coach's sessions this week
   const [fitnessExercises, setFitnessExercises] = useState([]); // runs, star jumps etc set by coach
   const [weekSkills, setWeekSkills] = useState([]); // unique skills from this week's drills
-  const [skillChallenges, setSkillChallenges] = useState([]); // challenges matching this week's skills
   const [progress, setProgress] = useState([]);
   const [badges, setBadges] = useState([]);
   const [earnedBadges, setEarnedBadges] = useState([]);
@@ -360,7 +377,6 @@ export default function App() {
   const [eventSignups, setEventSignups] = useState([]); // current player's signups
   const [coachEvents, setCoachEvents] = useState([]); // events for coach management
   const [allSkills, setAllSkills] = useState([]); // full skill library for Learn tab
-  const [allChallenges, setAllChallenges] = useState([]); // all challenges
   const [learnFilter, setLearnFilter] = useState("all"); // all | hurling | football
 
   useEffect(() => {
@@ -404,15 +420,14 @@ export default function App() {
     const { data: kids } = await supabase.from("journey_players").select("*").eq("parent_user_id", userId).order("name");
     setPlayers(kids || []);
     const { data: b } = await supabase.from("badges").select("*"); setBadges(b || []);
-    // Load skill library + challenges for Learn tab
+    // Load the skill library for the Learn tab. Weekly Academy content no longer uses the challenges table.
     const { data: sk } = await supabase.from("skills").select("*").order("sport, name"); setAllSkills(sk || []);
-    const { data: ch } = await supabase.from("challenges").select("*").order("sport, title"); setAllChallenges(ch || []);
     if (kids && kids.length === 1) selectPlayer(kids[0]);
     else if (kids && kids.length > 0) selectPlayer(kids[0]);
     setInitialLoading(false);
   }
 
-  async function selectPlayer(player) {
+  async function selectPlayer(player, requestedWeekOffset = weekOffset) {
     setSelectedPlayer(player);
     setLoadingPlayers(false);
     try {
@@ -421,19 +436,17 @@ export default function App() {
       const { data: eb } = await supabase.from("player_badges").select("*").eq("player_id", player.id);
       setEarnedBadges(eb || []);
       if (player.age_group_id) {
-        const { data: plans } = await supabase.from("weekly_plans").select("*").eq("age_group_id", player.age_group_id).eq("published", true).order("week_number", { ascending: false }).limit(1);
+        const weekStart = weekKeyFromOffset(Math.min(0, requestedWeekOffset));
+        const endDate = new Date(`${weekStart}T12:00:00`); endDate.setDate(endDate.getDate()+7);
+        const weekEnd = `${endDate.getFullYear()}-${String(endDate.getMonth()+1).padStart(2,"0")}-${String(endDate.getDate()).padStart(2,"0")}`;
+        const { data: plans } = await supabase.from("weekly_plans").select("*").eq("age_group_id", player.age_group_id).eq("published", true).gte("starts_at", weekStart).lt("starts_at", weekEnd).order("starts_at", { ascending: false }).limit(1);
         const plan = plans && plans.length > 0 ? plans[0] : null;
         setWeeklyPlan(plan);
         if (plan) {
-          // First preference: explicitly saved homework challenge IDs on the weekly plan.
-          const hw = [];
-          if (plan.hurling_challenge_id) { const { data: ch } = await supabase.from("challenges").select("*").eq("id", plan.hurling_challenge_id).single(); if (ch) hw.push({ ...ch, type: "hurling" }); }
-          if (plan.football_challenge_id) { const { data: ch } = await supabase.from("challenges").select("*").eq("id", plan.football_challenge_id).single(); if (ch) hw.push({ ...ch, type: "football" }); }
-          if (plan.athletic_challenge_id) { const { data: ch } = await supabase.from("challenges").select("*").eq("id", plan.athletic_challenge_id).single(); if (ch) hw.push({ ...ch, type: "athletic" }); }
-
-          // Academy Admin saves the selected Coach-plan skill under the code keys
-          // `football` and `hurling` in academy_video_overrides. Resolve those exact
-          // skills here so the child app follows the Admin choice rather than a generic fallback.
+          const { data: weekProg } = await supabase.from("player_progress").select("*").eq("player_id", player.id).eq("plan_id", plan.id);
+          setProgress(weekProg || []);
+          // Academy Admin can explicitly choose which Coach-session skill is featured for each code.
+          // There is intentionally no Challenge/Homework lookup in the child weekly flow.
           const academySelections = plan.academy_video_overrides || {};
           const selectedSkillPairs = [
             ["football", academySelections.football],
@@ -446,27 +459,6 @@ export default function App() {
             const byId = Object.fromEntries((chosenSkills || []).map((skill) => [skill.id, skill]));
             selectedSkills = selectedSkillPairs.map(([type, id]) => byId[id] ? { ...byId[id], academyType: type } : null).filter(Boolean);
           }
-
-          // If no challenge was explicitly saved, resolve the child challenge attached
-          // to each selected Academy skill. This is the agreed:
-          // Skill -> Coach Activity/Drill -> Child Challenge/Homework model.
-          if (hw.length === 0 && selectedSkills.length) {
-            const selectedIds = selectedSkills.map((skill) => skill.id);
-            const { data: linkedChallenges } = await supabase.from("challenges").select("*").in("skill_id", selectedIds);
-            selectedSkills.forEach((skill) => {
-              const challenge = (linkedChallenges || []).find((item) => item.skill_id === skill.id);
-              if (challenge) hw.push({ ...challenge, type: skill.academyType });
-            });
-          }
-          setHomework(hw);
-
-          const assignedSkillIds = [...new Set(hw.map((ch)=>ch.skill_id).filter(Boolean))];
-          let assignedSkills = [];
-          if (assignedSkillIds.length) {
-            const { data: linkedSkills } = await supabase.from("skills").select("*").in("id", assignedSkillIds);
-            assignedSkills = linkedSkills || [];
-          }
-          const { data: bonus } = await supabase.from("bonus_tasks").select("*").eq("plan_id", plan.id); setBonusTasks(bonus || []);
           // Load training drills from coach's sessions for this plan
           const { data: sessions } = await supabase.from("sessions").select("id, notes, session_date, session_activities(*, activity:activities(id, title, description, coaching_points, setup, equipment, sport, category, difficulty, duration_mins, skill_id, skill:skills!activities_skill_id_fkey(id, name, sport, category, video_url)))").eq("plan_id", plan.id);
           const drills = [];
@@ -480,20 +472,12 @@ export default function App() {
             });
           });
           setTrainingDrills(drills);
-          // Load challenges that match these skills
           const skillIds = Object.keys(skillMap);
-          let matchedChallenges = [];
-          if (skillIds.length > 0) {
-            const { data: ch } = await supabase.from("challenges").select("*").in("skill_id", skillIds);
-            matchedChallenges = ch || [];
-          }
-          // Exact Academy selections win, followed by explicitly assigned challenge skills.
-          // Coach-session skills are only the fallback when Academy has not selected a skill.
+          // Exact Academy selections win; otherwise use the skills attached to Coach-session drills.
           const selectedSkillList = selectedSkills.map(({ academyType, ...skill }) => skill);
-          setWeekSkills(selectedSkillList.length ? selectedSkillList : assignedSkills.length ? assignedSkills : Object.values(skillMap));
-          setSkillChallenges(hw.length ? hw : matchedChallenges);
+          setWeekSkills(selectedSkillList.length ? selectedSkillList : Object.values(skillMap));
           // Only use a library fallback when there is genuinely no Academy selection and no Coach drill skill.
-          if (selectedSkillList.length === 0 && assignedSkills.length === 0 && skillIds.length === 0) {
+          if (selectedSkillList.length === 0 && skillIds.length === 0) {
             const { data: fallbackSkills } = await supabase.from("skills").select("*").not("video_url", "is", null).order("name");
             const fb = [];
             const hurling = (fallbackSkills || []).find((s) => s.sport === "hurling");
@@ -505,16 +489,18 @@ export default function App() {
           // Load fitness exercises for this plan
           const { data: exercises } = await supabase.from("journey_exercises").select("*").eq("plan_id", plan.id).order("sort_order");
           setFitnessExercises(exercises || []);
-        } else { setHomework([]); setBonusTasks([]); setTrainingDrills([]); setFitnessExercises([]); }
-        // Load opt-in events for this age group
-        const { data: evts } = await supabase.from("journey_events").select("*").eq("age_group_id", player.age_group_id).order("event_date");
-        setEvents(evts || []);
-        // Load this player's signups
-        const { data: signups } = await supabase.from("journey_event_signups").select("*").eq("player_id", player.id);
-        setEventSignups(signups || []);
+        } else { setProgress([]); setBonusTasks([]); setTrainingDrills([]); setWeekSkills([]); setFitnessExercises([]); }
+        // Weekly Academy activities are sourced from journey_exercises for this plan.
+        // Legacy journey_events are intentionally not shown in the weekly child Home flow.
+        setEvents([]);
+        setEventSignups([]);
       }
     } catch (e) { console.error("selectPlayer:", e); }
   }
+
+  useEffect(() => {
+    if (selectedPlayer?.id) selectPlayer(selectedPlayer, weekOffset);
+  }, [weekOffset]);
 
   async function signup() { setAuthLoading(true); setAuthError(""); const { error } = await supabase.auth.signUp({ email, password }); if (error) setAuthError(error.message); setAuthLoading(false); }
   async function login() { setAuthLoading(true); setAuthError(""); const { error } = await supabase.auth.signInWithPassword({ email, password }); if (error) setAuthError(error.message); setAuthLoading(false); }
@@ -555,30 +541,60 @@ export default function App() {
   async function completeExercise(exercise) {
     if (!selectedPlayer) return;
     const existing = progress.find((p) => p.exercise_id === exercise.id);
+    const needsCoach = (exercise.verification_type || "self") === "coach";
     if (existing) {
+      // Pending claims can be undone. Approved coach claims and self-completed activities
+      // can be removed, with XP reversed only when it was actually awarded.
       setProgress((prev) => prev.filter((p) => p.id !== existing.id));
-      await addXp(-(existing.xp_earned || 5));
-      if (!existing.id.startsWith("local-")) supabase.from("player_progress").delete().eq("id", existing.id);
+      if ((existing.status || "approved") === "approved" && Number(existing.xp_earned || 0) > 0) {
+        await addXp(-Number(existing.xp_earned || 0));
+      }
+      if (!String(existing.id).startsWith("local-")) await supabase.from("player_progress").delete().eq("id", existing.id);
       return;
     }
-    flashXp();
-    const xp = exercise.xp_reward || 5;
-    const { data } = await supabase.from("player_progress").insert({ player_id: selectedPlayer.id, club_id: selectedPlayer.club_id, age_group_id: selectedPlayer.age_group_id, exercise_id: exercise.id, plan_id: weeklyPlan?.id || null, xp_earned: xp }).select().single();
-    if (data) { setProgress((prev) => [...prev, data]); await addXp(xp); }
-    else { setProgress((prev) => [...prev, { id: "local-" + Date.now(), exercise_id: exercise.id, xp_earned: xp }]); await addXp(xp); }
+    const xp = Number(exercise.xp_reward || 5);
+    const payload = {
+      player_id: selectedPlayer.id,
+      club_id: selectedPlayer.club_id,
+      age_group_id: selectedPlayer.age_group_id,
+      exercise_id: exercise.id,
+      plan_id: weeklyPlan?.id || null,
+      xp_earned: needsCoach ? 0 : xp,
+      status: needsCoach ? "pending" : "approved",
+      claimed_at: new Date().toISOString(),
+      verified_at: needsCoach ? null : new Date().toISOString(),
+    };
+    const { data, error } = await supabase.from("player_progress").insert(payload).select().single();
+    if (error) { console.error("activity completion failed", error); return; }
+    if (data) {
+      setProgress((prev) => [...prev, data]);
+      if (!needsCoach) { await addXp(xp); flashXp(); }
+    }
   }
 
   async function signUpForEvent(event) {
     if (!selectedPlayer) return;
-    if (eventSignups.find((s) => s.event_id === event.id)) return; // already signed up
-    const { data } = await supabase.from("journey_event_signups").insert({ event_id: event.id, player_id: selectedPlayer.id }).select().single();
-    if (data) { setEventSignups((prev) => [...prev, data]); await addXp(event.xp_reward || 15); flashXp(); }
+    if (eventSignups.find((s) => s.event_id === event.id)) return;
+    const needsCoach = (event.verification_type || "self") === "coach";
+    const payload = {
+      event_id: event.id,
+      player_id: selectedPlayer.id,
+      status: needsCoach ? "pending" : "approved",
+      claimed_at: new Date().toISOString(),
+      verified_at: needsCoach ? null : new Date().toISOString(),
+    };
+    const { data, error } = await supabase.from("journey_event_signups").insert(payload).select().single();
+    if (error) { console.error("event signup failed", error); return; }
+    if (data) {
+      setEventSignups((prev) => [...prev, data]);
+      if (!needsCoach) { await addXp(event.xp_reward || 15); flashXp(); }
+    }
   }
 
   async function cancelEventSignup(event) {
     if (!selectedPlayer) return;
     const signup = eventSignups.find((s) => s.event_id === event.id);
-    if (!signup) return;
+    if (!signup || signup.status === "approved") return;
     await supabase.from("journey_event_signups").delete().eq("id", signup.id);
     setEventSignups((prev) => prev.filter((s) => s.id !== signup.id));
   }
@@ -643,8 +659,6 @@ export default function App() {
   const level = getLevel(xpTotal);
   const completedChallengeIds = new Set(progress.filter((p) => p.challenge_id).map((p) => p.challenge_id));
   const completedBonusIds = new Set(progress.filter((p) => p.bonus_task_id).map((p) => p.bonus_task_id));
-  const totalTasks = homework.length + bonusTasks.length;
-  const doneTasks = homework.filter((h) => completedChallengeIds.has(h.id)).length + bonusTasks.filter((b) => completedBonusIds.has(b.id)).length;
 
   if (initialLoading) return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: C.background }}>
@@ -778,61 +792,43 @@ export default function App() {
   if (!selectedPlayer && isAdminUrl) {
     if (screen !== "coach") setScreen("coach");
   }
-  function MissionCard({ challenge, done, onComplete, sportColor, sportBg, sportLabel }) {
-    // Category icon mapping
-    const iconMap = { hurling: "/hurling-icon.png", camogie: "/hurling-icon.png", football: "/football-icon.png", athletic: "/speed-mechanics-icon.png" };
-    const catIcon = iconMap[sportLabel] || "/football-icon.png";
-    return (
-      <div style={{ background: sportBg, border: `2px solid ${done ? C.success : sportColor}33`, borderRadius: 16, padding: 16, marginBottom: 12, position: "relative", overflow: "hidden" }}>
-        {/* Category icon watermark */}
-        <img src={catIcon} alt="" style={{ position: "absolute", right: 8, top: 8, width: 40, height: 40, objectFit: "contain", opacity: 0.2, pointerEvents: "none" }} />
-        {/* Sport label */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <img src={catIcon} alt="" style={{ width: 16, height: 16, objectFit: "contain" }} />
-            <span style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 12, color: sportColor, textTransform: "uppercase" }}>{sportLabel}</span>
-          </div>
-          {done && <span style={{ background: C.success, color: "#fff", borderRadius: 20, padding: "2px 8px", fontSize: 10, fontWeight: 700 }}>DONE</span>}
-          {!done && <span style={{ background: sportColor + "22", color: sportColor, borderRadius: 20, padding: "2px 8px", fontSize: 10, fontWeight: 700 }}>{Math.round((completedChallengeIds.has(challenge.id) ? 100 : 0))}%</span>}
-        </div>
-        {/* Content */}
-        <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 17, color: C.text, marginBottom: 4 }}>{challenge.title}</div>
-        {challenge.target && <div style={{ fontSize: 12, color: C.textSecondary, marginBottom: 10 }}>{challenge.target}</div>}
-        {challenge.description && <div style={{ fontSize: 11, color: C.textSecondary, lineHeight: 1.5, marginBottom: 10, padding: "8px 10px", background: "rgba(255,255,255,0.7)", borderRadius: 8 }}>{challenge.description}</div>}
-        {/* Progress bar */}
-        <div style={{ height: 6, background: sportColor + "22", borderRadius: 3, marginBottom: 10, overflow: "hidden" }}>
-          <div style={{ height: "100%", width: done ? "100%" : "0%", background: sportColor, borderRadius: 3, transition: "width 0.4s" }} />
-        </div>
-        {/* XP + action */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <span style={{ fontSize: 16 }}>?</span>
-            <span style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 14, color: C.gold }}>+10 XP</span>
-          </div>
-          {!done && (
-            <button onClick={() => onComplete(challenge)} style={{ background: C.success, color: "#fff", border: "none", borderRadius: 10, padding: "10px 18px", fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, boxShadow: "0 4px 10px rgba(22,163,74,0.25)" }}>
-              <CheckCircle size={16} /> Mark Complete
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  function renderMissions() {
+  function renderWeeklyPractice() {
     // Swap hurling/camogie for girls based on age group sport
     const isGirlsGroup = selectedPlayer?.age_group_id && ageGroups.find((ag) => ag.id === selectedPlayer.age_group_id)?.gender === "girls";
     function displaySport(sport) {
       if (isGirlsGroup && sport === "hurling") return "camogie";
       return sport;
     }
+    const recoveryTaskId = `recovery-${weeklyPlan?.week_number || 1}`;
+    const requiredSkillCount = weekSkills.length;
+    const completedSkillCount = weekSkills.filter((skill) => completedChallengeIds.has(skill.id)).length;
+    const requiredFitnessActivities = fitnessExercises.filter((ex) => ex.required !== false && (ex.activity_type || "exercise") !== "club");
+    const requiredClubActivities = fitnessExercises.filter((ex) => ex.required === true && (ex.activity_type || "exercise") === "club");
+    const requiredFitnessCount = requiredFitnessActivities.length + requiredClubActivities.length;
+    const completedFitnessCount = [...requiredFitnessActivities, ...requiredClubActivities].filter((ex) => progress.some((p) => p.exercise_id === ex.id && (p.status || "approved") === "approved")).length;
+    const requiredRecoveryCount = weeklyPlan || weekSkills.length || fitnessExercises.length ? 1 : 0;
+    const completedRecoveryCount = requiredRecoveryCount && completedBonusIds.has(recoveryTaskId) ? 1 : 0;
+    const requiredEvents = events.filter((evt) => evt.required);
+    const requiredEventCount = requiredEvents.length;
+    const completedRequiredEventCount = requiredEvents.filter((evt) => eventSignups.some((s) => s.event_id === evt.id && s.status === "approved")).length;
+    const totalRequiredTasks = requiredSkillCount + requiredFitnessCount + requiredRecoveryCount + requiredEventCount;
+    const completedRequiredTasks = completedSkillCount + completedFitnessCount + completedRecoveryCount + completedRequiredEventCount;
     return (<>
       {/* Academy weekly intro */}
-      <div style={{ background: C.surface, border: `1.5px solid ${C.border}`, borderRadius: 14, padding: "10px 14px", marginBottom: 14, display: "flex", alignItems: "center", gap: 12 }}>
-        <img src={APP_ICON} alt="Spraoi Academy" style={{ width: 42, height: 42, objectFit: "contain" }} />
-        <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 12, color: C.primary }}>This week in Academy</div>
-          <div style={{ fontSize: 12, color: C.textSecondary, lineHeight: 1.45, marginTop: 3, fontStyle: "italic" }}>“{academyQuoteFor(selectedPlayer, weeklyPlan)}”</div>
+      <div style={{ background: C.surface, border: `1.5px solid ${C.border}`, borderRadius: 18, padding: "16px", marginBottom: 16, boxShadow: "0 5px 18px rgba(15,23,42,0.07)" }}>
+        <div style={{ display:"flex",alignItems:"center",gap:12 }}>
+          <div style={{ width:52,height:52,borderRadius:15,background:C.primary+"12",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+            <img src={APP_ICON} alt="Spraoi Academy" style={{ width: 42, height: 42, objectFit: "contain" }} />
+          </div>
+          <div style={{ flex:1,minWidth:0 }}>
+            <div style={{ fontSize:10,fontWeight:800,letterSpacing:1.1,textTransform:"uppercase",color:C.textSecondary,marginBottom:2 }}>This week in Academy</div>
+            <div style={{ fontFamily:"'League Spartan', sans-serif",fontWeight:900,fontSize:26,lineHeight:1.02,color:C.primary,letterSpacing:"-.02em" }}>{weekCommencingLabel(weekOffset)}</div>
+            <div style={{ fontSize:11,color:C.textSecondary,lineHeight:1.45,marginTop:6,fontStyle:"italic" }}>“{academyQuoteFor(selectedPlayer, weeklyPlan)}”</div>
+          </div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:10}}>
+          <button onClick={()=>setWeekOffset(v=>v-1)} style={{padding:"8px 10px",borderRadius:9,border:`1px solid ${C.border}`,background:"#fff",color:C.primary,fontWeight:800,cursor:"pointer"}}>← Previous week</button>
+          <button disabled={weekOffset>=0} onClick={()=>setWeekOffset(v=>Math.min(0,v+1))} style={{padding:"8px 10px",borderRadius:9,border:`1px solid ${C.border}`,background:weekOffset>=0?C.surfaceAlt:"#fff",color:weekOffset>=0?C.textSecondary:C.primary,fontWeight:800,cursor:weekOffset>=0?"not-allowed":"pointer",opacity:weekOffset>=0?.55:1}}>Next week →</button>
         </div>
       </div>
 
@@ -845,25 +841,19 @@ export default function App() {
             const sportColor = isHurling ? C.hurling : C.football;
             const sportBg = isHurling ? C.hurlingBg : C.footballBg;
             const catIcon = isHurling ? "/hurling-icon.png" : "/football-icon.png";
-            const relatedChallenges = skillChallenges.filter((ch) => ch.skill_id === skill.id);
             const previousSkills = weekSkills.slice(0, weekSkills.indexOf(skill));
             const firstOfSport = !previousSkills.some((item) => (item.sport === "hurling" || item.sport === "camogie") === isHurling);
             return (
               <div key={skill.id}>
-                {firstOfSport && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "14px 0 10px" }}>
-                    <img src={catIcon} alt="" style={{ width: 32, height: 32, objectFit: "contain" }} />
-                    <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 15, color: sportColor, textTransform: "uppercase", flex: 1 }}>{isHurling ? (skill.sport === "camogie" ? "Camogie" : "Hurling") : "Football"}</div>
-                  </div>
-                )}
-              <div style={{ background: sportBg, border: `2px solid ${sportColor}22`, borderRadius: 16, marginBottom: 12, overflow: "hidden", position: "relative" }}>
+              <div style={{ background: C.surface, border: `2px solid ${sportColor}33`, borderTop:`5px solid ${sportColor}`, borderRadius: 18, marginBottom: 14, overflow: "hidden", position: "relative", boxShadow:"0 5px 16px rgba(15,23,42,0.07)" }}>
                 {/* Header */}
                 <div style={{ padding: "14px 14px 10px", display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{ width: 38, height: 38, borderRadius: 10, background: sportColor + "18", border: `1.5px solid ${sportColor}33`, display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <img src={catIcon} alt="" style={{ width: 22, height: 22, objectFit: "contain" }} />
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 16, color: C.text }}>{skill.name}</div>
+                    <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 900, fontSize: 13, color: sportColor, textTransform:"uppercase", letterSpacing:".04em", marginBottom:2 }}>{isHurling ? (skill.sport === "camogie" ? "Camogie" : "Hurling") : "Football"}</div>
+                    <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 17, color: C.text }}>{skill.name}</div>
                     <div style={{ fontSize: 10, color: C.textSecondary, textTransform: "capitalize" }}>{skill.category?.replace(/_/g, " ") || skill.sport}</div>
                   </div>
                 </div>
@@ -906,7 +896,7 @@ export default function App() {
                   </div>
                   {/* Mark complete button */}
                   {!progress.find((p) => p.challenge_id === skill.id) ? (
-                    <button onClick={() => completeChallenge({ id: skill.id, type: isHurling ? "hurling" : "football" })} style={{ width: "100%", marginTop: 8, padding: "11px", borderRadius: 10, border: "none", background: SECTIONS.skills.color, color: "#fff", fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, boxShadow: `0 3px 8px ${SECTIONS.skills.color}33` }}>
+                    <button onClick={() => completeChallenge({ id: skill.id, type: isHurling ? "hurling" : "football" })} style={{ width: "100%", marginTop: 8, padding: "11px", borderRadius: 10, border: "none", background: sportColor, color: "#fff", fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, boxShadow: `0 3px 8px ${sportColor}33` }}>
                       <CheckCircle size={16} /> I Practised for 20 Minutes!
                     </button>
                   ) : (
@@ -915,17 +905,6 @@ export default function App() {
                     </button>
                   )}
                 </div>
-                {/* Challenges */}
-                {relatedChallenges.length > 0 && (
-                  <div style={{ padding: "0 14px 12px" }}>
-                    {relatedChallenges.map((ch) => (
-                      <div key={ch.id} style={{ padding: "8px 10px", background: "rgba(255,255,255,0.7)", borderRadius: 10, marginTop: 6, border: `1px solid ${sportColor}11` }}>
-                        <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 700, fontSize: 12, color: C.text, marginBottom: 2 }}>Try: {ch.title}</div>
-                        {ch.description && <div style={{ fontSize: 10, color: C.textSecondary, lineHeight: 1.4 }}>{ch.description}</div>}
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
               </div>
             );
@@ -934,15 +913,15 @@ export default function App() {
       )}
 
       {/* Fitness Exercises   runs, star jumps etc */}
-      {fitnessExercises.length > 0 && (
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+      {fitnessExercises.filter((ex) => (ex.activity_type || "exercise") !== "club" && (ex.activity_type || "exercise") !== "recovery").length > 0 && (
+        <div style={{ background:C.surface, border:`1.5px solid ${SECTIONS.fitness.color}33`, borderTop:`5px solid ${SECTIONS.fitness.color}`, borderRadius:18, padding:14, marginBottom:16, boxShadow:"0 4px 14px rgba(15,23,42,0.06)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, paddingBottom:10, borderBottom:`1px solid ${SECTIONS.fitness.color}22` }}>
             <img src={SECTIONS.fitness.icon} alt="" style={{ width: 32, height: 32, objectFit: "contain" }} />
             <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 14, color: SECTIONS.fitness.color, textTransform: "uppercase", flex: 1 }}>Fitness</div>
             <img src="/speed-mechanics-icon.png" alt="" style={{ width: 20, height: 20, objectFit: "contain", opacity: 0.5 }} />
           </div>
-          {fitnessExercises.map((ex) => {
-            const done = progress.find((p) => p.exercise_id === ex.id);
+          {fitnessExercises.filter((ex) => (ex.activity_type || "exercise") !== "club" && (ex.activity_type || "exercise") !== "recovery").map((ex) => {
+            const done = progress.find((p) => p.exercise_id === ex.id && (p.status || "approved") === "approved");
             return (
               <div key={ex.id} style={{ background: done ? C.successBg : C.athleticBg, border: `1.5px solid ${done ? C.success + "44" : C.athletic + "33"}`, borderRadius: 12, padding: "10px 14px", marginBottom: 8, display: "flex", alignItems: "center", gap: 10 }}>
                 <button onClick={() => completeExercise(ex)} title={done ? "Mark as not done" : "Mark complete"} style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}>
@@ -959,40 +938,31 @@ export default function App() {
         </div>
       )}
 
-      {/* Selected Football / Hurling homework */}
-      {homework.map((ch) => {
-        const done = completedChallengeIds.has(ch.id);
-        const sport = displaySport(ch.type);
-        const sportColor = sport === "camogie" ? C.hurling : ch.type === "hurling" ? C.hurling : ch.type === "football" ? C.football : C.athletic;
-        const sportBg = sport === "camogie" ? C.hurlingBg : ch.type === "hurling" ? C.hurlingBg : ch.type === "football" ? C.footballBg : C.athleticBg;
-        return <MissionCard key={ch.id} challenge={ch} done={done} onComplete={completeChallenge} sportColor={sportColor} sportBg={sportBg} sportLabel={sport} />;
-      })}
-
-      {/* Bonus challenge */}
-      {bonusTasks.length > 0 && (
-        <div style={{ background: "#fef9ef", border: `2px solid ${C.gold}44`, borderRadius: 16, padding: 16, marginBottom: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-            <span style={{ fontSize: 16 }}>??</span>
-            <span style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 13, color: "#92400e", textTransform: "uppercase" }}>Bonus Challenge</span>
+      {/* Weekly club activities set in Academy Admin */}
+      {fitnessExercises.filter((ex) => (ex.activity_type || "exercise") === "club").length > 0 && (
+        <div style={{ background:C.surface, border:`1.5px solid ${SECTIONS.events.color}33`, borderTop:`5px solid ${SECTIONS.events.color}`, borderRadius:18, padding:14, marginBottom:16, boxShadow:"0 4px 14px rgba(15,23,42,0.06)" }}>
+          <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:12,paddingBottom:10,borderBottom:`1px solid ${SECTIONS.events.color}22` }}>
+            <img src="/hurling-icon.png" alt="" style={{ width:32,height:32,objectFit:"contain" }} />
+            <div style={{ fontFamily:"'League Spartan', sans-serif",fontWeight:800,fontSize:14,color:SECTIONS.events.color,textTransform:"uppercase",flex:1 }}>Club Activities</div>
           </div>
-          <p style={{ fontSize: 12, color: C.textSecondary, margin: "0 0 10px" }}>Can you complete all {homework.length} missions?</p>
-          <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 14, color: C.gold }}>+25 XP</div>
-          {bonusTasks.map((t) => { const done = completedBonusIds.has(t.id); return (
-            <div key={t.id} style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, padding: "8px 0", borderTop: `1px solid ${C.gold}22` }}>
-              <button onClick={() => completeBonus(t)} title={done ? "Mark as not done" : "Mark complete"} style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}>{done ? <CheckCircle size={22} color={C.gold} /> : <Circle size={22} color={C.gold + "66"} />}</button>
-              <div style={{ flex: 1, fontSize: 12, fontWeight: 600, color: done ? C.textSecondary : C.text }}>{t.title}</div>
-              <span style={{ fontSize: 11, fontWeight: 700, color: C.gold }}>+{t.xp_reward || 15}</span>
-            </div>
-          ); })}
+          {fitnessExercises.filter((ex) => (ex.activity_type || "exercise") === "club").map((ex) => {
+            const claim = progress.find((p) => p.exercise_id === ex.id);
+            const status = claim?.status || null;
+            const needsCoach = (ex.verification_type || "self") === "coach";
+            return <div key={ex.id} style={{ background:C.surface,border:`2px solid ${status === "approved" ? C.success+"55" : status === "pending" ? "#f59e0b55" : SECTIONS.events.color+"33"}`,borderRadius:14,padding:14,marginBottom:8 }}>
+              <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"flex-start"}}><div><div style={{fontFamily:"'League Spartan', sans-serif",fontWeight:800,fontSize:16,color:C.text}}>{ex.title}</div>{ex.description&&<div style={{fontSize:11,color:C.textSecondary,marginTop:3}}>{ex.description}</div>}</div><span style={{fontFamily:"'League Spartan', sans-serif",fontWeight:800,fontSize:12,color:C.gold}}>+{ex.xp_reward||15} XP</span></div>
+              <div style={{fontSize:10,color:needsCoach?"#b45309":SECTIONS.events.color,fontWeight:700,margin:"8px 0"}}>{needsCoach?"Coach verified":"Player verified"}{ex.required?" · Required":" · Optional"}</div>
+              {status === "approved" ? <div style={{padding:"10px 12px",borderRadius:10,background:C.successBg,color:C.success,fontWeight:800,fontSize:12,display:"flex",alignItems:"center",gap:7}}><CheckCircle size={18}/> {needsCoach?"Coach verified":"Completed"} · +{ex.xp_reward||15} XP</div> : status === "pending" ? <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,padding:"10px 12px",borderRadius:10,background:"#fff7ed",border:"1px solid #fdba7444"}}><div style={{fontWeight:800,fontSize:12,color:"#b45309"}}>⏳ Awaiting coach approval</div><button onClick={()=>completeExercise(ex)} style={{background:"none",border:"1px solid #fdba74",borderRadius:8,padding:"5px 9px",fontSize:9,fontWeight:700,color:"#b45309",cursor:"pointer"}}>Undo</button></div> : <button onClick={()=>completeExercise(ex)} style={{width:"100%",padding:11,borderRadius:10,border:"none",background:SECTIONS.events.color,color:"#fff",fontFamily:"'League Spartan', sans-serif",fontWeight:800,fontSize:13,cursor:"pointer"}}>{needsCoach?"I Attended":"I Did It"}</button>}
+            </div>;
+          })}
         </div>
       )}
 
       {/* Rest & Recovery */}
-      <div style={{ marginBottom: 14 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-          <img src={SECTIONS.recovery.icon} alt="" style={{ width: 32, height: 32, objectFit: "contain" }} />
+      <div style={{ background:C.surface, border:`1.5px solid ${SECTIONS.recovery.color}33`, borderTop:`5px solid ${SECTIONS.recovery.color}`, borderRadius:18, padding:14, marginBottom:16, boxShadow:"0 4px 14px rgba(15,23,42,0.06)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, paddingBottom:10, borderBottom:`1px solid ${SECTIONS.recovery.color}22` }}>
+          <div style={{ width:42,height:42,borderRadius:12,background:SECTIONS.recovery.bg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}><img src={SECTIONS.recovery.icon} alt="" style={{ width: 30, height: 30, objectFit: "contain" }} /></div>
           <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 14, color: SECTIONS.recovery.color, textTransform: "uppercase", flex: 1 }}>Rest & Recovery</div>
-          <img src="/rest-and-recovery-icon.png" alt="" style={{ width: 20, height: 20, objectFit: "contain", opacity: 0.6 }} />
         </div>
         {(() => {
           const weekNum = weeklyPlan?.week_number || 1;
@@ -1018,48 +988,14 @@ export default function App() {
         })()}
       </div>
 
-      {/* Events   opt-in sessions */}
-      {events.length > 0 && (
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-            <img src={SECTIONS.events.icon} alt="" style={{ width: 32, height: 32, objectFit: "contain" }} />
-            <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 14, color: SECTIONS.events.color, textTransform: "uppercase", flex: 1 }}>Sessions & Events</div>
+      {/* Weekly completion summary */}
+      {totalRequiredTasks > 0 && completedRequiredTasks < totalRequiredTasks && (
+        <div style={{ background:C.surface,border:`1.5px solid ${C.border}`,borderRadius:16,padding:"12px 14px",marginBottom:14,boxShadow:"0 4px 14px rgba(15,23,42,0.05)" }}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,marginBottom:7}}>
+            <span style={{fontFamily:"'League Spartan', sans-serif",fontWeight:800,fontSize:12,color:C.text,textTransform:"uppercase"}}>This week</span>
+            <span style={{fontFamily:"'League Spartan', sans-serif",fontWeight:900,fontSize:13,color:C.primary}}>{completedRequiredTasks}/{totalRequiredTasks} complete</span>
           </div>
-          {events.map((evt) => {
-            const isSignedUp = eventSignups.find((s) => s.event_id === evt.id);
-            const signupCount = eventSignups.filter((s) => s.event_id === evt.id).length;
-            const isFull = evt.max_spots && signupCount >= evt.max_spots;
-            return (
-              <div key={evt.id} style={{ background: isSignedUp ? "#e8f5e9" : C.surface, border: `2px solid ${isSignedUp ? C.success + "44" : C.primary + "33"}`, borderRadius: 14, padding: 14, marginBottom: 10 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-                  <div>
-                    <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 15, color: C.text }}>{evt.title}</div>
-                    {evt.description && <div style={{ fontSize: 11, color: C.textSecondary, marginTop: 2 }}>{evt.description}</div>}
-                  </div>
-                  <span style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 12, color: C.gold }}>+{evt.xp_reward || 15} XP</span>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 10, color: C.textSecondary, marginBottom: 10 }}>
-                  {evt.event_date && <span>?? {new Date(evt.event_date).toLocaleDateString("en-IE", { weekday: "short", day: "numeric", month: "short" })}</span>}
-                  {evt.event_time && <span>?? {evt.event_time}</span>}
-                  {evt.location && <span>?? {evt.location}</span>}
-                  {evt.recurring && <span style={{ background: C.primary + "15", color: C.primary, padding: "2px 6px", borderRadius: 4, fontWeight: 700 }}>Weekly</span>}
-                </div>
-                {isSignedUp ? (
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <CheckCircle size={18} color={C.success} />
-                      <span style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 700, fontSize: 12, color: C.success }}>Signed Up!</span>
-                    </div>
-                    <button onClick={() => cancelEventSignup(evt)} style={{ background: "none", border: `1px solid ${C.border}`, borderRadius: 8, padding: "6px 12px", fontSize: 10, fontWeight: 600, color: C.textSecondary, cursor: "pointer" }}>Cancel</button>
-                  </div>
-                ) : (
-                  <button onClick={() => !isFull && signUpForEvent(evt)} disabled={isFull} style={{ width: "100%", padding: "10px", borderRadius: 10, border: "none", background: isFull ? C.border : C.primary, color: "#fff", fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 13, cursor: isFull ? "default" : "pointer" }}>
-                    {isFull ? "Full" : "I'm In!"}
-                  </button>
-                )}
-              </div>
-            );
-          })}
+          <div style={{height:7,borderRadius:99,background:C.surfaceAlt,overflow:"hidden"}}><div style={{height:"100%",width:`${Math.round((completedRequiredTasks/totalRequiredTasks)*100)}%`,background:C.primary,borderRadius:99,transition:"width .3s"}} /></div>
         </div>
       )}
 
@@ -1069,25 +1005,34 @@ export default function App() {
           <Flame size={20} color="#f97316" fill="#f97316" />
           <span style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 13, color: C.text, textTransform: "uppercase" }}>Keep your streak alive!</span>
         </div>
-        <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 900, fontSize: 22, color: "#f97316" }}>{selectedPlayer.streak_days || 0} <span style={{ fontSize: 11, fontWeight: 600, color: C.textSecondary }}>Days</span></div>
+        <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 900, fontSize: 22, color: "#f97316" }}>{selectedPlayer.week_streak || selectedPlayer.streak_weeks || 0} <span style={{ fontSize: 11, fontWeight: 600, color: C.textSecondary }}>Weeks</span></div>
       </div>
 
       {/* Empty state */}
-      {!weeklyPlan && homework.length === 0 && (
+      {!weeklyPlan && weekSkills.length === 0 && fitnessExercises.length === 0 && events.length === 0 && (
         <div style={{ background: C.surface, borderRadius: 16, padding: 28, textAlign: "center", border: `1px solid ${C.border}` }}>
           <img src={APP_ICON} alt="Spraoi Academy" style={{ width: 72, height: 72, objectFit: "contain", marginBottom: 10 }} />
           <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 16, color: C.text, textTransform: "uppercase" }}>Nothing Set Yet</div>
-          <p style={{ fontSize: 12, color: C.textSecondary, margin: "6px 0 0" }}>Your coach hasn't set this week's missions. Check back soon!</p>
+          <p style={{ fontSize: 12, color: C.textSecondary, margin: "6px 0 0" }}>Your coach hasn't set anything for this week yet. Check back soon!</p>
         </div>
       )}
 
+      {/* Try this next */}
+      {totalRequiredTasks > 0 && completedRequiredTasks < totalRequiredTasks && (() => {
+        const nextSkill = weekSkills.find((skill) => !completedChallengeIds.has(skill.id));
+        const nextFitness = fitnessExercises.find((ex) => !progress.some((p) => p.exercise_id === ex.id && (p.status || "approved") === "approved"));
+        const nextRequiredEvent = requiredEvents.find((evt) => !eventSignups.some((s) => s.event_id === evt.id && s.status === "approved"));
+        const nextLabel = nextSkill?.name || nextSkill?.title || nextFitness?.title || nextRequiredEvent?.title || (!completedRecoveryCount ? "Rest & Recovery" : null);
+        return nextLabel ? <div style={{ background: "#fff", border: `1.5px solid ${C.primary}22`, borderRadius: 16, padding: "13px 15px", marginTop: 12, display: "flex", alignItems: "center", gap: 10, boxShadow: "0 4px 14px rgba(15,23,42,.05)" }}><div style={{ width: 34, height: 34, borderRadius: 10, background: C.primary+"12", display: "grid", placeItems: "center" }}><Target size={18} color={C.primary}/></div><div><div style={{ fontSize: 9, fontWeight: 800, textTransform: "uppercase", color: C.textSecondary }}>Try this next</div><div style={{ fontSize: 12, fontWeight: 800, color: C.primary, marginTop: 2 }}>{nextLabel}</div></div></div> : null;
+      })()}
+
       {/* All done */}
-      {totalTasks > 0 && doneTasks === totalTasks && (
+      {totalRequiredTasks > 0 && completedRequiredTasks === totalRequiredTasks && (
         <div style={{ background: C.primary, borderRadius: 16, padding: 20, textAlign: "center", color: "#fff", marginTop: 12, boxShadow: "0 8px 24px rgba(26,92,45,0.3)" }}>
           <img src={APP_ICON} alt="Spraoi Academy" style={{ width: 62, height: 62, objectFit: "contain", marginBottom: 8 }} />
           <Trophy size={28} style={{ marginBottom: 6 }} />
-          <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 900, fontSize: 18, textTransform: "uppercase" }}>All Done for This Week!</div>
-          <p style={{ margin: "6px 0 0", fontSize: 12, opacity: 0.9 }}>Great work, {selectedPlayer.name}!</p>
+          <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 900, fontSize: 18, textTransform: "uppercase" }}>Week Complete! 🎉</div>
+          <p style={{ margin: "6px 0 0", fontSize: 12, opacity: 0.9 }}>Amazing work, {selectedPlayer.name}! You completed {completedRequiredTasks} activities this week.</p>
         </div>
       )}
     </>);
@@ -1095,7 +1040,59 @@ export default function App() {
 
   function renderProgress() {
     const earnedIds = new Set(earnedBadges.map((eb) => eb.badge_id));
+    const approvedCoachItems = eventSignups.filter((s) => s.status === "approved");
+    const weekStreak = selectedPlayer?.week_streak || selectedPlayer?.streak_weeks || 0;
+    const currentSkillRows = weekSkills.map((skill) => ({
+      ...skill,
+      done: completedChallengeIds.has(skill.id),
+      color: (skill.sport === "hurling" || skill.sport === "camogie") ? C.hurling : C.football,
+    }));
+    const recentWeekKeys = [...new Set(progress.map((p) => p.created_at).filter(Boolean).map((value) => mondayKeyForDate(value)).filter(Boolean))].sort().reverse().slice(0, 4);
     return (<>
+      {/* Me hero */}
+      <div style={{ background: `linear-gradient(135deg, ${C.primary}, #2f7d4b)`, color: "#fff", borderRadius: 20, padding: 18, marginBottom: 14, boxShadow: "0 8px 22px rgba(26,92,45,.22)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+          <div>
+            <div style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".08em", opacity: .78 }}>My Academy</div>
+            <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 900, fontSize: 24, marginTop: 3 }}>Level {level}</div>
+            <div style={{ fontSize: 11, opacity: .82 }}>{xpTotal} XP earned</div>
+          </div>
+          <div style={{ minWidth: 78, textAlign: "center", background: "rgba(255,255,255,.14)", borderRadius: 14, padding: "10px 12px" }}>
+            <Flame size={22} color="#ffd166" fill="#ffd166" />
+            <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 900, fontSize: 22 }}>{weekStreak}</div>
+            <div style={{ fontSize: 9, opacity: .82 }}>week streak</div>
+          </div>
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, opacity: .8, marginBottom: 4 }}><span>Level {level}</span><span>{xpInLevel(xpTotal)}/{XP_PER_LEVEL} XP</span></div>
+          <div style={{ height: 8, borderRadius: 99, background: "rgba(255,255,255,.2)", overflow: "hidden" }}><div style={{ height: "100%", width: `${(xpInLevel(xpTotal) / XP_PER_LEVEL) * 100}%`, background: C.gold, borderRadius: 99, transition: "width .35s" }} /></div>
+        </div>
+      </div>
+
+      {/* Skill progress */}
+      {currentSkillRows.length > 0 && <div style={{ background: C.surface, borderRadius: 16, padding: 18, border: `1px solid ${C.border}`, marginBottom: 14, boxShadow: "0 4px 14px rgba(0,0,0,0.05)" }}>
+        <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 14, color: C.text, textTransform: "uppercase", marginBottom: 12 }}>My Skills</div>
+        {currentSkillRows.map((skill) => <div key={skill.id} style={{ marginBottom: 11 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 5 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: skill.color }}>{skill.name || skill.title}</div>
+            <div style={{ fontSize: 10, fontWeight: 800, color: skill.done ? C.success : C.textSecondary }}>{skill.done ? "Practised ✓" : "Working on it"}</div>
+          </div>
+          <div style={{ display: "flex", gap: 4 }}>{[0,1,2].map((dot) => <span key={dot} style={{ width: 10, height: 10, borderRadius: "50%", display: "inline-block", background: dot < (skill.done ? 2 : 1) ? skill.color : C.border }} />)}</div>
+        </div>)}
+      </div>}
+
+      {/* Coach verified achievements */}
+      {approvedCoachItems.length > 0 && <div style={{ background: "#f0fdf4", borderRadius: 16, padding: 16, border: `1.5px solid ${C.success}33`, marginBottom: 14 }}>
+        <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 14, color: C.success, textTransform: "uppercase", marginBottom: 8 }}>Coach Verified</div>
+        {approvedCoachItems.slice(0,4).map((signup) => { const evt = events.find((e) => e.id === signup.event_id); return <div key={signup.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderBottom: `1px solid ${C.success}18` }}><CheckCircle size={16} color={C.success}/><div style={{ flex: 1, fontSize: 11, fontWeight: 700, color: C.text }}>{evt?.title || "Coach verified activity"}</div><span style={{ fontSize: 9, fontWeight: 800, color: C.success }}>VERIFIED</span></div>; })}
+      </div>}
+
+      {/* Recent weeks */}
+      {recentWeekKeys.length > 0 && <div style={{ background: C.surface, borderRadius: 16, padding: 16, border: `1px solid ${C.border}`, marginBottom: 14 }}>
+        <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 14, color: C.text, textTransform: "uppercase", marginBottom: 9 }}>Recent Weeks</div>
+        <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>{recentWeekKeys.map((key) => <div key={key} style={{ background: C.surfaceAlt, borderRadius: 10, padding: "8px 10px", fontSize: 10, fontWeight: 700, color: C.text }}><CheckCircle size={13} color={C.success} style={{ verticalAlign: "middle", marginRight: 4 }}/>{new Date(`${key}T12:00:00`).toLocaleDateString("en-IE",{day:"numeric",month:"short"})}</div>)}</div>
+      </div>}
+
       {/* All Badges */}
       <div style={{ background: C.surface, borderRadius: 16, padding: 18, border: `1px solid ${C.border}`, marginBottom: 14, boxShadow: "0 4px 14px rgba(0,0,0,0.05)" }}>
         <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 14, color: C.text, textTransform: "uppercase", marginBottom: 12 }}>Badges</div>
@@ -1131,10 +1128,10 @@ export default function App() {
       {/* Week stats */}
       <div style={{ background: C.surface, borderRadius: 16, padding: 18, border: `1px solid ${C.border}`, boxShadow: "0 4px 14px rgba(0,0,0,0.05)" }}>
         <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 14, color: C.text, textTransform: "uppercase", marginBottom: 12 }}>This Week</div>
-        {homework.map((ch) => { const done = completedChallengeIds.has(ch.id); const col = ch.type === "hurling" ? C.hurling : ch.type === "football" ? C.football : C.athletic; return (
-          <div key={ch.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+        {weekSkills.map((skill) => { const done = completedChallengeIds.has(skill.id); const isHurling = skill.sport === "hurling" || skill.sport === "camogie"; const col = isHurling ? C.hurling : C.football; return (
+          <div key={skill.id} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: col }} />
-            <div style={{ flex: 1 }}><span style={{ fontSize: 12, fontWeight: 600, color: C.text }}>{ch.type}</span><br /><span style={{ fontSize: 11, color: C.textSecondary }}>{ch.title}</span></div>
+            <div style={{ flex: 1 }}><span style={{ fontSize: 12, fontWeight: 600, color: C.text }}>{isHurling ? (skill.sport === "camogie" ? "Camogie" : "Hurling") : "Football"}</span><br /><span style={{ fontSize: 11, color: C.textSecondary }}>{skill.name}</span></div>
             {done ? <CheckCircle size={16} color={C.success} /> : <Circle size={16} color={C.border} />}
           </div>
         ); })}
@@ -1172,8 +1169,8 @@ export default function App() {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#fff3e0", borderRadius: 20, padding: "5px 12px" }}>
             <Flame size={14} color="#f97316" fill="#f97316" />
-            <span style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 14, color: "#f97316" }}>{selectedPlayer.streak_days || 0}</span>
-            <span style={{ fontSize: 10, color: C.textSecondary }}>day streak</span>
+            <span style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 14, color: "#f97316" }}>{selectedPlayer.week_streak || selectedPlayer.streak_weeks || 0}</span>
+            <span style={{ fontSize: 10, color: C.textSecondary }}>week streak</span>
           </div>
         </div>
 
@@ -1212,7 +1209,7 @@ export default function App() {
         </div>}
 
         {/* Content */}
-        {screen === "home" && selectedPlayer && renderMissions()}
+        {screen === "home" && selectedPlayer && renderWeeklyPractice()}
         {screen === "progress" && selectedPlayer && renderProgress()}
         {screen === "learn" && (
           <div>
@@ -1231,7 +1228,6 @@ export default function App() {
               const sportColor = isHurling ? C.hurling : C.football;
               const sportBg = isHurling ? C.hurlingBg : C.footballBg;
               const catIcon = isHurling ? "/hurling-icon.png" : "/football-icon.png";
-              const related = allChallenges.filter((c) => c.skill_id === skill.id);
               return (
                 <div key={skill.id} style={{ background: sportBg, border: `1.5px solid ${sportColor}18`, borderRadius: 14, marginBottom: 10, overflow: "hidden" }}>
                   <div style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }}>
@@ -1247,16 +1243,6 @@ export default function App() {
                       <div style={{ borderRadius: 10, overflow: "hidden", border: `1px solid ${sportColor}22`, background: "#000" }}>
                         <iframe src={skill.video_url.replace("watch?v=", "embed/").split("&")[0]} style={{ width: "100%", height: 160, border: "none", display: "block" }} allow="accelerometer; autoplay; encrypted-media; gyroscope" allowFullScreen title={skill.name} />
                       </div>
-                    </div>
-                  )}
-                  {related.length > 0 && (
-                    <div style={{ padding: "0 14px 10px" }}>
-                      {related.map((ch) => (
-                        <div key={ch.id} style={{ padding: "8px 10px", background: "rgba(255,255,255,0.7)", borderRadius: 8, marginBottom: 4, border: `1px solid ${sportColor}11` }}>
-                          <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 700, fontSize: 11, color: C.text }}>{ch.title}</div>
-                          {ch.description && <div style={{ fontSize: 10, color: C.textSecondary, lineHeight: 1.4, marginTop: 2 }}>{ch.description}</div>}
-                        </div>
-                      ))}
                     </div>
                   )}
                 </div>

@@ -28,6 +28,14 @@ const Sh = {
    CATEGORY ICON MAPPING — sport + category dual tags on drill cards
    ============================================================ */
 
+function mondayKeyForDate(value) {
+  const d = value ? new Date(`${String(value).slice(0,10)}T12:00:00`) : new Date();
+  if (Number.isNaN(d.getTime())) return null;
+  const diff = d.getDay() === 0 ? -6 : 1 - d.getDay();
+  d.setDate(d.getDate() + diff);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+
 const ACTIVE_TEAM_KEY = "spraoi_active_team_id";
 const ACTIVE_CLUB_KEY = "spraoi_active_club_id";
 const ACTIVE_CONTEXT_EVENT = "spraoi-active-context";
@@ -117,6 +125,7 @@ const MODULES = {
       { id: "academy-preview", icon: "◉", label: "Child Preview" },
       { id: "academy-leaderboard", icon: "★", label: "Leaderboard" },
       { id: "academy-engagement", icon: "↗", label: "Engagement" },
+      { id: "academy-approvals", icon: "✓", label: "Approvals" },
       { id: "academy-settings", icon: "⚙", label: "Settings" },
     ],
   },
@@ -2336,8 +2345,8 @@ function getAcademyWeeklyRecommendations(planSessions, skills = [], overrides = 
     });
 
     const rankedThemes = [...tallies.values()].sort((a, b) => {
-      if (b.frequency !== a.frequency) return b.frequency - a.frequency;
-      return b.totalScore - a.totalScore;
+      if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
+      return b.frequency - a.frequency;
     });
 
     let selectedTheme = rankedThemes[0] || null;
@@ -2416,7 +2425,7 @@ const previewPill = {
   backdropFilter: "blur(8px)",
 };
 
-function AcademyPhonePreview({ planSessions = [], extras = [], skills = [], overrides = {}, published = false, compact = false, selectedTeam = null }) {
+function AcademyPhonePreview({ weeklyPlan = null, planSessions = [], extras = [], skills = [], overrides = {}, published = false, compact = false, selectedTeam = null }) {
   const recommendations = getAcademyWeeklyRecommendations(planSessions, skills, overrides, selectedTeam);
   const football = recommendations.filter((item) => item.code === "football");
   const hurling = recommendations.filter((item) => item.code === "hurling");
@@ -2426,7 +2435,7 @@ function AcademyPhonePreview({ planSessions = [], extras = [], skills = [], over
   const taskRow=(item)=><div key={item.id} style={{ display:"flex",alignItems:"center",gap:8,padding:"8px 9px",borderRadius:10,background:"#f8fafc" }}><div style={{flex:1,minWidth:0}}><div style={{fontFamily:F.body,fontSize:10,fontWeight:900,color:P.ink}}>{item.title}</div><div style={{fontFamily:F.body,fontSize:8,color:P.muted,marginTop:2}}>{item.target || item.description || item.instruction || "Complete this mission"}</div></div><span style={{fontFamily:F.body,fontSize:8,fontWeight:900,color:"#b45309"}}>+{item.xp || item.xp_reward || 10} XP</span></div>;
   const skillRow=(item)=><div key={item.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 9px",borderRadius:10,background:"#f8fafc"}}><div style={{width:32,height:32,borderRadius:9,background:"#e0f2fe",display:"grid",placeItems:"center"}}>▶</div><div style={{flex:1,minWidth:0}}><div style={{fontFamily:F.body,fontSize:10,fontWeight:900,color:P.ink}}>{item.matchedSkill?.name || "Choose weekly video"}</div><div style={{fontFamily:F.body,fontSize:8,color:P.muted,marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>Based on {item.sourceDrills.length} Coach drill{item.sourceDrills.length===1?"":"s"}</div></div><span style={{fontFamily:F.body,fontSize:8,fontWeight:900,color:"#b45309"}}>+20 XP</span></div>;
   const visibleCount = football.length+hurling.length+Object.values(grouped).reduce((sum,items)=>sum+items.length,0);
-  return <div style={{ width: compact ? 300 : "min(390px,100%)", maxHeight: compact ? 600 : "none", overflow:"hidden", background:"#fff",borderRadius:compact?26:32,border:compact?"6px solid #16324a":"8px solid #16324a",boxShadow:"0 22px 52px rgba(7,89,133,.2)" }}><div style={{background:"linear-gradient(135deg,#38bdf8,#0284c7)",padding:compact?"16px 14px":"22px 18px",color:"#fff",position:"relative",overflow:"hidden"}}><img src="/spraoi-academy-icon.png" alt="" style={{position:"absolute",right:8,bottom:-8,width:compact?68:88,height:compact?68:88,objectFit:"contain",background:"#fff",borderRadius:18,padding:6}}/><div style={{fontFamily:F.body,fontSize:8,fontWeight:900,opacity:.85,textTransform:"uppercase"}}>Club Spraoi Academy</div><div style={{fontFamily:F.display,fontSize:compact?18:24,fontWeight:900,marginTop:3,maxWidth:"70%"}}>Your weekly adventure</div><div style={{display:"flex",gap:6,marginTop:11}}><span style={previewPill}>⭐ {recommendations.length*20+extras.reduce((s,x)=>s+Number(x.xp||x.xp_reward||0),0)} XP</span><span style={previewPill}>🏅 Badges</span></div></div><div style={{padding:compact?10:15,background:"#f3f9fd",maxHeight:compact?460:"none",overflowY:"auto"}}>{visibleCount===0?<div style={{padding:18,textAlign:"center",fontFamily:F.body,fontSize:10,color:P.muted}}>Add weekly content to see the child experience here.</div>:<>{section("Step Goals",grouped.steps,"#0f9f6e","👟",taskRow)}{section("Exercises",grouped.exercises,"#7c3aed","💪",taskRow)}{section("Run Challenge",grouped.runs,"#e65100","🏃",taskRow)}{section("Football Skills",football,"#2563eb","⚽",skillRow)}{section(selectedTeam?.gender === "girls" ? "Camogie Skills" : "Hurling Skills",hurling,"#dc2626","🏑",skillRow)}{section("Bonus",grouped.bonus,"#d97706","✨",taskRow)}{section("Rest & Recovery",grouped.recovery,"#0f766e","🌙",taskRow)}</>}<div style={{marginTop:10,padding:9,borderRadius:11,background:published?"#dcfce7":"#fff7ed",color:published?"#15803d":"#b45309",fontFamily:F.body,fontSize:8,fontWeight:900,textAlign:"center"}}>{published?"✓ Published to children":"Preview mode · not published"}</div></div></div>;
+  return <div style={{ width: compact ? 300 : "min(390px,100%)", maxHeight: compact ? 600 : "none", overflow:"hidden", background:"#fff",borderRadius:compact?26:32,border:compact?"6px solid #16324a":"8px solid #16324a",boxShadow:"0 22px 52px rgba(7,89,133,.2)" }}><div style={{background:"linear-gradient(135deg,#38bdf8,#0284c7)",padding:compact?"16px 14px":"22px 18px",color:"#fff",position:"relative",overflow:"hidden"}}><img src="/spraoi-academy-icon.png" alt="" style={{position:"absolute",right:8,bottom:-8,width:compact?68:88,height:compact?68:88,objectFit:"contain",background:"#fff",borderRadius:18,padding:6}}/><div style={{fontFamily:F.body,fontSize:8,fontWeight:900,opacity:.85,textTransform:"uppercase"}}>Spraoi Academy</div><div style={{fontFamily:F.display,fontSize:compact?18:24,fontWeight:900,marginTop:3,maxWidth:"70%"}}>{getAcademyWeekRange(weeklyPlan)}</div><div style={{display:"flex",gap:6,marginTop:11}}><span style={previewPill}>⭐ {recommendations.length*20+extras.reduce((s,x)=>s+Number(x.xp||x.xp_reward||0),0)} XP</span><span style={previewPill}>🏅 Badges</span></div></div><div style={{padding:compact?10:15,background:"#f3f9fd",maxHeight:compact?460:"none",overflowY:"auto"}}>{visibleCount===0?<div style={{padding:18,textAlign:"center",fontFamily:F.body,fontSize:10,color:P.muted}}>Add weekly content to see the child experience here.</div>:<>{section("Football",football,"#2563eb","⚽",skillRow)}{section(selectedTeam?.gender === "girls" ? "Camogie" : "Hurling",hurling,"#dc2626","🏑",skillRow)}{section("Fitness",[...grouped.steps,...grouped.exercises,...grouped.runs],"#7c3aed","💪",taskRow)}{section("Rest & Recovery",grouped.recovery,"#0f766e","🌙",taskRow)}{section("Bonus",grouped.bonus,"#d97706","✨",taskRow)}</>}<div style={{marginTop:10,padding:9,borderRadius:11,background:published?"#dcfce7":"#fff7ed",color:published?"#15803d":"#b45309",fontFamily:F.body,fontSize:8,fontWeight:900,textAlign:"center"}}>{published?"✓ Published to children":"Preview mode · not published"}</div></div></div>;
 }
 
 function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras = [], skills = [], overrides = {}, published = false, onSetOverride, onNav }) {
@@ -2655,7 +2664,7 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
 
             <section style={{ background: academySoft, borderRadius: 16, border: "1px solid #cfeeff", padding: 16 }}>
               <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:12 }}><div><div style={{ fontFamily:F.display,fontSize:16,fontWeight:900,color:academyDark }}>Live child preview</div><div style={{fontFamily:F.body,fontSize:10,color:"#477084",marginTop:2}}>Only sections with content are shown.</div></div><button onClick={()=>onNav("academy-preview")} style={{border:0,background:"transparent",color:academyBlue,fontFamily:F.body,fontSize:10,fontWeight:900,cursor:"pointer"}}>Open full →</button></div>
-              <div style={{display:"grid",placeItems:"center"}}><AcademyPhonePreview planSessions={planSessions} extras={extras} skills={skills} overrides={overrides} published={published} compact selectedTeam={selectedTeam} /></div>
+              <div style={{display:"grid",placeItems:"center"}}><AcademyPhonePreview weeklyPlan={weeklyPlan} planSessions={planSessions} extras={extras} skills={skills} overrides={overrides} published={published} compact selectedTeam={selectedTeam} /></div>
             </section>
           </div>
         </div>
@@ -2669,32 +2678,20 @@ const ACADEMY_DARK = "#075985";
 const ACADEMY_SOFT = "#eef8ff";
 const ACADEMY_TEMPLATES = [
   { type: "steps", icon: "👟", title: "Step goal", instruction: "Reach your step target this week.", xp: 20, target: "20,000 steps" },
-  { type: "run", icon: "🏃", title: "Run challenge", instruction: "Complete a steady run with an adult.", xp: 25, target: "2 km" },
+  { type: "run", icon: "🏃", title: "Run activity", instruction: "Complete a steady run with an adult.", xp: 25, target: "2 km" },
   { type: "exercise", icon: "⭐", title: "Star jumps", instruction: "Complete 3 sets with a short rest.", xp: 10, target: "3 × 20" },
   { type: "exercise", icon: "🦵", title: "Lunges", instruction: "Keep your chest tall and alternate legs.", xp: 10, target: "20 each side" },
   { type: "exercise", icon: "⬇", title: "Squats", instruction: "Sit back, keep your knees tracking forward.", xp: 10, target: "3 × 15" },
   { type: "skill", icon: "🎯", title: "Skill repetitions", instruction: "Practise this week’s key skill at home.", xp: 20, target: "50 repetitions" },
-  { type: "club", icon: "🏑", title: "Friday Night Hurling", instruction: "Attend the club session and check in.", xp: 30, target: "Attend" },
+  { type: "club", icon: "🏑", title: "Friday Night Hurling", instruction: "Attend the club session and check in.", xp: 30, target: "Attend", verification_type: "coach" },
   { type: "club", icon: "📅", title: "Club activity", instruction: "Take part in this week’s bonus club activity.", xp: 20, target: "Attend" },
 ];
 
 function getAcademyWeekRange(weeklyPlan) {
   const raw = weeklyPlan?.starts_at || weeklyPlan?.week_start || weeklyPlan?.week_start_date || weeklyPlan?.created_at;
-  let start = raw ? new Date(raw) : new Date();
-  if (Number.isNaN(start.getTime())) start = new Date();
-  if (!raw) {
-    const day = start.getDay();
-    const diff = day === 0 ? -6 : 1 - day;
-    start.setDate(start.getDate() + diff);
-  }
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 6);
-  const sameMonth = start.getMonth() === end.getMonth();
-  const sameYear = start.getFullYear() === end.getFullYear();
-  const startText = start.toLocaleDateString("en-IE", { day: "numeric", month: sameMonth ? undefined : "short", year: sameYear ? undefined : "numeric" });
-  const endText = end.toLocaleDateString("en-IE", { day: "numeric", month: "short", year: sameYear ? undefined : "numeric" });
-  return `${startText}–${endText}`;
+  const mondayKey = mondayKeyForDate(raw || new Date().toISOString().slice(0,10));
+  const start = new Date(`${mondayKey}T12:00:00`);
+  return `Week commencing ${start.toLocaleDateString("en-IE", { day: "numeric", month: "short", year: start.getFullYear() !== new Date().getFullYear() ? "numeric" : undefined })}`;
 }
 
 function AcademyPageHeader({ title, sub, actions }) {
@@ -2752,18 +2749,18 @@ function getFoundationActivities(planSessions) {
 function AcademyWeeklyContent({ selectedTeam, weeklyPlan, planSessions, extras, skills = [], overrides = {}, onSetOverride, onAddExtra, onUpdateExtra, onRemoveExtra, onMoveExtra, published, onPublish }) {
   const recommendations = getAcademyWeeklyRecommendations(planSessions, skills, overrides, selectedTeam);
   const [previewIndexes, setPreviewIndexes] = useState({});
-  const [draft, setDraft] = useState({ title: "", instruction: "", target: "", xp: 15, type: "exercise", required: false });
+  const [draft, setDraft] = useState({ title: "", instruction: "", target: "", xp: 15, type: "exercise", required: false, verification_type: "self" });
   const [editingId, setEditingId] = useState(null);
   const [publishReview, setPublishReview] = useState(false);
-  const applyTemplate = (t) => { setEditingId(null); setDraft({ title: t.title, instruction: t.instruction, target: t.target, xp: t.xp, type: t.type, required: false }); };
-  const resetDraft = () => { setEditingId(null); setDraft({ title: "", instruction: "", target: "", xp: 15, type: "exercise", required: false }); };
+  const applyTemplate = (t) => { setEditingId(null); setDraft({ title: t.title, instruction: t.instruction, target: t.target, xp: t.xp, type: t.type, required: false, verification_type: t.verification_type || "self" }); };
+  const resetDraft = () => { setEditingId(null); setDraft({ title: "", instruction: "", target: "", xp: 15, type: "exercise", required: false, verification_type: "self" }); };
   const saveDraft = () => {
     if (!draft.title.trim()) return;
     if (editingId) onUpdateExtra?.(editingId, draft);
     else onAddExtra({ ...draft, id: `local-${Date.now()}`, created_at: new Date().toISOString() });
     resetDraft();
   };
-  const beginEdit = (item) => { setEditingId(item.id); setDraft({ title:item.title||"", instruction:item.instruction||item.description||"", target:item.target||"", xp:Number(item.xp||item.xp_reward||15), type:item.type||item.activity_type||"exercise", required:Boolean(item.required) }); window.scrollTo({ top: 0, behavior: "smooth" }); };
+  const beginEdit = (item) => { setEditingId(item.id); setDraft({ title:item.title||"", instruction:item.instruction||item.description||"", target:item.target||"", xp:Number(item.xp||item.xp_reward||15), type:item.type||item.activity_type||"exercise", required:Boolean(item.required), verification_type:item.verification_type||"self" }); window.scrollTo({ top: 0, behavior: "smooth" }); };
   const selectedFootball = Boolean(overrides?.football);
   const selectedHurling = Boolean(overrides?.hurling);
   const validation = [
@@ -2777,7 +2774,7 @@ function AcademyWeeklyContent({ selectedTeam, weeklyPlan, planSessions, extras, 
   const groups = [
     { key:"steps", label:"Step Goals", icon:"👟", color:"#0f9f6e", test:x=>(x.type||x.activity_type)==="steps" },
     { key:"exercise", label:"Exercises", icon:"💪", color:"#7c3aed", test:x=>(x.type||x.activity_type)==="exercise" },
-    { key:"run", label:"Run Challenge", icon:"🏃", color:"#e65100", test:x=>(x.type||x.activity_type)==="run" },
+    { key:"run", label:"Run Activity", icon:"🏃", color:"#e65100", test:x=>(x.type||x.activity_type)==="run" },
     { key:"skill", label:"Extra Skill Practice", icon:"🎯", color:"#2563eb", test:x=>(x.type||x.activity_type)==="skill" },
     { key:"club", label:"Bonus & Club Activities", icon:"✨", color:"#d97706", test:x=>(x.type||x.activity_type)==="club" },
     { key:"recovery", label:"Rest & Recovery", icon:"🌙", color:"#0f766e", test:x=>(x.type||x.activity_type)==="recovery" },
@@ -2796,10 +2793,10 @@ function AcademyWeeklyContent({ selectedTeam, weeklyPlan, planSessions, extras, 
         <AcademyCard>
           <div style={{fontFamily:F.display,fontSize:18,fontWeight:900,color:P.ink}}>{editingId?"Edit activity":"Add an activity"}</div><div style={{fontFamily:F.body,fontSize:11,color:P.muted,marginTop:4}}>Add multiple items to a section; they will appear together on one child card.</div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(125px,1fr))",gap:8,marginTop:13}}>{ACADEMY_TEMPLATES.map(t=><button key={t.title} onClick={()=>applyTemplate(t)} style={{border:`1px solid ${P.line}`,borderRadius:12,background:P.white,padding:10,cursor:"pointer",textAlign:"left"}}><div style={{fontSize:20}}>{t.icon}</div><div style={{fontFamily:F.body,fontSize:10,fontWeight:900,color:P.ink,marginTop:4}}>{t.title}</div><div style={{fontFamily:F.body,fontSize:9,color:ACADEMY_BLUE}}>{t.xp} XP</div></button>)}</div>
-          <div className="academy-form-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:10,marginTop:15}}><label style={{gridColumn:"1/-1"}}><span style={labelStyle}>Activity name</span><input value={draft.title} onChange={e=>setDraft({...draft,title:e.target.value})} style={inputStyle}/></label><label style={{gridColumn:"1/-1"}}><span style={labelStyle}>Child instructions</span><textarea value={draft.instruction} onChange={e=>setDraft({...draft,instruction:e.target.value})} style={{...inputStyle,minHeight:72,paddingTop:9}}/></label><label><span style={labelStyle}>Target</span><input value={draft.target} onChange={e=>setDraft({...draft,target:e.target.value})} style={inputStyle}/></label><label><span style={labelStyle}>XP</span><input type="number" min="0" value={draft.xp} onChange={e=>setDraft({...draft,xp:Number(e.target.value)})} style={inputStyle}/></label><label><span style={labelStyle}>Section</span><select value={draft.type} onChange={e=>setDraft({...draft,type:e.target.value})} style={inputStyle}><option value="steps">Step Goals</option><option value="exercise">Exercises</option><option value="run">Run Challenge</option><option value="skill">Extra Skill Practice</option><option value="club">Bonus & Club Activity</option><option value="recovery">Rest & Recovery</option></select></label><label style={{display:"flex",alignItems:"center",gap:8,marginTop:22,fontFamily:F.body,fontSize:11}}><input type="checkbox" checked={draft.required} onChange={e=>setDraft({...draft,required:e.target.checked})}/> Required</label></div>
+          <div className="academy-form-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:10,marginTop:15}}><label style={{gridColumn:"1/-1"}}><span style={labelStyle}>Activity name</span><input value={draft.title} onChange={e=>setDraft({...draft,title:e.target.value})} style={inputStyle}/></label><label style={{gridColumn:"1/-1"}}><span style={labelStyle}>Child instructions</span><textarea value={draft.instruction} onChange={e=>setDraft({...draft,instruction:e.target.value})} style={{...inputStyle,minHeight:72,paddingTop:9}}/></label><label><span style={labelStyle}>Target</span><input value={draft.target} onChange={e=>setDraft({...draft,target:e.target.value})} style={inputStyle}/></label><label><span style={labelStyle}>XP</span><input type="number" min="0" value={draft.xp} onChange={e=>setDraft({...draft,xp:Number(e.target.value)})} style={inputStyle}/></label><label><span style={labelStyle}>Section</span><select value={draft.type} onChange={e=>setDraft({...draft,type:e.target.value})} style={inputStyle}><option value="steps">Step Goals</option><option value="exercise">Exercises</option><option value="run">Run Activity</option><option value="skill">Extra Skill Practice</option><option value="club">Bonus & Club Activity</option><option value="recovery">Rest & Recovery</option></select></label><label style={{display:"flex",alignItems:"center",gap:8,marginTop:22,fontFamily:F.body,fontSize:11}}><input type="checkbox" checked={draft.required} onChange={e=>setDraft({...draft,required:e.target.checked})}/> Required</label><label><span style={labelStyle}>Verification</span><select value={draft.verification_type||"self"} onChange={e=>setDraft({...draft,verification_type:e.target.value})} style={inputStyle}><option value="self">Player verified</option><option value="coach">Coach verified</option></select></label></div>
           <div style={{display:"flex",gap:8,marginTop:13}}><button onClick={saveDraft} style={{height:38,border:0,borderRadius:10,background:ACADEMY_BLUE,color:"#fff",padding:"0 15px",fontFamily:F.body,fontSize:11,fontWeight:900,cursor:"pointer"}}>{editingId?"Save changes":"＋ Add to week"}</button>{editingId&&<button onClick={resetDraft} style={{height:38,border:`1px solid ${P.line}`,borderRadius:10,background:"#fff",padding:"0 15px",fontFamily:F.body,fontSize:11,fontWeight:900,cursor:"pointer"}}>Cancel</button>}</div>
         </AcademyCard>
-        <div style={{display:"grid",gap:12}}>{groups.map(group=>{const items=extras.filter(group.test);if(!items.length)return null;return <AcademyCard key={group.key} style={{borderTop:`4px solid ${group.color}`}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{fontFamily:F.display,fontSize:16,fontWeight:900,color:P.ink}}>{group.icon} {group.label}</div><AcademyBadge>{items.length}</AcademyBadge></div><div style={{display:"grid",gap:8,marginTop:10}}>{items.map((x,i)=><div key={x.id} style={{border:`1px solid ${P.line}`,borderRadius:11,padding:11,background:"#fff"}}><div style={{display:"flex",justifyContent:"space-between",gap:8}}><div><div style={{fontFamily:F.body,fontSize:11,fontWeight:900,color:P.ink}}>{x.title}</div><div style={{fontFamily:F.body,fontSize:9,color:P.muted,marginTop:2}}>{x.target||x.instruction||x.description}</div></div><div style={{display:"flex",gap:3}}><button title="Move up" disabled={i===0} onClick={()=>onMoveExtra?.(x.id,-1,group.test)} style={iconAction(i===0)}>↑</button><button title="Move down" disabled={i===items.length-1} onClick={()=>onMoveExtra?.(x.id,1,group.test)} style={iconAction(i===items.length-1)}>↓</button><button title="Edit" onClick={()=>beginEdit(x)} style={iconAction(false)}>✎</button><button title="Remove" onClick={()=>onRemoveExtra(x.id)} style={{...iconAction(false),color:"#dc2626"}}>×</button></div></div><div style={{display:"flex",gap:6,marginTop:7}}><AcademyBadge color="#b45309" bg="#fff7ed">{x.xp||x.xp_reward||0} XP</AcademyBadge>{x.required&&<AcademyBadge color="#b91c1c" bg="#fef2f2">Required</AcademyBadge>}</div></div>)}</div></AcademyCard>})}</div>
+        <div style={{display:"grid",gap:12}}>{groups.map(group=>{const items=extras.filter(group.test);if(!items.length)return null;return <AcademyCard key={group.key} style={{borderTop:`4px solid ${group.color}`}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{fontFamily:F.display,fontSize:16,fontWeight:900,color:P.ink}}>{group.icon} {group.label}</div><AcademyBadge>{items.length}</AcademyBadge></div><div style={{display:"grid",gap:8,marginTop:10}}>{items.map((x,i)=><div key={x.id} style={{border:`1px solid ${P.line}`,borderRadius:11,padding:11,background:"#fff"}}><div style={{display:"flex",justifyContent:"space-between",gap:8}}><div><div style={{fontFamily:F.body,fontSize:11,fontWeight:900,color:P.ink}}>{x.title}</div><div style={{fontFamily:F.body,fontSize:9,color:P.muted,marginTop:2}}>{x.target||x.instruction||x.description}</div></div><div style={{display:"flex",gap:3}}><button title="Move up" disabled={i===0} onClick={()=>onMoveExtra?.(x.id,-1,group.test)} style={iconAction(i===0)}>↑</button><button title="Move down" disabled={i===items.length-1} onClick={()=>onMoveExtra?.(x.id,1,group.test)} style={iconAction(i===items.length-1)}>↓</button><button title="Edit" onClick={()=>beginEdit(x)} style={iconAction(false)}>✎</button><button title="Remove" onClick={()=>onRemoveExtra(x.id)} style={{...iconAction(false),color:"#dc2626"}}>×</button></div></div><div style={{display:"flex",gap:6,marginTop:7}}><AcademyBadge color="#b45309" bg="#fff7ed">{x.xp||x.xp_reward||0} XP</AcademyBadge>{x.required&&<AcademyBadge color="#b91c1c" bg="#fef2f2">Required</AcademyBadge>}<AcademyBadge color={(x.verification_type||"self")==="coach"?"#0369a1":P.muted} bg={(x.verification_type||"self")==="coach"?"#e0f2fe":P.soft}>{(x.verification_type||"self")==="coach"?"Coach verified":"Player verified"}</AcademyBadge></div></div>)}</div></AcademyCard>})}</div>
       </div>
     </div>
     {publishReview&&<div style={{position:"fixed",inset:0,zIndex:5000,background:"rgba(15,23,42,.55)",display:"grid",placeItems:"center",padding:18}}><div style={{width:"min(520px,100%)",background:"#fff",borderRadius:20,padding:22,boxShadow:"0 30px 80px rgba(15,23,42,.3)"}}><div style={{fontFamily:F.display,fontSize:22,fontWeight:900,color:P.ink}}>Review before publishing</div><div style={{fontFamily:F.body,fontSize:11,color:P.muted,marginTop:5}}>Only published content is visible in the child app for {selectedTeam?.label||"this team"}.</div><div style={{display:"grid",gap:8,marginTop:16}}>{validation.map(v=><div key={v.label} style={{display:"flex",justifyContent:"space-between",padding:10,borderRadius:10,background:v.ok?"#f0fdf4":"#fff7ed",fontFamily:F.body,fontSize:11,fontWeight:800,color:v.ok?"#15803d":"#b45309"}}><span>{v.label}</span><span>{v.ok?"Ready":"Needs attention"}</span></div>)}</div><div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:18,flexWrap:"wrap"}}><button onClick={()=>setPublishReview(false)} style={modalButton(false)}>Keep editing</button><button disabled={!canPublish} onClick={()=>{if(canPublish){onPublish?.();setPublishReview(false)}}} style={{...modalButton(true),opacity:canPublish?1:.45,cursor:canPublish?"pointer":"default"}}>Publish to children</button></div></div></div>}
@@ -2960,7 +2957,7 @@ function AcademyParents({ selectedTeam, parentRows, setParentRows }) {
   );
 }
 
-function AcademyPreview({ weeklyPlan, planSessions, extras, skills = [], overrides = {}, published, selectedTeam }) { return <div style={{flex:1,overflow:"auto",background:"linear-gradient(180deg,#e8f7ff,#f8fbff)"}}><AcademyPageHeader title="Child Preview" sub={`${getAcademyWeekRange(weeklyPlan)} · Exactly what a child will see after publishing`} /><div style={{padding:24,display:"grid",placeItems:"center"}}><AcademyPhonePreview planSessions={planSessions} extras={extras} skills={skills} overrides={overrides} published={published} selectedTeam={selectedTeam} /></div></div>;
+function AcademyPreview({ weeklyPlan, planSessions, extras, skills = [], overrides = {}, published, selectedTeam }) { return <div style={{flex:1,overflow:"auto",background:"linear-gradient(180deg,#e8f7ff,#f8fbff)"}}><AcademyPageHeader title="Child Preview" sub={`${getAcademyWeekRange(weeklyPlan)} · Exactly what a child will see after publishing`} /><div style={{padding:24,display:"grid",placeItems:"center"}}><AcademyPhonePreview weeklyPlan={weeklyPlan} planSessions={planSessions} extras={extras} skills={skills} overrides={overrides} published={published} selectedTeam={selectedTeam} /></div></div>;
 }
 
 
@@ -2982,28 +2979,155 @@ function AcademyLeaderboard({ selectedTeam }) {
 }
 
 function AcademyEngagement({ selectedTeam }) {
-  const [stats, setStats] = useState({ players:0, active:0, completions:0, xp:0 });
+  const [stats,setStats]=useState({players:0,active:0,completions:0,xp:0});
+  const [loading,setLoading]=useState(true);
+  const [errorText,setErrorText]=useState("");
+  useEffect(()=>{ let live=true; (async()=>{
+    try {
+      setLoading(true); setErrorText("");
+      if(!selectedTeam?.id){ if(live){setStats({players:0,active:0,completions:0,xp:0});setLoading(false);} return; }
+      const {data:players,error:pe}=await supabase.from("journey_players").select("id,last_active,xp_total").eq("age_group_id",selectedTeam.id);
+      if(pe) throw pe; const safe=players||[]; const ids=safe.map(p=>p.id);
+      let progress=[]; if(ids.length){ const {data,error}=await supabase.from("player_progress").select("id,player_id,xp_earned").in("player_id",ids); if(error) console.warn("Engagement progress unavailable",error.message); else progress=data||[]; }
+      const monday=mondayKeyForDate(new Date().toISOString().slice(0,10)); const cutoff=new Date(`${monday}T00:00:00`);
+      const active=safe.filter(p=>p.last_active && new Date(p.last_active)>=cutoff).length;
+      const xp=progress.reduce((sum,row)=>sum+Number(row.xp_earned||0),0);
+      if(live) setStats({players:safe.length,active,completions:progress.length,xp});
+    } catch(err){ console.error("Academy engagement failed",err); if(live)setErrorText(err?.message||"Could not load engagement data"); }
+    finally { if(live)setLoading(false); }
+  })(); return()=>{live=false}; },[selectedTeam?.id]);
+  const value=v=>loading?"…":String(v);
+  return <div style={{flex:1,overflow:"auto",background:P.soft}}><AcademyPageHeader title="Engagement" sub={`${selectedTeam?.label||"Team"} · ${getAcademyWeekRange(null)}`} /><div style={{padding:24,maxWidth:1180,margin:"0 auto"}}>{errorText&&<AcademyCard style={{marginBottom:12,borderColor:"#fecaca",color:"#991b1b"}}>Engagement data could not be fully loaded: {errorText}</AcademyCard>}<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(210px,1fr))",gap:12}}><AcademyMetricCard label="Academy players" value={value(stats.players)} detail="in this team" accent={ACADEMY_BLUE} icon="●"/><AcademyMetricCard label="Active this week" value={value(stats.active)} detail="since Monday" accent="#0ea5e9" icon="✓"/><AcademyMetricCard label="Completions" value={value(stats.completions)} detail="recorded child activities" accent="#7c3aed" icon="◒"/><AcademyMetricCard label="XP earned" value={value(stats.xp)} detail="recorded this week" accent="#16a34a" icon="★"/></div></div></div>;
+}
+
+function AcademyApprovals({ selectedTeam, weeklyPlan }) {
+  const [activities, setActivities] = useState([]);
+  const [players, setPlayers] = useState([]);
+  const [claims, setClaims] = useState([]);
   const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    let live = true;
-    async function load() {
-      if (!selectedTeam?.id) { if (live) { setStats({players:0,active:0,completions:0,xp:0}); setLoading(false); } return; }
-      setLoading(true);
-      const { data: players, error: playersError } = await supabase.from("journey_players").select("id,last_active,xp_total").eq("age_group_id", selectedTeam.id);
-      const safePlayers = playersError ? [] : (players || []);
-      const ids = safePlayers.map(p=>p.id);
-      let progress = [];
-      if (ids.length) { const { data, error } = await supabase.from("player_progress").select("id,player_id,xp_earned").in("player_id", ids); progress = error ? [] : (data || []); }
-      const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-7); cutoff.setHours(0,0,0,0);
-      const active = safePlayers.filter(p=>p.last_active && new Date(p.last_active)>=cutoff).length;
-      const xp = progress.reduce((sum,row)=>sum+Number(row.xp_earned||0),0);
-      if (live) { setStats({players:safePlayers.length,active,completions:progress.length,xp}); setLoading(false); }
-    }
-    load();
-    return () => { live = false; };
-  }, [selectedTeam?.id]);
-  const value=(v)=>loading?"…":String(v);
-  return <div style={{flex:1,overflow:"auto",background:P.soft}}><AcademyPageHeader title="Engagement" sub={`${selectedTeam?.label || "Team"} · real Academy activity`} /><div style={{padding:24,maxWidth:1180,margin:"0 auto",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(210px,1fr))",gap:12}}><AcademyMetricCard label="Academy players" value={value(stats.players)} detail="in this team" accent={ACADEMY_BLUE} icon="●"/><AcademyMetricCard label="Active this week" value={value(stats.active)} detail="active in last 7 days" accent="#0ea5e9" icon="✓"/><AcademyMetricCard label="Completions" value={value(stats.completions)} detail="recorded child activities" accent="#7c3aed" icon="◒"/><AcademyMetricCard label="XP earned" value={value(stats.xp)} detail="from recorded completions" accent="#16a34a" icon="★"/></div></div>;
+  const [busyKey, setBusyKey] = useState("");
+  const [errorText, setErrorText] = useState("");
+
+  async function load() {
+    if (!selectedTeam?.id || !weeklyPlan?.id) { setActivities([]); setPlayers([]); setClaims([]); setLoading(false); return; }
+    setLoading(true); setErrorText("");
+    try {
+      const [{ data: acts, error: ae }, { data: pls, error: pe }] = await Promise.all([
+        supabase.from("journey_exercises").select("*").eq("age_group_id", selectedTeam.id).eq("plan_id", weeklyPlan.id).eq("verification_type", "coach").order("sort_order", { ascending: true }),
+        supabase.from("journey_players").select("id,name,xp_total").eq("age_group_id", selectedTeam.id).order("name"),
+      ]);
+      if (ae) throw ae; if (pe) throw pe;
+      const safeActs = acts || [];
+      let rows = [];
+      if (safeActs.length) {
+        const { data, error } = await supabase.from("player_progress").select("*").in("exercise_id", safeActs.map(a => a.id));
+        if (error) throw error;
+        rows = data || [];
+      }
+      setActivities(safeActs); setPlayers(pls || []); setClaims(rows);
+    } catch (err) {
+      console.error("Academy approvals failed", err);
+      setErrorText(err?.message || "Could not load approvals");
+    } finally { setLoading(false); }
+  }
+
+  useEffect(() => { load(); }, [selectedTeam?.id, weeklyPlan?.id]);
+
+  async function approve(activity, player) {
+    const key = `${activity.id}:${player.id}`;
+    setBusyKey(key); setErrorText("");
+    try {
+      const existing = claims.find(c => c.exercise_id === activity.id && c.player_id === player.id);
+      if (existing?.status === "approved") return;
+      const { data: auth } = await supabase.auth.getUser();
+      const verifier = auth?.user?.id || null;
+      const xp = Number(activity.xp_reward || 15);
+      let approvedRow;
+      if (existing) {
+        const { data, error } = await supabase.from("player_progress").update({ status:"approved", verified_by:verifier, verified_at:new Date().toISOString(), xp_earned:xp }).eq("id", existing.id).select().single();
+        if (error) throw error; approvedRow = data;
+      } else {
+        const { data, error } = await supabase.from("player_progress").insert({ player_id:player.id, club_id:activity.club_id || null, age_group_id:selectedTeam.id, exercise_id:activity.id, plan_id:activity.plan_id || null, status:"approved", claimed_at:null, verified_by:verifier, verified_at:new Date().toISOString(), xp_earned:xp }).select().single();
+        if (error) throw error; approvedRow = data;
+      }
+      const currentXp = Number(player.xp_total || 0);
+      const { error: xpError } = await supabase.from("journey_players").update({ xp_total: currentXp + xp, last_active: new Date().toISOString().slice(0,10) }).eq("id", player.id);
+      if (xpError) throw xpError;
+      setPlayers(prev => prev.map(p => p.id === player.id ? { ...p, xp_total: currentXp + xp } : p));
+      setClaims(prev => existing ? prev.map(c => c.id === existing.id ? approvedRow : c) : [...prev, approvedRow]);
+    } catch (err) {
+      console.error("Approval failed", err); setErrorText(err?.message || "Approval failed");
+    } finally { setBusyKey(""); }
+  }
+
+  async function unapprove(activity, player) {
+    const key = `${activity.id}:${player.id}`;
+    setBusyKey(key); setErrorText("");
+    try {
+      const existing = claims.find(c => c.exercise_id === activity.id && c.player_id === player.id);
+      if (!existing || existing.status !== "approved") return;
+      const awardedXp = Number(existing.xp_earned || activity.xp_reward || 0);
+      const currentXp = Number(player.xp_total || 0);
+      const nextXp = Math.max(0, currentXp - awardedXp);
+
+      // A player-created claim goes back to pending. An admin-created attendance
+      // (claimed_at is null) is removed completely and returns to Not claimed.
+      if (existing.claimed_at) {
+        const { data, error } = await supabase.from("player_progress").update({
+          status: "pending",
+          verified_by: null,
+          verified_at: null,
+          xp_earned: 0,
+        }).eq("id", existing.id).select().single();
+        if (error) throw error;
+        setClaims(prev => prev.map(c => c.id === existing.id ? data : c));
+      } else {
+        const { error } = await supabase.from("player_progress").delete().eq("id", existing.id);
+        if (error) throw error;
+        setClaims(prev => prev.filter(c => c.id !== existing.id));
+      }
+
+      const { error: xpError } = await supabase.from("journey_players").update({ xp_total: nextXp }).eq("id", player.id);
+      if (xpError) throw xpError;
+      setPlayers(prev => prev.map(p => p.id === player.id ? { ...p, xp_total: nextXp } : p));
+    } catch (err) {
+      console.error("Unapprove failed", err); setErrorText(err?.message || "Could not unapprove attendance");
+    } finally { setBusyKey(""); }
+  }
+
+  async function approveAllPending(activity) {
+    const pending = players.filter(p => claims.some(c => c.exercise_id === activity.id && c.player_id === p.id && c.status === "pending"));
+    for (const player of pending) await approve(activity, player);
+  }
+
+  const pendingTotal = claims.filter(c => c.status === "pending").length;
+  return <div style={{flex:1,overflow:"auto",background:P.soft}}>
+    <AcademyPageHeader title="Approvals" sub={`${selectedTeam?.label || "Team"} · ${pendingTotal} awaiting coach verification`} />
+    <div style={{padding:24,maxWidth:1050,margin:"0 auto"}}>
+      {errorText && <AcademyCard style={{marginBottom:12,borderColor:"#fecaca",color:"#991b1b"}}>{errorText}</AcademyCard>}
+      {loading ? <AcademyCard><div style={{fontFamily:F.body,fontSize:12,color:P.muted}}>Loading approvals…</div></AcademyCard> : activities.length===0 ? <AcademyCard><div style={{fontFamily:F.display,fontSize:18,fontWeight:900,color:P.ink}}>No coach-verified activities yet</div><div style={{fontFamily:F.body,fontSize:11,color:P.muted,marginTop:4}}>In Weekly Content, add Friday Night Hurling (or another activity) and choose Coach verified.</div></AcademyCard> : activities.map(activity => {
+        const activityClaims = claims.filter(c => c.exercise_id === activity.id);
+        const pending = activityClaims.filter(c => c.status === "pending").length;
+        const approved = activityClaims.filter(c => c.status === "approved").length;
+        return <AcademyCard key={activity.id} style={{marginBottom:14,borderTop:"4px solid #0288d1"}}>
+          <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"flex-start",flexWrap:"wrap",marginBottom:12}}>
+            <div><AcademyBadge color="#0369a1" bg="#e0f2fe">Coach verified</AcademyBadge><div style={{fontFamily:F.display,fontSize:20,fontWeight:900,color:P.ink,marginTop:6}}>{activity.title}</div><div style={{fontFamily:F.body,fontSize:10,color:P.muted,marginTop:3}}>Weekly Academy activity · +{activity.xp_reward || 15} XP</div></div>
+            <div style={{display:"flex",gap:7,alignItems:"center",flexWrap:"wrap"}}><AcademyBadge color="#b45309" bg="#fff7ed">{pending} pending</AcademyBadge><AcademyBadge color="#15803d" bg="#dcfce7">{approved} approved</AcademyBadge>{pending>0 && <button onClick={()=>approveAllPending(activity)} style={{height:34,border:0,borderRadius:9,background:ACADEMY_BLUE,color:"#fff",padding:"0 12px",fontFamily:F.body,fontSize:10,fontWeight:900,cursor:"pointer"}}>Approve all claims</button>}</div>
+          </div>
+          <div style={{borderTop:`1px solid ${P.line}`}}>{players.map(player => {
+            const claim = activityClaims.find(c => c.player_id === player.id);
+            const status = claim?.status || "unclaimed";
+            const key = `${activity.id}:${player.id}`;
+            return <div key={player.id} style={{display:"grid",gridTemplateColumns:"minmax(150px,1fr) auto auto",gap:10,alignItems:"center",padding:"10px 2px",borderBottom:`1px solid ${P.line}`}}>
+              <div><div style={{fontFamily:F.body,fontSize:11,fontWeight:900,color:P.ink}}>{player.name}</div><div style={{fontFamily:F.body,fontSize:9,color:P.muted,marginTop:2}}>{status==="pending"?"Player says they attended":status==="approved"?"Attendance verified":"No claim yet"}</div></div>
+              <AcademyBadge color={status==="approved"?"#15803d":status==="pending"?"#b45309":P.muted} bg={status==="approved"?"#dcfce7":status==="pending"?"#fff7ed":P.soft}>{status==="approved"?"✓ Approved":status==="pending"?"⏳ Pending":"Not claimed"}</AcademyBadge>
+              {status!=="approved" ? <button disabled={busyKey===key} onClick={()=>approve(activity,player)} style={{height:32,border:0,borderRadius:8,background:status==="pending"?ACADEMY_BLUE:"#e0f2fe",color:status==="pending"?"#fff":"#0369a1",padding:"0 10px",fontFamily:F.body,fontSize:9,fontWeight:900,cursor:"pointer"}}>{busyKey===key?"Saving…":status==="pending"?"Approve":"Mark attended"}</button> : <div style={{display:"flex",alignItems:"center",gap:7,justifyContent:"flex-end",flexWrap:"wrap"}}><div style={{fontFamily:F.body,fontSize:9,fontWeight:800,color:"#15803d"}}>+{activity.xp_reward || 15} XP</div><button disabled={busyKey===key} onClick={()=>unapprove(activity,player)} style={{height:30,border:"1px solid #fecaca",borderRadius:8,background:"#fff",color:"#b91c1c",padding:"0 9px",fontFamily:F.body,fontSize:9,fontWeight:900,cursor:busyKey===key?"default":"pointer",opacity:busyKey===key?.55:1}}>{busyKey===key?"Saving…":"Unapprove"}</button></div>}
+            </div>;
+          })}</div>
+        </AcademyCard>;
+      })}
+    </div>
+  </div>;
 }
 
 function AcademySettings({ published, onNav }) {
@@ -3011,6 +3135,7 @@ function AcademySettings({ published, onNav }) {
     { title: "Players", desc: "Add or remove Academy players for the selected Spraoi Club team.", label: "Manage", action: () => onNav?.("academy-players") },
     { title: "Parent Access", desc: "Copy the live team link and test parent/player onboarding.", label: "Open", action: () => onNav?.("academy-parents") },
     { title: "Weekly Content", desc: "Review the Coach plan, choose Football/Hurling skills and publish homework.", label: published ? "Published" : "Open", action: () => onNav?.("academy-content") },
+    { title: "Coach Approvals", desc: "Verify attendance and coach-approved Academy activities.", label: "Open", action: () => onNav?.("academy-approvals") },
     { title: "Teams", desc: "Create and amend teams in Spraoi Club. Academy uses those teams rather than maintaining a separate team list.", label: "Open Spraoi Club", action: () => window.location.assign(MODULE_URLS.club) },
   ];
   return <div style={{ flex: 1, overflow: "auto", background: P.soft }}><AcademyPageHeader title="Settings" sub="Academy setup and shortcuts" /><div style={{ padding: 24, maxWidth: 900, margin: "0 auto", display: "grid", gap: 12 }}>{items.map((item) => <AcademyCard key={item.title}><div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", flexWrap: "wrap" }}><div style={{ flex: 1, minWidth: 220 }}><div style={{ fontFamily: F.body, fontSize: 12, fontWeight: 900, color: P.ink }}>{item.title}</div><div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 3 }}>{item.desc}</div></div><button onClick={item.action} style={{ height: 34, border: 0, borderRadius: 9, background: ACADEMY_BLUE, color: "#fff", padding: "0 12px", fontFamily: F.body, fontSize: 10, fontWeight: 900, cursor: "pointer" }}>{item.label}</button></div></AcademyCard>)}</div></div>;
@@ -3022,6 +3147,7 @@ function AcademySectionScreen({ screen, onNav, club, selectedTeam, weeklyPlan, p
   if (screen === "academy-parents") return <AcademyParents selectedTeam={selectedTeam} parentRows={parentRows} setParentRows={setParentRows}/>;
   if (screen === "academy-preview") return <AcademyPreview weeklyPlan={weeklyPlan} planSessions={planSessions} extras={extras} skills={skills} overrides={overrides} published={published} selectedTeam={selectedTeam}/>;
   if (screen === "academy-engagement") return <AcademyEngagement selectedTeam={selectedTeam}/>;
+  if (screen === "academy-approvals") return <AcademyApprovals selectedTeam={selectedTeam} weeklyPlan={weeklyPlan}/>;
   if (screen === "academy-leaderboard") return <AcademyLeaderboard selectedTeam={selectedTeam}/>;
   return <AcademySettings published={published} onNav={onNav}/>;
 }
@@ -3418,48 +3544,34 @@ export default function App() {
   async function loadAcademyCoachPlan(ageGroupId) {
     if (!ageGroupId) { setWeeklyPlan(null); setPlanSessions([]); return; }
     try {
-      const now = new Date();
-      const day = now.getDay();
-      const daysFromMonday = day === 0 ? 6 : day - 1;
-      const weekStart = new Date(now);
-      weekStart.setHours(0, 0, 0, 0);
-      weekStart.setDate(now.getDate() - daysFromMonday);
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekStart.getDate() + 7);
+      const weekStartDate = mondayKeyForDate(new Date().toISOString().slice(0,10));
+      const end = new Date(`${weekStartDate}T12:00:00`); end.setDate(end.getDate()+7);
+      const weekEndDate = `${end.getFullYear()}-${String(end.getMonth()+1).padStart(2,"0")}-${String(end.getDate()).padStart(2,"0")}`;
 
-      const weekStartDate = weekStart.toISOString().split("T")[0];
-      const weekEndDate = weekEnd.toISOString().split("T")[0];
-      const { data: plans, error: planError } = await supabase
-        .from("weekly_plans")
-        .select("*")
-        .eq("age_group_id", ageGroupId)
-        .gte("starts_at", weekStartDate)
-        .lt("starts_at", weekEndDate)
-        .order("starts_at", { ascending: false })
-        .limit(1);
-      if (planError) throw planError;
-      let plan = plans?.[0] || null;
-      if (!plan) {
-        const { data: latest, error: latestError } = await supabase
-          .from("weekly_plans")
-          .select("*")
-          .eq("age_group_id", ageGroupId)
-          .order("week_number", { ascending: false })
-          .limit(1);
-        if (latestError) throw latestError;
-        plan = latest?.[0] || null;
+      // Pull every plan for the selected team, then all sessions whose actual training date falls in this Monday-Sunday week.
+      const { data: teamPlans, error: teamPlanError } = await supabase.from("weekly_plans").select("*").eq("age_group_id", ageGroupId).order("starts_at", { ascending: false });
+      if (teamPlanError) throw teamPlanError;
+      const planIds = (teamPlans || []).map(p=>p.id);
+      let sessions = [];
+      if (planIds.length) {
+        const { data, error } = await supabase.from("sessions").select("*").in("plan_id", planIds).gte("session_date", weekStartDate).lt("session_date", weekEndDate).order("session_date", { ascending: true });
+        if (error) throw error; sessions = data || [];
       }
-      setWeeklyPlan(plan);
+      const sessionPlanIds = [...new Set(sessions.map(s=>s.plan_id).filter(Boolean))];
+      const currentWeekPlans = (teamPlans || []).filter(p=>p.starts_at && mondayKeyForDate(p.starts_at)===weekStartDate);
+      let plan = currentWeekPlans.find(p=>p.published) || currentWeekPlans[0] || (teamPlans || []).find(p=>sessionPlanIds.includes(p.id)) || null;
+      setWeeklyPlan(plan ? { ...plan, starts_at: weekStartDate } : null);
       setAcademyPublished(Boolean(plan?.published));
       setAcademyVideoOverrides(plan?.academy_video_overrides || {});
-      if (!plan?.id) { setPlanSessions([]); setAcademyExtras([]); return; }
-      const { data: savedExtras } = await supabase.from("journey_exercises").select("*").eq("plan_id", plan.id).order("sort_order", { ascending: true });
-      if (savedExtras) setAcademyExtras(savedExtras.map(x => ({ ...x, xp: x.xp_reward, type: x.activity_type || "exercise", instruction: x.description || "", target: "" })));
-      const { data: sessions, error: sessionError } = await supabase.from("sessions").select("*").eq("plan_id", plan.id).order("session_date", { ascending: true });
-      if (sessionError) throw sessionError;
-      const sessionList = sessions || [];
-      if (!sessionList.length) { setPlanSessions([]); return; }
-      const ids = sessionList.map(x => x.id);
+      if (!plan && !sessions.length) { setPlanSessions([]); setAcademyExtras([]); return; }
+
+      if (plan?.id) {
+        const { data: savedExtras } = await supabase.from("journey_exercises").select("*").eq("plan_id", plan.id).order("sort_order", { ascending: true });
+        if (savedExtras) setAcademyExtras(savedExtras.map(x => ({ ...x, xp: x.xp_reward, type: x.activity_type || "exercise", instruction: x.description || "", target: "", verification_type: x.verification_type || "self" })));
+      } else setAcademyExtras([]);
+
+      const ids = sessions.map(x=>x.id);
+      if (!ids.length) { setPlanSessions([]); return; }
       const { data: links, error: linksError } = await supabase.from("session_activities").select("*").in("session_id", ids).order("sort_order", { ascending: true });
       if (linksError) throw linksError;
       const activityIds = [...new Set((links || []).map(x => x.activity_id).filter(Boolean))];
@@ -3468,12 +3580,10 @@ export default function App() {
         const { data } = await supabase.from("activities").select("*, skill:skills(id, name, sport, category, video_url)").in("id", activityIds);
         activities = data || [];
       }
-      const amap = Object.fromEntries(activities.map(a => [a.id, a]));
-      const hydrated = sessionList.map(sess => ({ ...sess, session_activities: (links || []).filter(x => x.session_id === sess.id).map(x => ({ ...x, activity: amap[x.activity_id] || { id: x.activity_id, title: "Coach drill" } })) }));
-      setPlanSessions(hydrated);
+      const amap = Object.fromEntries(activities.map(a=>[a.id,a]));
+      setPlanSessions(sessions.map(sess=>({ ...sess, session_activities:(links||[]).filter(x=>x.session_id===sess.id).map(x=>({ ...x, activity:amap[x.activity_id] || { id:x.activity_id, title:"Coach drill" } })) })));
     } catch (error) {
-      console.error("Academy Coach sync failed", error);
-      setWeeklyPlan(null); setPlanSessions([]);
+      console.error("Academy Coach sync failed", error); setWeeklyPlan(null); setPlanSessions([]); setAcademyExtras([]);
     }
   }
 
@@ -3562,6 +3672,7 @@ export default function App() {
       sort_order: academyExtras.length,
       activity_type: extra.type || "exercise",
       required: Boolean(extra.required),
+      verification_type: extra.verification_type || "self",
     }).select().single();
     if (error) {
       console.warn("Academy extra saved locally because the optional activity_type/required columns are not available yet", error.message);
@@ -3571,7 +3682,10 @@ export default function App() {
     setAcademyExtras(prev => [...prev, { ...extra, ...data, xp: data.xp_reward, type: data.activity_type || extra.type }]);
   }
   async function removeAcademyExtra(id) {
-    if (!String(id).startsWith("local-")) await supabase.from("journey_exercises").delete().eq("id", id);
+    if (!String(id).startsWith("local-")) {
+      await supabase.from("player_progress").delete().eq("exercise_id", id);
+      await supabase.from("journey_exercises").delete().eq("id", id);
+    }
     setAcademyExtras(prev => { const next=prev.filter(x=>x.id!==id); localStorage.setItem("spraoi_academy_extras", JSON.stringify(next)); return next; });
   }
   async function updateAcademyExtra(id, changes) {
@@ -3584,6 +3698,7 @@ export default function App() {
         xp_reward: Number(changes.xp) || 0,
         activity_type: changes.type || "exercise",
         required: Boolean(changes.required),
+        verification_type: changes.verification_type || "self",
       }).eq("id", id);
       if (error) console.warn("Could not update Academy activity remotely", error.message);
     }

@@ -28,6 +28,14 @@ const Sh = {
    CATEGORY ICON MAPPING — sport + category dual tags on drill cards
    ============================================================ */
 
+function mondayKeyForDate(value) {
+  const d = value ? new Date(`${String(value).slice(0,10)}T12:00:00`) : new Date();
+  if (Number.isNaN(d.getTime())) return null;
+  const diff = d.getDay() === 0 ? -6 : 1 - d.getDay();
+  d.setDate(d.getDate() + diff);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+
 const ACTIVE_TEAM_KEY = "spraoi_active_team_id";
 const ACTIVE_CLUB_KEY = "spraoi_active_club_id";
 const ACTIVE_CONTEXT_EVENT = "spraoi-active-context";
@@ -623,12 +631,18 @@ function PlannerScreen({ onNav, club, ageGroups, upcomingSessions, onOpenSession
   async function saveSession(forceSave = false) {
     if (!selectedTeam || buildDrills.length === 0 || saving) return;
     setSaving(true);
-    const { data: existing } = await supabase.from("weekly_plans").select("id, week_number").eq("age_group_id", selectedTeam.id).order("week_number", { ascending: false }).limit(1);
-    const nextWeek = (existing?.[0]?.week_number || 0) + 1;
-    const { data: plan } = await supabase.from("weekly_plans").insert({
-      club_id: club.id, age_group_id: selectedTeam.id, week_number: nextWeek, season: "2026-27",
-      mode: selectedTeam.gender === "girls" ? "camogie" : "hurling", starts_at: buildingDate, published: false,
-    }).select().single();
+    const weekStart = mondayKeyForDate(buildingDate);
+    let { data: existingWeek } = await supabase.from("weekly_plans").select("*").eq("age_group_id", selectedTeam.id).eq("starts_at", weekStart).order("created_at", { ascending: true }).limit(1);
+    let plan = existingWeek?.[0] || null;
+    if (!plan) {
+      const { data: latest } = await supabase.from("weekly_plans").select("week_number").eq("age_group_id", selectedTeam.id).order("week_number", { ascending: false }).limit(1);
+      const nextWeek = (latest?.[0]?.week_number || 0) + 1;
+      const { data: created } = await supabase.from("weekly_plans").insert({
+        club_id: club.id, age_group_id: selectedTeam.id, week_number: nextWeek, season: "2026-27",
+        mode: selectedTeam.gender === "girls" ? "camogie" : "hurling", starts_at: weekStart, published: false,
+      }).select().single();
+      plan = created || null;
+    }
     if (plan) {
       const totalTime = buildDrills.reduce((t, d) => t + (d.duration_mins || 0), 0);
       const { data: sess } = await supabase.from("sessions").insert({
@@ -880,19 +894,27 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
         await supabase.from("sessions").update({ total_duration_mins: totalTime, station_count: allDrills.length, notes: phasesJson }).eq("id", sessionId);
         if (notes) await supabase.from("weekly_plans").update({ coach_notes: notes }).eq("id", planId);
       } else {
-        const { data: existing } = await supabase.from("weekly_plans").select("week_number").eq("age_group_id", selectedTeam.id).order("week_number", { ascending: false }).limit(1);
-        const nextWeek = (existing?.[0]?.week_number || 0) + 1;
-        const { data: plan, error: planErr } = await supabase.from("weekly_plans").insert({
-          club_id: club.id, age_group_id: selectedTeam.id, week_number: nextWeek, season: "2026-27",
-          mode: selectedTeam.gender === "girls" ? "camogie" : "hurling", coach_notes: notes, published: false,
-          starts_at: day ? (() => { const d = new Date(); const dayMap = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 0 }; const diff = dayMap[day] - d.getDay(); d.setDate(d.getDate() + (diff < 0 ? diff + 7 : diff)); return d.toISOString().split("T")[0]; })() : new Date().toISOString().split("T")[0],
-        }).select().single();
-        if (planErr || !plan) { alert("Save failed: " + (planErr?.message || "")); setSaving(false); return; }
+        const sessionDate = day ? (() => { const d = new Date(); const dayMap = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 0 }; const diff = dayMap[day] - d.getDay(); d.setDate(d.getDate() + (diff < 0 ? diff + 7 : diff)); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; })() : (() => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; })();
+        const weekStart = mondayKeyForDate(sessionDate);
+        let { data: existingWeek, error: weekErr } = await supabase.from("weekly_plans").select("*").eq("age_group_id", selectedTeam.id).eq("starts_at", weekStart).order("created_at", { ascending: true }).limit(1);
+        if (weekErr) { alert("Save failed: " + weekErr.message); setSaving(false); return; }
+        let plan = existingWeek?.[0] || null;
+        if (!plan) {
+          const { data: existing } = await supabase.from("weekly_plans").select("week_number").eq("age_group_id", selectedTeam.id).order("week_number", { ascending: false }).limit(1);
+          const nextWeek = (existing?.[0]?.week_number || 0) + 1;
+          const { data: created, error: planErr } = await supabase.from("weekly_plans").insert({
+            club_id: club.id, age_group_id: selectedTeam.id, week_number: nextWeek, season: "2026-27",
+            mode: selectedTeam.gender === "girls" ? "camogie" : "hurling", coach_notes: notes, published: false, starts_at: weekStart,
+          }).select().single();
+          if (planErr || !created) { alert("Save failed: " + (planErr?.message || "")); setSaving(false); return; }
+          plan = created;
+        } else if (notes) {
+          await supabase.from("weekly_plans").update({ coach_notes: notes }).eq("id", plan.id);
+        }
         planId = plan.id;
         const { data: sess } = await supabase.from("sessions").insert({
           plan_id: plan.id, session_number: 1, sport: selectedTeam.gender === "girls" ? "camogie" : "hurling",
-          format: "stations", total_duration_mins: totalTime, station_count: allDrills.length, notes: phasesJson,
-          ...(plan.starts_at ? { session_date: plan.starts_at } : {}),
+          format: "stations", total_duration_mins: totalTime, station_count: allDrills.length, notes: phasesJson, session_date: sessionDate,
         }).select().single();
         sessionId = sess?.id;
       }
@@ -1960,7 +1982,7 @@ function PlayersScreen({ club, ageGroups, selectedTeam }) {
     if (!csvPreview || !club) return;
     const agMap = Object.fromEntries(ageGroups.map((ag) => [ag.label.toLowerCase(), ag.id]));
     const rows = csvPreview.map((p) => ({
-      parent_user_id: null,
+      parent_user_id: "00000000-0000-0000-0000-000000000000",
       club_id: club.id,
       age_group_id: agMap[p.ageGroup.toLowerCase()] || (selectedTeam?.id || null),
       name: p.name,
