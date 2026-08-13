@@ -544,12 +544,96 @@ function CoachReadOnlyNotice({ title = "Read-only access", message = "Coach / Me
   );
 }
 
-function DashboardScreen({ club, ageGroups, planSessions, weeklyPlan, upcomingSessions, onNav, onOpenSession, allActivities, selectedTeam, canEdit }) {
+function DashboardScreen({ club, ageGroups, planSessions, weeklyPlan, upcomingSessions, onNav, onOpenSession, allActivities, selectedTeam, favouriteIds = [], coaches = [] }) {
   const today = new Date().toLocaleDateString("en-IE", { weekday: "long", day: "numeric", month: "short", year: "numeric" });
-  // Filter sessions for selected team on dashboard
-  const teamSessions = selectedTeam ? (upcomingSessions || []).filter((s) => s.plan?.age_group_id === selectedTeam.id) : (upcomingSessions || []);
+  // Dashboard "Upcoming" means today/future only. The Sessions page still shows full history.
+  const now = new Date();
+  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const teamSessions = (selectedTeam
+    ? (upcomingSessions || []).filter((s) => String(s.plan?.age_group_id) === String(selectedTeam.id))
+    : (upcomingSessions || []))
+    .filter((s) => {
+      if (!s.session_date) return false;
+      const raw = String(s.session_date).slice(0, 10);
+      const d = new Date(`${raw}T00:00:00`);
+      return !Number.isNaN(d.getTime()) && d >= startOfToday;
+    })
+    .sort((a, b) => String(a.session_date).localeCompare(String(b.session_date)));
+  const favouriteDrills = (allActivities || []).filter((activity) => favouriteIds.includes(activity.id));
+  const recentDrills = Array.from(new Map((planSessions || [])
+    .slice()
+    .sort((a,b)=>String(b.session_date||"").localeCompare(String(a.session_date||"")))
+    .flatMap(sess => (sess.session_activities || []).map(sa => sa.activity).filter(Boolean))
+    .map(a => [a.id || a.title, a])).values()).slice(0, 4);
+  const [panelPlayers, setPanelPlayers] = useState([]);
+  const [coachLeave, setCoachLeave] = useState([]);
+  const [showLeaveForm, setShowLeaveForm] = useState(false);
+  const [leaveDraft, setLeaveDraft] = useState({ coach_id: "", start_date: "", end_date: "", note: "" });
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadPanelPlayers() {
+      if (!selectedTeam?.id) { setPanelPlayers([]); return; }
+      const { data, error } = await supabase
+        .from("journey_players")
+        .select("id,name,football_panel,hurling_panel")
+        .eq("age_group_id", selectedTeam.id)
+        .order("name");
+      if (!cancelled) {
+        if (error) console.warn("Could not load A/B panels", error.message);
+        setPanelPlayers(data || []);
+      }
+    }
+    loadPanelPlayers();
+    return () => { cancelled = true; };
+  }, [selectedTeam?.id]);
+
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadCoachLeave() {
+      if (!club?.id) { setCoachLeave([]); return; }
+      const { data, error } = await supabase
+        .from("coach_unavailability")
+        .select("*")
+        .eq("club_id", club.id)
+        .gte("end_date", todayKey)
+        .order("start_date", { ascending: true });
+      if (!cancelled) {
+        if (error) console.warn("Could not load coach holidays", error.message);
+        setCoachLeave(data || []);
+      }
+    }
+    loadCoachLeave();
+    return () => { cancelled = true; };
+  }, [club?.id, todayKey]);
+
+  async function saveCoachLeave() {
+    if (!club?.id || !leaveDraft.coach_id || !leaveDraft.start_date || !leaveDraft.end_date) return;
+    const payload = { club_id: club.id, coach_id: leaveDraft.coach_id, start_date: leaveDraft.start_date, end_date: leaveDraft.end_date, note: leaveDraft.note || null };
+    const { data, error } = await supabase.from("coach_unavailability").insert(payload).select().single();
+    if (error) { alert("Could not save coach holiday: " + error.message); return; }
+    setCoachLeave(prev => [...prev, data].sort((a,b)=>String(a.start_date).localeCompare(String(b.start_date))));
+    setLeaveDraft({ coach_id: "", start_date: "", end_date: "", note: "" });
+    setShowLeaveForm(false);
+  }
+
+  async function removeCoachLeave(id) {
+    const { error } = await supabase.from("coach_unavailability").delete().eq("id", id);
+    if (error) { alert("Could not remove coach holiday: " + error.message); return; }
+    setCoachLeave(prev => prev.filter(x => x.id !== id));
+  }
+
+  const panelGroups = [
+    { key: "hurling-a", label: selectedTeam?.gender === "girls" ? "Camogie A" : "Hurling A", code: "hurling_panel", panel: "A" },
+    { key: "hurling-b", label: selectedTeam?.gender === "girls" ? "Camogie B" : "Hurling B", code: "hurling_panel", panel: "B" },
+    { key: "football-a", label: "Football A", code: "football_panel", panel: "A" },
+    { key: "football-b", label: "Football B", code: "football_panel", panel: "B" },
+  ];
 
   return (
+    <>
     <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
       <style>{`
         @media (max-width: 900px) {
@@ -565,23 +649,29 @@ function DashboardScreen({ club, ageGroups, planSessions, weeklyPlan, upcomingSe
       `}
 </style>
       <TopBar title="Dashboard" sub={today}>
-        {canEdit && <Btn label="+ New Session" variant="primary" onClick={() => onNav("coach-builder")} />}
+        <Btn label="+ New Session" variant="primary" onClick={() => onNav("coach-builder")} />
       </TopBar>
-      {!canEdit && <CoachReadOnlyNotice />}
       <div style={{ padding: "20px 24px" }}>
         {/* Stat cards row */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
-          <StatCard label="Favourite Drills" value="★" sub="Your saved drills" color={P.p600} icon="❤️" />
+          <div onClick={() => onNav("coach-drills")} style={{ background: P.white, borderRadius: 14, padding: "16px 18px", border: `1px solid ${P.line}`, borderTop: `3px solid ${P.p600}`, boxShadow: Sh.card, cursor: "pointer" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
+              <span style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", letterSpacing: "0.08em" }}>Favourite Drills</span>
+              <img src="/spraoi-coach-icon.png" alt="" style={{ width: 24, height: 24, objectFit: "contain" }} />
+            </div>
+            <div style={{ fontFamily: F.display, fontSize: 28, fontWeight: 900, color: P.ink, lineHeight: 1 }}>{favouriteDrills.length}</div>
+            <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 6 }}>{favouriteDrills.length ? favouriteDrills.slice(0,2).map((d)=>d.title).join(" · ") : "No favourites saved yet"}</div>
+          </div>
           <div onClick={() => onNav("academy-dashboard")} style={{ background: P.white, borderRadius: 14, padding: "16px 18px", border: `1px solid ${P.line}`, borderTop: "3px solid #0277bd", boxShadow: Sh.card, cursor: "pointer" }}>
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
               <span style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", letterSpacing: "0.08em" }}>Academy Sync</span>
-              <span style={{ fontSize: 16 }}>🎓</span>
+              <img src="/spraoi-academy-icon.png" alt="" style={{ width: 24, height: 24, objectFit: "contain" }} />
             </div>
             <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 900, color: P.ink, lineHeight: 1 }}>Open Academy</div>
             <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 6 }}>Review skills generated from this week's plan</div>
           </div>
-          <StatCard label="Drills" value={String(allActivities?.length || 0)} sub={`${allActivities?.filter(a => a.sport === 'football').length || 0} football`} color={P.sky} icon="📖" />
-          <StatCard label="Next Session" value={teamSessions?.[0]?.session_date ? new Date(upcomingSessions[0].session_date).getDate() : "—"} sub={teamSessions?.[0]?.session_date ? new Date(upcomingSessions[0].session_date).toLocaleDateString("en-IE", { weekday: "short", month: "short" }) : "None scheduled"} color={P.green} icon="📅" />
+          <StatCard label="Drills" value={String(allActivities?.length || 0)} sub={`${allActivities?.filter(a => a.sport === 'football').length || 0} football`} color={P.sky} icon="/football-icon.png" />
+          <StatCard label="Next Session" value={teamSessions?.[0]?.session_date ? new Date(`${teamSessions[0].session_date}T12:00:00`).getDate() : "—"} sub={teamSessions?.[0]?.session_date ? new Date(`${teamSessions[0].session_date}T12:00:00`).toLocaleDateString("en-IE", { weekday: "short", month: "short" }) : "None scheduled"} color={P.green} icon="/spraoi-coach-icon.png" />
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
@@ -589,7 +679,10 @@ function DashboardScreen({ club, ageGroups, planSessions, weeklyPlan, upcomingSe
           <div style={{ background: P.white, borderRadius: 14, padding: 18, border: `1px solid ${P.line}`, boxShadow: Sh.card }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
               <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 800, color: P.ink }}>Upcoming Sessions</div>
-              <button onClick={() => onNav("coach-planner")} style={{ background: "none", border: "none", fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.p600, cursor: "pointer" }}>View Calendar</button>
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <button onClick={() => onNav("coach-planner")} style={{ background: "none", border: "none", fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, cursor: "pointer" }}>Calendar</button>
+                <button onClick={() => onNav("coach-sessions")} style={{ background: "none", border: "none", fontFamily: F.body, fontSize: 11, fontWeight: 800, color: P.p600, cursor: "pointer" }}>View all →</button>
+              </div>
             </div>
             {(!teamSessions || teamSessions.length === 0) ? (
               <div style={{ fontFamily: F.body, fontSize: 12, color: P.muted, padding: "12px 0" }}>No upcoming sessions scheduled.</div>
@@ -597,12 +690,12 @@ function DashboardScreen({ club, ageGroups, planSessions, weeklyPlan, upcomingSe
               teamSessions.slice(0, 4).map((sess, i) => (
                 <div key={sess.id || i} onClick={() => onOpenSession(sess)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderTop: i > 0 ? `1px solid ${P.line}` : "none", cursor: "pointer" }}>
                   <div style={{ width: 40, textAlign: "center", background: P.soft, borderRadius: 8, padding: "6px 0" }}>
-                    <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 700, color: P.muted, textTransform: "uppercase" }}>{sess.session_date ? new Date(sess.session_date).toLocaleDateString("en-IE", { weekday: "short" }) : ""}</div>
-                    <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink }}>{sess.session_date ? new Date(sess.session_date).getDate() : "?"}</div>
+                    <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 700, color: P.muted, textTransform: "uppercase" }}>{sess.session_date ? new Date(`${sess.session_date}T12:00:00`).toLocaleDateString("en-IE", { weekday: "short" }) : ""}</div>
+                    <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink }}>{sess.session_date ? new Date(`${sess.session_date}T12:00:00`).getDate() : "?"}</div>
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontFamily: F.body, fontSize: 13, fontWeight: 700, color: P.ink }}>{sess.plan?.hurling_skill?.name || "Training Session"}</div>
-                    <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>{sess.session_date ? new Date(sess.session_date).toLocaleDateString("en-IE", { weekday: "long", day: "numeric", month: "short" }) : ""} · {sess.total_duration_mins || "?"}min</div>
+                    <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>{sess.session_date ? new Date(`${sess.session_date}T12:00:00`).toLocaleDateString("en-IE", { weekday: "long", day: "numeric", month: "short" }) : ""} · {sess.total_duration_mins || "?"}min</div>
                   </div>
                   <Btn label="View" variant="ghost" style={{ height: 28, fontSize: 11 }} onClick={() => onOpenSession(sess)} />
                 </div>
@@ -628,57 +721,70 @@ function DashboardScreen({ club, ageGroups, planSessions, weeklyPlan, upcomingSe
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
+          {/* Coaches */}
+          <div style={{ background: P.white, borderRadius: 14, padding: 18, border: `1px solid ${P.line}`, boxShadow: Sh.card }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 800, color: P.ink }}>Coaches</div>
+              <button onClick={() => setShowLeaveForm(true)} style={{ background: "none", border: "none", fontFamily: F.body, fontSize: 11, fontWeight: 800, color: P.p600, cursor: "pointer" }}>+ Holiday</button>
+            </div>
+            {(coaches || []).length === 0 ? <div style={{ fontFamily:F.body,fontSize:12,color:P.muted }}>No coaches assigned yet.</div> : (coaches || []).slice(0,5).map((coach,i)=>{
+              const leave = coachLeave.find(x => String(x.coach_id) === String(coach.id));
+              return <div key={coach.id} style={{display:"flex",alignItems:"center",gap:9,padding:"9px 0",borderTop:i?`1px solid ${P.line}`:"none"}}>
+                <div style={{width:30,height:30,borderRadius:"50%",background:`${P.p600}15`,display:"grid",placeItems:"center",fontFamily:F.display,fontSize:11,fontWeight:900,color:P.p600}}>{(coach.name||"?")[0]}</div>
+                <div style={{flex:1,minWidth:0}}><div style={{fontFamily:F.body,fontSize:12,fontWeight:800,color:P.ink}}>{coach.name}</div><div style={{fontFamily:F.body,fontSize:9,color:leave?P.orange:P.muted,marginTop:2}}>{leave ? `Away ${new Date(`${leave.start_date}T12:00:00`).toLocaleDateString("en-IE",{day:"numeric",month:"short"})}–${new Date(`${leave.end_date}T12:00:00`).toLocaleDateString("en-IE",{day:"numeric",month:"short"})}` : "Available"}</div></div>
+                {leave && <button title="Remove holiday" onClick={()=>removeCoachLeave(leave.id)} style={{border:0,background:"none",color:P.muted,cursor:"pointer",fontSize:16}}>×</button>}
+              </div>;
+            })}
+          </div>
+
           {/* Recent Drills */}
           <div style={{ background: P.white, borderRadius: 14, padding: 18, border: `1px solid ${P.line}`, boxShadow: Sh.card }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
               <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 800, color: P.ink }}>Recent Drills</div>
               <button onClick={() => onNav("coach-drills")} style={{ background: "none", border: "none", fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.p600, cursor: "pointer" }}>View All</button>
             </div>
-            {(allActivities || []).slice(0, 3).map((a, i) => (
-              <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderTop: i > 0 ? `1px solid ${P.line}` : "none" }}>
-                <div style={{ width: 36, height: 36, borderRadius: "50%", background: `${P.p600}15`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>📖</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontFamily: F.body, fontSize: 12, fontWeight: 700, color: P.ink }}>{a.title}</div>
-                  <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>{a.skill?.name || a.category || ""}</div>
-                </div>
-                <span style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, color: P.p600, padding: "2px 8px", background: `${P.p600}12`, borderRadius: 4 }}>{a.difficulty || ""}</span>
-                <span style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>⏱ {a.duration_mins || "?"}min</span>
-                <Btn label="Use Drill" variant="ghost" style={{ height: 26, fontSize: 10, padding: "0 8px" }} onClick={() => onNav("coach-builder")} />
+            {recentDrills.length === 0 ? <div style={{fontFamily:F.body,fontSize:12,color:P.muted}}>No drills used in this week's sessions yet.</div> : recentDrills.map((a, i) => (
+              <div key={a.id || a.title} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderTop: i > 0 ? `1px solid ${P.line}` : "none" }}>
+                {(() => { const drillIcon = getCategoryIcon(a); return <div style={{ width: 36, height: 36, borderRadius: 10, background: `${drillIcon.color}12`, display: "grid", placeItems: "center", flexShrink: 0 }}><img src={drillIcon.icon} alt="" style={{ width: 27, height: 27, objectFit: "contain" }} /></div>; })()}
+                <div style={{ flex: 1, minWidth:0 }}><div style={{ fontFamily: F.body, fontSize: 12, fontWeight: 700, color: P.ink, whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>{a.title}</div><div style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>{a.skill?.name || a.category || ""}</div></div>
+                <Btn label="Use" variant="ghost" style={{ height: 26, fontSize: 10, padding: "0 8px" }} onClick={() => onNav("coach-builder")} />
               </div>
             ))}
           </div>
 
-          {/* Coaches & Teams */}
+          {/* Teams */}
           <div style={{ background: P.white, borderRadius: 14, padding: 18, border: `1px solid ${P.line}`, boxShadow: Sh.card }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 800, color: P.ink }}>Coaches & Teams</div>
-              <button onClick={() => onNav("coach-players")} style={{ background: "none", border: "none", fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.p600, cursor: "pointer" }}>Manage</button>
+              <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 800, color: P.ink }}>Teams</div>
+              <button onClick={() => onNav("coach-players")} style={{ background: "none", border: "none", fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.p600, cursor: "pointer" }}>Manage Players</button>
             </div>
-            <div style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", marginBottom: 6 }}>Coaches</div>
-            <div style={{ marginBottom: 12 }}>
-              {["Donal", "Shane", "Mark", "Paul", "Sarah", "Emma", "Claire", "Lisa"].slice(0, 4).map((name, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0" }}>
-                  <div style={{ width: 22, height: 22, borderRadius: "50%", background: `${P.p600}15`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F.display, fontSize: 9, fontWeight: 800, color: P.p600 }}>{name[0]}</div>
-                  <span style={{ fontFamily: F.body, fontSize: 11, color: P.ink }}>{name}</span>
-                </div>
-              ))}
-            </div>
-            <div style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", marginBottom: 6 }}>Team Panels</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {["Hurling A", "Hurling B", "Football A", "Football B"].map((team) => (
-                <details key={team} style={{ background: P.soft, borderRadius: 6, padding: "4px 8px" }}>
-                  <summary style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.ink, cursor: "pointer", padding: "4px 0" }}>{team}</summary>
-                  <div style={{ padding: "4px 0 6px", fontFamily: F.body, fontSize: 10, color: P.muted }}>
-                    Assign players in the Players section
-                  </div>
-                </details>
-              ))}
+            <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+              {panelGroups.map((group) => {
+                const members = panelPlayers.filter((p) => p[group.code] === group.panel);
+                return <details key={group.key} style={{ background: P.soft, borderRadius: 9, padding: "5px 9px" }}>
+                  <summary style={{ fontFamily:F.body,fontSize:11,fontWeight:900,color:P.ink,cursor:"pointer",padding:"5px 0" }}>{group.label} <span style={{color:P.muted}}>({members.length})</span></summary>
+                  <div style={{padding:"4px 0 6px",fontFamily:F.body,fontSize:10,color:P.muted}}>{members.length ? members.map(p=><div key={p.id} style={{padding:"3px 0"}}>{p.name}</div>) : "No players assigned yet."}</div>
+                </details>;
+              })}
             </div>
           </div>
         </div>
+
+        {showLeaveForm && <div onClick={()=>setShowLeaveForm(false)} style={{position:"fixed",inset:0,zIndex:5000,background:"rgba(15,23,42,.5)",display:"grid",placeItems:"center",padding:18}}>
+          <div onClick={e=>e.stopPropagation()} style={{width:"min(460px,100%)",background:P.white,borderRadius:18,padding:20,boxShadow:"0 30px 80px rgba(15,23,42,.28)"}}>
+            <div style={{fontFamily:F.display,fontSize:20,fontWeight:900,color:P.ink}}>Add coach holiday</div>
+            <div style={{display:"grid",gap:10,marginTop:14}}>
+              <select value={leaveDraft.coach_id} onChange={e=>setLeaveDraft({...leaveDraft,coach_id:e.target.value})} style={{height:40,border:`1px solid ${P.line}`,borderRadius:9,padding:"0 10px"}}><option value="">Choose coach</option>{(coaches||[]).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><label style={{fontFamily:F.body,fontSize:10,color:P.muted}}>From<input type="date" value={leaveDraft.start_date} onChange={e=>setLeaveDraft({...leaveDraft,start_date:e.target.value})} style={{display:"block",width:"100%",height:38,marginTop:4,border:`1px solid ${P.line}`,borderRadius:9,padding:"0 8px",boxSizing:"border-box"}}/></label><label style={{fontFamily:F.body,fontSize:10,color:P.muted}}>To<input type="date" value={leaveDraft.end_date} onChange={e=>setLeaveDraft({...leaveDraft,end_date:e.target.value})} style={{display:"block",width:"100%",height:38,marginTop:4,border:`1px solid ${P.line}`,borderRadius:9,padding:"0 8px",boxSizing:"border-box"}}/></label></div>
+              <input placeholder="Note (optional)" value={leaveDraft.note} onChange={e=>setLeaveDraft({...leaveDraft,note:e.target.value})} style={{height:40,border:`1px solid ${P.line}`,borderRadius:9,padding:"0 10px"}}/>
+            </div>
+            <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}><Btn label="Cancel" variant="ghost" onClick={()=>setShowLeaveForm(false)}/><Btn label="Save holiday" variant="primary" onClick={saveCoachLeave}/></div>
+          </div>
+        </div>}
       </div>
     </div>
+    </>
   );
 }
 
@@ -2889,17 +2995,189 @@ const previewPill = {
   backdropFilter: "blur(8px)",
 };
 
-function AcademyPhonePreview({ planSessions = [], extras = [], skills = [], overrides = {}, published = false, compact = false, selectedTeam = null }) {
+function AcademyPhonePreview({ weeklyPlan = null, planSessions = [], extras = [], skills = [], overrides = {}, published = false, compact = false, selectedTeam = null }) {
   const recommendations = getAcademyWeeklyRecommendations(planSessions, skills, overrides, selectedTeam);
   const football = recommendations.filter((item) => item.code === "football");
   const hurling = recommendations.filter((item) => item.code === "hurling");
   const grouped = { steps: [], exercises: [], runs: [], bonus: [], recovery: [] };
   extras.forEach((extra) => grouped[academyExtraGroup(extra)].push(extra));
-  const section = (title, items, color, icon, render) => items.length ? <div style={{ background:"#fff",border:`1px solid ${color}33`,borderRadius:14,padding:11,marginTop:9 }}><div style={{ display:"flex",alignItems:"center",gap:7,fontFamily:F.body,fontSize:10,fontWeight:900,color,textTransform:"uppercase" }}><span>{icon}</span>{title}</div><div style={{ display:"grid",gap:7,marginTop:8 }}>{items.map(render)}</div></div> : null;
-  const taskRow=(item)=><div key={item.id} style={{ display:"flex",alignItems:"center",gap:8,padding:"8px 9px",borderRadius:10,background:"#f8fafc" }}><div style={{flex:1,minWidth:0}}><div style={{fontFamily:F.body,fontSize:10,fontWeight:900,color:P.ink}}>{item.title}</div><div style={{fontFamily:F.body,fontSize:8,color:P.muted,marginTop:2}}>{item.target || item.description || item.instruction || "Complete this mission"}</div></div><span style={{fontFamily:F.body,fontSize:8,fontWeight:900,color:"#b45309"}}>+{item.xp || item.xp_reward || 10} XP</span></div>;
-  const skillRow=(item)=><div key={item.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 9px",borderRadius:10,background:"#f8fafc"}}><div style={{width:32,height:32,borderRadius:9,background:"#e0f2fe",display:"grid",placeItems:"center"}}>▶</div><div style={{flex:1,minWidth:0}}><div style={{fontFamily:F.body,fontSize:10,fontWeight:900,color:P.ink}}>{item.matchedSkill?.name || "Choose weekly video"}</div><div style={{fontFamily:F.body,fontSize:8,color:P.muted,marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>Based on {item.sourceDrills.length} Coach drill{item.sourceDrills.length===1?"":"s"}</div></div><span style={{fontFamily:F.body,fontSize:8,fontWeight:900,color:"#b45309"}}>+20 XP</span></div>;
-  const visibleCount = football.length+hurling.length+Object.values(grouped).reduce((sum,items)=>sum+items.length,0);
-  return <div style={{ width: compact ? 300 : "min(390px,100%)", maxHeight: compact ? 600 : "none", overflow:"hidden", background:"#fff",borderRadius:compact?26:32,border:compact?"6px solid #16324a":"8px solid #16324a",boxShadow:"0 22px 52px rgba(7,89,133,.2)" }}><div style={{background:"linear-gradient(135deg,#38bdf8,#0284c7)",padding:compact?"16px 14px":"22px 18px",color:"#fff",position:"relative",overflow:"hidden"}}><img src="/spraoi-academy-icon.png" alt="" style={{position:"absolute",right:8,bottom:-8,width:compact?68:88,height:compact?68:88,objectFit:"contain",background:"#fff",borderRadius:18,padding:6}}/><div style={{fontFamily:F.body,fontSize:8,fontWeight:900,opacity:.85,textTransform:"uppercase"}}>Club Spraoi Academy</div><div style={{fontFamily:F.display,fontSize:compact?18:24,fontWeight:900,marginTop:3,maxWidth:"70%"}}>Your weekly adventure</div><div style={{display:"flex",gap:6,marginTop:11}}><span style={previewPill}>⭐ {recommendations.length*20+extras.reduce((s,x)=>s+Number(x.xp||x.xp_reward||0),0)} XP</span><span style={previewPill}>🏅 Badges</span></div></div><div style={{padding:compact?10:15,background:"#f3f9fd",maxHeight:compact?460:"none",overflowY:"auto"}}>{visibleCount===0?<div style={{padding:18,textAlign:"center",fontFamily:F.body,fontSize:10,color:P.muted}}>Add weekly content to see the child experience here.</div>:<>{section("Step Goals",grouped.steps,"#0f9f6e","👟",taskRow)}{section("Exercises",grouped.exercises,"#7c3aed","💪",taskRow)}{section("Run Challenge",grouped.runs,"#e65100","🏃",taskRow)}{section("Football Skills",football,"#2563eb","⚽",skillRow)}{section(selectedTeam?.gender === "girls" ? "Camogie Skills" : "Hurling Skills",hurling,"#dc2626","🏑",skillRow)}{section("Bonus",grouped.bonus,"#d97706","✨",taskRow)}{section("Rest & Recovery",grouped.recovery,"#0f766e","🌙",taskRow)}</>}<div style={{marginTop:10,padding:9,borderRadius:11,background:published?"#dcfce7":"#fff7ed",color:published?"#15803d":"#b45309",fontFamily:F.body,fontSize:8,fontWeight:900,textAlign:"center"}}>{published?"✓ Published to children":"Preview mode · not published"}</div></div></div>;
+
+  const fitness = [...grouped.steps, ...grouped.exercises, ...grouped.runs];
+  const clubActivities = grouped.bonus;
+  const recovery = grouped.recovery;
+  const skillItems = [...football, ...hurling];
+  const journeyItems = [
+    ...skillItems.map((item) => ({
+      id: `skill-${item.code}`,
+      title: item.matchedSkill?.name || `Choose ${item.label} video`,
+      section: item.label,
+      icon: item.code === "football" ? "/football-icon.png" : "/hurling-icon.png",
+      color: item.code === "football" ? "#2563eb" : "#c62828",
+    })),
+    ...fitness.map((item) => ({
+      id: `fitness-${item.id}`,
+      title: item.title,
+      section: "Fitness",
+      icon: "/speed-mechanics-icon.png",
+      color: "#7c3aed",
+    })),
+    ...clubActivities.map((item) => ({
+      id: `club-${item.id}`,
+      title: item.title,
+      section: "Club Activity",
+      icon: "/hurling-icon.png",
+      color: "#d97706",
+    })),
+    ...(weeklyPlan || skillItems.length || extras.length ? [{
+      id: "recovery-preview",
+      title: recovery[0]?.title || "Rest & Recovery",
+      section: "Recovery",
+      icon: "/rest-and-recovery-icon.png",
+      color: "#0f766e",
+    }] : []),
+  ];
+
+  const previewWidth = compact ? 300 : 390;
+  const weekLabel = getAcademyWeekRange(weeklyPlan);
+  const sectionCard = (title, color, icon, children) => (
+    <div style={{ background:"#fff", border:`1.5px solid ${color}33`, borderTop:`5px solid ${color}`, borderRadius:18, padding:12, marginBottom:12, boxShadow:"0 4px 14px rgba(15,23,42,.06)" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:9, paddingBottom:9, marginBottom:9, borderBottom:`1px solid ${color}22` }}>
+        <div style={{ width:34, height:34, borderRadius:10, background:`${color}12`, display:"grid", placeItems:"center" }}>
+          <img src={icon} alt="" style={{ width:24, height:24, objectFit:"contain" }} />
+        </div>
+        <div style={{ fontFamily:F.display, fontSize:12, fontWeight:900, color, textTransform:"uppercase", letterSpacing:".04em" }}>{title}</div>
+      </div>
+      {children}
+    </div>
+  );
+
+  const skillCard = (item) => {
+    const color = item.code === "football" ? "#2563eb" : "#c62828";
+    const icon = item.code === "football" ? "/football-icon.png" : "/hurling-icon.png";
+    const skill = item.matchedSkill;
+    return (
+      <div key={item.code} style={{ background:"#fff", border:`1.5px solid ${color}33`, borderTop:`5px solid ${color}`, borderRadius:18, overflow:"hidden", marginBottom:12, boxShadow:"0 4px 14px rgba(15,23,42,.06)" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:9, padding:"11px 12px 8px" }}>
+          <div style={{ width:34, height:34, borderRadius:10, background:`${color}12`, display:"grid", placeItems:"center" }}><img src={icon} alt="" style={{width:23,height:23,objectFit:"contain"}}/></div>
+          <div style={{ minWidth:0 }}>
+            <div style={{ fontFamily:F.display, fontSize:10, fontWeight:900, color, textTransform:"uppercase" }}>{item.label}</div>
+            <div style={{ fontFamily:F.display, fontSize:14, fontWeight:900, color:P.ink, marginTop:1 }}>{skill?.name || `Choose ${item.label} video`}</div>
+          </div>
+        </div>
+        {skill?.video_url ? (
+          <div style={{ margin:"0 12px 8px", borderRadius:10, overflow:"hidden", background:"#071827" }}>
+            <iframe title={skill.name} src={skill.video_url.replace("watch?v=","embed/").split("&")[0]} style={{width:"100%",height:compact?110:145,border:0,display:"block"}} allowFullScreen />
+          </div>
+        ) : (
+          <div style={{ margin:"0 12px 8px", padding:"10px 11px", borderRadius:10, background:`${color}08`, fontFamily:F.body, fontSize:9, color:P.muted }}>Practice video appears here when selected.</div>
+        )}
+        <div style={{ padding:"0 12px 12px" }}>
+          <div style={{ padding:"9px 10px", borderRadius:10, background:"#f8fafc", fontFamily:F.body, fontSize:9, color:P.ink, lineHeight:1.45 }}>
+            Practise this skill for 20 minutes. Focus on good technique and control.
+            <div style={{ display:"flex", justifyContent:"space-between", marginTop:6, fontWeight:800 }}><span>20 min practice</span><span style={{color:"#b45309"}}>+10 XP</span></div>
+          </div>
+          <div style={{ marginTop:7, padding:"9px 10px", borderRadius:9, textAlign:"center", background:color, color:"#fff", fontFamily:F.display, fontSize:10, fontWeight:900 }}>I Practised for 20 Minutes!</div>
+        </div>
+      </div>
+    );
+  };
+
+  const taskRows = (items, color) => items.map((item) => (
+    <div key={item.id} style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 10px", borderRadius:11, background:`${color}08`, border:`1px solid ${color}22`, marginBottom:7 }}>
+      <div style={{ width:18, height:18, borderRadius:"50%", border:`2px solid ${color}`, flexShrink:0 }} />
+      <div style={{ flex:1, minWidth:0 }}>
+        <div style={{ fontFamily:F.display, fontSize:10, fontWeight:900, color:P.ink }}>{item.title}</div>
+        {(item.description || item.instruction || item.target) && <div style={{ fontFamily:F.body, fontSize:8, color:P.muted, marginTop:2 }}>{item.description || item.instruction || item.target}</div>}
+      </div>
+      <div style={{ fontFamily:F.display, fontSize:9, fontWeight:900, color:"#b45309" }}>+{item.xp_reward || item.xp || 5} XP</div>
+    </div>
+  ));
+
+  const visibleCount = skillItems.length + fitness.length + clubActivities.length + recovery.length;
+
+  return (
+    <div style={{ width:previewWidth, maxWidth:"100%", overflow:"hidden", background:"#eef7fb", borderRadius:compact?24:30, border:compact?"5px solid #16324a":"7px solid #16324a", boxShadow:"0 22px 52px rgba(7,89,133,.2)" }}>
+      {/* Mirrors the actual Academy Child app rather than a separate admin-only preview design */}
+      <div style={{ padding:"11px 12px 7px", display:"flex", alignItems:"center", justifyContent:"space-between", gap:8 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+          <img src="/spraoi-academy-icon.png" alt="" style={{width:27,height:27,objectFit:"contain"}}/>
+          <div style={{fontFamily:F.display,fontSize:13,fontWeight:900,color:"#039be5",textTransform:"uppercase"}}>Spraoi Academy</div>
+        </div>
+        <div style={{ padding:"5px 8px", borderRadius:999, background:"#fff3e0", fontFamily:F.body, fontSize:7, fontWeight:800, color:"#9a5a00" }}>🔥 0 week streak</div>
+      </div>
+
+      <div style={{ margin:"0 10px 10px", borderRadius:16, padding:"12px 13px", background:"linear-gradient(135deg,#18a8e0,#0f9bd3)", color:"#fff", boxShadow:"0 8px 18px rgba(3,155,229,.18)" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <div style={{ width:38,height:38,borderRadius:"50%",background:"rgba(255,255,255,.18)",display:"grid",placeItems:"center",fontFamily:F.display,fontSize:16,fontWeight:800 }}>A</div>
+          <div style={{flex:1}}>
+            <div style={{fontFamily:F.display,fontSize:12,fontWeight:900}}>Academy Player</div>
+            <div style={{fontFamily:F.body,fontSize:8,fontWeight:700,opacity:.9}}>Level 1</div>
+          </div>
+          <div style={{textAlign:"right"}}><div style={{fontFamily:F.display,fontSize:16,fontWeight:900,color:"#ffd54f"}}>0</div><div style={{fontSize:7}}>XP</div></div>
+        </div>
+        <div style={{fontFamily:F.body,fontSize:7,fontWeight:800,marginTop:8,display:"flex",justifyContent:"space-between"}}><span>Level 1</span><span>0/100 to Level 2</span></div>
+        <div style={{height:6,borderRadius:99,background:"rgba(255,255,255,.2)",marginTop:4}} />
+      </div>
+
+      <div style={{ padding:"0 10px 12px", maxHeight:compact?500:690, overflowY:"auto" }}>
+        <div style={{ background:"#fff", border:"1.5px solid #d9e5ed", borderRadius:18, padding:13, marginBottom:12, boxShadow:"0 5px 18px rgba(15,23,42,.05)" }}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <img src="/spraoi-academy-icon.png" alt="" style={{width:38,height:38,objectFit:"contain"}}/>
+            <div>
+              <div style={{fontFamily:F.body,fontSize:7,fontWeight:900,textTransform:"uppercase",letterSpacing:".1em",color:P.muted}}>This week in Academy</div>
+              <div style={{fontFamily:F.display,fontSize:17,fontWeight:900,color:"#039be5",marginTop:1}}>{weekLabel}</div>
+              <div style={{fontFamily:F.body,fontSize:8,color:P.muted,fontStyle:"italic",marginTop:4}}>“Progress comes from showing up, practising and helping your teammates.”</div>
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:9}}>
+            <div style={{padding:"7px",borderRadius:8,border:"1px solid #d9e5ed",textAlign:"center",fontFamily:F.body,fontSize:8,fontWeight:800,color:"#039be5"}}>← Previous week</div>
+            <div style={{padding:"7px",borderRadius:8,border:"1px solid #e5edf2",background:"#f5f7f9",textAlign:"center",fontFamily:F.body,fontSize:8,fontWeight:800,color:"#a4b1bb"}}>Next week →</div>
+          </div>
+        </div>
+
+        {journeyItems.length > 0 && (
+          <div style={{ background:"#fff", border:"1.5px solid #039be522", borderRadius:20, padding:"12px 11px", marginBottom:12, boxShadow:"0 6px 18px rgba(15,23,42,.05)" }}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+              <div><div style={{fontFamily:F.body,fontSize:7,fontWeight:900,textTransform:"uppercase",letterSpacing:".1em",color:P.muted}}>Your weekly journey</div><div style={{fontFamily:F.display,fontSize:14,fontWeight:900,color:P.ink}}>Keep moving forward</div></div>
+              <div style={{width:42,height:42,borderRadius:"50%",background:"#039be512",border:"3px solid #039be522",display:"grid",placeItems:"center",fontFamily:F.display,fontSize:10,fontWeight:900,color:"#039be5"}}>0%</div>
+            </div>
+            <div style={{height:7,borderRadius:99,background:"#eef3f6",marginBottom:10}} />
+            {journeyItems.map((item,index)=>(
+              <div key={item.id} style={{display:"grid",gridTemplateColumns:"39px 1fr",gap:7,minHeight:52,position:"relative"}}>
+                <div style={{display:"flex",justifyContent:"center",position:"relative"}}>
+                  {index < journeyItems.length-1 && <div style={{position:"absolute",top:33,bottom:-12,width:3,background:"#d9e5ed"}}/>}
+                  <div style={{width:34,height:34,borderRadius:"50%",border:`3px solid ${index===0?item.color:"#d9e5ed"}`,background:index===0?item.color:"#fff",display:"grid",placeItems:"center",zIndex:1}}>
+                    <img src={item.icon} alt="" style={{width:18,height:18,objectFit:"contain",filter:index===0?"brightness(0) invert(1)":"none"}}/>
+                  </div>
+                </div>
+                <div style={{alignSelf:"start",padding:"7px 9px",borderRadius:10,border:`1px solid ${index===0?item.color+"55":"#d9e5ed"}`,background:index===0?item.color+"0D":"#fff"}}>
+                  <div style={{fontFamily:F.body,fontSize:7,fontWeight:900,textTransform:"uppercase",color:item.color}}>{index===0?"Up next":item.section}</div>
+                  <div style={{fontFamily:F.display,fontSize:10,fontWeight:900,color:P.ink,marginTop:1}}>{item.title}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {visibleCount === 0 ? (
+          <div style={{padding:18,textAlign:"center",fontFamily:F.body,fontSize:9,color:P.muted,background:"#fff",borderRadius:14}}>Add weekly content to see the child experience here.</div>
+        ) : (
+          <>
+            {skillItems.map(skillCard)}
+            {fitness.length > 0 && sectionCard("Fitness","#7c3aed","/speed-mechanics-icon.png",taskRows(fitness,"#7c3aed"))}
+            {clubActivities.length > 0 && sectionCard("Club Activities","#d97706","/hurling-icon.png",taskRows(clubActivities,"#d97706"))}
+            {sectionCard("Rest & Recovery","#0f766e","/rest-and-recovery-icon.png",
+              recovery.length > 0
+                ? taskRows(recovery,"#0f766e")
+                : <div style={{padding:"9px 10px",borderRadius:11,background:"#0f766e08",fontFamily:F.body,fontSize:9,color:P.muted}}>The weekly recovery stretch appears here in the child app.</div>
+            )}
+          </>
+        )}
+
+        <div style={{marginTop:3,padding:9,borderRadius:11,background:published?"#dcfce7":"#fff7ed",color:published?"#15803d":"#b45309",fontFamily:F.body,fontSize:8,fontWeight:900,textAlign:"center"}}>{published?"✓ Published to children":"Preview mode · not published"}</div>
+      </div>
+    </div>
+  );
 }
 
 function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras = [], skills = [], overrides = {}, published = false, onSetOverride, onNav }) {
@@ -3119,7 +3397,7 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
 
             <section style={{ background: academySoft, borderRadius: 16, border: "1px solid #cfeeff", padding: 16 }}>
               <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:12 }}><div><div style={{ fontFamily:F.display,fontSize:16,fontWeight:900,color:academyDark }}>Live child preview</div><div style={{fontFamily:F.body,fontSize:10,color:"#477084",marginTop:2}}>Only sections with content are shown.</div></div><button onClick={()=>onNav("academy-preview")} style={{border:0,background:"transparent",color:academyBlue,fontFamily:F.body,fontSize:10,fontWeight:900,cursor:"pointer"}}>Open full →</button></div>
-              <div style={{display:"grid",placeItems:"center"}}><AcademyPhonePreview planSessions={planSessions} extras={extras} skills={skills} overrides={overrides} published={published} compact selectedTeam={selectedTeam} /></div>
+              <div style={{display:"grid",placeItems:"center"}}><AcademyPhonePreview weeklyPlan={weeklyPlan} planSessions={planSessions} extras={extras} skills={skills} overrides={overrides} published={published} compact selectedTeam={selectedTeam} /></div>
             </section>
           </div>
         </div>
@@ -3258,7 +3536,7 @@ function AcademyParents({ selectedTeam, parentRows, setParentRows }) {
 }
 const td={padding:"10px 8px",borderBottom:`1px solid ${P.line}`,fontFamily:F.body,fontSize:10,color:P.ink};
 
-function AcademyPreview({ planSessions, extras, skills = [], overrides = {}, published, selectedTeam }) { return <div style={{flex:1,overflow:"auto",background:"linear-gradient(180deg,#e8f7ff,#f8fbff)"}}><AcademyPageHeader title="Child Preview" sub="Exactly what a child will see after publishing" /><div style={{padding:24,display:"grid",placeItems:"center"}}><AcademyPhonePreview planSessions={planSessions} extras={extras} skills={skills} overrides={overrides} published={published} selectedTeam={selectedTeam} /></div></div>;
+function AcademyPreview({ planSessions, extras, skills = [], overrides = {}, published, selectedTeam }) { return <div style={{flex:1,overflow:"auto",background:"linear-gradient(180deg,#e8f7ff,#f8fbff)"}}><AcademyPageHeader title="Child Preview" sub="Exactly what a child will see after publishing" /><div style={{padding:24,display:"grid",placeItems:"center"}}><AcademyPhonePreview weeklyPlan={weeklyPlan} planSessions={planSessions} extras={extras} skills={skills} overrides={overrides} published={published} selectedTeam={selectedTeam} /></div></div>;
 }
 
 
