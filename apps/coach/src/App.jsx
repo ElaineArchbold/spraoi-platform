@@ -1190,13 +1190,17 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
   if (search.trim()) { const q = search.toLowerCase(); filtered = filtered.filter((a) => a.title.toLowerCase().includes(q) || a.skill?.name?.toLowerCase().includes(q) || a.description?.toLowerCase().includes(q)); }
   if (filterCat) filtered = filtered.filter((a) => a.category === filterCat || a.skill?.category === filterCat);
 
-  // Sort favourites first
-  filtered.sort((a, b) => {
-    const af = (favouriteIds || []).includes(a.id) ? 0 : 1;
-    const bf = (favouriteIds || []).includes(b.id) ? 0 : 1;
-    if (af !== bf) return af - bf;
-    return a.title.localeCompare(b.title);
-  });
+  // Sort favourites first only while browsing the grid.
+  // Keeping the order stable while the modal is open prevents the selected
+  // drill from changing when it is favourited/unfavourited.
+  if (selectedIdx === null) {
+    filtered.sort((a, b) => {
+      const af = (favouriteIds || []).includes(a.id) ? 0 : 1;
+      const bf = (favouriteIds || []).includes(b.id) ? 0 : 1;
+      if (af !== bf) return af - bf;
+      return a.title.localeCompare(b.title);
+    });
+  }
 
   const selectedDrill = selectedIdx !== null ? filtered[selectedIdx] : null;
 
@@ -1299,7 +1303,7 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <button onClick={() => onToggleFavourite && onToggleFavourite(selectedDrill.id)} style={{ padding: "5px 10px", borderRadius: 6, border: `1.5px solid ${(favouriteIds || []).includes(selectedDrill.id) ? "#fbc02d" : P.line}`, background: (favouriteIds || []).includes(selectedDrill.id) ? "#fbc02d15" : P.white, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: (favouriteIds || []).includes(selectedDrill.id) ? "#f59e0b" : P.muted, cursor: "pointer" }}>
-                  {(favouriteIds || []).includes(selectedDrill.id) ? "★ Favourited" : "☆ Favourite"}
+                  {(favouriteIds || []).includes(selectedDrill.id) ? "★ Saved to Favourites" : "☆ Add to Favourites"}
                 </button>
                 {userRole?.role === "super_admin" && <button onClick={() => { if (!window.confirm(`Copy & edit "${selectedDrill.title}"?\n\nThis will create an editable copy in your custom cards.`)) return; setBuilderDrill(selectedDrill); setMode("builder"); setSelectedIdx(null); }} style={{ padding: "5px 10px", borderRadius: 6, border: `1.5px solid ${P.p600}`, background: P.p50, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.p600, cursor: "pointer" }}>Copy & Edit</button>}
                 <button onClick={() => setSelectedIdx(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: P.muted }}>×</button>
@@ -3315,7 +3319,14 @@ export default function App() {
   const [skills, setSkills] = useState([]);
   const [allActivities, setAllActivities] = useState([]);
   const [coaches, setCoaches] = useState([]);
-  const [favouriteIds, setFavouriteIds] = useState([]);
+  const [favouriteIds, setFavouriteIds] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("spraoi_coach_favourites") || "[]");
+      return Array.isArray(saved) ? saved : [];
+    } catch {
+      return [];
+    }
+  });
   const [diagramMap, setDiagramMap] = useState({});
   const [weeklyPlan, setWeeklyPlan] = useState(null);
   const [planSessions, setPlanSessions] = useState([]);
@@ -3664,13 +3675,37 @@ export default function App() {
 
   async function toggleFavourite(activityId) {
     const isFav = favouriteIds.includes(activityId);
+    const nextIds = isFav
+      ? favouriteIds.filter((id) => id !== activityId)
+      : [...favouriteIds, activityId];
+
+    // Update UI and local persistence immediately.
+    setFavouriteIds(nextIds);
+    localStorage.setItem("spraoi_coach_favourites", JSON.stringify(nextIds));
+
+    // Persist to Supabase against the signed-in coach when that mapping exists.
+    const signedInUserId = session?.user?.id;
+    const signedInEmail = String(session?.user?.email || "").toLowerCase();
+    const currentCoach =
+      (coaches || []).find((coach) => coach.user_id && String(coach.user_id) === String(signedInUserId)) ||
+      (coaches || []).find((coach) => String(coach.email || "").toLowerCase() === signedInEmail) ||
+      null;
+
+    if (!currentCoach?.id) return;
+
     if (isFav) {
-      setFavouriteIds((prev) => prev.filter((id) => id !== activityId));
-      await supabase.from("coach_favourites").delete().eq("activity_id", activityId);
+      await supabase
+        .from("coach_favourites")
+        .delete()
+        .eq("coach_id", currentCoach.id)
+        .eq("activity_id", activityId);
     } else {
-      setFavouriteIds((prev) => [...prev, activityId]);
-      const coachId = coaches[0]?.id;
-      if (coachId) await supabase.from("coach_favourites").insert({ coach_id: coachId, activity_id: activityId });
+      await supabase
+        .from("coach_favourites")
+        .upsert(
+          { coach_id: currentCoach.id, activity_id: activityId },
+          { onConflict: "coach_id,activity_id" }
+        );
     }
   }
 
@@ -4118,5 +4153,3 @@ export default function App() {
     </div>
   );
 }
-
-// deployment refresh 2026-08-13
