@@ -47,6 +47,14 @@ function saveActiveContext(team, club) {
   }));
 }
 
+function displayRoleLabel(role) {
+  const normalized = String(role || "").toLowerCase();
+  if (normalized === "super_admin") return "Super Admin";
+  if (normalized === "admin" || normalized === "club_admin") return "Admin";
+  if (normalized === "lead_coach") return "Lead Coach";
+  return "Coach/Mentor";
+}
+
 function roleCapabilities(role) {
   const normalized = String(role || "").toLowerCase();
   return {
@@ -57,7 +65,7 @@ function roleCapabilities(role) {
     canEditAcademyPlans: ["club_admin", "super_admin", "admin", "lead_coach"].includes(normalized),
     canPublishAcademy: ["club_admin", "super_admin", "admin", "lead_coach"].includes(normalized),
     canAddDrills: ["club_admin", "super_admin", "admin", "lead_coach"].includes(normalized),
-    canEditSharedDrills: ["club_admin", "super_admin", "admin"].includes(normalized),
+    canEditSharedDrills: ["club_admin", "super_admin", "admin", "lead_coach"].includes(normalized),
     canDeleteSharedDrills: ["club_admin", "super_admin", "admin"].includes(normalized),
     canManageTeamStaff: ["club_admin", "super_admin", "admin"].includes(normalized),
   };
@@ -2033,7 +2041,7 @@ function ClubDashboardScreen({ club, ageGroups, coaches, selectedTeam, onNav }) 
         <StatCard label="Teams" value={String(ageGroups?.length || 0)} sub="Persistent club teams" color={CLUB_RED} icon="◆" />
         <StatCard label="Coaches" value={String(coaches?.length || 0)} sub="Club staff records" color={CLUB_RED_DARK} icon="●" />
         <StatCard label="Active Team" value={selectedTeam?.label || "—"} sub="Shared across modules" color="#e57373" icon="↔" />
-        <StatCard label="Access Model" value="3 roles" sub="Admin, lead, mentor" color="#ef5350" icon="◇" />
+        <StatCard label="Access Model" value="4 roles" sub="Super Admin, Admin, Lead Coach, Coach/Mentor" color="#ef5350" icon="◇" />
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 14 }}>
@@ -2443,14 +2451,15 @@ function ClubTeamsScreen({ club, ageGroups, coaches, selectedTeam, onSelectTeam,
   );
 }
 
-function ClubMembersScreen({ club, ageGroups, coaches, selectedTeam, onReloadCoaches }) {
+function ClubMembersScreen({ club, ageGroups, coaches, selectedTeam, onReloadCoaches, userRole }) {
   const [name, setName] = useState("");
   const [emailValue, setEmailValue] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const canManageMembers = ["super_admin", "admin", "club_admin"].includes(userRole?.role);
 
   async function addCoach() {
-    if (!name.trim() || !club?.id) return;
+    if (!canManageMembers || !name.trim() || !club?.id) return;
     setSaving(true);
     const { error } = await supabase.from("coaches").insert({
       club_id: club.id,
@@ -2467,10 +2476,22 @@ function ClubMembersScreen({ club, ageGroups, coaches, selectedTeam, onReloadCoa
     setSaving(false);
   }
 
+  async function removeMember(coach) {
+    if (!canManageMembers || !coach?.id || !club?.id) return;
+    if (!window.confirm(`Remove ${coach.name || "this member"} from the club directory?\n\nThis removes their member/coach record but does not delete their login account.`)) return;
+    const { error } = await supabase.from("coaches").delete().eq("id", coach.id).eq("club_id", club.id);
+    if (error) {
+      setMessage("Could not remove member: " + error.message);
+      return;
+    }
+    setMessage("Member removed.");
+    await onReloadCoaches?.();
+  }
+
   return (
     <ClubPage title="Members" sub="Manage coaches now; player and parent records will use the same club directory">
       <div style={{ display: "grid", gridTemplateColumns: "minmax(280px,.8fr) minmax(360px,1.3fr)", gap: 15 }} className="club-members-layout">
-        <ClubCard>
+        {canManageMembers && <ClubCard>
           <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink, marginBottom: 12 }}>Add coach</div>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Coach name" style={{ width: "100%", boxSizing: "border-box", padding: 10, borderRadius: 9, border: `1px solid ${P.line}`, marginBottom: 8 }} />
           <input value={emailValue} onChange={(e) => setEmailValue(e.target.value)} placeholder="Login email" type="email" style={{ width: "100%", boxSizing: "border-box", padding: 10, borderRadius: 9, border: `1px solid ${P.line}`, marginBottom: 8 }} />
@@ -2478,8 +2499,8 @@ function ClubMembersScreen({ club, ageGroups, coaches, selectedTeam, onReloadCoa
             New coaches can be assigned to Lead Coach or Coach/Mentor under Teams.
           </div>
           <Btn label={saving ? "Adding…" : "Add Coach"} onClick={addCoach} style={{ background: CLUB_RED }} />
-          {message && <div style={{ fontFamily: F.body, fontSize: 10, color: message === "Coach added." ? "#16803c" : "#b42318", marginTop: 9 }}>{message}</div>}
-        </ClubCard>
+          {message && <div style={{ fontFamily: F.body, fontSize: 10, color: ["Coach added.","Member removed."].includes(message) ? "#16803c" : "#b42318", marginTop: 9 }}>{message}</div>}
+        </ClubCard>}
 
         <ClubCard>
           <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink, marginBottom: 10 }}>Club coaches</div>
@@ -2493,6 +2514,7 @@ function ClubMembersScreen({ club, ageGroups, coaches, selectedTeam, onReloadCoa
                 <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted }}>{coach.email || "No login email"}</div>
               </div>
               <span style={{ fontFamily: F.body, fontSize: 9, fontWeight: 900, color: CLUB_RED, background: CLUB_SOFT, borderRadius: 999, padding: "5px 8px" }}>Coach</span>
+              {canManageMembers && <Btn label="Remove Member" variant="ghost" style={{ height: 34, fontSize: 10, color: P.coral }} onClick={() => removeMember(coach)} />}
             </div>
           ))}
         </ClubCard>
@@ -2503,70 +2525,123 @@ function ClubMembersScreen({ club, ageGroups, coaches, selectedTeam, onReloadCoa
 }
 
 function ClubPermissionsScreen({ club, userRole }) {
-  const rows = [
-    ["View assigned team", true, true, true],
-    ["Create and edit Coach plans", true, true, false],
-    ["Archive / replace Coach plans", true, true, false],
-    ["Delete Coach plans permanently", true, false, false],
-    ["Amend Academy weekly plans", true, true, false],
-    ["Select weekly Academy videos", true, true, false],
-    ["Publish Academy content", true, true, false],
-    ["Add a new coach-created drill", true, true, false],
-    ["Use approved shared drills", true, true, true],
-    ["Edit shared / approved drills", true, false, false],
-    ["Delete shared drills", true, false, false],
-    ["Assign coaches to teams", true, false, false],
-    ["Change staff roles / RBAC", true, false, false],
-    ["Run season rollover", true, false, false],
-    ["Manage club settings", true, false, false],
-  ];
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [editingUser, setEditingUser] = useState(null);
+  const [editRole, setEditRole] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
-  const roleLabel = String(userRole?.role || "club_admin")
-    .replaceAll("_", " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  const isSuperAdmin = userRole?.role === "super_admin";
+  const roles = ["super_admin", "admin", "lead_coach", "coach_mentor"];
+
+  const permMatrix = {
+    super_admin: { coach: "full", club: "full", academy: "full", cup: "full", permissions: "manage", drills: "create/edit/delete", teams: "manage" },
+    admin: { coach: "full", club: "full", academy: "full", cup: "full", permissions: "manage", drills: "create/edit", teams: "manage" },
+    lead_coach: { coach: "full", club: "view", academy: "view", cup: "view", permissions: "view", drills: "create/edit", teams: "manage assigned" },
+    coach_mentor: { coach: "read only", club: "read only", academy: "read only", cup: "read only", permissions: "none", drills: "read only", teams: "view assigned" },
+  };
+
+  useEffect(() => { loadUsers(); }, []);
+
+  async function loadUsers() {
+    setLoading(true);
+    setError("");
+    const { data, error: loadError } = await supabase.from("user_roles").select("*").order("user_email").order("squad_key");
+    if (loadError) {
+      setUsers([]);
+      setError(loadError.message);
+    } else {
+      setUsers(data || []);
+    }
+    setLoading(false);
+  }
+
+  async function saveUserRole() {
+    if (!editingUser || !isSuperAdmin) return;
+    setSaving(true);
+    setError("");
+    const { error: saveError } = await supabase.from("user_roles").update({ role: editRole }).eq("id", editingUser.id);
+    if (saveError) setError(saveError.message);
+    else {
+      await loadUsers();
+      setEditingUser(null);
+    }
+    setSaving(false);
+  }
+
+  function startEdit(user) {
+    if (!isSuperAdmin) return;
+    setEditingUser(user);
+    setEditRole(user.role || "coach_mentor");
+  }
+
+  const permKeys = ["coach", "club", "academy", "cup", "permissions", "drills", "teams"];
 
   return (
-    <ClubPage title="Roles & Permissions" sub="Clear team-level access across Coach, Academy and Club">
-      <div style={{ marginBottom: 14, padding: "12px 14px", borderRadius: 12, background: CLUB_SOFT, border: "1px solid #f4caca", display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
-        <div>
-          <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 900, color: P.muted, textTransform: "uppercase" }}>Your current role</div>
-          <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: CLUB_RED, marginTop: 3 }}>{roleLabel}</div>
+    <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
+      <TopBar title="Roles & Permissions" sub="Spraoi platform access" />
+      <div style={{ padding: "20px 28px" }}>
+        <div style={{ background: P.white, borderRadius: 14, padding: "16px 18px", border: `1px solid ${P.line}`, boxShadow: Sh.card, marginBottom: 20 }}>
+          <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 900, color: P.muted, textTransform: "uppercase", letterSpacing: ".08em" }}>Your platform role</div>
+          <div style={{ fontFamily: F.display, fontSize: 22, fontWeight: 900, color: P.ink, marginTop: 3 }}>{displayRoleLabel(userRole?.role)}</div>
         </div>
-        <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, maxWidth: 470, textAlign: "right" }}>
-          Roles are assigned per team under Teams. A Club Admin can access every team.
-        </div>
-      </div>
 
-      <ClubCard style={{ overflowX: "auto" }}>
-        <div style={{ minWidth: 760 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(300px,1.55fr) repeat(3,minmax(125px,.7fr))", gap: 8, padding: "0 8px 10px", borderBottom: `1px solid ${P.line}` }}>
-            <strong style={{ fontFamily: F.body, fontSize: 11, color: P.muted }}>Permission</strong>
-            {["Club Admin","Lead Coach","Coach / Mentor"].map((label) => <strong key={label} style={{ fontFamily: F.body, fontSize: 11, color: CLUB_RED, textAlign: "center" }}>{label}</strong>)}
+        <div style={{ background: P.white, borderRadius: 14, padding: 18, border: `1px solid ${P.line}`, boxShadow: Sh.card, marginBottom: 20 }}>
+          <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 800, color: P.ink, marginBottom: 5 }}>Access Matrix</div>
+          <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginBottom: 14 }}>Coach/Mentor is read-only. Lead Coach can create and edit coaching content. Admin and Super Admin have full administrative access.</div>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: F.body, fontSize: 11 }}>
+              <thead><tr style={{ borderBottom: `2px solid ${P.line}` }}>
+                <th style={{ textAlign: "left", padding: "8px 10px", fontSize: 9, color: P.muted }}>Permission</th>
+                {roles.map((r) => <th key={r} style={{ textAlign: "center", padding: "8px 10px", fontSize: 10, color: P.ink }}>{displayRoleLabel(r)}</th>)}
+              </tr></thead>
+              <tbody>
+                {permKeys.map((key) => <tr key={key} style={{ borderBottom: `1px solid ${P.line}` }}>
+                  <td style={{ padding: "8px 10px", fontWeight: 700, color: P.ink, textTransform: "capitalize" }}>{key}</td>
+                  {roles.map((r) => <td key={r} style={{ textAlign: "center", padding: "7px 8px" }}>
+                    <span style={{ display: "inline-block", padding: "3px 8px", borderRadius: 5, background: P.soft, color: P.ink, fontWeight: 700, fontSize: 9 }}>{permMatrix[r]?.[key] || "none"}</span>
+                  </td>)}
+                </tr>)}
+              </tbody>
+            </table>
           </div>
-          {rows.map(([label, admin, lead, mentor]) => (
-            <div key={label} style={{ display: "grid", gridTemplateColumns: "minmax(300px,1.55fr) repeat(3,minmax(125px,.7fr))", gap: 8, padding: "12px 8px", borderBottom: `1px solid ${P.line}` }}>
-              <span style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.ink }}>{label}</span>
-              {[admin, lead, mentor].map((allowed, i) => <span key={i} style={{ textAlign: "center", color: allowed ? "#16803c" : "#b42318", fontWeight: 900 }}>{allowed ? "✓" : "×"}</span>)}
-            </div>
-          ))}
         </div>
-      </ClubCard>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12, marginTop: 14 }}>
-        {[
-          ["Club Admin", "Full club control. Manages teams, staff, permissions, shared drills, permanent deletion and season rollover."],
-          ["Lead Coach", "Edits Coach and Academy plans for assigned teams, publishes Academy content and can add new coach-created drills."],
-          ["Coach / Mentor", "Read-only access to the Coach and Academy content for assigned teams. Can use approved drills but cannot change shared content."],
-        ].map(([name, description]) => (
-          <ClubCard key={name}>
-            <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 900, color: CLUB_RED }}>{name}</div>
-            <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, lineHeight: 1.55, marginTop: 5 }}>{description}</div>
-          </ClubCard>
-        ))}
+        <div style={{ background: P.white, borderRadius: 14, padding: 18, border: `1px solid ${P.line}`, boxShadow: Sh.card }}>
+          <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 800, color: P.ink, marginBottom: 12 }}>Users & Roles</div>
+          {error && <div style={{ padding: 10, borderRadius: 8, background: "#fff1f1", color: "#a91f1f", fontFamily: F.body, fontSize: 10, marginBottom: 10 }}>{error}</div>}
+          {loading ? <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted }}>Loading…</div> :
+            users.map((u) => <div key={u.id} onClick={() => startEdit(u)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 4px", borderTop: `1px solid ${P.line}`, cursor: isSuperAdmin ? "pointer" : "default" }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: F.body, fontSize: 12, fontWeight: 800, color: P.ink }}>{u.user_email || "No email"}</div>
+                <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted }}>{u.squad || "All squads"} · {u.squad_key || "all"}</div>
+              </div>
+              <span style={{ padding: "4px 9px", borderRadius: 999, background: CLUB_SOFT, color: CLUB_RED, fontFamily: F.body, fontSize: 9, fontWeight: 900 }}>{displayRoleLabel(u.role)}</span>
+            </div>)
+          }
+        </div>
+
+        {editingUser && isSuperAdmin && (
+          <div onClick={() => setEditingUser(null)} style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,.5)", display: "grid", placeItems: "center", padding: 16 }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ width: "min(420px, calc(100vw - 32px))", background: P.white, borderRadius: 16, padding: 24, boxShadow: Sh.lift }}>
+              <div style={{ fontFamily: F.display, fontSize: 17, fontWeight: 900, color: P.ink, marginBottom: 5 }}>Edit User Role</div>
+              <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginBottom: 16 }}>{editingUser.user_email}</div>
+              <select value={editRole} onChange={(e) => setEditRole(e.target.value)} style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 12, marginBottom: 16 }}>
+                {roles.map((r) => <option key={r} value={r}>{displayRoleLabel(r)}</option>)}
+              </select>
+              <div style={{ display: "flex", gap: 8 }}>
+                <Btn label={saving ? "Saving..." : "Save Changes"} variant="primary" onClick={saveUserRole} />
+                <Btn label="Cancel" variant="ghost" onClick={() => setEditingUser(null)} />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-    </ClubPage>
+    </div>
   );
 }
+
 
 function academyWords(value = "") {
   return String(value).toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((word) => word.length > 2);
@@ -3167,6 +3242,25 @@ function AcademySectionScreen({ screen, selectedTeam, weeklyPlan, planSessions, 
 function ModulePlaceholder({ module, screen, club }) {
   const screenLabel = module.nav.find((n) => n.id === screen)?.label || screen;
   const clubName = club?.name || "Club Spraoi";
+
+  if (module.label === "Club") {
+    return (
+      <div style={{ flex: 1, minHeight: "100vh", overflow: "auto", background: `linear-gradient(180deg, ${module.color}12 0%, ${P.soft} 380px)` }}>
+        <TopBar title={screenLabel} sub={`Club · ${clubName}`} />
+        <div style={{ minHeight: "calc(100vh - 92px)", display: "grid", placeItems: "center", padding: "44px 24px" }}>
+          <div style={{ width: "min(780px, 100%)", textAlign: "center", padding: "68px 38px", borderRadius: 30, background: `linear-gradient(145deg, ${module.color}18 0%, ${module.color}40 100%)`, border: `2px solid ${module.color}42`, boxShadow: "0 20px 54px rgba(16,36,62,.11)" }}>
+            <div style={{ width: 118, height: 118, borderRadius: 32, margin: "0 auto 26px", background: "#fff", display: "grid", placeItems: "center", boxShadow: "0 14px 34px rgba(16,36,62,.15)" }}>
+              <img src={module.icon} alt="" style={{ width: 82, height: 82, objectFit: "contain" }} />
+            </div>
+            <div style={{ display: "inline-block", padding: "8px 16px", borderRadius: 999, background: module.color, color: "#fff", fontFamily: F.body, fontSize: 12, fontWeight: 900, letterSpacing: ".12em", textTransform: "uppercase", marginBottom: 20 }}>Spraoi Club</div>
+            <div style={{ fontFamily: F.display, fontSize: "clamp(44px, 7vw, 78px)", lineHeight: .94, fontWeight: 1000, letterSpacing: "-.05em", color: P.ink }}>COMING SOON</div>
+            <div style={{ margin: "22px auto 0", maxWidth: 540, fontFamily: F.body, fontSize: 15, lineHeight: 1.65, color: P.muted }}>{screenLabel} is planned for the Club module and is coming soon.</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ flex: 1, overflow: "auto", background: `linear-gradient(180deg, ${module.color}0d 0%, ${P.soft} 320px)` }}>
       <TopBar title={screenLabel} sub={`${module.label} · ${clubName}`} />
@@ -3367,8 +3461,21 @@ export default function App() {
 
       if (roleError) console.warn("Unable to load user roles:", roleError.message);
 
-      const roleData = (roleRows || []).find((row) =>
-        [row.user_id, row.auth_user_id, row.profile_id, row.id]
+      const normalizedEmail = String(userEmail || "").trim().toLowerCase();
+      const emailRoleRows = (roleRows || []).filter((row) =>
+        normalizedEmail &&
+        String(row.user_email || row.email || "").trim().toLowerCase() === normalizedEmail
+      );
+      const rolePriority = { super_admin: 4, club_admin: 3, admin: 3, lead_coach: 2, coach_mentor: 1, coach: 1, mentor: 1 };
+
+      const roleData = [...emailRoleRows].sort((a, b) => {
+        const aAll = String(a.squad_key || a.squad || "").trim().toLowerCase() === "all" ? 1 : 0;
+        const bAll = String(b.squad_key || b.squad || "").trim().toLowerCase() === "all" ? 1 : 0;
+        if (aAll !== bAll) return bAll - aAll;
+        return (rolePriority[String(b.role || "").toLowerCase()] ?? -1)
+          - (rolePriority[String(a.role || "").toLowerCase()] ?? -1);
+      })[0] || (roleRows || []).find((row) =>
+        [row.user_id, row.auth_user_id, row.profile_id]
           .filter(Boolean)
           .some((value) => String(value) === String(userId))
       ) || null;
@@ -3411,6 +3518,8 @@ export default function App() {
       // continue to use coach_assignments while the migration is rolled out.
       let assignedTeamIds = [];
       let effectiveRole = roleData?.role || "coach_mentor";
+      const accountRole = String(roleData?.role || "").toLowerCase();
+      const hasPlatformRole = ["super_admin", "admin", "club_admin", "lead_coach"].includes(accountRole);
 
       let { data: staffRows, error: staffError } = await supabase
         .from("team_staff")
@@ -3443,9 +3552,13 @@ export default function App() {
 
       if (!staffError && staffRows?.length) {
         assignedTeamIds = [...new Set(staffRows.map((row) => row.age_group_id).filter(Boolean))];
-        const priority = { club_admin: 3, lead_coach: 2, coach_mentor: 1 };
-        effectiveRole = [...staffRows]
-          .sort((a, b) => (priority[b.role] || 0) - (priority[a.role] || 0))[0]?.role || effectiveRole;
+
+        // Platform-level Super Admin/Admin/Lead Coach access must not be downgraded by team_staff.
+        if (!hasPlatformRole) {
+          const priority = { club_admin: 3, lead_coach: 2, coach_mentor: 1, coach: 1, mentor: 1 };
+          effectiveRole = [...staffRows]
+            .sort((a, b) => (priority[b.role] || 0) - (priority[a.role] || 0))[0]?.role || effectiveRole;
+        }
       } else {
         const { data: assignments, error: assignmentError } = await supabase
           .from("coach_assignments")
@@ -3848,11 +3961,6 @@ export default function App() {
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", width: "100%", fontFamily: F.body, paddingTop: showMobile ? 62 : 0, paddingBottom: showMobile ? 68 : 0, boxSizing: "border-box" }}>
-      {userRole?.role && (
-        <div style={{ position: "fixed", top: 8, right: 12, zIndex: 12000, padding: "7px 11px", borderRadius: 999, background: "rgba(255,255,255,.94)", border: `1px solid ${P.line}`, boxShadow: Sh.card, fontFamily: F.body, fontSize: 10, fontWeight: 800, color: P.ink }}>
-          {String(userRole.role).replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-        </div>
-      )}
       {showMobile && <MobileHeader activeModule={activeModule} setActiveModule={setActiveModule} onNav={setScreen} enabledModules={enabledModules} club={club} selectedTeam={selectedTeam} />}
 
       {/* Sidebar — desktop only */}
@@ -3869,7 +3977,7 @@ export default function App() {
       {/* CLUB screens */}
       {screen === "club-dashboard" && <ClubDashboardScreen club={club} ageGroups={ageGroups} coaches={coaches} selectedTeam={selectedTeam} onNav={setScreen} />}
       {screen === "club-teams" && <ClubTeamsScreen club={club} ageGroups={ageGroups} coaches={coaches} selectedTeam={selectedTeam} onSelectTeam={selectTeam} onReloadTeams={() => loadAgeGroups(club?.id)} />}
-      {screen === "club-members" && <ClubMembersScreen club={club} ageGroups={ageGroups} coaches={coaches} selectedTeam={selectedTeam} onReloadCoaches={() => loadCoaches(club?.id)} />}
+      {screen === "club-members" && <ClubMembersScreen club={club} ageGroups={ageGroups} coaches={coaches} selectedTeam={selectedTeam} onReloadCoaches={() => loadCoaches(club?.id)} userRole={userRole} />}
       {screen === "club-permissions" && <ClubPermissionsScreen club={club} userRole={userRole} />}
       {screen.startsWith("club-") && !["club-dashboard","club-teams","club-members","club-permissions"].includes(screen) && <ModulePlaceholder module={MODULES.club} screen={screen} club={club} />}
 

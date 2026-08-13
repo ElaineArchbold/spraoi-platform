@@ -65,7 +65,7 @@ function roleCapabilities(role) {
     canEditAcademyPlans: ["club_admin", "super_admin", "admin", "lead_coach"].includes(normalized),
     canPublishAcademy: ["club_admin", "super_admin", "admin", "lead_coach"].includes(normalized),
     canAddDrills: ["club_admin", "super_admin", "admin", "lead_coach"].includes(normalized),
-    canEditSharedDrills: ["club_admin", "super_admin", "admin"].includes(normalized),
+    canEditSharedDrills: ["club_admin", "super_admin", "admin", "lead_coach"].includes(normalized),
     canDeleteSharedDrills: ["club_admin", "super_admin", "admin"].includes(normalized),
     canManageTeamStaff: ["club_admin", "super_admin", "admin"].includes(normalized),
   };
@@ -1224,7 +1224,7 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
       <TopBar title="Drills Library" sub={`${mergedActivities.length} activities${customDrills.length > 0 ? ` (${customDrills.length} custom)` : ""}`}>
         <div style={{ display: "flex", gap: 6 }}>
           <button onClick={() => { setMode("library"); setBuilderDrill(null); }} style={{ padding: "6px 14px", borderRadius: 8, border: `1.5px solid ${mode === "library" ? P.p600 : P.line}`, background: mode === "library" ? P.p50 : P.white, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: mode === "library" ? P.p600 : P.muted, cursor: "pointer" }}>Library</button>
-          {userRole?.role === "super_admin" && <button onClick={() => setMode("builder")} style={{ padding: "6px 14px", borderRadius: 8, border: `1.5px solid ${mode === "builder" ? P.p600 : P.line}`, background: mode === "builder" ? P.p50 : P.white, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: mode === "builder" ? P.p600 : P.muted, cursor: "pointer" }}>+ Create Drill</button>}
+          {["super_admin", "admin", "club_admin", "lead_coach"].includes(userRole?.role) && <button onClick={() => setMode("builder")} style={{ padding: "6px 14px", borderRadius: 8, border: `1.5px solid ${mode === "builder" ? P.p600 : P.line}`, background: mode === "builder" ? P.p50 : P.white, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: mode === "builder" ? P.p600 : P.muted, cursor: "pointer" }}>+ Create Drill</button>}
         </div>
       </TopBar>
 
@@ -1305,7 +1305,7 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
                 <button onClick={() => onToggleFavourite && onToggleFavourite(selectedDrill.id)} style={{ padding: "5px 10px", borderRadius: 6, border: `1.5px solid ${(favouriteIds || []).includes(selectedDrill.id) ? "#fbc02d" : P.line}`, background: (favouriteIds || []).includes(selectedDrill.id) ? "#fbc02d15" : P.white, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: (favouriteIds || []).includes(selectedDrill.id) ? "#f59e0b" : P.muted, cursor: "pointer" }}>
                   {(favouriteIds || []).includes(selectedDrill.id) ? "★ Saved to Favourites" : "☆ Add to Favourites"}
                 </button>
-                {userRole?.role === "super_admin" && <button onClick={() => { if (!window.confirm(`Copy & edit "${selectedDrill.title}"?\n\nThis will create an editable copy in your custom cards.`)) return; setBuilderDrill(selectedDrill); setMode("builder"); setSelectedIdx(null); }} style={{ padding: "5px 10px", borderRadius: 6, border: `1.5px solid ${P.p600}`, background: P.p50, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.p600, cursor: "pointer" }}>Copy & Edit</button>}
+                {["super_admin", "admin", "club_admin", "lead_coach"].includes(userRole?.role) && <button onClick={() => { if (!window.confirm(`Copy & edit "${selectedDrill.title}"?\n\nThis will create an editable copy in your custom cards.`)) return; setBuilderDrill(selectedDrill); setMode("builder"); setSelectedIdx(null); }} style={{ padding: "5px 10px", borderRadius: 6, border: `1.5px solid ${P.p600}`, background: P.p50, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.p600, cursor: "pointer" }}>Copy & Edit</button>}
                 <button onClick={() => setSelectedIdx(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: P.muted }}>×</button>
               </div>
             </div>
@@ -1662,7 +1662,7 @@ function DrillCardBuilder({ diagramMap, allActivities, userRole, copyFrom, onBac
   const [toastMsg, setToastMsg] = useState("");
   const cardRef = useRef(null);
 
-  const isSuperAdmin = userRole?.role === "super_admin";
+  const isSuperAdmin = ["super_admin", "admin", "club_admin", "lead_coach"].includes(userRole?.role);
   const categories = ["agility", "speed", "warm_up", "cool_down", "passing", "shooting", "tackling", "catching", "striking", "lifting", "blocking", "hooking", "soloing", "handpass", "kickpass", "free_taking", "goalkeeping", "game", "other"];
 
   // Diagram list for picker
@@ -1984,7 +1984,7 @@ function DrillCardBuilder({ diagramMap, allActivities, userRole, copyFrom, onBac
 }
 
 
-function PlayersScreen({ club, ageGroups, selectedTeam }) {
+function PlayersScreen({ club, ageGroups, selectedTeam, userRole }) {
   const [players, setPlayers] = useState([]);
   const [csvPreview, setCsvPreview] = useState(null);
   const [loaded, setLoaded] = useState(false);
@@ -1994,6 +1994,11 @@ function PlayersScreen({ club, ageGroups, selectedTeam }) {
   const [editFootballPanel, setEditFootballPanel] = useState("");
   const [editHurlingPanel, setEditHurlingPanel] = useState("");
   const [savingPlayer, setSavingPlayer] = useState(false);
+  const [showAddPlayer, setShowAddPlayer] = useState(false);
+  const [newPlayerName, setNewPlayerName] = useState("");
+  const [newPlayerTeamId, setNewPlayerTeamId] = useState(selectedTeam?.id || "");
+  const [addingPlayer, setAddingPlayer] = useState(false);
+  const canManagePlayers = ["super_admin", "admin", "club_admin", "lead_coach"].includes(userRole?.role);
 
   async function loadPlayers() {
     if (!club?.id) return;
@@ -2038,6 +2043,23 @@ function PlayersScreen({ club, ageGroups, selectedTeam }) {
     await loadPlayers();
   }
 
+  async function addPlayer() {
+    if (!canManagePlayers || !newPlayerName.trim() || !club?.id) return;
+    setAddingPlayer(true);
+    const { error } = await supabase.from("journey_players").insert({
+      parent_user_id: "00000000-0000-0000-0000-000000000000",
+      club_id: club.id,
+      age_group_id: newPlayerTeamId || selectedTeam?.id || null,
+      name: newPlayerName.trim(),
+    });
+    setAddingPlayer(false);
+    if (error) { alert("Could not add player: " + error.message); return; }
+    setNewPlayerName("");
+    setNewPlayerTeamId(selectedTeam?.id || "");
+    setShowAddPlayer(false);
+    await loadPlayers();
+  }
+
   function startEdit(player) {
     setEditingPlayer(player);
     setEditName(player.name || "");
@@ -2047,7 +2069,7 @@ function PlayersScreen({ club, ageGroups, selectedTeam }) {
   }
 
   async function savePlayer() {
-    if (!editingPlayer?.id || !editName.trim()) return;
+    if (!canManagePlayers || !editingPlayer?.id || !editName.trim()) return;
     setSavingPlayer(true);
     const { error } = await supabase.from("journey_players").update({
       name: editName.trim(),
@@ -2062,6 +2084,7 @@ function PlayersScreen({ club, ageGroups, selectedTeam }) {
   }
 
   async function deletePlayer(player) {
+    if (!canManagePlayers) return;
     if (!window.confirm(`Remove ${player.name} from Academy/Coach players?`)) return;
     const { error } = await supabase.from("journey_players").delete().eq("id", player.id);
     if (error) { alert("Could not remove player: " + error.message); return; }
@@ -2072,7 +2095,9 @@ function PlayersScreen({ club, ageGroups, selectedTeam }) {
 
   return (
     <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
-      <TopBar title="Players" sub={`${visiblePlayers.length} ${selectedTeam ? `in ${selectedTeam.label} ${selectedTeam.gender === "girls" ? "Girls" : "Boys"}` : "in squad"}`} />
+      <TopBar title="Players" sub={`${visiblePlayers.length} ${selectedTeam ? `in ${selectedTeam.label} ${selectedTeam.gender === "girls" ? "Girls" : "Boys"}` : "in squad"}`}>
+        {canManagePlayers && <Btn label="+ Add Player" variant="primary" onClick={() => { setNewPlayerTeamId(selectedTeam?.id || ""); setShowAddPlayer(true); }} />}
+      </TopBar>
       <div style={{ padding: "20px 28px" }}>
         <div style={{ background: P.white, borderRadius: 14, padding: 18, border: `1.5px dashed ${P.p600}44`, marginBottom: 16, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
           <div style={{ flex: 1, minWidth: 220 }}>
@@ -2102,12 +2127,31 @@ function PlayersScreen({ club, ageGroups, selectedTeam }) {
                   <span style={{ fontFamily: F.body, fontSize: 9, fontWeight: 800, color: "#b91c1c", background: "#fee2e2", borderRadius: 999, padding: "2px 7px" }}>{selectedTeam?.gender === "girls" ? "Camogie" : "Hurling"} {p.hurling_panel || "—"}</span>
                 </div>
               </div>
-              <div style={{ display: "flex", gap: 6 }}><Btn label="Edit" variant="secondary" style={{ height: 30, fontSize: 10 }} onClick={() => startEdit(p)} /><Btn label="Remove" variant="ghost" style={{ height: 30, fontSize: 10, color: P.coral }} onClick={() => deletePlayer(p)} /></div>
+              {canManagePlayers && <div style={{ display: "flex", gap: 6 }}><Btn label="Edit" variant="secondary" style={{ height: 34, fontSize: 10 }} onClick={() => startEdit(p)} /><Btn label="Remove" variant="ghost" style={{ height: 34, fontSize: 10, color: P.coral }} onClick={() => deletePlayer(p)} /></div>}
             </div>
           ))}
           {visiblePlayers.length === 0 && loaded && <div style={{ padding: 24, textAlign: "center", fontFamily: F.body, fontSize: 12, color: P.muted }}>No players found for this team.</div>}
         </div>
       </div>
+
+      {showAddPlayer && canManagePlayers && (
+        <div onClick={() => setShowAddPlayer(false)} style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(15,23,42,.45)", display: "grid", placeItems: "center", padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "min(440px, calc(100vw - 32px))", background: P.white, borderRadius: 16, padding: 20, boxShadow: Sh.lift }}>
+            <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 900, color: P.ink, marginBottom: 14 }}>Add Player</div>
+            <label style={{ display: "block", fontFamily: F.body, fontSize: 11, fontWeight: 800, color: P.ink, marginBottom: 6 }}>Name</label>
+            <input autoFocus value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} placeholder="Player name" style={{ width: "100%", boxSizing: "border-box", padding: "10px 11px", borderRadius: 9, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 14, marginBottom: 14 }} />
+            <label style={{ display: "block", fontFamily: F.body, fontSize: 11, fontWeight: 800, color: P.ink, marginBottom: 6 }}>Team</label>
+            <select value={newPlayerTeamId} onChange={(e) => setNewPlayerTeamId(e.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "10px 11px", borderRadius: 9, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 14, marginBottom: 18 }}>
+              <option value="">No team</option>
+              {(ageGroups || []).map((ag) => <option key={ag.id} value={ag.id}>{ag.label} {ag.gender === "girls" ? "Girls" : "Boys"}</option>)}
+            </select>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <Btn label="Cancel" variant="ghost" onClick={() => setShowAddPlayer(false)} />
+              <Btn label={addingPlayer ? "Adding..." : "Add Player"} variant="primary" onClick={addPlayer} />
+            </div>
+          </div>
+        </div>
+      )}
 
       {editingPlayer && (
         <div onClick={() => setEditingPlayer(null)} style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(15,23,42,.45)", display: "grid", placeItems: "center", padding: 16 }}>
@@ -3376,11 +3420,20 @@ export default function App() {
 
       if (roleError) console.warn("Unable to load user roles:", roleError.message);
 
-      const roleData = (roleRows || []).find((row) =>
-        [row.user_id, row.auth_user_id, row.profile_id, row.id]
-          .filter(Boolean)
-          .some((value) => String(value) === String(userId))
-      ) || null;
+      const normalizedEmail = String(userEmail || "").trim().toLowerCase();
+      const emailRoleRows = (roleRows || []).filter((row) =>
+        normalizedEmail &&
+        String(row.user_email || row.email || "").trim().toLowerCase() === normalizedEmail
+      );
+      const rolePriority = { super_admin: 4, club_admin: 3, admin: 3, lead_coach: 2, coach_mentor: 1, coach: 1, mentor: 1 };
+
+      const roleData = [...emailRoleRows].sort((a, b) => {
+        const aAll = String(a.squad_key || a.squad || "").trim().toLowerCase() === "all" ? 1 : 0;
+        const bAll = String(b.squad_key || b.squad || "").trim().toLowerCase() === "all" ? 1 : 0;
+        if (aAll !== bAll) return bAll - aAll;
+        return (rolePriority[String(b.role || "").toLowerCase()] ?? -1)
+          - (rolePriority[String(a.role || "").toLowerCase()] ?? -1);
+      })[0] || null;
 
       const clubId = roleData?.club_id || roleData?.club?.id || null;
       let clubData = null;
@@ -3420,6 +3473,8 @@ export default function App() {
       // continue to use coach_assignments while the migration is rolled out.
       let assignedTeamIds = [];
       let effectiveRole = roleData?.role || "coach_mentor";
+      const accountRole = String(roleData?.role || "").toLowerCase();
+      const hasPlatformRole = ["super_admin", "admin", "club_admin", "lead_coach"].includes(accountRole);
 
       let { data: staffRows, error: staffError } = await supabase
         .from("team_staff")
@@ -3452,9 +3507,11 @@ export default function App() {
 
       if (!staffError && staffRows?.length) {
         assignedTeamIds = [...new Set(staffRows.map((row) => row.age_group_id).filter(Boolean))];
-        const priority = { club_admin: 3, lead_coach: 2, coach_mentor: 1 };
-        effectiveRole = [...staffRows]
-          .sort((a, b) => (priority[b.role] || 0) - (priority[a.role] || 0))[0]?.role || effectiveRole;
+        if (!hasPlatformRole) {
+          const priority = { club_admin: 3, lead_coach: 2, coach_mentor: 1, coach: 1, mentor: 1 };
+          effectiveRole = [...staffRows]
+            .sort((a, b) => (priority[b.role] || 0) - (priority[a.role] || 0))[0]?.role || effectiveRole;
+        }
       } else {
         const { data: assignments, error: assignmentError } = await supabase
           .from("coach_assignments")
@@ -3911,7 +3968,7 @@ export default function App() {
       {screen === "coach-sessions" && <SessionsListScreen club={club} selectedTeam={selectedTeam} onOpenSession={openSession} onNav={setScreen} onEditSession={editSession} />}
       {screen === "coach-builder" && <SessionBuilderScreen club={club} ageGroups={ageGroups} skills={skills} allActivities={allActivities} coaches={coaches} diagramMap={diagramMap} selectedTeam={selectedTeam} onNav={setScreen} editingSession={editingSession} onClearEdit={() => setEditingSession(null)} />}
       {screen === "coach-drills" && <DrillsScreen allActivities={allActivities} diagramMap={diagramMap} favouriteIds={favouriteIds} onToggleFavourite={toggleFavourite} userRole={userRole} />}
-      {screen === "coach-players" && <PlayersScreen club={club} ageGroups={ageGroups} selectedTeam={selectedTeam} />}
+      {screen === "coach-players" && <PlayersScreen club={club} ageGroups={ageGroups} selectedTeam={selectedTeam} userRole={userRole} />}
 
       {/* CLUB screens */}
       {screen === "club-permissions" && <ClubPermissionsScreen club={club} userRole={userRole} />}

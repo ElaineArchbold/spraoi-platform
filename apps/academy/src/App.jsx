@@ -120,12 +120,9 @@ const MODULES = {
     label: "Academy", color: "#0277bd", icon: "/spraoi-academy-icon.png", tagline: "Turn weekly coaching into child-friendly practice.", nav: [
       { id: "academy-dashboard", icon: "⌂", label: "Dashboard" },
       { id: "academy-content", icon: "✦", label: "Weekly Content" },
-      { id: "academy-parents", icon: "♧", label: "Parent Access" },
-      { id: "academy-preview", icon: "◉", label: "Child Preview" },
       { id: "academy-leaderboard", icon: "★", label: "Leaderboard" },
       { id: "academy-engagement", icon: "↗", label: "Engagement" },
       { id: "academy-approvals", icon: "✓", label: "Approvals" },
-      { id: "academy-settings", icon: "⚙", label: "Settings" },
     ],
   },
   cup: {
@@ -2619,6 +2616,19 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
 
   const weeklyRecommendations = getAcademyWeeklyRecommendations(planSessions, skills, overrides, selectedTeam);
   const [previewIndexes, setPreviewIndexes] = useState({});
+  const [childLinkCopied, setChildLinkCopied] = useState(false);
+  const academyChildBase = import.meta.env.VITE_ACADEMY_CHILD_URL || ((window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") ? "http://localhost:5175" : "https://academy.spraoisports.com");
+  const childAppLink = `${academyChildBase}/?team=${encodeURIComponent(selectedTeam?.id || "")}`;
+
+  async function copyChildAppLink() {
+    try {
+      await navigator.clipboard.writeText(childAppLink);
+      setChildLinkCopied(true);
+      setTimeout(() => setChildLinkCopied(false), 1800);
+    } catch {
+      setChildLinkCopied(false);
+    }
+  }
   const sessionCount = Array.isArray(planSessions) ? planSessions.length : 0;
   const hasPlan = Boolean(weeklyPlan);
   const hasSkills = weeklyRecommendations.length > 0;
@@ -2662,7 +2672,8 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
   return (
     <div style={{ flex: 1, minWidth: 0, overflow: "auto", background: "#f7f9fc" }}>
       <TopBar title="Academy Admin" sub={`${teamName} ${weekLabel}`}>
-        <Btn label="Child Preview" variant="ghost" icon="◉" onClick={() => onNav("academy-preview")} />
+        <Btn label={childLinkCopied ? "Child App Link Copied" : "Copy Child App Link"} variant="ghost" icon="⧉" onClick={copyChildAppLink} />
+        <Btn label="Open Child Preview" variant="ghost" icon="◉" onClick={() => onNav("academy-preview")} />
         <Btn label="Manage Weekly Content" variant="primary" icon="＋" onClick={() => onNav("academy-content")} style={{ background: academyBlue, boxShadow: "0 5px 16px rgba(2,119,189,.22)" }} />
       </TopBar>
 
@@ -2699,7 +2710,7 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 18 }}>
           <MetricCard label="Academy players" value="24" detail="in this squad" accent={academyBlue} icon="P" onClick={() => onNav("academy-engagement")} />
-          <MetricCard label="Parents linked" value="19" detail="5 invitations pending" trend={{ label: "79% linked", color: "#0369a1", bg: "#e0f2fe" }} accent="#0ea5e9" icon="↗" onClick={() => onNav("academy-parents")} />
+          <MetricCard label="Child app access" value="19" detail="copy link for parents" trend={{ label: "79% linked", color: "#0369a1", bg: "#e0f2fe" }} accent="#0ea5e9" icon="↗" onClick={copyChildAppLink} />
           <MetricCard label="Active this week" value="17" detail="of 24 players" trend={{ label: "+8%", color: "#15803d", bg: "#dcfce7" }} accent={P.green} icon="✓" onClick={() => onNav("academy-engagement")} />
           <MetricCard label="Completion rate" value="68%" detail="across published practices" trend={{ label: "+12%", color: "#15803d", bg: "#dcfce7" }} accent={P.orange} icon="◒" onClick={() => onNav("academy-engagement")} />
         </div>
@@ -3100,15 +3111,15 @@ function AcademyParents({ selectedTeam, parentRows, setParentRows }) {
 
   return (
     <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
-      <AcademyPageHeader title="Parent Access" sub={`${selectedTeam?.label || "Team"} · Send parents into the Academy child onboarding flow`} actions={<Btn label="Copy team link" variant="primary" icon="⧉" onClick={() => copy(teamLink)} style={{ background: ACADEMY_BLUE }} />} />
+      <AcademyPageHeader title="Parent Access" sub={`${selectedTeam?.label || "Team"} · Send parents into the Academy child onboarding flow`} actions={<Btn label="Copy Child App Link" variant="primary" icon="⧉" onClick={() => copy(teamLink)} style={{ background: ACADEMY_BLUE }} />} />
       <div style={{ padding: 24, maxWidth: 1180, margin: "0 auto", display: "grid", gap: 16 }}>
         {copied && <div style={{ position: "fixed", right: 22, top: 76, zIndex: 6000, background: "#0f172a", color: "#fff", padding: "10px 14px", borderRadius: 10, fontFamily: F.body, fontSize: 11, fontWeight: 800, boxShadow: "0 12px 30px rgba(15,23,42,.25)" }}>Link copied</div>}
         <AcademyCard>
-          <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 900, color: P.ink }}>Team parent link</div>
-          <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 4 }}>Open this link to test the exact selected team in the child app.</div>
+          <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 900, color: P.ink }}>Child app link</div>
+          <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 4 }}>Share this link with parents or open it to test the selected team in the child app.</div>
           <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center", flexWrap: "wrap" }}>
             <code style={{ flex: "1 1 420px", padding: "10px 12px", borderRadius: 9, background: P.soft, fontSize: 10, overflowWrap: "anywhere" }}>{teamLink}</code>
-            <button onClick={() => copy(teamLink)} style={{ height: 36, border: 0, borderRadius: 9, background: ACADEMY_BLUE, color: "#fff", padding: "0 13px", fontFamily: F.body, fontSize: 10, fontWeight: 900, cursor: "pointer" }}>Copy link</button>
+            <button onClick={() => copy(teamLink)} style={{ height: 36, border: 0, borderRadius: 9, background: ACADEMY_BLUE, color: "#fff", padding: "0 13px", fontFamily: F.body, fontSize: 10, fontWeight: 900, cursor: "pointer" }}>Copy Child App Link</button>
           </div>
         </AcademyCard>
         <AcademyCard>
@@ -3318,7 +3329,7 @@ function AcademySectionScreen({ screen, onNav, club, selectedTeam, weeklyPlan, p
   if (screen === "academy-engagement") return <AcademyEngagement selectedTeam={selectedTeam}/>;
   if (screen === "academy-approvals") return <AcademyApprovals selectedTeam={selectedTeam} weeklyPlan={weeklyPlan}/>;
   if (screen === "academy-leaderboard") return <AcademyLeaderboard selectedTeam={selectedTeam}/>;
-  return <AcademySettings published={published} onNav={onNav}/>;
+  return <AcademyApprovals selectedTeam={selectedTeam} weeklyPlan={weeklyPlan}/>;
 }
 
 /* ============================================================
@@ -3539,8 +3550,21 @@ export default function App() {
 
       if (roleError) console.warn("Unable to load user roles:", roleError.message);
 
-      const roleData = (roleRows || []).find((row) =>
-        [row.user_id, row.auth_user_id, row.profile_id, row.id]
+      const normalizedEmail = String(userEmail || "").trim().toLowerCase();
+      const emailRoleRows = (roleRows || []).filter((row) =>
+        normalizedEmail &&
+        String(row.user_email || row.email || "").trim().toLowerCase() === normalizedEmail
+      );
+      const rolePriority = { super_admin: 4, club_admin: 3, admin: 3, lead_coach: 2, coach_mentor: 1, coach: 1, mentor: 1 };
+
+      const roleData = [...emailRoleRows].sort((a, b) => {
+        const aAll = String(a.squad_key || a.squad || "").trim().toLowerCase() === "all" ? 1 : 0;
+        const bAll = String(b.squad_key || b.squad || "").trim().toLowerCase() === "all" ? 1 : 0;
+        if (aAll !== bAll) return bAll - aAll;
+        return (rolePriority[String(b.role || "").toLowerCase()] ?? -1)
+          - (rolePriority[String(a.role || "").toLowerCase()] ?? -1);
+      })[0] || (roleRows || []).find((row) =>
+        [row.user_id, row.auth_user_id, row.profile_id]
           .filter(Boolean)
           .some((value) => String(value) === String(userId))
       ) || null;
@@ -3583,6 +3607,8 @@ export default function App() {
       // continue to use coach_assignments while the migration is rolled out.
       let assignedTeamIds = [];
       let effectiveRole = roleData?.role || "coach_mentor";
+      const accountRole = String(roleData?.role || "").toLowerCase();
+      const hasPlatformRole = ["super_admin", "admin", "club_admin", "lead_coach"].includes(accountRole);
 
       let { data: staffRows, error: staffError } = await supabase
         .from("team_staff")
@@ -3615,9 +3641,13 @@ export default function App() {
 
       if (!staffError && staffRows?.length) {
         assignedTeamIds = [...new Set(staffRows.map((row) => row.age_group_id).filter(Boolean))];
-        const priority = { club_admin: 3, lead_coach: 2, coach_mentor: 1 };
-        effectiveRole = [...staffRows]
-          .sort((a, b) => (priority[b.role] || 0) - (priority[a.role] || 0))[0]?.role || effectiveRole;
+
+        // Platform-level Super Admin/Admin/Lead Coach access must not be downgraded by team_staff.
+        if (!hasPlatformRole) {
+          const priority = { club_admin: 3, lead_coach: 2, coach_mentor: 1, coach: 1, mentor: 1 };
+          effectiveRole = [...staffRows]
+            .sort((a, b) => (priority[b.role] || 0) - (priority[a.role] || 0))[0]?.role || effectiveRole;
+        }
       } else {
         const { data: assignments, error: assignmentError } = await supabase
           .from("coach_assignments")
