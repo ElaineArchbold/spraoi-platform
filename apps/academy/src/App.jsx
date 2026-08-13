@@ -2430,11 +2430,183 @@ function AcademyPhonePreview({ weeklyPlan = null, planSessions = [], extras = []
   const hurling = recommendations.filter((item) => item.code === "hurling");
   const grouped = { steps: [], exercises: [], runs: [], bonus: [], recovery: [] };
   extras.forEach((extra) => grouped[academyExtraGroup(extra)].push(extra));
-  const section = (title, items, color, icon, render) => items.length ? <div style={{ background:"#fff",border:`1px solid ${color}33`,borderRadius:14,padding:11,marginTop:9 }}><div style={{ display:"flex",alignItems:"center",gap:7,fontFamily:F.body,fontSize:10,fontWeight:900,color,textTransform:"uppercase" }}><span>{icon}</span>{title}</div><div style={{ display:"grid",gap:7,marginTop:8 }}>{items.map(render)}</div></div> : null;
-  const taskRow=(item)=><div key={item.id} style={{ display:"flex",alignItems:"center",gap:8,padding:"8px 9px",borderRadius:10,background:"#f8fafc" }}><div style={{flex:1,minWidth:0}}><div style={{fontFamily:F.body,fontSize:10,fontWeight:900,color:P.ink}}>{item.title}</div><div style={{fontFamily:F.body,fontSize:8,color:P.muted,marginTop:2}}>{item.target || item.description || item.instruction || "Complete this mission"}</div></div><span style={{fontFamily:F.body,fontSize:8,fontWeight:900,color:"#b45309"}}>+{item.xp || item.xp_reward || 10} XP</span></div>;
-  const skillRow=(item)=><div key={item.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 9px",borderRadius:10,background:"#f8fafc"}}><div style={{width:32,height:32,borderRadius:9,background:"#e0f2fe",display:"grid",placeItems:"center"}}>▶</div><div style={{flex:1,minWidth:0}}><div style={{fontFamily:F.body,fontSize:10,fontWeight:900,color:P.ink}}>{item.matchedSkill?.name || "Choose weekly video"}</div><div style={{fontFamily:F.body,fontSize:8,color:P.muted,marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>Based on {item.sourceDrills.length} Coach drill{item.sourceDrills.length===1?"":"s"}</div></div><span style={{fontFamily:F.body,fontSize:8,fontWeight:900,color:"#b45309"}}>+20 XP</span></div>;
-  const visibleCount = football.length+hurling.length+Object.values(grouped).reduce((sum,items)=>sum+items.length,0);
-  return <div style={{ width: compact ? 300 : "min(390px,100%)", maxHeight: compact ? 600 : "none", overflow:"hidden", background:"#fff",borderRadius:compact?26:32,border:compact?"6px solid #16324a":"8px solid #16324a",boxShadow:"0 22px 52px rgba(7,89,133,.2)" }}><div style={{background:"linear-gradient(135deg,#38bdf8,#0284c7)",padding:compact?"16px 14px":"22px 18px",color:"#fff",position:"relative",overflow:"hidden"}}><img src="/spraoi-academy-icon.png" alt="" style={{position:"absolute",right:8,bottom:-8,width:compact?68:88,height:compact?68:88,objectFit:"contain",background:"#fff",borderRadius:18,padding:6}}/><div style={{fontFamily:F.body,fontSize:8,fontWeight:900,opacity:.85,textTransform:"uppercase"}}>Spraoi Academy</div><div style={{fontFamily:F.display,fontSize:compact?18:24,fontWeight:900,marginTop:3,maxWidth:"70%"}}>{getAcademyWeekRange(weeklyPlan)}</div><div style={{display:"flex",gap:6,marginTop:11}}><span style={previewPill}>⭐ {recommendations.length*20+extras.reduce((s,x)=>s+Number(x.xp||x.xp_reward||0),0)} XP</span><span style={previewPill}>🏅 Badges</span></div></div><div style={{padding:compact?10:15,background:"#f3f9fd",maxHeight:compact?460:"none",overflowY:"auto"}}>{visibleCount===0?<div style={{padding:18,textAlign:"center",fontFamily:F.body,fontSize:10,color:P.muted}}>Add weekly content to see the child experience here.</div>:<>{section("Football",football,"#2563eb","⚽",skillRow)}{section(selectedTeam?.gender === "girls" ? "Camogie" : "Hurling",hurling,"#dc2626","🏑",skillRow)}{section("Fitness",[...grouped.steps,...grouped.exercises,...grouped.runs],"#7c3aed","💪",taskRow)}{section("Rest & Recovery",grouped.recovery,"#0f766e","🌙",taskRow)}{section("Bonus",grouped.bonus,"#d97706","✨",taskRow)}</>}<div style={{marginTop:10,padding:9,borderRadius:11,background:published?"#dcfce7":"#fff7ed",color:published?"#15803d":"#b45309",fontFamily:F.body,fontSize:8,fontWeight:900,textAlign:"center"}}>{published?"✓ Published to children":"Preview mode · not published"}</div></div></div>;
+
+  const fitness = [...grouped.steps, ...grouped.exercises, ...grouped.runs];
+  const clubActivities = grouped.bonus;
+  const recovery = grouped.recovery;
+  const skillItems = [...football, ...hurling];
+  const journeyItems = [
+    ...skillItems.map((item) => ({
+      id: `skill-${item.code}`,
+      title: item.matchedSkill?.name || `Choose ${item.label} video`,
+      section: item.label,
+      icon: item.code === "football" ? "/football-icon.png" : "/hurling-icon.png",
+      color: item.code === "football" ? "#2563eb" : "#c62828",
+    })),
+    ...fitness.map((item) => ({
+      id: `fitness-${item.id}`,
+      title: item.title,
+      section: "Fitness",
+      icon: "/speed-mechanics-icon.png",
+      color: "#7c3aed",
+    })),
+    ...clubActivities.map((item) => ({
+      id: `club-${item.id}`,
+      title: item.title,
+      section: "Club Activity",
+      icon: "/hurling-icon.png",
+      color: "#d97706",
+    })),
+    ...(weeklyPlan || skillItems.length || extras.length ? [{
+      id: "recovery-preview",
+      title: recovery[0]?.title || "Rest & Recovery",
+      section: "Recovery",
+      icon: "/rest-and-recovery-icon.png",
+      color: "#0f766e",
+    }] : []),
+  ];
+
+  const previewWidth = compact ? 300 : 390;
+  const weekLabel = getAcademyWeekRange(weeklyPlan);
+  const sectionCard = (title, color, icon, children) => (
+    <div style={{ background:"#fff", border:`1.5px solid ${color}33`, borderTop:`5px solid ${color}`, borderRadius:18, padding:12, marginBottom:12, boxShadow:"0 4px 14px rgba(15,23,42,.06)" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:9, paddingBottom:9, marginBottom:9, borderBottom:`1px solid ${color}22` }}>
+        <div style={{ width:34, height:34, borderRadius:10, background:`${color}12`, display:"grid", placeItems:"center" }}>
+          <img src={icon} alt="" style={{ width:24, height:24, objectFit:"contain" }} />
+        </div>
+        <div style={{ fontFamily:F.display, fontSize:12, fontWeight:900, color, textTransform:"uppercase", letterSpacing:".04em" }}>{title}</div>
+      </div>
+      {children}
+    </div>
+  );
+
+  const skillCard = (item) => {
+    const color = item.code === "football" ? "#2563eb" : "#c62828";
+    const icon = item.code === "football" ? "/football-icon.png" : "/hurling-icon.png";
+    const skill = item.matchedSkill;
+    return (
+      <div key={item.code} style={{ background:"#fff", border:`1.5px solid ${color}33`, borderTop:`5px solid ${color}`, borderRadius:18, overflow:"hidden", marginBottom:12, boxShadow:"0 4px 14px rgba(15,23,42,.06)" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:9, padding:"11px 12px 8px" }}>
+          <div style={{ width:34, height:34, borderRadius:10, background:`${color}12`, display:"grid", placeItems:"center" }}><img src={icon} alt="" style={{width:23,height:23,objectFit:"contain"}}/></div>
+          <div style={{ minWidth:0 }}>
+            <div style={{ fontFamily:F.display, fontSize:10, fontWeight:900, color, textTransform:"uppercase" }}>{item.label}</div>
+            <div style={{ fontFamily:F.display, fontSize:14, fontWeight:900, color:P.ink, marginTop:1 }}>{skill?.name || `Choose ${item.label} video`}</div>
+          </div>
+        </div>
+        {skill?.video_url ? (
+          <div style={{ margin:"0 12px 8px", borderRadius:10, overflow:"hidden", background:"#071827" }}>
+            <iframe title={skill.name} src={skill.video_url.replace("watch?v=","embed/").split("&")[0]} style={{width:"100%",height:compact?110:145,border:0,display:"block"}} allowFullScreen />
+          </div>
+        ) : (
+          <div style={{ margin:"0 12px 8px", padding:"10px 11px", borderRadius:10, background:`${color}08`, fontFamily:F.body, fontSize:9, color:P.muted }}>Practice video appears here when selected.</div>
+        )}
+        <div style={{ padding:"0 12px 12px" }}>
+          <div style={{ padding:"9px 10px", borderRadius:10, background:"#f8fafc", fontFamily:F.body, fontSize:9, color:P.ink, lineHeight:1.45 }}>
+            Practise this skill for 20 minutes. Focus on good technique and control.
+            <div style={{ display:"flex", justifyContent:"space-between", marginTop:6, fontWeight:800 }}><span>20 min practice</span><span style={{color:"#b45309"}}>+10 XP</span></div>
+          </div>
+          <div style={{ marginTop:7, padding:"9px 10px", borderRadius:9, textAlign:"center", background:color, color:"#fff", fontFamily:F.display, fontSize:10, fontWeight:900 }}>I Practised for 20 Minutes!</div>
+        </div>
+      </div>
+    );
+  };
+
+  const taskRows = (items, color) => items.map((item) => (
+    <div key={item.id} style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 10px", borderRadius:11, background:`${color}08`, border:`1px solid ${color}22`, marginBottom:7 }}>
+      <div style={{ width:18, height:18, borderRadius:"50%", border:`2px solid ${color}`, flexShrink:0 }} />
+      <div style={{ flex:1, minWidth:0 }}>
+        <div style={{ fontFamily:F.display, fontSize:10, fontWeight:900, color:P.ink }}>{item.title}</div>
+        {(item.description || item.instruction || item.target) && <div style={{ fontFamily:F.body, fontSize:8, color:P.muted, marginTop:2 }}>{item.description || item.instruction || item.target}</div>}
+      </div>
+      <div style={{ fontFamily:F.display, fontSize:9, fontWeight:900, color:"#b45309" }}>+{item.xp_reward || item.xp || 5} XP</div>
+    </div>
+  ));
+
+  const visibleCount = skillItems.length + fitness.length + clubActivities.length + recovery.length;
+
+  return (
+    <div style={{ width:previewWidth, maxWidth:"100%", overflow:"hidden", background:"#eef7fb", borderRadius:compact?24:30, border:compact?"5px solid #16324a":"7px solid #16324a", boxShadow:"0 22px 52px rgba(7,89,133,.2)" }}>
+      {/* Mirrors the actual Academy Child app rather than a separate admin-only preview design */}
+      <div style={{ padding:"11px 12px 7px", display:"flex", alignItems:"center", justifyContent:"space-between", gap:8 }}>
+        <div style={{ display:"flex", alignItems:"center", gap:7 }}>
+          <img src="/spraoi-academy-icon.png" alt="" style={{width:27,height:27,objectFit:"contain"}}/>
+          <div style={{fontFamily:F.display,fontSize:13,fontWeight:900,color:"#039be5",textTransform:"uppercase"}}>Spraoi Academy</div>
+        </div>
+        <div style={{ padding:"5px 8px", borderRadius:999, background:"#fff3e0", fontFamily:F.body, fontSize:7, fontWeight:800, color:"#9a5a00" }}>🔥 0 week streak</div>
+      </div>
+
+      <div style={{ margin:"0 10px 10px", borderRadius:16, padding:"12px 13px", background:"linear-gradient(135deg,#18a8e0,#0f9bd3)", color:"#fff", boxShadow:"0 8px 18px rgba(3,155,229,.18)" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <div style={{ width:38,height:38,borderRadius:"50%",background:"rgba(255,255,255,.18)",display:"grid",placeItems:"center",fontFamily:F.display,fontSize:16,fontWeight:800 }}>A</div>
+          <div style={{flex:1}}>
+            <div style={{fontFamily:F.display,fontSize:12,fontWeight:900}}>Academy Player</div>
+            <div style={{fontFamily:F.body,fontSize:8,fontWeight:700,opacity:.9}}>Level 1</div>
+          </div>
+          <div style={{textAlign:"right"}}><div style={{fontFamily:F.display,fontSize:16,fontWeight:900,color:"#ffd54f"}}>0</div><div style={{fontSize:7}}>XP</div></div>
+        </div>
+        <div style={{fontFamily:F.body,fontSize:7,fontWeight:800,marginTop:8,display:"flex",justifyContent:"space-between"}}><span>Level 1</span><span>0/100 to Level 2</span></div>
+        <div style={{height:6,borderRadius:99,background:"rgba(255,255,255,.2)",marginTop:4}} />
+      </div>
+
+      <div style={{ padding:"0 10px 12px", maxHeight:compact?500:690, overflowY:"auto" }}>
+        <div style={{ background:"#fff", border:"1.5px solid #d9e5ed", borderRadius:18, padding:13, marginBottom:12, boxShadow:"0 5px 18px rgba(15,23,42,.05)" }}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <img src="/spraoi-academy-icon.png" alt="" style={{width:38,height:38,objectFit:"contain"}}/>
+            <div>
+              <div style={{fontFamily:F.body,fontSize:7,fontWeight:900,textTransform:"uppercase",letterSpacing:".1em",color:P.muted}}>This week in Academy</div>
+              <div style={{fontFamily:F.display,fontSize:17,fontWeight:900,color:"#039be5",marginTop:1}}>{weekLabel}</div>
+              <div style={{fontFamily:F.body,fontSize:8,color:P.muted,fontStyle:"italic",marginTop:4}}>“Progress comes from showing up, practising and helping your teammates.”</div>
+            </div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:9}}>
+            <div style={{padding:"7px",borderRadius:8,border:"1px solid #d9e5ed",textAlign:"center",fontFamily:F.body,fontSize:8,fontWeight:800,color:"#039be5"}}>← Previous week</div>
+            <div style={{padding:"7px",borderRadius:8,border:"1px solid #e5edf2",background:"#f5f7f9",textAlign:"center",fontFamily:F.body,fontSize:8,fontWeight:800,color:"#a4b1bb"}}>Next week →</div>
+          </div>
+        </div>
+
+        {journeyItems.length > 0 && (
+          <div style={{ background:"#fff", border:"1.5px solid #039be522", borderRadius:20, padding:"12px 11px", marginBottom:12, boxShadow:"0 6px 18px rgba(15,23,42,.05)" }}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+              <div><div style={{fontFamily:F.body,fontSize:7,fontWeight:900,textTransform:"uppercase",letterSpacing:".1em",color:P.muted}}>Your weekly journey</div><div style={{fontFamily:F.display,fontSize:14,fontWeight:900,color:P.ink}}>Keep moving forward</div></div>
+              <div style={{width:42,height:42,borderRadius:"50%",background:"#039be512",border:"3px solid #039be522",display:"grid",placeItems:"center",fontFamily:F.display,fontSize:10,fontWeight:900,color:"#039be5"}}>0%</div>
+            </div>
+            <div style={{height:7,borderRadius:99,background:"#eef3f6",marginBottom:10}} />
+            {journeyItems.map((item,index)=>(
+              <div key={item.id} style={{display:"grid",gridTemplateColumns:"39px 1fr",gap:7,minHeight:52,position:"relative"}}>
+                <div style={{display:"flex",justifyContent:"center",position:"relative"}}>
+                  {index < journeyItems.length-1 && <div style={{position:"absolute",top:33,bottom:-12,width:3,background:"#d9e5ed"}}/>}
+                  <div style={{width:34,height:34,borderRadius:"50%",border:`3px solid ${index===0?item.color:"#d9e5ed"}`,background:index===0?item.color:"#fff",display:"grid",placeItems:"center",zIndex:1}}>
+                    <img src={item.icon} alt="" style={{width:18,height:18,objectFit:"contain",filter:index===0?"brightness(0) invert(1)":"none"}}/>
+                  </div>
+                </div>
+                <div style={{alignSelf:"start",padding:"7px 9px",borderRadius:10,border:`1px solid ${index===0?item.color+"55":"#d9e5ed"}`,background:index===0?item.color+"0D":"#fff"}}>
+                  <div style={{fontFamily:F.body,fontSize:7,fontWeight:900,textTransform:"uppercase",color:item.color}}>{index===0?"Up next":item.section}</div>
+                  <div style={{fontFamily:F.display,fontSize:10,fontWeight:900,color:P.ink,marginTop:1}}>{item.title}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {visibleCount === 0 ? (
+          <div style={{padding:18,textAlign:"center",fontFamily:F.body,fontSize:9,color:P.muted,background:"#fff",borderRadius:14}}>Add weekly content to see the child experience here.</div>
+        ) : (
+          <>
+            {skillItems.map(skillCard)}
+            {fitness.length > 0 && sectionCard("Fitness","#7c3aed","/speed-mechanics-icon.png",taskRows(fitness,"#7c3aed"))}
+            {clubActivities.length > 0 && sectionCard("Club Activities","#d97706","/hurling-icon.png",taskRows(clubActivities,"#d97706"))}
+            {sectionCard("Rest & Recovery","#0f766e","/rest-and-recovery-icon.png",
+              recovery.length > 0
+                ? taskRows(recovery,"#0f766e")
+                : <div style={{padding:"9px 10px",borderRadius:11,background:"#0f766e08",fontFamily:F.body,fontSize:9,color:P.muted}}>The weekly recovery stretch appears here in the child app.</div>
+            )}
+          </>
+        )}
+
+        <div style={{marginTop:3,padding:9,borderRadius:11,background:published?"#dcfce7":"#fff7ed",color:published?"#15803d":"#b45309",fontFamily:F.body,fontSize:8,fontWeight:900,textAlign:"center"}}>{published?"✓ Published to children":"Preview mode · not published"}</div>
+      </div>
+    </div>
+  );
 }
 
 function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras = [], skills = [], overrides = {}, published = false, onSetOverride, onNav }) {

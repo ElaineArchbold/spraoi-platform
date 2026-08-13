@@ -3126,10 +3126,10 @@ function cupComputeStandings(teams, matches) {
 function CupCard({ children, style = {} }) {
   return (
     <div style={{
-      background: P.white,
-      borderRadius: 14,
-      border: `1px solid ${P.line}`,
-      boxShadow: Sh.card,
+      background: "#fff",
+      borderRadius: 18,
+      border: "1px solid #fed7aa",
+      boxShadow: "0 8px 24px rgba(124,45,18,.06), 0 1px 3px rgba(15,23,42,.04)",
       ...style,
     }}>
       {children}
@@ -3137,22 +3137,30 @@ function CupCard({ children, style = {} }) {
   );
 }
 
-function CupBtn({ label, onClick, variant = "primary" }) {
+function CupBtn({ label, onClick, variant = "primary", icon, style = {} }) {
   const styles = variant === "ghost"
-    ? { background: P.white, color: P.ink, border: `1.5px solid ${P.line}` }
-    : { background: CUP_ORANGE, color: P.white, border: "none", boxShadow: "0 4px 14px rgba(230,81,0,.24)" };
+    ? { background: "#fff", color: "#9a3412", border: "1.5px solid #fed7aa" }
+    : variant === "soft"
+      ? { background: "#fff7ed", color: "#c2410c", border: "1.5px solid #fdba74" }
+      : { background: CUP_ORANGE, color: "#fff", border: "none", boxShadow: "0 5px 16px rgba(230,81,0,.22)" };
 
   return (
     <button onClick={onClick} style={{
-      height: 36,
-      padding: "0 16px",
+      minHeight: 38,
+      padding: "0 15px",
       borderRadius: 10,
       cursor: "pointer",
+      display: "inline-flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
       fontFamily: F.body,
-      fontSize: 12,
-      fontWeight: 700,
+      fontSize: 11,
+      fontWeight: 900,
       ...styles,
+      ...style,
     }}>
+      {icon && <span>{icon}</span>}
       {label}
     </button>
   );
@@ -3190,52 +3198,55 @@ function CupRichTextEditor({ value, onChange }) {
 
 function CupTopBar({ title, sub, children }) {
   return (
-    <div style={{
+    <div className="cup-page-header" style={{
       padding: "20px 28px",
-      minHeight: 92,
-      background: "linear-gradient(135deg, #fff7ed 0%, #ffe5cf 100%)",
-      borderBottom: "1px solid rgba(230,81,0,.18)",
+      minHeight: 98,
+      background: "linear-gradient(135deg, #fff7ed 0%, #ffedd5 56%, #fed7aa 100%)",
+      borderBottom: "1px solid rgba(230,81,0,.16)",
       display: "flex",
       alignItems: "center",
       justifyContent: "space-between",
       gap: 16,
     }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
-        <div style={{
-          width: 64,
-          height: 64,
+      <div className="cup-page-header-main" style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
+        <div className="cup-page-header-icon" style={{
+          width: 66,
+          height: 66,
           borderRadius: 20,
           display: "grid",
           placeItems: "center",
           background: "#fff",
-          border: "1px solid rgba(15,23,42,.08)",
-          boxShadow: "0 10px 26px rgba(16,36,62,.12)",
+          border: "1px solid rgba(124,45,18,.10)",
+          boxShadow: "0 10px 26px rgba(124,45,18,.12)",
           flexShrink: 0,
         }}>
-          <img src="/spraoi-cup-icon.png" alt="" style={{ width: 48, height: 48, objectFit: "contain" }} />
+          <img src="/spraoi-cup-icon.png" alt="" style={{ width: 50, height: 50, objectFit: "contain" }} />
         </div>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontFamily: F.display, fontSize: 24, fontWeight: 900, color: P.ink, lineHeight: 1.1 }}>{title}</div>
-          {sub && <div style={{ fontFamily: F.body, fontSize: 12, color: P.muted, marginTop: 6 }}>{sub}</div>}
+          <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 900, color: "#c2410c", letterSpacing: ".12em", textTransform: "uppercase", marginBottom: 4 }}>Spraoi Cup</div>
+          <div className="cup-page-header-title" style={{ fontFamily: F.display, fontSize: 25, fontWeight: 900, color: P.ink, lineHeight: 1.08 }}>{title}</div>
+          {sub && <div className="cup-page-header-sub" style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 6, lineHeight: 1.45 }}>{sub}</div>}
         </div>
       </div>
-      {children && <div style={{ display: "flex", alignItems: "center", gap: 8 }}>{children}</div>}
+      {children && <div className="cup-page-header-actions" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>{children}</div>}
     </div>
   );
 }
 
+
 function CupStatCard({ label, value, sub, icon, color = CUP_ORANGE }) {
   return (
-    <CupCard style={{ padding: "16px 18px", borderTop: `3px solid ${color}` }}>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
-        <span style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</span>
-        {icon && <span style={{ fontSize: 16 }}>{icon}</span>}
+    <CupCard style={{ padding: "16px 18px", borderTop: `4px solid ${color}`, minHeight: 112 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8, gap: 8 }}>
+        <span style={{ fontFamily: F.body, fontSize: 9, fontWeight: 900, color: P.muted, textTransform: "uppercase", letterSpacing: "0.09em" }}>{label}</span>
+        {icon && <span style={{ width: 30, height: 30, borderRadius: 9, background: `${color}12`, display: "grid", placeItems: "center", fontSize: 15 }}>{icon}</span>}
       </div>
-      <div style={{ fontFamily: F.display, fontSize: 28, fontWeight: 900, color: P.ink, letterSpacing: "-0.04em", lineHeight: 1 }}>{value}</div>
-      {sub && <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 6 }}>{sub}</div>}
+      <div style={{ fontFamily: F.display, fontSize: 29, fontWeight: 900, color: P.ink, letterSpacing: "-0.04em", lineHeight: 1 }}>{value}</div>
+      {sub && <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 7, lineHeight: 1.4 }}>{sub}</div>}
     </CupCard>
   );
 }
+
 
 function CupModuleScreen({ screen, onNav, contextTeam, canEditSchedule = false }) {
   const DEFAULT_CONFIG={startTime:"10:00",targetFinish:"15:00",matchDurationMins:20,turnaroundMins:5,lunchMinutes:30,presentationMinutes:15,groupCount:2,pitches:[{id:"p1",name:"Pitch 1"},{id:"p2",name:"Pitch 2"},{id:"p3",name:"Pitch 3"}],placements:[{id:"cup",label:"Cup",enabled:true,rank:1},{id:"shield",label:"Shield",enabled:true,rank:2},{id:"plate",label:"Plate",enabled:false,rank:3},{id:"bowl",label:"Bowl",enabled:false,rank:4}],stages:[]};
@@ -3312,29 +3323,45 @@ function CupModuleScreen({ screen, onNav, contextTeam, canEditSchedule = false }
   };
   const statusLabel=String(event?.status||"draft").toUpperCase();
   const statusColor=event?.status==="live"?"#c62828":event?.status==="published"?"#2e7d32":event?.status==="completed"?P.muted:CUP_ORANGE;
-  const sectionWrap=(title,sub,children,action)=><div style={{flex:1,overflow:"auto",background:P.soft}}>
+  const sectionWrap=(title,sub,children,action)=><div style={{flex:1,overflow:"auto",background:"#fffaf5"}}>
+    <style>{`
+      @media (max-width: 900px) {
+        .cup-dashboard-stats { grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
+        .cup-dashboard-main { grid-template-columns: 1fr !important; }
+        .cup-page-header { padding: 16px !important; align-items: flex-start !important; flex-direction: column !important; min-height: auto !important; }
+        .cup-page-header-actions { width: 100% !important; justify-content: flex-start !important; }
+      }
+      @media (max-width: 560px) {
+        .cup-dashboard-stats { grid-template-columns: 1fr !important; }
+        .cup-page-header-main { align-items: flex-start !important; }
+        .cup-page-header-icon { width: 52px !important; height: 52px !important; border-radius: 16px !important; }
+        .cup-page-header-icon img { width: 39px !important; height: 39px !important; }
+        .cup-page-header-title { font-size: 21px !important; }
+        .cup-page-header-actions > button { flex: 1 1 auto !important; }
+      }
+    `}</style>
     <CupTopBar title={title} sub={sub}>{action}</CupTopBar>
-    {event && <div style={{margin:"16px 24px 0",padding:"13px 16px",borderRadius:14,background:"linear-gradient(135deg,#FFF3EA,#FFFFFF)",border:`1px solid ${CUP_ORANGE}35`,boxShadow:"0 5px 18px rgba(230,81,0,.06)",display:"flex",alignItems:"center",justifyContent:"space-between",gap:12}}>
-      <div style={{minWidth:0}}>
+    {event && <div style={{margin:"16px 24px 0",padding:"15px 16px",borderRadius:18,background:"#fff",border:"1px solid #fed7aa",boxShadow:"0 8px 24px rgba(124,45,18,.06)",display:"flex",alignItems:"center",justifyContent:"space-between",gap:14,flexWrap:"wrap"}}>
+      <div style={{minWidth:220,flex:1}}>
         <div style={{display:"flex",alignItems:"center",gap:7,flexWrap:"wrap"}}>
-          <div style={{fontFamily:F.body,fontSize:8,fontWeight:900,color:CUP_ORANGE,textTransform:"uppercase",letterSpacing:".1em"}}>Editing event</div>
+          <div style={{fontFamily:F.body,fontSize:8,fontWeight:900,color:CUP_ORANGE,textTransform:"uppercase",letterSpacing:".1em"}}>Current event</div>
           <span style={{fontFamily:F.body,fontSize:8,fontWeight:900,color:statusColor,background:`${statusColor}12`,border:`1px solid ${statusColor}30`,borderRadius:999,padding:"3px 7px"}}>{statusLabel}</span>
           <span style={{fontFamily:F.body,fontSize:8,fontWeight:800,color:saveState==="error"?"#b91c1c":P.muted}}>{saveState==="saving"?"Saving…":saveState==="error"?"Save failed":"✓ Autosaved"}</span>
         </div>
-        <div style={{fontFamily:F.display,fontSize:18,fontWeight:900,color:P.ink,marginTop:3,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{event.name}</div>
-        <div style={{fontFamily:F.body,fontSize:9,color:P.muted,marginTop:3}}>{event.date || "Date TBC"}{event.venue ? ` · ${event.venue}` : ""}{(event.ownerTeamLabel||contextTeam?.label||contextTeam?.name)?` · ${event.ownerTeamLabel||contextTeam?.label||contextTeam?.name}`:""}</div>
+        <div style={{fontFamily:F.display,fontSize:19,fontWeight:900,color:P.ink,marginTop:4,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{event.name}</div>
+        <div style={{fontFamily:F.body,fontSize:9,color:P.muted,marginTop:4}}>{event.date || "Date TBC"}{event.venue ? ` · ${event.venue}` : ""}{(event.ownerTeamLabel||contextTeam?.label||contextTeam?.name)?` · ${event.ownerTeamLabel||contextTeam?.label||contextTeam?.name}`:""}</div>
       </div>
       <div style={{display:"flex",alignItems:"center",gap:7,flexWrap:"wrap",justifyContent:"flex-end"}}>
-        {event.status==="draft"&&<CupBtn label="Publish Event" onClick={()=>confirm("Publish this event to the participant app?")&&setEventStatus("published")}/>}
-        {event.status==="published"&&<CupBtn label="Go Live" onClick={()=>confirm("Mark this event LIVE?")&&setEventStatus("live")}/>}
-        {event.status==="live"&&<CupBtn label="Complete Event" onClick={()=>confirm("Complete this event?")&&setEventStatus("completed")}/>}
+        {event.status==="draft"&&<CupBtn label="Publish Event" icon="↑" onClick={()=>confirm("Publish this event to the participant app?")&&setEventStatus("published")}/>}
+        {event.status==="published"&&<CupBtn label="Go Live" icon="●" onClick={()=>confirm("Mark this event LIVE?")&&setEventStatus("live")}/>}
+        {event.status==="live"&&<CupBtn label="Complete Event" icon="✓" onClick={()=>confirm("Complete this event?")&&setEventStatus("completed")}/>}
         {event.status==="completed"&&<CupBtn label="Reopen" variant="ghost" onClick={()=>setEventStatus("published")}/>}
-        <select value={eventId} onChange={e=>switchEvent(e.target.value)} style={{...inp,width:205,fontWeight:800,borderColor:`${CUP_ORANGE}55`}}>
+        <select value={eventId} onChange={e=>switchEvent(e.target.value)} style={{...inp,width:205,fontWeight:800,borderColor:"#fdba74",background:"#fffaf5"}}>
           {events.map(ev=><option key={ev.id} value={ev.id}>{ev.name}</option>)}
         </select>
       </div>
     </div>}
-    <div style={{padding:24}}>{children}</div>
+    <div style={{padding:24,maxWidth:1280,margin:"0 auto"}}>{children}</div>
   </div>;
   if(loading)return sectionWrap("Cup","Loading tournament data…",<div style={{color:P.muted}}>Loading…</div>);
   if(screen==="cup-matchday")return sectionWrap("Matchday","Scores and referee access in one place",<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}><CupCard style={{padding:18}}><div style={{fontFamily:F.display,fontSize:18,fontWeight:900}}>Results & Scoring</div><div style={{fontFamily:F.body,fontSize:10,color:P.muted,lineHeight:1.6,margin:"6px 0 14px"}}>Lead coaches can enter or correct any match score and status.</div><CupBtn label="Open Results" onClick={()=>onNav("cup-results")}/></CupCard><CupCard style={{padding:18}}><div style={{fontFamily:F.display,fontSize:18,fontWeight:900}}>Referee Access</div><div style={{fontFamily:F.body,fontSize:10,color:P.muted,lineHeight:1.6,margin:"6px 0 14px"}}>Create pitch-only referee links, codes and reset access.</div><CupBtn label="Manage Referees" onClick={()=>onNav("cup-referees")}/></CupCard></div>);
@@ -3557,7 +3584,59 @@ function CupModuleScreen({ screen, onNav, contextTeam, canEditSchedule = false }
   if(screen==="cup-food") {const pc=teams.reduce((n,t)=>n+(t.playerCount||0),0),mc=teams.reduce((n,t)=>n+(t.mentorCount||0),0);return sectionWrap("Food & Orders","Optional menu, team codes, advance orders and voucher planning",<div style={{display:"grid",gridTemplateColumns:"1.2fr .8fr",gap:14}}><CupCard style={{padding:16}}><b style={{fontFamily:F.display}}>Menu</b>{food.map((f,i)=><div key={f.id} style={{display:"grid",gridTemplateColumns:"1fr 90px 100px 100px",gap:7,alignItems:"center",marginTop:8}}><input value={f.name} onChange={e=>save("foodMenu",food.map((x,j)=>j===i?{...x,name:e.target.value}:x),setFood)} style={inp}/><input type="number" step=".5" placeholder="Optional €" value={f.price??""} onChange={e=>save("foodMenu",food.map((x,j)=>j===i?{...x,price:e.target.value===""?null:+e.target.value}:x),setFood)} style={inp}/><label style={{fontSize:9}}><input type="checkbox" checked={!!f.freeForPlayers} onChange={e=>save("foodMenu",food.map((x,j)=>j===i?{...x,freeForPlayers:e.target.checked}:x),setFood)}/> Free/player</label><label style={{fontSize:9}}><input type="checkbox" checked={!!f.freeForMentors} onChange={e=>save("foodMenu",food.map((x,j)=>j===i?{...x,freeForMentors:e.target.checked}:x),setFood)}/> Free/mentor</label></div>)}<div style={{marginTop:10}}><CupBtn label="+ Food item" variant="ghost" onClick={()=>save("foodMenu",[...food,{id:uid("food"),name:"New item",price:null,active:true,freeForPlayers:false,freeForMentors:false}],setFood)}/></div></CupCard><CupCard style={{padding:16}}><b style={{fontFamily:F.display}}>Voucher planning</b><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:10}}><CupStatCard label="Players" value={pc}/><CupStatCard label="Mentors" value={mc} color={P.green}/></div></CupCard><CupCard style={{padding:16,gridColumn:"1 / -1"}}><b style={{fontFamily:F.display}}>Advance orders · {orders.length}</b>{orders.map(o=>{const t=teams.find(x=>x.id===o.teamId);const lw=lunchWindows.find(w=>(w.clubIds||w.clubs||[]).includes(t?.clubId));return <div key={o.id} style={{fontSize:10,padding:"9px 0",borderTop:`1px solid ${P.line}`}}><b>{teamById(o.teamId).name}</b> · {o.contactName}{o.mobile?` · ${o.mobile}`:""}{Number(o.total||0)>0?` · €${Number(o.total||0).toFixed(2)}`:""}<div style={{fontSize:8.5,color:P.muted,marginTop:3}}>Collection: {lw?`${lw.from}–${lw.to}`:"Lunch time TBC"} · {(o.items||[]).map(x=>`${x.qty} × ${x.name}`).join(", ")}</div></div>})}</CupCard></div>)}
   if(screen==="cup-participant-view") {const url=`${import.meta.env.VITE_CUP_PARTICIPANT_URL||"https://cup.spraoisports.com"}/?event=${encodeURIComponent(eventId)}${event?.status==="draft"?"&preview=1":""}`;return sectionWrap("Participant View","Mobile event-day experience for parents, players and team mentors",<CupCard style={{padding:18}}><div style={{fontFamily:"monospace",fontSize:10,background:P.soft,padding:10,borderRadius:9,wordBreak:"break-all"}}>{url}</div><div style={{marginTop:12}}><CupBtn label="Open Participant App" onClick={()=>window.open(url,"_blank")}/></div></CupCard>)}
   if(screen==="cup-settings")return sectionWrap("Settings","Current event details",<CupCard style={{padding:18,maxWidth:760}}><div style={{display:"grid",gap:10}}>{field("Event name",<input value={event?.name||""} onChange={e=>setEvent({...event,name:e.target.value})} onBlur={async()=>{const n=await cupUpdateEvent(eventId,{name:event.name});setEvent(n);setEvents(await cupRead(CUP_EVENTS_KEY,[]))}} style={inp}/>)}{field("Date",<input type="date" value={event?.date||""} onChange={e=>setEvent({...event,date:e.target.value})} onBlur={async()=>{const n=await cupUpdateEvent(eventId,{date:event.date});setEvent(n);setEvents(await cupRead(CUP_EVENTS_KEY,[]))}} style={inp}/>)}{field("Venue",<input value={event?.venue||""} onChange={e=>setEvent({...event,venue:e.target.value})} onBlur={async()=>{const n=await cupUpdateEvent(eventId,{venue:event.venue});setEvent(n);setEvents(await cupRead(CUP_EVENTS_KEY,[]))}} style={inp}/>)}</div></CupCard>);
-  const upcoming=matches.filter(m=>m.status!=="finished").slice(0,6);return sectionWrap("Dashboard",`${event?.name||"Cup"} · ${event?.date||""}`,<><div className="cup-dashboard-stats" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:20}}><CupStatCard label="Clubs" value={clubs.length} sub={`${teams.length} competition teams`} icon="🏑"/><CupStatCard label="Fixtures" value={matches.length} sub={`${finished.length} finished · ${live.length} live`} color="#fb8c00" icon="📅"/><CupStatCard label="Pitches" value={pitches.length} sub={pitches.map(p=>p.name).join(" · ")} color="#29b6f6" icon="📍"/><CupStatCard label="Event Status" value={event?.status||"draft"} sub={`${announcements.length} announcements · ${sponsors.filter(s=>s.active!==false).length} sponsors`} color="#43a047" icon="✓"/></div><div className="cup-dashboard-main" style={{display:"grid",gridTemplateColumns:"1.3fr .8fr",gap:20}}><CupCard style={{padding:18}}><div style={{fontFamily:F.display,fontSize:17,fontWeight:900}}>Upcoming fixtures</div>{upcoming.length?upcoming.map((m,i)=><div key={m.id} style={{display:"grid",gridTemplateColumns:"65px 85px 1fr",gap:9,padding:"10px 0",borderTop:i?`1px solid ${P.line}`:"none",fontSize:10}}><b>{m.time}</b><span>{m.pitch}</span><span>{teamById(m.teamA).name} v {teamById(m.teamB).name}</span></div>):<div style={{padding:14,color:P.muted}}>No fixtures generated yet.</div>}</CupCard><CupCard style={{padding:18}}><div style={{fontFamily:F.display,fontSize:17,fontWeight:900}}>Event setup</div>{[["Venue",event?.venue],["Start",config.startTime],["Target finish",config.targetFinish],["Pitches",pitches.length]].map(([l,v])=><div key={l} style={{display:"flex",justifyContent:"space-between",padding:"9px 0",borderTop:`1px solid ${P.line}`,fontSize:10}}><span style={{color:P.muted}}>{l}</span><b>{v||"—"}</b></div>)}</CupCard></div></>,<CupBtn label="+ New Event" onClick={createEvent}/>);
+  const upcoming=matches.filter(m=>m.status!=="finished").slice(0,6);
+  const activeSponsors=sponsors.filter(s=>s.active!==false).length;
+  const readiness=[
+    {label:"Teams",ok:teams.length>0,value:`${teams.length} teams`},
+    {label:"Schedule",ok:matches.length>0,value:matches.length?`${matches.length} fixtures`:"Not generated"},
+    {label:"Event info",ok:Object.values(info||{}).some(v=>String(v||"").trim()),value:"Participant content"},
+    {label:"Food",ok:food.length>0||orders.length>0,value:orders.length?`${orders.length} orders`:food.length?`${food.length} menu items`:"Optional"},
+  ];
+  const participantUrl=`${import.meta.env.VITE_CUP_PARTICIPANT_URL||"https://cup.spraoisports.com"}/?event=${encodeURIComponent(eventId)}${event?.status==="draft"?"&preview=1":""}`;
+  return sectionWrap("Cup Dashboard",event?.name?`${event.name}${event.date?` · ${event.date}`:""}`:"Set up and run your event",<>
+    <div className="cup-dashboard-stats" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:18}}>
+      <CupStatCard label="Teams" value={teams.length} sub={`${clubs.length} clubs registered`} icon="👥"/>
+      <CupStatCard label="Fixtures" value={matches.length} sub={`${finished.length} finished · ${live.length} live`} color="#fb8c00" icon="📅"/>
+      <CupStatCard label="Pitches" value={pitches.length} sub={pitches.length?pitches.map(p=>p.name).join(" · "):"No pitches configured"} color="#0284c7" icon="📍"/>
+      <CupStatCard label="Event status" value={statusLabel} sub={`${announcements.length} announcements · ${activeSponsors} sponsors`} color={statusColor} icon="✓"/>
+    </div>
+
+    <CupCard style={{padding:18,marginBottom:18,borderColor:"#fdba74",background:"linear-gradient(135deg,#fff 0%,#fffaf5 100%)"}}>
+      <div style={{display:"flex",justifyContent:"space-between",gap:14,alignItems:"center",flexWrap:"wrap"}}>
+        <div style={{minWidth:220}}>
+          <div style={{fontFamily:F.body,fontSize:8,fontWeight:900,color:CUP_ORANGE,textTransform:"uppercase",letterSpacing:".1em"}}>Event day</div>
+          <div style={{fontFamily:F.display,fontSize:22,fontWeight:900,color:P.ink,marginTop:4}}>{event?.name||"Your Cup Event"}</div>
+          <div style={{fontFamily:F.body,fontSize:10,color:P.muted,marginTop:5}}>{event?.venue||"Venue TBC"} · {config.startTime||"Start TBC"}–{config.targetFinish||"Finish TBC"}</div>
+        </div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <CupBtn label="Participant View" variant="ghost" icon="↗" onClick={()=>window.open(participantUrl,"_blank")}/>
+          <CupBtn label="Manage Event Content" icon="i" onClick={()=>onNav("cup-content")}/>
+        </div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:8,marginTop:16}}>
+        {readiness.map(item=><div key={item.label} style={{padding:"11px 12px",borderRadius:12,background:item.ok?"#fff7ed":"#f8fafc",border:`1px solid ${item.ok?"#fed7aa":P.line}`}}><div style={{fontSize:8,fontWeight:900,color:item.ok?"#c2410c":P.muted,textTransform:"uppercase"}}>{item.ok?"✓":"○"} {item.label}</div><div style={{fontFamily:F.body,fontSize:10,fontWeight:800,color:P.ink,marginTop:3}}>{item.value}</div></div>)}
+      </div>
+    </CupCard>
+
+    <div className="cup-dashboard-main" style={{display:"grid",gridTemplateColumns:"1.35fr .85fr",gap:18,marginBottom:18}}>
+      <CupCard style={{padding:18}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginBottom:10}}><div><div style={{fontFamily:F.display,fontSize:18,fontWeight:900,color:P.ink}}>Upcoming fixtures</div><div style={{fontSize:9,color:P.muted,marginTop:2}}>What is coming next on event day</div></div><CupBtn label="Competition" variant="ghost" onClick={()=>onNav("cup-competition")}/></div>
+        {upcoming.length?upcoming.map((m,i)=><div key={m.id} style={{display:"grid",gridTemplateColumns:"58px 78px 1fr",gap:9,padding:"11px 0",borderTop:i?`1px solid ${P.line}`:"none",fontSize:10,alignItems:"center"}}><span style={{fontWeight:900,color:CUP_ORANGE}}>{m.time||"TBC"}</span><span style={{fontWeight:800,color:P.muted}}>{m.pitch||"Pitch"}</span><span style={{fontWeight:800,color:P.ink}}>{teamById(m.teamA).name} <span style={{color:P.muted,fontWeight:600}}>v</span> {teamById(m.teamB).name}</span></div>):<div style={{padding:"18px 0",color:P.muted,fontSize:10}}>No fixtures generated yet. Set up teams and competition structure to build the schedule.</div>}
+      </CupCard>
+      <CupCard style={{padding:18}}>
+        <div style={{fontFamily:F.display,fontSize:18,fontWeight:900,color:P.ink}}>Event details</div>
+        <div style={{fontSize:9,color:P.muted,marginTop:2,marginBottom:8}}>At-a-glance organiser information</div>
+        {[['Date',event?.date],['Venue',event?.venue],['Start',config.startTime],['Target finish',config.targetFinish],['Lunch',`${config.lunchMinutes||30} min minimum`]].map(([l,v],i)=><div key={l} style={{display:"flex",justifyContent:"space-between",gap:10,padding:"10px 0",borderTop:i?`1px solid ${P.line}`:"none",fontSize:10}}><span style={{color:P.muted}}>{l}</span><b style={{textAlign:"right",color:P.ink}}>{v||"—"}</b></div>)}
+      </CupCard>
+    </div>
+
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:14}}>
+      <CupCard style={{padding:16}}><div style={{fontFamily:F.display,fontSize:16,fontWeight:900}}>Teams</div><div style={{fontSize:10,color:P.muted,margin:"4px 0 12px"}}>{teams.length} competition teams across {clubs.length} clubs.</div><CupBtn label="Manage Teams" variant="ghost" onClick={()=>onNav("cup-teams")}/></CupCard>
+      <CupCard style={{padding:16}}><div style={{fontFamily:F.display,fontSize:16,fontWeight:900}}>Event Content</div><div style={{fontSize:10,color:P.muted,margin:"4px 0 12px"}}>{announcements.length} announcements · {activeSponsors} active sponsors.</div><CupBtn label="Open Content" variant="ghost" onClick={()=>onNav("cup-content")}/></CupCard>
+      <CupCard style={{padding:16}}><div style={{fontFamily:F.display,fontSize:16,fontWeight:900}}>Food & Lunch</div><div style={{fontSize:10,color:P.muted,margin:"4px 0 12px"}}>{orders.length} advance orders · {lunchWindows.length} lunch windows.</div><CupBtn label="Manage Food" variant="ghost" onClick={()=>onNav("cup-food")}/></CupCard>
+    </div>
+  </>,<CupBtn label="+ New Event" onClick={createEvent}/>);
+
 }
 
 /* ============================================================
