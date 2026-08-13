@@ -120,7 +120,6 @@ const MODULES = {
     label: "Academy", color: "#0277bd", icon: "/spraoi-academy-icon.png", tagline: "Turn weekly coaching into child-friendly practice.", nav: [
       { id: "academy-dashboard", icon: "⌂", label: "Dashboard" },
       { id: "academy-content", icon: "✦", label: "Weekly Content" },
-      { id: "academy-players", icon: "●", label: "Players" },
       { id: "academy-parents", icon: "♧", label: "Parent Access" },
       { id: "academy-preview", icon: "◉", label: "Child Preview" },
       { id: "academy-leaderboard", icon: "★", label: "Leaderboard" },
@@ -2490,7 +2489,7 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
 
   return (
     <div style={{ flex: 1, minWidth: 0, overflow: "auto", background: "#f7f9fc" }}>
-      <TopBar title="Academy Admin" sub={`${teamName} · ${weekLabel}`}>
+      <TopBar title="Academy Admin" sub={`${teamName} ${weekLabel}`}>
         <Btn label="Child Preview" variant="ghost" icon="◉" onClick={() => onNav("academy-preview")} />
         <Btn label="Manage Weekly Content" variant="primary" icon="＋" onClick={() => onNav("academy-content")} style={{ background: academyBlue, boxShadow: "0 5px 16px rgba(2,119,189,.22)" }} />
       </TopBar>
@@ -2527,7 +2526,7 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
         </section>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 18 }}>
-          <MetricCard label="Academy players" value="24" detail="in this squad" accent={academyBlue} icon="P" onClick={() => onNav("academy-players")} />
+          <MetricCard label="Academy players" value="24" detail="in this squad" accent={academyBlue} icon="P" onClick={() => onNav("academy-engagement")} />
           <MetricCard label="Parents linked" value="19" detail="5 invitations pending" trend={{ label: "79% linked", color: "#0369a1", bg: "#e0f2fe" }} accent="#0ea5e9" icon="↗" onClick={() => onNav("academy-parents")} />
           <MetricCard label="Active this week" value="17" detail="of 24 players" trend={{ label: "+8%", color: "#15803d", bg: "#dcfce7" }} accent={P.green} icon="✓" onClick={() => onNav("academy-engagement")} />
           <MetricCard label="Completion rate" value="68%" detail="across published practices" trend={{ label: "+12%", color: "#15803d", bg: "#dcfce7" }} accent={P.orange} icon="◒" onClick={() => onNav("academy-engagement")} />
@@ -3132,7 +3131,6 @@ function AcademyApprovals({ selectedTeam, weeklyPlan }) {
 
 function AcademySettings({ published, onNav }) {
   const items = [
-    { title: "Players", desc: "Add or remove Academy players for the selected Spraoi Club team.", label: "Manage", action: () => onNav?.("academy-players") },
     { title: "Parent Access", desc: "Copy the live team link and test parent/player onboarding.", label: "Open", action: () => onNav?.("academy-parents") },
     { title: "Weekly Content", desc: "Review the Coach plan, choose Football/Hurling skills and publish homework.", label: published ? "Published" : "Open", action: () => onNav?.("academy-content") },
     { title: "Coach Approvals", desc: "Verify attendance and coach-approved Academy activities.", label: "Open", action: () => onNav?.("academy-approvals") },
@@ -3143,7 +3141,6 @@ function AcademySettings({ published, onNav }) {
 
 function AcademySectionScreen({ screen, onNav, club, selectedTeam, weeklyPlan, planSessions, extras, skills, overrides, onSetOverride, onAddExtra, onUpdateExtra, onRemoveExtra, onMoveExtra, published, onPublish, parentRows, setParentRows }) {
   if (screen === "academy-content") return <AcademyWeeklyContent selectedTeam={selectedTeam} weeklyPlan={weeklyPlan} planSessions={planSessions} extras={extras} skills={skills} overrides={overrides} onSetOverride={onSetOverride} onAddExtra={onAddExtra} onUpdateExtra={onUpdateExtra} onRemoveExtra={onRemoveExtra} onMoveExtra={onMoveExtra} published={published} onPublish={onPublish}/>;
-  if (screen === "academy-players") return <AcademyPlayers selectedTeam={selectedTeam} club={club}/>;
   if (screen === "academy-parents") return <AcademyParents selectedTeam={selectedTeam} parentRows={parentRows} setParentRows={setParentRows}/>;
   if (screen === "academy-preview") return <AcademyPreview weeklyPlan={weeklyPlan} planSessions={planSessions} extras={extras} skills={skills} overrides={overrides} published={published} selectedTeam={selectedTeam}/>;
   if (screen === "academy-engagement") return <AcademyEngagement selectedTeam={selectedTeam}/>;

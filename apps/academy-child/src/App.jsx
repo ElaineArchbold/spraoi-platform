@@ -813,6 +813,32 @@ export default function App() {
     const completedRequiredEventCount = requiredEvents.filter((evt) => eventSignups.some((s) => s.event_id === evt.id && s.status === "approved")).length;
     const totalRequiredTasks = requiredSkillCount + requiredFitnessCount + requiredRecoveryCount + requiredEventCount;
     const completedRequiredTasks = completedSkillCount + completedFitnessCount + completedRecoveryCount + completedRequiredEventCount;
+    const completionPct = totalRequiredTasks > 0 ? Math.round((completedRequiredTasks / totalRequiredTasks) * 100) : 0;
+    const journeySteps = [
+      ...weekSkills.map((skill) => ({
+        id: `skill-${skill.id}`,
+        label: skill.name,
+        section: (skill.sport === "hurling" || skill.sport === "camogie") ? (isGirlsGroup ? "Camogie" : "Hurling") : "Football",
+        icon: (skill.sport === "hurling" || skill.sport === "camogie") ? "/hurling-icon.png" : "/football-icon.png",
+        color: (skill.sport === "hurling" || skill.sport === "camogie") ? C.hurling : C.football,
+        done: completedChallengeIds.has(skill.id),
+        pending: false,
+      })),
+      ...fitnessExercises.filter((ex) => (ex.activity_type || "exercise") !== "club" && (ex.activity_type || "exercise") !== "recovery").map((ex) => {
+        const claim = progress.find((p) => p.exercise_id === ex.id);
+        return { id:`activity-${ex.id}`, label:ex.title, section:"Fitness", icon:"/speed-mechanics-icon.png", color:C.athletic, done:Boolean(claim) && (claim.status || "approved") === "approved", pending:claim?.status === "pending" };
+      }),
+      ...fitnessExercises.filter((ex) => (ex.activity_type || "exercise") === "club").map((ex) => {
+        const claim = progress.find((p) => p.exercise_id === ex.id);
+        return { id:`activity-${ex.id}`, label:ex.title, section:"Bonus", icon:"/hurling-icon.png", color:SECTIONS.events.color, done:claim?.status === "approved", pending:claim?.status === "pending" };
+      }),
+      ...(requiredRecoveryCount ? [{ id:"academy-recovery", label:"Rest & Recovery", section:"Recovery", icon:SECTIONS.recovery.icon, color:SECTIONS.recovery.color, done:Boolean(completedRecoveryCount), pending:false }] : []),
+    ];
+    const nextJourneyStep = journeySteps.find((step) => !step.done && !step.pending) || journeySteps.find((step) => step.pending) || null;
+    const goToJourneyStep = (step) => {
+      if (!step?.id) return;
+      document.getElementById(step.id)?.scrollIntoView({ behavior:"smooth", block:"center" });
+    };
     return (<>
       {/* Academy weekly intro */}
       <div style={{ background: C.surface, border: `1.5px solid ${C.border}`, borderRadius: 18, padding: "16px", marginBottom: 16, boxShadow: "0 5px 18px rgba(15,23,42,0.07)" }}>
@@ -832,6 +858,39 @@ export default function App() {
         </div>
       </div>
 
+      {/* Weekly journey — Duolingo-inspired progression without changing the underlying completion model */}
+      {journeySteps.length > 0 && (
+        <div style={{ background:"linear-gradient(180deg,#ffffff 0%,#f7fbff 100%)", border:`1.5px solid ${C.primary}22`, borderRadius:22, padding:"16px 14px 18px", marginBottom:18, boxShadow:"0 8px 24px rgba(15,23,42,.07)" }}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,marginBottom:10}}>
+            <div>
+              <div style={{fontSize:9,fontWeight:900,textTransform:"uppercase",letterSpacing:".11em",color:C.textSecondary}}>Your weekly journey</div>
+              <div style={{fontFamily:"'League Spartan', sans-serif",fontSize:19,fontWeight:900,color:C.text,marginTop:2}}>{completedRequiredTasks === totalRequiredTasks && totalRequiredTasks > 0 ? "Week complete!" : "Keep moving forward"}</div>
+            </div>
+            <div style={{width:54,height:54,borderRadius:"50%",background:C.primary+"12",border:`4px solid ${C.primary}22`,display:"grid",placeItems:"center",fontFamily:"'League Spartan', sans-serif",fontSize:14,fontWeight:900,color:C.primary}}>{completionPct}%</div>
+          </div>
+          <div style={{height:9,borderRadius:99,background:C.surfaceAlt,overflow:"hidden",marginBottom:15}}><div style={{height:"100%",width:`${completionPct}%`,background:C.primary,borderRadius:99,transition:"width .35s ease"}} /></div>
+          <div style={{display:"grid",gap:2}}>
+            {journeySteps.map((step,index)=>{
+              const isNext = nextJourneyStep?.id === step.id;
+              return <div key={`${step.id}-${index}`} style={{display:"grid",gridTemplateColumns:"54px 1fr",gap:10,position:"relative",minHeight:72}}>
+                <div style={{position:"relative",display:"flex",justifyContent:"center"}}>
+                  {index < journeySteps.length-1 && <div style={{position:"absolute",top:46,bottom:-18,width:5,borderRadius:99,background:step.done?C.success:C.border}} />}
+                  <button onClick={()=>goToJourneyStep(step)} style={{width:48,height:48,borderRadius:"50%",border:`4px solid ${step.done?C.success:isNext?step.color:C.border}`,background:step.done?C.success:isNext?step.color:"#fff",display:"grid",placeItems:"center",cursor:"pointer",boxShadow:isNext?`0 5px 16px ${step.color}44`:"0 2px 8px rgba(15,23,42,.06)",zIndex:1,transform:isNext?"scale(1.06)":"none",transition:".2s"}}>
+                    {step.done ? <CheckCircle size={23} color="#fff"/> : step.pending ? <span style={{fontSize:18}}>⏳</span> : <img src={step.icon} alt="" style={{width:25,height:25,objectFit:"contain",filter:isNext?"brightness(0) invert(1)":"none"}}/>}
+                  </button>
+                </div>
+                <button onClick={()=>goToJourneyStep(step)} style={{alignSelf:"start",textAlign:"left",border:`1.5px solid ${step.done?C.success+"44":isNext?step.color+"55":C.border}`,background:step.done?C.successBg:isNext?step.color+"0D":"#fff",borderRadius:14,padding:"10px 12px",cursor:"pointer",boxShadow:isNext?"0 5px 16px rgba(15,23,42,.07)":"none"}}>
+                  <div style={{fontSize:9,fontWeight:900,textTransform:"uppercase",letterSpacing:".06em",color:step.done?C.success:step.color}}>{step.done?"Completed":step.pending?"Waiting for coach":isNext?"Up next":step.section}</div>
+                  <div style={{fontFamily:"'League Spartan', sans-serif",fontSize:14,fontWeight:900,color:C.text,marginTop:2}}>{step.label}</div>
+                  {!step.done && !step.pending && <div style={{fontSize:10,color:C.textSecondary,marginTop:2}}>{step.section} · Tap to continue</div>}
+                </button>
+              </div>;
+            })}
+          </div>
+          {nextJourneyStep && !nextJourneyStep.pending && <button onClick={()=>goToJourneyStep(nextJourneyStep)} style={{width:"100%",marginTop:12,padding:"12px 14px",border:0,borderRadius:12,background:C.primary,color:"#fff",fontFamily:"'League Spartan', sans-serif",fontSize:14,fontWeight:900,cursor:"pointer",boxShadow:"0 5px 14px rgba(26,92,45,.2)"}}>Continue · {nextJourneyStep.label} →</button>}
+        </div>
+      )}
+
       {/* This Week's Skills   from coach drills or library fallback */}
       {weekSkills.length > 0 && (
         <div style={{ marginBottom: 16 }}>
@@ -845,7 +904,7 @@ export default function App() {
             const firstOfSport = !previousSkills.some((item) => (item.sport === "hurling" || item.sport === "camogie") === isHurling);
             return (
               <div key={skill.id}>
-              <div style={{ background: C.surface, border: `2px solid ${sportColor}33`, borderTop:`5px solid ${sportColor}`, borderRadius: 18, marginBottom: 14, overflow: "hidden", position: "relative", boxShadow:"0 5px 16px rgba(15,23,42,0.07)" }}>
+              <div id={`skill-${skill.id}`} style={{ background: C.surface, border: `2px solid ${sportColor}33`, borderTop:`5px solid ${sportColor}`, borderRadius: 18, marginBottom: 14, overflow: "hidden", position: "relative", boxShadow:"0 5px 16px rgba(15,23,42,0.07)" }}>
                 {/* Header */}
                 <div style={{ padding: "14px 14px 10px", display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{ width: 38, height: 38, borderRadius: 10, background: sportColor + "18", border: `1.5px solid ${sportColor}33`, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -923,7 +982,7 @@ export default function App() {
           {fitnessExercises.filter((ex) => (ex.activity_type || "exercise") !== "club" && (ex.activity_type || "exercise") !== "recovery").map((ex) => {
             const done = progress.find((p) => p.exercise_id === ex.id && (p.status || "approved") === "approved");
             return (
-              <div key={ex.id} style={{ background: done ? C.successBg : C.athleticBg, border: `1.5px solid ${done ? C.success + "44" : C.athletic + "33"}`, borderRadius: 12, padding: "10px 14px", marginBottom: 8, display: "flex", alignItems: "center", gap: 10 }}>
+              <div id={`activity-${ex.id}`} key={ex.id} style={{ background: done ? C.successBg : C.athleticBg, border: `1.5px solid ${done ? C.success + "44" : C.athletic + "33"}`, borderRadius: 12, padding: "10px 14px", marginBottom: 8, display: "flex", alignItems: "center", gap: 10 }}>
                 <button onClick={() => completeExercise(ex)} title={done ? "Mark as not done" : "Mark complete"} style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}>
                   {done ? <CheckCircle size={22} color={C.success} /> : <Circle size={22} color={C.athletic} />}
                 </button>
@@ -949,7 +1008,7 @@ export default function App() {
             const claim = progress.find((p) => p.exercise_id === ex.id);
             const status = claim?.status || null;
             const needsCoach = (ex.verification_type || "self") === "coach";
-            return <div key={ex.id} style={{ background:C.surface,border:`2px solid ${status === "approved" ? C.success+"55" : status === "pending" ? "#f59e0b55" : SECTIONS.events.color+"33"}`,borderRadius:14,padding:14,marginBottom:8 }}>
+            return <div id={`activity-${ex.id}`} key={ex.id} style={{ background:C.surface,border:`2px solid ${status === "approved" ? C.success+"55" : status === "pending" ? "#f59e0b55" : SECTIONS.events.color+"33"}`,borderRadius:14,padding:14,marginBottom:8 }}>
               <div style={{display:"flex",justifyContent:"space-between",gap:10,alignItems:"flex-start"}}><div><div style={{fontFamily:"'League Spartan', sans-serif",fontWeight:800,fontSize:16,color:C.text}}>{ex.title}</div>{ex.description&&<div style={{fontSize:11,color:C.textSecondary,marginTop:3}}>{ex.description}</div>}</div><span style={{fontFamily:"'League Spartan', sans-serif",fontWeight:800,fontSize:12,color:C.gold}}>+{ex.xp_reward||15} XP</span></div>
               <div style={{fontSize:10,color:needsCoach?"#b45309":SECTIONS.events.color,fontWeight:700,margin:"8px 0"}}>{needsCoach?"Coach verified":"Player verified"}{ex.required?" · Required":" · Optional"}</div>
               {status === "approved" ? <div style={{padding:"10px 12px",borderRadius:10,background:C.successBg,color:C.success,fontWeight:800,fontSize:12,display:"flex",alignItems:"center",gap:7}}><CheckCircle size={18}/> {needsCoach?"Coach verified":"Completed"} · +{ex.xp_reward||15} XP</div> : status === "pending" ? <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,padding:"10px 12px",borderRadius:10,background:"#fff7ed",border:"1px solid #fdba7444"}}><div style={{fontWeight:800,fontSize:12,color:"#b45309"}}>⏳ Awaiting coach approval</div><button onClick={()=>completeExercise(ex)} style={{background:"none",border:"1px solid #fdba74",borderRadius:8,padding:"5px 9px",fontSize:9,fontWeight:700,color:"#b45309",cursor:"pointer"}}>Undo</button></div> : <button onClick={()=>completeExercise(ex)} style={{width:"100%",padding:11,borderRadius:10,border:"none",background:SECTIONS.events.color,color:"#fff",fontFamily:"'League Spartan', sans-serif",fontWeight:800,fontSize:13,cursor:"pointer"}}>{needsCoach?"I Attended":"I Did It"}</button>}
@@ -959,7 +1018,7 @@ export default function App() {
       )}
 
       {/* Rest & Recovery */}
-      <div style={{ background:C.surface, border:`1.5px solid ${SECTIONS.recovery.color}33`, borderTop:`5px solid ${SECTIONS.recovery.color}`, borderRadius:18, padding:14, marginBottom:16, boxShadow:"0 4px 14px rgba(15,23,42,0.06)" }}>
+      <div id="academy-recovery" style={{ background:C.surface, border:`1.5px solid ${SECTIONS.recovery.color}33`, borderTop:`5px solid ${SECTIONS.recovery.color}`, borderRadius:18, padding:14, marginBottom:16, boxShadow:"0 4px 14px rgba(15,23,42,0.06)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, paddingBottom:10, borderBottom:`1px solid ${SECTIONS.recovery.color}22` }}>
           <div style={{ width:42,height:42,borderRadius:12,background:SECTIONS.recovery.bg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}><img src={SECTIONS.recovery.icon} alt="" style={{ width: 30, height: 30, objectFit: "contain" }} /></div>
           <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 14, color: SECTIONS.recovery.color, textTransform: "uppercase", flex: 1 }}>Rest & Recovery</div>
@@ -1016,15 +1075,6 @@ export default function App() {
           <p style={{ fontSize: 12, color: C.textSecondary, margin: "6px 0 0" }}>Your coach hasn't set anything for this week yet. Check back soon!</p>
         </div>
       )}
-
-      {/* Try this next */}
-      {totalRequiredTasks > 0 && completedRequiredTasks < totalRequiredTasks && (() => {
-        const nextSkill = weekSkills.find((skill) => !completedChallengeIds.has(skill.id));
-        const nextFitness = fitnessExercises.find((ex) => !progress.some((p) => p.exercise_id === ex.id && (p.status || "approved") === "approved"));
-        const nextRequiredEvent = requiredEvents.find((evt) => !eventSignups.some((s) => s.event_id === evt.id && s.status === "approved"));
-        const nextLabel = nextSkill?.name || nextSkill?.title || nextFitness?.title || nextRequiredEvent?.title || (!completedRecoveryCount ? "Rest & Recovery" : null);
-        return nextLabel ? <div style={{ background: "#fff", border: `1.5px solid ${C.primary}22`, borderRadius: 16, padding: "13px 15px", marginTop: 12, display: "flex", alignItems: "center", gap: 10, boxShadow: "0 4px 14px rgba(15,23,42,.05)" }}><div style={{ width: 34, height: 34, borderRadius: 10, background: C.primary+"12", display: "grid", placeItems: "center" }}><Target size={18} color={C.primary}/></div><div><div style={{ fontSize: 9, fontWeight: 800, textTransform: "uppercase", color: C.textSecondary }}>Try this next</div><div style={{ fontSize: 12, fontWeight: 800, color: C.primary, marginTop: 2 }}>{nextLabel}</div></div></div> : null;
-      })()}
 
       {/* All done */}
       {totalRequiredTasks > 0 && completedRequiredTasks === totalRequiredTasks && (

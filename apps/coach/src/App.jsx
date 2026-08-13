@@ -370,18 +370,32 @@ function StatCard({ label, value, sub, color = P.p600, icon }) {
 /* ============================================================
    DASHBOARD SCREEN — matches Figma design
    ============================================================ */
-function DashboardScreen({ club, ageGroups, planSessions, weeklyPlan, upcomingSessions, onNav, onOpenSession, allActivities, selectedTeam, favouriteIds = [] }) {
+function DashboardScreen({ club, ageGroups, planSessions, weeklyPlan, upcomingSessions, onNav, onOpenSession, allActivities, selectedTeam, favouriteIds = [], coaches = [] }) {
   const today = new Date().toLocaleDateString("en-IE", { weekday: "long", day: "numeric", month: "short", year: "numeric" });
   // Dashboard "Upcoming" means today/future only. The Sessions page still shows full history.
   const now = new Date();
   const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const teamSessions = (selectedTeam
-    ? (upcomingSessions || []).filter((s) => s.plan?.age_group_id === selectedTeam.id)
+    ? (upcomingSessions || []).filter((s) => String(s.plan?.age_group_id) === String(selectedTeam.id))
     : (upcomingSessions || []))
-    .filter((s) => s.session_date && s.session_date >= todayKey)
+    .filter((s) => {
+      if (!s.session_date) return false;
+      const raw = String(s.session_date).slice(0, 10);
+      const d = new Date(`${raw}T00:00:00`);
+      return !Number.isNaN(d.getTime()) && d >= startOfToday;
+    })
     .sort((a, b) => String(a.session_date).localeCompare(String(b.session_date)));
   const favouriteDrills = (allActivities || []).filter((activity) => favouriteIds.includes(activity.id));
+  const recentDrills = Array.from(new Map((planSessions || [])
+    .slice()
+    .sort((a,b)=>String(b.session_date||"").localeCompare(String(a.session_date||"")))
+    .flatMap(sess => (sess.session_activities || []).map(sa => sa.activity).filter(Boolean))
+    .map(a => [a.id || a.title, a])).values()).slice(0, 4);
   const [panelPlayers, setPanelPlayers] = useState([]);
+  const [coachLeave, setCoachLeave] = useState([]);
+  const [showLeaveForm, setShowLeaveForm] = useState(false);
+  const [leaveDraft, setLeaveDraft] = useState({ coach_id: "", start_date: "", end_date: "", note: "" });
 
   useEffect(() => {
     let cancelled = false;
@@ -401,6 +415,42 @@ function DashboardScreen({ club, ageGroups, planSessions, weeklyPlan, upcomingSe
     return () => { cancelled = true; };
   }, [selectedTeam?.id]);
 
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadCoachLeave() {
+      if (!club?.id) { setCoachLeave([]); return; }
+      const { data, error } = await supabase
+        .from("coach_unavailability")
+        .select("*")
+        .eq("club_id", club.id)
+        .gte("end_date", todayKey)
+        .order("start_date", { ascending: true });
+      if (!cancelled) {
+        if (error) console.warn("Could not load coach holidays", error.message);
+        setCoachLeave(data || []);
+      }
+    }
+    loadCoachLeave();
+    return () => { cancelled = true; };
+  }, [club?.id, todayKey]);
+
+  async function saveCoachLeave() {
+    if (!club?.id || !leaveDraft.coach_id || !leaveDraft.start_date || !leaveDraft.end_date) return;
+    const payload = { club_id: club.id, coach_id: leaveDraft.coach_id, start_date: leaveDraft.start_date, end_date: leaveDraft.end_date, note: leaveDraft.note || null };
+    const { data, error } = await supabase.from("coach_unavailability").insert(payload).select().single();
+    if (error) { alert("Could not save coach holiday: " + error.message); return; }
+    setCoachLeave(prev => [...prev, data].sort((a,b)=>String(a.start_date).localeCompare(String(b.start_date))));
+    setLeaveDraft({ coach_id: "", start_date: "", end_date: "", note: "" });
+    setShowLeaveForm(false);
+  }
+
+  async function removeCoachLeave(id) {
+    const { error } = await supabase.from("coach_unavailability").delete().eq("id", id);
+    if (error) { alert("Could not remove coach holiday: " + error.message); return; }
+    setCoachLeave(prev => prev.filter(x => x.id !== id));
+  }
+
   const panelGroups = [
     { key: "hurling-a", label: selectedTeam?.gender === "girls" ? "Camogie A" : "Hurling A", code: "hurling_panel", panel: "A" },
     { key: "hurling-b", label: selectedTeam?.gender === "girls" ? "Camogie B" : "Hurling B", code: "hurling_panel", panel: "B" },
@@ -409,6 +459,7 @@ function DashboardScreen({ club, ageGroups, planSessions, weeklyPlan, upcomingSe
   ];
 
   return (
+    <>
     <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
       <style>{`
         @media (max-width: 900px) {
@@ -497,24 +548,20 @@ function DashboardScreen({ club, ageGroups, planSessions, weeklyPlan, upcomingSe
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
-          {/* Favourite Drills */}
+          {/* Coaches */}
           <div style={{ background: P.white, borderRadius: 14, padding: 18, border: `1px solid ${P.line}`, boxShadow: Sh.card }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 800, color: P.ink }}>Favourite Drills</div>
-              <button onClick={() => onNav("coach-drills")} style={{ background: "none", border: "none", fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.p600, cursor: "pointer" }}>View All</button>
+              <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 800, color: P.ink }}>Coaches</div>
+              <button onClick={() => setShowLeaveForm(true)} style={{ background: "none", border: "none", fontFamily: F.body, fontSize: 11, fontWeight: 800, color: P.p600, cursor: "pointer" }}>+ Holiday</button>
             </div>
-            {favouriteDrills.length === 0 ? (
-              <div style={{ fontFamily: F.body, fontSize: 12, color: P.muted, padding: "10px 0" }}>Tap the heart on a drill to keep it here.</div>
-            ) : favouriteDrills.slice(0, 4).map((a, i) => (
-              <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderTop: i > 0 ? `1px solid ${P.line}` : "none" }}>
-                {(() => { const drillIcon = getCategoryIcon(a); return <div style={{ width: 36, height: 36, borderRadius: 10, background: `${drillIcon.color}12`, display: "grid", placeItems: "center", flexShrink: 0 }}><img src={drillIcon.icon} alt="" style={{ width: 27, height: 27, objectFit: "contain" }} /></div>; })()}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: F.body, fontSize: 12, fontWeight: 700, color: P.ink, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.title}</div>
-                  <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>{a.skill?.name || a.category || ""}</div>
-                </div>
-                <Btn label="Use" variant="ghost" style={{ height: 26, fontSize: 10, padding: "0 8px" }} onClick={() => onNav("coach-builder")} />
-              </div>
-            ))}
+            {(coaches || []).length === 0 ? <div style={{ fontFamily:F.body,fontSize:12,color:P.muted }}>No coaches assigned yet.</div> : (coaches || []).slice(0,5).map((coach,i)=>{
+              const leave = coachLeave.find(x => String(x.coach_id) === String(coach.id));
+              return <div key={coach.id} style={{display:"flex",alignItems:"center",gap:9,padding:"9px 0",borderTop:i?`1px solid ${P.line}`:"none"}}>
+                <div style={{width:30,height:30,borderRadius:"50%",background:`${P.p600}15`,display:"grid",placeItems:"center",fontFamily:F.display,fontSize:11,fontWeight:900,color:P.p600}}>{(coach.name||"?")[0]}</div>
+                <div style={{flex:1,minWidth:0}}><div style={{fontFamily:F.body,fontSize:12,fontWeight:800,color:P.ink}}>{coach.name}</div><div style={{fontFamily:F.body,fontSize:9,color:leave?P.orange:P.muted,marginTop:2}}>{leave ? `Away ${new Date(`${leave.start_date}T12:00:00`).toLocaleDateString("en-IE",{day:"numeric",month:"short"})}–${new Date(`${leave.end_date}T12:00:00`).toLocaleDateString("en-IE",{day:"numeric",month:"short"})}` : "Available"}</div></div>
+                {leave && <button title="Remove holiday" onClick={()=>removeCoachLeave(leave.id)} style={{border:0,background:"none",color:P.muted,cursor:"pointer",fontSize:16}}>×</button>}
+              </div>;
+            })}
           </div>
 
           {/* Recent Drills */}
@@ -523,53 +570,47 @@ function DashboardScreen({ club, ageGroups, planSessions, weeklyPlan, upcomingSe
               <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 800, color: P.ink }}>Recent Drills</div>
               <button onClick={() => onNav("coach-drills")} style={{ background: "none", border: "none", fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.p600, cursor: "pointer" }}>View All</button>
             </div>
-            {(allActivities || []).slice(0, 3).map((a, i) => (
-              <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderTop: i > 0 ? `1px solid ${P.line}` : "none" }}>
+            {recentDrills.length === 0 ? <div style={{fontFamily:F.body,fontSize:12,color:P.muted}}>No drills used in this week's sessions yet.</div> : recentDrills.map((a, i) => (
+              <div key={a.id || a.title} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderTop: i > 0 ? `1px solid ${P.line}` : "none" }}>
                 {(() => { const drillIcon = getCategoryIcon(a); return <div style={{ width: 36, height: 36, borderRadius: 10, background: `${drillIcon.color}12`, display: "grid", placeItems: "center", flexShrink: 0 }}><img src={drillIcon.icon} alt="" style={{ width: 27, height: 27, objectFit: "contain" }} /></div>; })()}
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontFamily: F.body, fontSize: 12, fontWeight: 700, color: P.ink }}>{a.title}</div>
-                  <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>{a.skill?.name || a.category || ""}</div>
-                </div>
-                <span style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, color: P.p600, padding: "2px 8px", background: `${P.p600}12`, borderRadius: 4 }}>{a.difficulty || ""}</span>
-                <span style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>⏱ {a.duration_mins || "?"}min</span>
-                <Btn label="Use Drill" variant="ghost" style={{ height: 26, fontSize: 10, padding: "0 8px" }} onClick={() => onNav("coach-builder")} />
+                <div style={{ flex: 1, minWidth:0 }}><div style={{ fontFamily: F.body, fontSize: 12, fontWeight: 700, color: P.ink, whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>{a.title}</div><div style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>{a.skill?.name || a.category || ""}</div></div>
+                <Btn label="Use" variant="ghost" style={{ height: 26, fontSize: 10, padding: "0 8px" }} onClick={() => onNav("coach-builder")} />
               </div>
             ))}
           </div>
 
-          {/* Coaches & Teams */}
+          {/* Teams */}
           <div style={{ background: P.white, borderRadius: 14, padding: 18, border: `1px solid ${P.line}`, boxShadow: Sh.card }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 800, color: P.ink }}>Coaches & Teams</div>
-              <button onClick={() => onNav("coach-players")} style={{ background: "none", border: "none", fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.p600, cursor: "pointer" }}>Manage</button>
+              <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 800, color: P.ink }}>Teams</div>
+              <button onClick={() => onNav("coach-players")} style={{ background: "none", border: "none", fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.p600, cursor: "pointer" }}>Manage Players</button>
             </div>
-            <div style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", marginBottom: 6 }}>Coaches</div>
-            <div style={{ marginBottom: 12 }}>
-              {["Donal", "Shane", "Mark", "Paul", "Sarah", "Emma", "Claire", "Lisa"].slice(0, 4).map((name, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0" }}>
-                  <div style={{ width: 22, height: 22, borderRadius: "50%", background: `${P.p600}15`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F.display, fontSize: 9, fontWeight: 800, color: P.p600 }}>{name[0]}</div>
-                  <span style={{ fontFamily: F.body, fontSize: 11, color: P.ink }}>{name}</span>
-                </div>
-              ))}
-            </div>
-            <div style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", marginBottom: 6 }}>Team Panels</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
               {panelGroups.map((group) => {
                 const members = panelPlayers.filter((p) => p[group.code] === group.panel);
-                return (
-                  <details key={group.key} style={{ background: P.soft, borderRadius: 8, padding: "4px 8px" }}>
-                    <summary style={{ fontFamily: F.body, fontSize: 11, fontWeight: 800, color: P.ink, cursor: "pointer", padding: "5px 0" }}>{group.label} ({members.length})</summary>
-                    <div style={{ padding: "4px 0 7px", fontFamily: F.body, fontSize: 10, color: P.muted }}>
-                      {members.length ? members.map((p) => <div key={p.id} style={{ padding: "3px 0" }}>{p.name}</div>) : "No players assigned yet."}
-                    </div>
-                  </details>
-                );
+                return <details key={group.key} style={{ background: P.soft, borderRadius: 9, padding: "5px 9px" }}>
+                  <summary style={{ fontFamily:F.body,fontSize:11,fontWeight:900,color:P.ink,cursor:"pointer",padding:"5px 0" }}>{group.label} <span style={{color:P.muted}}>({members.length})</span></summary>
+                  <div style={{padding:"4px 0 6px",fontFamily:F.body,fontSize:10,color:P.muted}}>{members.length ? members.map(p=><div key={p.id} style={{padding:"3px 0"}}>{p.name}</div>) : "No players assigned yet."}</div>
+                </details>;
               })}
             </div>
           </div>
         </div>
+
+        {showLeaveForm && <div onClick={()=>setShowLeaveForm(false)} style={{position:"fixed",inset:0,zIndex:5000,background:"rgba(15,23,42,.5)",display:"grid",placeItems:"center",padding:18}}>
+          <div onClick={e=>e.stopPropagation()} style={{width:"min(460px,100%)",background:P.white,borderRadius:18,padding:20,boxShadow:"0 30px 80px rgba(15,23,42,.28)"}}>
+            <div style={{fontFamily:F.display,fontSize:20,fontWeight:900,color:P.ink}}>Add coach holiday</div>
+            <div style={{display:"grid",gap:10,marginTop:14}}>
+              <select value={leaveDraft.coach_id} onChange={e=>setLeaveDraft({...leaveDraft,coach_id:e.target.value})} style={{height:40,border:`1px solid ${P.line}`,borderRadius:9,padding:"0 10px"}}><option value="">Choose coach</option>{(coaches||[]).map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><label style={{fontFamily:F.body,fontSize:10,color:P.muted}}>From<input type="date" value={leaveDraft.start_date} onChange={e=>setLeaveDraft({...leaveDraft,start_date:e.target.value})} style={{display:"block",width:"100%",height:38,marginTop:4,border:`1px solid ${P.line}`,borderRadius:9,padding:"0 8px",boxSizing:"border-box"}}/></label><label style={{fontFamily:F.body,fontSize:10,color:P.muted}}>To<input type="date" value={leaveDraft.end_date} onChange={e=>setLeaveDraft({...leaveDraft,end_date:e.target.value})} style={{display:"block",width:"100%",height:38,marginTop:4,border:`1px solid ${P.line}`,borderRadius:9,padding:"0 8px",boxSizing:"border-box"}}/></label></div>
+              <input placeholder="Note (optional)" value={leaveDraft.note} onChange={e=>setLeaveDraft({...leaveDraft,note:e.target.value})} style={{height:40,border:`1px solid ${P.line}`,borderRadius:9,padding:"0 10px"}}/>
+            </div>
+            <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:16}}><Btn label="Cancel" variant="ghost" onClick={()=>setShowLeaveForm(false)}/><Btn label="Save holiday" variant="primary" onClick={saveCoachLeave}/></div>
+          </div>
+        </div>}
       </div>
     </div>
+    </>
   );
 }
 
@@ -3830,7 +3871,7 @@ export default function App() {
       {!showMobile && <Sidebar activeModule={activeModule} setActiveModule={setActiveModule} activeScreen={screen} onNav={setScreen} club={club} selectedTeam={selectedTeam} onSelectTeam={selectTeam} enabledModules={enabledModules} onLogout={logout} ageGroups={ageGroups} myTeams={myTeams} onShowProfile={() => setShowProfile(true)} />}
 
       {/* COACH screens */}
-      {screen === "coach-dashboard" && <DashboardScreen club={club} ageGroups={ageGroups} planSessions={planSessions} weeklyPlan={weeklyPlan} upcomingSessions={upcomingSessions} onNav={setScreen} onOpenSession={openSession} allActivities={allActivities} selectedTeam={selectedTeam} favouriteIds={favouriteIds} />}
+      {screen === "coach-dashboard" && <DashboardScreen club={club} ageGroups={ageGroups} planSessions={planSessions} weeklyPlan={weeklyPlan} upcomingSessions={upcomingSessions} onNav={setScreen} onOpenSession={openSession} allActivities={allActivities} selectedTeam={selectedTeam} favouriteIds={favouriteIds} coaches={coaches} />}
       {screen === "coach-planner" && <PlannerScreen onNav={setScreen} club={club} ageGroups={ageGroups} upcomingSessions={upcomingSessions} onOpenSession={openSession} allActivities={allActivities} coaches={coaches} skills={skills} diagramMap={diagramMap} selectedTeam={selectedTeam} />}
       {screen === "coach-sessions" && <SessionsListScreen club={club} selectedTeam={selectedTeam} onOpenSession={openSession} onNav={setScreen} onEditSession={editSession} />}
       {screen === "coach-builder" && <SessionBuilderScreen club={club} ageGroups={ageGroups} skills={skills} allActivities={allActivities} coaches={coaches} diagramMap={diagramMap} selectedTeam={selectedTeam} onNav={setScreen} editingSession={editingSession} onClearEdit={() => setEditingSession(null)} />}
