@@ -2493,6 +2493,10 @@ function SessionsListScreen({ club, selectedTeam, onOpenSession, onNav, onEditSe
    CLUB PERMISSIONS — RBAC matrix and user role management
    ============================================================ */
 
+const CLUB_RED = "#d32f2f";
+const CLUB_RED_DARK = "#a91f1f";
+const CLUB_SOFT = "#fff1f1";
+
 function ClubPage({ title, sub, children, actions }) {
   return (
     <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
@@ -4127,29 +4131,51 @@ function AcademySectionScreen({ screen, onNav, club, selectedTeam, weeklyPlan, p
 function ModulePlaceholder({ module, screen, club }) {
   const screenLabel = module.nav.find((n) => n.id === screen)?.label || screen;
   const clubName = club?.name || "Club Spraoi";
+  const isComingSoonModule = module.label === "Plus" || module.label === "Connect";
+
+  if (isComingSoonModule) {
+    const connectText = module.label === "Connect";
+    return (
+      <div style={{ flex: 1, minHeight: "100vh", overflow: "auto", background: `linear-gradient(180deg, ${module.color}12 0%, ${P.soft} 380px)` }}>
+        <TopBar title={module.label} sub={`${module.label} · ${clubName}`} />
+        <div style={{ minHeight: "calc(100vh - 92px)", display: "grid", placeItems: "center", padding: "44px 24px" }}>
+          <div style={{ width: "min(780px, 100%)", textAlign: "center", padding: "68px 38px", borderRadius: 30, background: `linear-gradient(145deg, ${module.color}18 0%, ${module.color}40 100%)`, border: `2px solid ${module.color}42`, boxShadow: "0 20px 54px rgba(16,36,62,.11)" }}>
+            <div style={{ width: 118, height: 118, borderRadius: 32, margin: "0 auto 26px", background: "#fff", display: "grid", placeItems: "center", boxShadow: "0 14px 34px rgba(16,36,62,.15)" }}>
+              <img src={module.icon} alt="" style={{ width: 82, height: 82, objectFit: "contain" }} />
+            </div>
+
+            <div style={{ display: "inline-block", padding: "8px 16px", borderRadius: 999, background: module.color, color: connectText ? "#332800" : "#fff", fontFamily: F.body, fontSize: 12, fontWeight: 900, letterSpacing: ".12em", textTransform: "uppercase", marginBottom: 20 }}>
+              Spraoi {module.label}
+            </div>
+
+            <div style={{ fontFamily: F.display, fontSize: "clamp(44px, 7vw, 78px)", lineHeight: .94, fontWeight: 1000, letterSpacing: "-.05em", color: P.ink }}>
+              COMING SOON
+            </div>
+
+            <div style={{ margin: "22px auto 0", maxWidth: 540, fontFamily: F.body, fontSize: 15, lineHeight: 1.65, color: P.muted }}>
+              {module.label === "Plus"
+                ? "Challenges, leaderboards, rewards and seasonal club campaigns are on the way."
+                : "Club messaging, audiences, responses and communication tools are on the way."}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ flex: 1, overflow: "auto", background: `linear-gradient(180deg, ${module.color}0d 0%, ${P.soft} 320px)` }}>
       <TopBar title={screenLabel} sub={`${module.label} · ${clubName}`} />
       <div style={{ padding: "28px", maxWidth: 1180, margin: "0 auto" }}>
-        <div style={{ borderRadius: 22, padding: "28px 30px", background: `linear-gradient(135deg, ${module.color} 0%, ${module.color}c9 100%)`, color: module.id === "connect" ? "#332800" : "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24, boxShadow: `0 18px 40px ${module.color}30`, marginBottom: 22 }}>
+        <div style={{ borderRadius: 22, padding: "28px 30px", background: `linear-gradient(135deg, ${module.color} 0%, ${module.color}c9 100%)`, color: module.label === "Connect" ? "#332800" : "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24, boxShadow: `0 18px 40px ${module.color}30`, marginBottom: 22 }}>
           <div style={{ maxWidth: 650 }}>
             <div style={{ fontFamily: F.body, fontSize: 10, fontWeight: 900, letterSpacing: ".14em", textTransform: "uppercase", opacity: .72, marginBottom: 8 }}>{module.label} module</div>
             <div style={{ fontFamily: F.display, fontSize: 30, fontWeight: 900, lineHeight: 1.05, marginBottom: 8 }}>{screenLabel}</div>
-            {module.label === "Connect" && <div style={{display:"inline-flex",margin:"0 0 10px",padding:"5px 9px",borderRadius:999,background:"rgba(255,255,255,.72)",color:"#5b4600",fontFamily:F.body,fontSize:10,fontWeight:900,textTransform:"uppercase"}}>Coming soon</div>}
             <div style={{ fontFamily: F.body, fontSize: 14, lineHeight: 1.55, opacity: .88 }}>{module.tagline}</div>
           </div>
           <div style={{ width: 120, height: 120, borderRadius: 30, background: "#fff", border: "1px solid rgba(15,23,42,.08)", display: "grid", placeItems: "center", flexShrink: 0, boxShadow: "0 16px 34px rgba(15,23,42,.16)" }}>
             <img src={module.icon} alt={`${module.label} icon`} style={{ width: 88, height: 88, objectFit: "contain" }} />
           </div>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
-          {module.nav.slice(0, 4).map((item, index) => (
-            <div key={item.id} style={{ background: P.white, border: `1px solid ${P.line}`, borderRadius: 16, padding: 18, boxShadow: Sh.card }}>
-              <div style={{ width: 38, height: 38, borderRadius: 11, display: "grid", placeItems: "center", background: `${module.color}12`, color: module.color, fontSize: 18, fontWeight: 900, marginBottom: 13 }}>{item.icon}</div>
-              <div style={{ fontFamily: F.display, fontWeight: 900, fontSize: 15, color: P.ink }}>{item.label}</div>
-              <div style={{ fontFamily: F.body, color: P.muted, fontSize: 11, lineHeight: 1.5, marginTop: 5 }}>{index === 0 ? "Your overview and priority actions will live here." : "This connected workspace is ready for the next build phase."}</div>
-            </div>
-          ))}
         </div>
       </div>
     </div>
