@@ -29,6 +29,14 @@ const Sh = {
    CATEGORY ICON MAPPING — sport + category dual tags on drill cards
    ============================================================ */
 
+function mondayKeyForDate(value) {
+  const d = value ? new Date(`${String(value).slice(0,10)}T12:00:00`) : new Date();
+  if (Number.isNaN(d.getTime())) return null;
+  const diff = d.getDay() === 0 ? -6 : 1 - d.getDay();
+  d.setDate(d.getDate() + diff);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+
 const ACTIVE_TEAM_KEY = "spraoi_active_team_id";
 const ACTIVE_CLUB_KEY = "spraoi_active_club_id";
 const ACTIVE_CONTEXT_EVENT = "spraoi-active-context";
@@ -95,7 +103,7 @@ function getCategoryIcon(activity) {
 const APP_MODULE = import.meta.env.VITE_APP_MODULE || "coach";
 const MODULE_URLS = {
   coach: import.meta.env.VITE_COACH_URL || "http://localhost:5173",
-  academy: import.meta.env.VITE_ACADEMY_ADMIN_URL || "http://localhost:5176",
+  academy: import.meta.env.VITE_ACADEMY_URL || import.meta.env.VITE_ACADEMY_ADMIN_URL || "http://localhost:5176",
   club: import.meta.env.VITE_CLUB_URL || "http://localhost:5174",
   cup: import.meta.env.VITE_CUP_URL || "http://localhost:5177",
 };
@@ -216,12 +224,19 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
   const cupSidebarEvent = cupSidebarEvents.find((e) => e.id === cupSidebarEventId) || null;
 
   function openModule(key, module) {
+    if (!enabledModules.includes(key)) {
+      setActiveModule(key);
+      onNav(`access-denied-${key}`);
+      return;
+    }
+
     if (key === "cup" && activeModule !== "cup") {
       cupSetActiveEvent("");
       setCupSidebarEventId("");
     }
+
     setActiveModule(key);
-    onNav(enabledModules.includes(key) ? module.nav[0].id : `access-denied-${key}`);
+    onNav(module.nav[0].id);
   }
 
   return (
@@ -510,10 +525,110 @@ function StatCard({ label, value, sub, color = P.p600, icon }) {
     <div style={{ background: P.white, borderRadius: 14, padding: "16px 18px", border: `1px solid ${P.line}`, borderTop: `3px solid ${color}`, boxShadow: Sh.card }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
         <span style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</span>
-        {icon && <span style={{ fontSize: 16 }}>{icon}</span>}
+        {icon && (String(icon).startsWith("/") ? <img src={icon} alt="" style={{ width: 24, height: 24, objectFit: "contain" }} /> : <span style={{ fontSize: 16 }}>{icon}</span>)}
       </div>
       <div style={{ fontFamily: F.display, fontSize: 28, fontWeight: 900, color: P.ink, letterSpacing: "-0.04em", lineHeight: 1 }}>{value}</div>
       {sub && <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 6 }}>{sub}</div>}
+    </div>
+  );
+}
+
+/* ============================================================
+   DASHBOARD SCREEN — matches Figma design
+   ============================================================ */
+
+function AdminHomeScreen({ club, selectedTeam, enabledModules = [] }) {
+  const launchModules = ["coach", "academy", "cup", "club"];
+
+  function openModule(key) {
+    if (!enabledModules.includes(key)) return;
+    const url = MODULE_URLS[key];
+    if (url) window.location.assign(url);
+  }
+
+  return (
+    <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
+      <div style={{
+        padding: "30px 32px 26px",
+        background: "linear-gradient(135deg,#f7fbff 0%,#ffffff 56%,#f7f1ff 100%)",
+        borderBottom: `1px solid ${P.line}`,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <img src="/spraoi-logo.png" alt="Spraoi Sports" style={{ width: 74, height: 74, objectFit: "contain" }} />
+          <div>
+            <div style={{ fontFamily: F.body, fontSize: 10, fontWeight: 900, color: P.p600, textTransform: "uppercase", letterSpacing: ".12em" }}>
+              Spraoi Sports
+            </div>
+            <div style={{ fontFamily: F.display, fontSize: 30, fontWeight: 900, color: P.ink, marginTop: 3 }}>
+              Admin
+            </div>
+            <div style={{ fontFamily: F.body, fontSize: 12, color: P.muted, marginTop: 5 }}>
+              {club?.name || "Club"}{selectedTeam?.label ? ` · ${selectedTeam.label}` : ""}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ padding: "24px 28px", maxWidth: 1180, margin: "0 auto" }}>
+        <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 900, color: P.ink, marginBottom: 5 }}>
+          Open a module
+        </div>
+        <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginBottom: 18 }}>
+          Each module now opens its own app so there is only one source of truth for its screens and features.
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 14 }}>
+          {launchModules.map((key) => {
+            const module = MODULES[key];
+            const enabled = enabledModules.includes(key);
+            return (
+              <button
+                key={key}
+                onClick={() => openModule(key)}
+                disabled={!enabled}
+                style={{
+                  border: `1px solid ${module.color}32`,
+                  borderTop: `4px solid ${module.color}`,
+                  borderRadius: 16,
+                  padding: 18,
+                  background: "#fff",
+                  boxShadow: Sh.card,
+                  cursor: enabled ? "pointer" : "not-allowed",
+                  opacity: enabled ? 1 : .55,
+                  textAlign: "left",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ width: 54, height: 54, borderRadius: 15, display: "grid", placeItems: "center", background: `${module.color}10`, flexShrink: 0 }}>
+                    <img src={module.icon} alt="" style={{ width: 40, height: 40, objectFit: "contain" }} />
+                  </div>
+                  <div>
+                    <div style={{ fontFamily: F.display, fontSize: 17, fontWeight: 900, color: P.ink }}>{module.label}</div>
+                    <div style={{ fontFamily: F.body, fontSize: 10, lineHeight: 1.4, color: P.muted, marginTop: 3 }}>{module.tagline}</div>
+                  </div>
+                </div>
+                <div style={{ fontFamily: F.body, fontSize: 10, fontWeight: 800, color: module.color, marginTop: 15 }}>
+                  {enabled ? `Open ${module.label} →` : "Access unavailable"}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{
+          marginTop: 20,
+          padding: "13px 15px",
+          borderRadius: 12,
+          background: "#fff",
+          border: `1px solid ${P.line}`,
+          fontFamily: F.body,
+          fontSize: 10,
+          color: P.muted,
+          lineHeight: 1.5,
+        }}>
+          Admin keeps the shared login, club/team context, permissions and profile. Coach, Academy, Cup and Club manage their own screens and data.
+        </div>
+      </div>
     </div>
   );
 }
@@ -791,7 +906,8 @@ function DashboardScreen({ club, ageGroups, planSessions, weeklyPlan, upcomingSe
 /* ============================================================
    PLACEHOLDER SCREENS
    ============================================================ */
-function PlannerScreen({ onNav, club, ageGroups, upcomingSessions, onOpenSession, allActivities, coaches, skills, diagramMap, selectedTeam, canEdit }) {
+
+function PlannerScreen({ onNav, club, ageGroups, upcomingSessions, onOpenSession, allActivities, coaches, skills, diagramMap, selectedTeam }) {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear] = useState(new Date().getFullYear());
   const [buildingDate, setBuildingDate] = useState(null); // date string if building a session
@@ -833,7 +949,6 @@ function PlannerScreen({ onNav, club, ageGroups, upcomingSessions, onOpenSession
     if (sessions && sessions.length > 0) {
       onOpenSession(sessions[0]);
     } else {
-      if (!canEdit) return;
       const dateStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
       setBuildingDate(dateStr);
       setBuildDrills([]);
@@ -845,15 +960,20 @@ function PlannerScreen({ onNav, club, ageGroups, upcomingSessions, onOpenSession
   }
 
   async function saveSession(forceSave = false) {
-    if (!canEdit) return;
     if (!selectedTeam || buildDrills.length === 0 || saving) return;
     setSaving(true);
-    const { data: existing } = await supabase.from("weekly_plans").select("id, week_number").eq("age_group_id", selectedTeam.id).order("week_number", { ascending: false }).limit(1);
-    const nextWeek = (existing?.[0]?.week_number || 0) + 1;
-    const { data: plan } = await supabase.from("weekly_plans").insert({
-      club_id: club.id, age_group_id: selectedTeam.id, week_number: nextWeek, season: "2026-27",
-      mode: selectedTeam.gender === "girls" ? "camogie" : "hurling", starts_at: buildingDate, published: true,
-    }).select().single();
+    const weekStart = mondayKeyForDate(buildingDate);
+    let { data: existingWeek } = await supabase.from("weekly_plans").select("*").eq("age_group_id", selectedTeam.id).eq("starts_at", weekStart).order("created_at", { ascending: true }).limit(1);
+    let plan = existingWeek?.[0] || null;
+    if (!plan) {
+      const { data: latest } = await supabase.from("weekly_plans").select("week_number").eq("age_group_id", selectedTeam.id).order("week_number", { ascending: false }).limit(1);
+      const nextWeek = (latest?.[0]?.week_number || 0) + 1;
+      const { data: created } = await supabase.from("weekly_plans").insert({
+        club_id: club.id, age_group_id: selectedTeam.id, week_number: nextWeek, season: "2026-27",
+        mode: selectedTeam.gender === "girls" ? "camogie" : "hurling", starts_at: weekStart, published: false,
+      }).select().single();
+      plan = created || null;
+    }
     if (plan) {
       const totalTime = buildDrills.reduce((t, d) => t + (d.duration_mins || 0), 0);
       const { data: sess } = await supabase.from("sessions").insert({
@@ -878,9 +998,8 @@ function PlannerScreen({ onNav, club, ageGroups, upcomingSessions, onOpenSession
   return (
     <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
       <TopBar title="Planner" sub={`${fullMonths[selectedMonth]} ${selectedYear}`}>
-        {canEdit && <Btn label="+ New Session" variant="primary" onClick={() => { const d = new Date(); clickDate(d.getDate()); }} />}
+        <Btn label="+ New Session" variant="primary" onClick={() => { const d = new Date(); clickDate(d.getDate()); }} />
       </TopBar>
-      {!canEdit && <CoachReadOnlyNotice message="You can open and review existing sessions, but only a Lead Coach or Club Admin can add a new session." />}
       <div style={{ padding: "20px 24px", display: "flex", gap: 20 }}>
         {/* Calendar */}
         <div style={{ flex: 1 }}>
@@ -979,6 +1098,7 @@ function PlannerScreen({ onNav, club, ageGroups, upcomingSessions, onOpenSession
     </div>
   );
 }
+
 function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches, diagramMap, selectedTeam, onNav, editingSession, onClearEdit }) {
   const [sections, setSections] = useState(() => {
     if (editingSession) {
@@ -1106,19 +1226,27 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
         await supabase.from("sessions").update({ total_duration_mins: totalTime, station_count: allDrills.length, notes: phasesJson }).eq("id", sessionId);
         if (notes) await supabase.from("weekly_plans").update({ coach_notes: notes }).eq("id", planId);
       } else {
-        const { data: existing } = await supabase.from("weekly_plans").select("week_number").eq("age_group_id", selectedTeam.id).order("week_number", { ascending: false }).limit(1);
-        const nextWeek = (existing?.[0]?.week_number || 0) + 1;
-        const { data: plan, error: planErr } = await supabase.from("weekly_plans").insert({
-          club_id: club.id, age_group_id: selectedTeam.id, week_number: nextWeek, season: "2026-27",
-          mode: selectedTeam.gender === "girls" ? "camogie" : "hurling", coach_notes: notes, published: true,
-          starts_at: day ? (() => { const d = new Date(); const dayMap = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 0 }; const diff = dayMap[day] - d.getDay(); d.setDate(d.getDate() + (diff < 0 ? diff + 7 : diff)); return d.toISOString().split("T")[0]; })() : new Date().toISOString().split("T")[0],
-        }).select().single();
-        if (planErr || !plan) { alert("Save failed: " + (planErr?.message || "")); setSaving(false); return; }
+        const sessionDate = day ? (() => { const d = new Date(); const dayMap = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 0 }; const diff = dayMap[day] - d.getDay(); d.setDate(d.getDate() + (diff < 0 ? diff + 7 : diff)); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; })() : (() => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; })();
+        const weekStart = mondayKeyForDate(sessionDate);
+        let { data: existingWeek, error: weekErr } = await supabase.from("weekly_plans").select("*").eq("age_group_id", selectedTeam.id).eq("starts_at", weekStart).order("created_at", { ascending: true }).limit(1);
+        if (weekErr) { alert("Save failed: " + weekErr.message); setSaving(false); return; }
+        let plan = existingWeek?.[0] || null;
+        if (!plan) {
+          const { data: existing } = await supabase.from("weekly_plans").select("week_number").eq("age_group_id", selectedTeam.id).order("week_number", { ascending: false }).limit(1);
+          const nextWeek = (existing?.[0]?.week_number || 0) + 1;
+          const { data: created, error: planErr } = await supabase.from("weekly_plans").insert({
+            club_id: club.id, age_group_id: selectedTeam.id, week_number: nextWeek, season: "2026-27",
+            mode: selectedTeam.gender === "girls" ? "camogie" : "hurling", coach_notes: notes, published: false, starts_at: weekStart,
+          }).select().single();
+          if (planErr || !created) { alert("Save failed: " + (planErr?.message || "")); setSaving(false); return; }
+          plan = created;
+        } else if (notes) {
+          await supabase.from("weekly_plans").update({ coach_notes: notes }).eq("id", plan.id);
+        }
         planId = plan.id;
         const { data: sess } = await supabase.from("sessions").insert({
           plan_id: plan.id, session_number: 1, sport: selectedTeam.gender === "girls" ? "camogie" : "hurling",
-          format: "stations", total_duration_mins: totalTime, station_count: allDrills.length, notes: phasesJson,
-          ...(plan.starts_at ? { session_date: plan.starts_at } : {}),
+          format: "stations", total_duration_mins: totalTime, station_count: allDrills.length, notes: phasesJson, session_date: sessionDate,
         }).select().single();
         sessionId = sess?.id;
       }
@@ -1127,9 +1255,13 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
           session_id: sessionId, activity_id: d.id, station_number: i + 1, sort_order: i, assigned_coach_id: d.coachId || null,
         })));
       }
+      if (selectedTeam?.id) {
+        localStorage.setItem(ACTIVE_TEAM_KEY, String(selectedTeam.id));
+        localStorage.setItem("spraoi_coach_plan_sync", JSON.stringify({ teamId: selectedTeam.id, planId, at: Date.now() }));
+      }
       setSections([{ id: 1, type: "warmup", label: "Warm-up", drills: [], duration: "10" }]); setNotes(""); setDay("");
       if (onClearEdit) onClearEdit();
-      alert(editingSession ? "Session updated!" : "Session saved!");
+      alert(editingSession ? "Session updated — Academy draft refreshed." : "Session saved — ready for Academy review.");
       onNav("coach-sessions"); // Navigate back to sessions list
     } catch (e) { alert("Error: " + e.message); }
     setSaving(false);
@@ -1326,7 +1458,6 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
   );
 }
 
-
 function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavourite, userRole }) {
   const [search, setSearch] = useState("");
   const [filterCat, setFilterCat] = useState("");
@@ -1349,13 +1480,17 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
   if (search.trim()) { const q = search.toLowerCase(); filtered = filtered.filter((a) => a.title.toLowerCase().includes(q) || a.skill?.name?.toLowerCase().includes(q) || a.description?.toLowerCase().includes(q)); }
   if (filterCat) filtered = filtered.filter((a) => a.category === filterCat || a.skill?.category === filterCat);
 
-  // Sort favourites first
-  filtered.sort((a, b) => {
-    const af = (favouriteIds || []).includes(a.id) ? 0 : 1;
-    const bf = (favouriteIds || []).includes(b.id) ? 0 : 1;
-    if (af !== bf) return af - bf;
-    return a.title.localeCompare(b.title);
-  });
+  // Sort favourites first only while browsing the grid.
+  // Keeping the order stable while the modal is open prevents the selected
+  // drill from changing when it is favourited/unfavourited.
+  if (selectedIdx === null) {
+    filtered.sort((a, b) => {
+      const af = (favouriteIds || []).includes(a.id) ? 0 : 1;
+      const bf = (favouriteIds || []).includes(b.id) ? 0 : 1;
+      if (af !== bf) return af - bf;
+      return a.title.localeCompare(b.title);
+    });
+  }
 
   const selectedDrill = selectedIdx !== null ? filtered[selectedIdx] : null;
 
@@ -1458,7 +1593,7 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <button onClick={() => onToggleFavourite && onToggleFavourite(selectedDrill.id)} style={{ padding: "5px 10px", borderRadius: 6, border: `1.5px solid ${(favouriteIds || []).includes(selectedDrill.id) ? "#fbc02d" : P.line}`, background: (favouriteIds || []).includes(selectedDrill.id) ? "#fbc02d15" : P.white, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: (favouriteIds || []).includes(selectedDrill.id) ? "#f59e0b" : P.muted, cursor: "pointer" }}>
-                  {(favouriteIds || []).includes(selectedDrill.id) ? "★ Favourited" : "☆ Favourite"}
+                  {(favouriteIds || []).includes(selectedDrill.id) ? "★ Saved to Favourites" : "☆ Add to Favourites"}
                 </button>
                 {userRole?.role === "super_admin" && <button onClick={() => { if (!window.confirm(`Copy & edit "${selectedDrill.title}"?\n\nThis will create an editable copy in your custom cards.`)) return; setBuilderDrill(selectedDrill); setMode("builder"); setSelectedIdx(null); }} style={{ padding: "5px 10px", borderRadius: 6, border: `1.5px solid ${P.p600}`, background: P.p50, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.p600, cursor: "pointer" }}>Copy & Edit</button>}
                 <button onClick={() => setSelectedIdx(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: P.muted }}>×</button>
@@ -1517,6 +1652,7 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
 /* ============================================================
    DIAGRAM CREATOR — drag-and-drop pitch diagram builder
    ============================================================ */
+
 function DiagramCreator({ onSave, onClose, initialElements, backgroundImage }) {
   const [elements, setElements] = useState(initialElements || []);
   const [dragging, setDragging] = useState(null);
@@ -1791,6 +1927,7 @@ function DiagramCreator({ onSave, onClose, initialElements, backgroundImage }) {
 /* ============================================================
    DRILL CARD BUILDER — Create custom drill cards from scratch
    ============================================================ */
+
 function DrillCardBuilder({ diagramMap, allActivities, userRole, copyFrom, onBack }) {
   const [title, setTitle] = useState(copyFrom?.title ? copyFrom.title + " (Copy)" : "");
   const [description, setDescription] = useState(copyFrom?.description || "");
@@ -2138,17 +2275,28 @@ function DrillCardBuilder({ diagramMap, allActivities, userRole, copyFrom, onBac
   );
 }
 
-
 function PlayersScreen({ club, ageGroups, selectedTeam }) {
   const [players, setPlayers] = useState([]);
   const [csvPreview, setCsvPreview] = useState(null);
   const [loaded, setLoaded] = useState(false);
+  const [editingPlayer, setEditingPlayer] = useState(null);
+  const [editName, setEditName] = useState("");
+  const [editTeamId, setEditTeamId] = useState("");
+  const [editFootballPanel, setEditFootballPanel] = useState("");
+  const [editHurlingPanel, setEditHurlingPanel] = useState("");
+  const [savingPlayer, setSavingPlayer] = useState(false);
 
-  useEffect(() => {
-    if (club && !loaded) {
-      supabase.from("journey_players").select("*, age_group:age_groups(label, gender)").eq("club_id", club.id).order("name").then(({ data }) => { setPlayers(data || []); setLoaded(true); });
-    }
-  }, [club]);
+  async function loadPlayers() {
+    if (!club?.id) return;
+    setLoaded(false);
+    let query = supabase.from("journey_players").select("*, age_group:age_groups(label, gender)").eq("club_id", club.id).order("name");
+    const { data, error } = await query;
+    if (error) console.error("Could not load players", error);
+    setPlayers(data || []);
+    setLoaded(true);
+  }
+
+  useEffect(() => { loadPlayers(); }, [club?.id, selectedTeam?.id]);
 
   function handleFile(e) {
     const file = e.target.files[0];
@@ -2175,51 +2323,112 @@ function PlayersScreen({ club, ageGroups, selectedTeam }) {
       age_group_id: agMap[p.ageGroup.toLowerCase()] || (selectedTeam?.id || null),
       name: p.name,
     }));
-    await supabase.from("journey_players").insert(rows);
+    const { error } = await supabase.from("journey_players").insert(rows);
+    if (error) { alert("Could not import players: " + error.message); return; }
     setCsvPreview(null);
-    setLoaded(false);
+    await loadPlayers();
   }
+
+  function startEdit(player) {
+    setEditingPlayer(player);
+    setEditName(player.name || "");
+    setEditTeamId(player.age_group_id || selectedTeam?.id || "");
+    setEditFootballPanel(player.football_panel || "");
+    setEditHurlingPanel(player.hurling_panel || "");
+  }
+
+  async function savePlayer() {
+    if (!editingPlayer?.id || !editName.trim()) return;
+    setSavingPlayer(true);
+    const { error } = await supabase.from("journey_players").update({
+      name: editName.trim(),
+      age_group_id: editTeamId || null,
+      football_panel: editFootballPanel || null,
+      hurling_panel: editHurlingPanel || null,
+    }).eq("id", editingPlayer.id);
+    setSavingPlayer(false);
+    if (error) { alert("Could not update player: " + error.message); return; }
+    setEditingPlayer(null);
+    await loadPlayers();
+  }
+
+  async function deletePlayer(player) {
+    if (!window.confirm(`Remove ${player.name} from Academy/Coach players?`)) return;
+    const { error } = await supabase.from("journey_players").delete().eq("id", player.id);
+    if (error) { alert("Could not remove player: " + error.message); return; }
+    await loadPlayers();
+  }
+
+  const visiblePlayers = selectedTeam?.id ? players.filter((p) => String(p.age_group_id) === String(selectedTeam.id)) : players;
 
   return (
     <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
-      <TopBar title="Players" sub={`${players.length} in squad`} />
+      <TopBar title="Players" sub={`${visiblePlayers.length} ${selectedTeam ? `in ${selectedTeam.label} ${selectedTeam.gender === "girls" ? "Girls" : "Boys"}` : "in squad"}`} />
       <div style={{ padding: "20px 28px" }}>
-        {/* Upload */}
-        <div style={{ background: P.white, borderRadius: 14, padding: 18, border: `1.5px dashed ${P.p600}44`, marginBottom: 16, display: "flex", alignItems: "center", gap: 16 }}>
-          <div style={{ flex: 1 }}>
+        <div style={{ background: P.white, borderRadius: 14, padding: 18, border: `1.5px dashed ${P.p600}44`, marginBottom: 16, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+          <div style={{ flex: 1, minWidth: 220 }}>
             <div style={{ fontFamily: F.display, fontSize: 14, fontWeight: 800, color: P.ink }}>Import Players</div>
-            <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 2 }}>Upload CSV/Excel: Name, Age Group, Parent Email</div>
+            <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 2 }}>Upload CSV: Name, Age Group, Parent Email</div>
           </div>
-          <input type="file" accept=".csv,.xlsx,.xls" onChange={handleFile} style={{ fontFamily: F.body, fontSize: 11 }} />
+          <input type="file" accept=".csv" onChange={handleFile} style={{ fontFamily: F.body, fontSize: 11 }} />
         </div>
 
-        {/* CSV Preview */}
         {csvPreview && (
           <div style={{ background: P.white, borderRadius: 12, padding: 16, border: `1px solid ${P.line}`, marginBottom: 16 }}>
             <div style={{ fontFamily: F.display, fontSize: 13, fontWeight: 800, color: P.ink, marginBottom: 8 }}>Preview ({csvPreview.length} players)</div>
             {csvPreview.slice(0, 8).map((p, i) => <div key={i} style={{ fontFamily: F.body, fontSize: 12, padding: "4px 0", borderBottom: `1px solid ${P.line}` }}>{p.name} {p.ageGroup && `(${p.ageGroup})`}</div>)}
-            {csvPreview.length > 8 && <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 4 }}>...and {csvPreview.length - 8} more</div>}
-            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-              <Btn label="Cancel" variant="ghost" onClick={() => setCsvPreview(null)} />
-              <Btn label={`Import ${csvPreview.length}`} variant="primary" onClick={importPlayers} />
-            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 10 }}><Btn label="Cancel" variant="ghost" onClick={() => setCsvPreview(null)} /><Btn label={`Import ${csvPreview.length}`} variant="primary" onClick={importPlayers} /></div>
           </div>
         )}
 
-        {/* Player list */}
         <div style={{ background: P.white, borderRadius: 14, border: `1px solid ${P.line}`, overflow: "hidden" }}>
-          {players.map((p, i) => (
-            <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 16px", borderBottom: i < players.length - 1 ? `1px solid ${P.line}` : "none" }}>
-              <div style={{ width: 30, height: 30, borderRadius: "50%", background: `${P.p600}18`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F.display, fontSize: 12, fontWeight: 800, color: P.p600 }}>{p.name[0]}</div>
-              <div style={{ flex: 1 }}>
+          {visiblePlayers.map((p, i) => (
+            <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 16px", borderBottom: i < visiblePlayers.length - 1 ? `1px solid ${P.line}` : "none", flexWrap: "wrap" }}>
+              <div style={{ width: 30, height: 30, borderRadius: "50%", background: `${P.p600}18`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F.display, fontSize: 12, fontWeight: 800, color: P.p600 }}>{p.name?.[0] || "P"}</div>
+              <div style={{ flex: 1, minWidth: 180 }}>
                 <div style={{ fontFamily: F.body, fontSize: 13, fontWeight: 600, color: P.ink }}>{p.name}</div>
-                <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>{p.age_group?.label || ""} {p.age_group?.gender === "girls" ? "Girls" : "Boys"}</div>
+                <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>{p.age_group?.label || "No team"} {p.age_group ? (p.age_group.gender === "girls" ? "Girls" : "Boys") : ""}</div>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 5 }}>
+                  <span style={{ fontFamily: F.body, fontSize: 9, fontWeight: 800, color: "#1d4ed8", background: "#dbeafe", borderRadius: 999, padding: "2px 7px" }}>Football {p.football_panel || "—"}</span>
+                  <span style={{ fontFamily: F.body, fontSize: 9, fontWeight: 800, color: "#b91c1c", background: "#fee2e2", borderRadius: 999, padding: "2px 7px" }}>{selectedTeam?.gender === "girls" ? "Camogie" : "Hurling"} {p.hurling_panel || "—"}</span>
+                </div>
               </div>
+              <div style={{ display: "flex", gap: 6 }}><Btn label="Edit" variant="secondary" style={{ height: 30, fontSize: 10 }} onClick={() => startEdit(p)} /><Btn label="Remove" variant="ghost" style={{ height: 30, fontSize: 10, color: P.coral }} onClick={() => deletePlayer(p)} /></div>
             </div>
           ))}
-          {players.length === 0 && <div style={{ padding: 24, textAlign: "center", fontFamily: F.body, fontSize: 12, color: P.muted }}>No players yet. Import a CSV to get started.</div>}
+          {visiblePlayers.length === 0 && loaded && <div style={{ padding: 24, textAlign: "center", fontFamily: F.body, fontSize: 12, color: P.muted }}>No players found for this team.</div>}
         </div>
       </div>
+
+      {editingPlayer && (
+        <div onClick={() => setEditingPlayer(null)} style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(15,23,42,.45)", display: "grid", placeItems: "center", padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "min(440px, calc(100vw - 32px))", maxWidth: "100%", boxSizing: "border-box", background: P.white, borderRadius: 16, padding: 20, boxShadow: Sh.lift, overflow: "hidden" }}>
+            <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 900, color: P.ink, marginBottom: 14 }}>Edit Player</div>
+            <label style={{ display: "block", fontFamily: F.body, fontSize: 11, fontWeight: 800, color: P.ink, marginBottom: 6 }}>Name</label>
+            <input value={editName} onChange={(e) => setEditName(e.target.value)} style={{ width: "100%", minWidth: 0, boxSizing: "border-box", padding: "10px 11px", borderRadius: 9, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 16, marginBottom: 14 }} />
+            <label style={{ display: "block", fontFamily: F.body, fontSize: 11, fontWeight: 800, color: P.ink, marginBottom: 6 }}>Team</label>
+            <select value={editTeamId} onChange={(e) => setEditTeamId(e.target.value)} style={{ width: "100%", minWidth: 0, boxSizing: "border-box", padding: "10px 11px", borderRadius: 9, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 16, marginBottom: 14 }}>
+              <option value="">No team</option>
+              {(ageGroups || []).map((ag) => <option key={ag.id} value={ag.id}>{ag.label} {ag.gender === "girls" ? "Girls" : "Boys"}</option>)}
+            </select>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 10, marginBottom: 18 }}>
+              <label style={{ minWidth: 0 }}>
+                <span style={{ display: "block", fontFamily: F.body, fontSize: 11, fontWeight: 800, color: P.ink, marginBottom: 6 }}>Football panel</span>
+                <select value={editFootballPanel} onChange={(e) => setEditFootballPanel(e.target.value)} style={{ width: "100%", minWidth: 0, boxSizing: "border-box", padding: "10px 11px", borderRadius: 9, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 16 }}>
+                  <option value="">Unassigned</option><option value="A">A</option><option value="B">B</option>
+                </select>
+              </label>
+              <label style={{ minWidth: 0 }}>
+                <span style={{ display: "block", fontFamily: F.body, fontSize: 11, fontWeight: 800, color: P.ink, marginBottom: 6 }}>{selectedTeam?.gender === "girls" ? "Camogie" : "Hurling"} panel</span>
+                <select value={editHurlingPanel} onChange={(e) => setEditHurlingPanel(e.target.value)} style={{ width: "100%", minWidth: 0, boxSizing: "border-box", padding: "10px 11px", borderRadius: 9, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 16 }}>
+                  <option value="">Unassigned</option><option value="A">A</option><option value="B">B</option>
+                </select>
+              </label>
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}><Btn label="Cancel" variant="ghost" onClick={() => setEditingPlayer(null)} /><Btn label={savingPlayer ? "Saving..." : "Save Player"} variant="primary" onClick={savePlayer} /></div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -2227,7 +2436,8 @@ function PlayersScreen({ club, ageGroups, selectedTeam }) {
 /* ============================================================
    SESSIONS LIST — view/edit saved sessions
    ============================================================ */
-function SessionsListScreen({ club, selectedTeam, onOpenSession, onNav, onEditSession, canEdit }) {
+
+function SessionsListScreen({ club, selectedTeam, onOpenSession, onNav, onEditSession }) {
   const [sessions, setSessions] = useState([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -2259,8 +2469,8 @@ function SessionsListScreen({ club, selectedTeam, onOpenSession, onNav, onEditSe
         {sessions.map((sess) => (
           <div key={sess.id} onClick={() => onOpenSession(sess)} style={{ background: P.white, borderRadius: 12, padding: "14px 18px", border: `1px solid ${P.line}`, marginBottom: 8, display: "flex", alignItems: "center", gap: 14, cursor: "pointer", boxShadow: Sh.card }}>
             <div style={{ width: 44, textAlign: "center", background: P.soft, borderRadius: 8, padding: "6px 0", flexShrink: 0 }}>
-              <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 700, color: P.muted, textTransform: "uppercase" }}>{sess.session_date ? new Date(sess.session_date).toLocaleDateString("en-IE", { weekday: "short" }) : ""}</div>
-              <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink }}>{sess.session_date ? new Date(sess.session_date).getDate() : "?"}</div>
+              <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 700, color: P.muted, textTransform: "uppercase" }}>{sess.session_date ? new Date(`${sess.session_date}T12:00:00`).toLocaleDateString("en-IE", { weekday: "short" }) : ""}</div>
+              <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink }}>{sess.session_date ? new Date(`${sess.session_date}T12:00:00`).getDate() : "?"}</div>
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontFamily: F.body, fontSize: 13, fontWeight: 700, color: P.ink }}>{sess.plan?.hurling_skill?.name || "Training Session"}</div>
@@ -2271,7 +2481,7 @@ function SessionsListScreen({ club, selectedTeam, onOpenSession, onNav, onEditSe
             <div style={{ display: "flex", gap: 6 }}>
               <Btn label="View" variant="ghost" style={{ height: 28, fontSize: 10 }} onClick={(e) => { e.stopPropagation(); onOpenSession(sess); }} />
               <Btn label="Share" variant="ghost" style={{ height: 28, fontSize: 10, color: P.p600 }} onClick={(e) => { e.stopPropagation(); onOpenSession(sess); }} />
-              {canEdit && <Btn label="Edit" variant="secondary" style={{ height: 28, fontSize: 10 }} onClick={(e) => { e.stopPropagation(); onEditSession(sess); }} />}
+              <Btn label="Edit" variant="secondary" style={{ height: 28, fontSize: 10 }} onClick={(e) => { e.stopPropagation(); onEditSession(sess); }} />
             </div>
           </div>
         ))}
@@ -2283,9 +2493,6 @@ function SessionsListScreen({ club, selectedTeam, onOpenSession, onNav, onEditSe
 /* ============================================================
    CLUB PERMISSIONS — RBAC matrix and user role management
    ============================================================ */
-const CLUB_RED = "#d32f2f";
-const CLUB_RED_DARK = "#a91f1f";
-const CLUB_SOFT = "#fff1f1";
 
 function ClubPage({ title, sub, children, actions }) {
   return (
@@ -2995,189 +3202,17 @@ const previewPill = {
   backdropFilter: "blur(8px)",
 };
 
-function AcademyPhonePreview({ weeklyPlan = null, planSessions = [], extras = [], skills = [], overrides = {}, published = false, compact = false, selectedTeam = null }) {
+function AcademyPhonePreview({ planSessions = [], extras = [], skills = [], overrides = {}, published = false, compact = false, selectedTeam = null }) {
   const recommendations = getAcademyWeeklyRecommendations(planSessions, skills, overrides, selectedTeam);
   const football = recommendations.filter((item) => item.code === "football");
   const hurling = recommendations.filter((item) => item.code === "hurling");
   const grouped = { steps: [], exercises: [], runs: [], bonus: [], recovery: [] };
   extras.forEach((extra) => grouped[academyExtraGroup(extra)].push(extra));
-
-  const fitness = [...grouped.steps, ...grouped.exercises, ...grouped.runs];
-  const clubActivities = grouped.bonus;
-  const recovery = grouped.recovery;
-  const skillItems = [...football, ...hurling];
-  const journeyItems = [
-    ...skillItems.map((item) => ({
-      id: `skill-${item.code}`,
-      title: item.matchedSkill?.name || `Choose ${item.label} video`,
-      section: item.label,
-      icon: item.code === "football" ? "/football-icon.png" : "/hurling-icon.png",
-      color: item.code === "football" ? "#2563eb" : "#c62828",
-    })),
-    ...fitness.map((item) => ({
-      id: `fitness-${item.id}`,
-      title: item.title,
-      section: "Fitness",
-      icon: "/speed-mechanics-icon.png",
-      color: "#7c3aed",
-    })),
-    ...clubActivities.map((item) => ({
-      id: `club-${item.id}`,
-      title: item.title,
-      section: "Club Activity",
-      icon: "/hurling-icon.png",
-      color: "#d97706",
-    })),
-    ...(weeklyPlan || skillItems.length || extras.length ? [{
-      id: "recovery-preview",
-      title: recovery[0]?.title || "Rest & Recovery",
-      section: "Recovery",
-      icon: "/rest-and-recovery-icon.png",
-      color: "#0f766e",
-    }] : []),
-  ];
-
-  const previewWidth = compact ? 300 : 390;
-  const weekLabel = getAcademyWeekRange(weeklyPlan);
-  const sectionCard = (title, color, icon, children) => (
-    <div style={{ background:"#fff", border:`1.5px solid ${color}33`, borderTop:`5px solid ${color}`, borderRadius:18, padding:12, marginBottom:12, boxShadow:"0 4px 14px rgba(15,23,42,.06)" }}>
-      <div style={{ display:"flex", alignItems:"center", gap:9, paddingBottom:9, marginBottom:9, borderBottom:`1px solid ${color}22` }}>
-        <div style={{ width:34, height:34, borderRadius:10, background:`${color}12`, display:"grid", placeItems:"center" }}>
-          <img src={icon} alt="" style={{ width:24, height:24, objectFit:"contain" }} />
-        </div>
-        <div style={{ fontFamily:F.display, fontSize:12, fontWeight:900, color, textTransform:"uppercase", letterSpacing:".04em" }}>{title}</div>
-      </div>
-      {children}
-    </div>
-  );
-
-  const skillCard = (item) => {
-    const color = item.code === "football" ? "#2563eb" : "#c62828";
-    const icon = item.code === "football" ? "/football-icon.png" : "/hurling-icon.png";
-    const skill = item.matchedSkill;
-    return (
-      <div key={item.code} style={{ background:"#fff", border:`1.5px solid ${color}33`, borderTop:`5px solid ${color}`, borderRadius:18, overflow:"hidden", marginBottom:12, boxShadow:"0 4px 14px rgba(15,23,42,.06)" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:9, padding:"11px 12px 8px" }}>
-          <div style={{ width:34, height:34, borderRadius:10, background:`${color}12`, display:"grid", placeItems:"center" }}><img src={icon} alt="" style={{width:23,height:23,objectFit:"contain"}}/></div>
-          <div style={{ minWidth:0 }}>
-            <div style={{ fontFamily:F.display, fontSize:10, fontWeight:900, color, textTransform:"uppercase" }}>{item.label}</div>
-            <div style={{ fontFamily:F.display, fontSize:14, fontWeight:900, color:P.ink, marginTop:1 }}>{skill?.name || `Choose ${item.label} video`}</div>
-          </div>
-        </div>
-        {skill?.video_url ? (
-          <div style={{ margin:"0 12px 8px", borderRadius:10, overflow:"hidden", background:"#071827" }}>
-            <iframe title={skill.name} src={skill.video_url.replace("watch?v=","embed/").split("&")[0]} style={{width:"100%",height:compact?110:145,border:0,display:"block"}} allowFullScreen />
-          </div>
-        ) : (
-          <div style={{ margin:"0 12px 8px", padding:"10px 11px", borderRadius:10, background:`${color}08`, fontFamily:F.body, fontSize:9, color:P.muted }}>Practice video appears here when selected.</div>
-        )}
-        <div style={{ padding:"0 12px 12px" }}>
-          <div style={{ padding:"9px 10px", borderRadius:10, background:"#f8fafc", fontFamily:F.body, fontSize:9, color:P.ink, lineHeight:1.45 }}>
-            Practise this skill for 20 minutes. Focus on good technique and control.
-            <div style={{ display:"flex", justifyContent:"space-between", marginTop:6, fontWeight:800 }}><span>20 min practice</span><span style={{color:"#b45309"}}>+10 XP</span></div>
-          </div>
-          <div style={{ marginTop:7, padding:"9px 10px", borderRadius:9, textAlign:"center", background:color, color:"#fff", fontFamily:F.display, fontSize:10, fontWeight:900 }}>I Practised for 20 Minutes!</div>
-        </div>
-      </div>
-    );
-  };
-
-  const taskRows = (items, color) => items.map((item) => (
-    <div key={item.id} style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 10px", borderRadius:11, background:`${color}08`, border:`1px solid ${color}22`, marginBottom:7 }}>
-      <div style={{ width:18, height:18, borderRadius:"50%", border:`2px solid ${color}`, flexShrink:0 }} />
-      <div style={{ flex:1, minWidth:0 }}>
-        <div style={{ fontFamily:F.display, fontSize:10, fontWeight:900, color:P.ink }}>{item.title}</div>
-        {(item.description || item.instruction || item.target) && <div style={{ fontFamily:F.body, fontSize:8, color:P.muted, marginTop:2 }}>{item.description || item.instruction || item.target}</div>}
-      </div>
-      <div style={{ fontFamily:F.display, fontSize:9, fontWeight:900, color:"#b45309" }}>+{item.xp_reward || item.xp || 5} XP</div>
-    </div>
-  ));
-
-  const visibleCount = skillItems.length + fitness.length + clubActivities.length + recovery.length;
-
-  return (
-    <div style={{ width:previewWidth, maxWidth:"100%", overflow:"hidden", background:"#eef7fb", borderRadius:compact?24:30, border:compact?"5px solid #16324a":"7px solid #16324a", boxShadow:"0 22px 52px rgba(7,89,133,.2)" }}>
-      {/* Mirrors the actual Academy Child app rather than a separate admin-only preview design */}
-      <div style={{ padding:"11px 12px 7px", display:"flex", alignItems:"center", justifyContent:"space-between", gap:8 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:7 }}>
-          <img src="/spraoi-academy-icon.png" alt="" style={{width:27,height:27,objectFit:"contain"}}/>
-          <div style={{fontFamily:F.display,fontSize:13,fontWeight:900,color:"#039be5",textTransform:"uppercase"}}>Spraoi Academy</div>
-        </div>
-        <div style={{ padding:"5px 8px", borderRadius:999, background:"#fff3e0", fontFamily:F.body, fontSize:7, fontWeight:800, color:"#9a5a00" }}>🔥 0 week streak</div>
-      </div>
-
-      <div style={{ margin:"0 10px 10px", borderRadius:16, padding:"12px 13px", background:"linear-gradient(135deg,#18a8e0,#0f9bd3)", color:"#fff", boxShadow:"0 8px 18px rgba(3,155,229,.18)" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <div style={{ width:38,height:38,borderRadius:"50%",background:"rgba(255,255,255,.18)",display:"grid",placeItems:"center",fontFamily:F.display,fontSize:16,fontWeight:800 }}>A</div>
-          <div style={{flex:1}}>
-            <div style={{fontFamily:F.display,fontSize:12,fontWeight:900}}>Academy Player</div>
-            <div style={{fontFamily:F.body,fontSize:8,fontWeight:700,opacity:.9}}>Level 1</div>
-          </div>
-          <div style={{textAlign:"right"}}><div style={{fontFamily:F.display,fontSize:16,fontWeight:900,color:"#ffd54f"}}>0</div><div style={{fontSize:7}}>XP</div></div>
-        </div>
-        <div style={{fontFamily:F.body,fontSize:7,fontWeight:800,marginTop:8,display:"flex",justifyContent:"space-between"}}><span>Level 1</span><span>0/100 to Level 2</span></div>
-        <div style={{height:6,borderRadius:99,background:"rgba(255,255,255,.2)",marginTop:4}} />
-      </div>
-
-      <div style={{ padding:"0 10px 12px", maxHeight:compact?500:690, overflowY:"auto" }}>
-        <div style={{ background:"#fff", border:"1.5px solid #d9e5ed", borderRadius:18, padding:13, marginBottom:12, boxShadow:"0 5px 18px rgba(15,23,42,.05)" }}>
-          <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <img src="/spraoi-academy-icon.png" alt="" style={{width:38,height:38,objectFit:"contain"}}/>
-            <div>
-              <div style={{fontFamily:F.body,fontSize:7,fontWeight:900,textTransform:"uppercase",letterSpacing:".1em",color:P.muted}}>This week in Academy</div>
-              <div style={{fontFamily:F.display,fontSize:17,fontWeight:900,color:"#039be5",marginTop:1}}>{weekLabel}</div>
-              <div style={{fontFamily:F.body,fontSize:8,color:P.muted,fontStyle:"italic",marginTop:4}}>“Progress comes from showing up, practising and helping your teammates.”</div>
-            </div>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:9}}>
-            <div style={{padding:"7px",borderRadius:8,border:"1px solid #d9e5ed",textAlign:"center",fontFamily:F.body,fontSize:8,fontWeight:800,color:"#039be5"}}>← Previous week</div>
-            <div style={{padding:"7px",borderRadius:8,border:"1px solid #e5edf2",background:"#f5f7f9",textAlign:"center",fontFamily:F.body,fontSize:8,fontWeight:800,color:"#a4b1bb"}}>Next week →</div>
-          </div>
-        </div>
-
-        {journeyItems.length > 0 && (
-          <div style={{ background:"#fff", border:"1.5px solid #039be522", borderRadius:20, padding:"12px 11px", marginBottom:12, boxShadow:"0 6px 18px rgba(15,23,42,.05)" }}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-              <div><div style={{fontFamily:F.body,fontSize:7,fontWeight:900,textTransform:"uppercase",letterSpacing:".1em",color:P.muted}}>Your weekly journey</div><div style={{fontFamily:F.display,fontSize:14,fontWeight:900,color:P.ink}}>Keep moving forward</div></div>
-              <div style={{width:42,height:42,borderRadius:"50%",background:"#039be512",border:"3px solid #039be522",display:"grid",placeItems:"center",fontFamily:F.display,fontSize:10,fontWeight:900,color:"#039be5"}}>0%</div>
-            </div>
-            <div style={{height:7,borderRadius:99,background:"#eef3f6",marginBottom:10}} />
-            {journeyItems.map((item,index)=>(
-              <div key={item.id} style={{display:"grid",gridTemplateColumns:"39px 1fr",gap:7,minHeight:52,position:"relative"}}>
-                <div style={{display:"flex",justifyContent:"center",position:"relative"}}>
-                  {index < journeyItems.length-1 && <div style={{position:"absolute",top:33,bottom:-12,width:3,background:"#d9e5ed"}}/>}
-                  <div style={{width:34,height:34,borderRadius:"50%",border:`3px solid ${index===0?item.color:"#d9e5ed"}`,background:index===0?item.color:"#fff",display:"grid",placeItems:"center",zIndex:1}}>
-                    <img src={item.icon} alt="" style={{width:18,height:18,objectFit:"contain",filter:index===0?"brightness(0) invert(1)":"none"}}/>
-                  </div>
-                </div>
-                <div style={{alignSelf:"start",padding:"7px 9px",borderRadius:10,border:`1px solid ${index===0?item.color+"55":"#d9e5ed"}`,background:index===0?item.color+"0D":"#fff"}}>
-                  <div style={{fontFamily:F.body,fontSize:7,fontWeight:900,textTransform:"uppercase",color:item.color}}>{index===0?"Up next":item.section}</div>
-                  <div style={{fontFamily:F.display,fontSize:10,fontWeight:900,color:P.ink,marginTop:1}}>{item.title}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {visibleCount === 0 ? (
-          <div style={{padding:18,textAlign:"center",fontFamily:F.body,fontSize:9,color:P.muted,background:"#fff",borderRadius:14}}>Add weekly content to see the child experience here.</div>
-        ) : (
-          <>
-            {skillItems.map(skillCard)}
-            {fitness.length > 0 && sectionCard("Fitness","#7c3aed","/speed-mechanics-icon.png",taskRows(fitness,"#7c3aed"))}
-            {clubActivities.length > 0 && sectionCard("Club Activities","#d97706","/hurling-icon.png",taskRows(clubActivities,"#d97706"))}
-            {sectionCard("Rest & Recovery","#0f766e","/rest-and-recovery-icon.png",
-              recovery.length > 0
-                ? taskRows(recovery,"#0f766e")
-                : <div style={{padding:"9px 10px",borderRadius:11,background:"#0f766e08",fontFamily:F.body,fontSize:9,color:P.muted}}>The weekly recovery stretch appears here in the child app.</div>
-            )}
-          </>
-        )}
-
-        <div style={{marginTop:3,padding:9,borderRadius:11,background:published?"#dcfce7":"#fff7ed",color:published?"#15803d":"#b45309",fontFamily:F.body,fontSize:8,fontWeight:900,textAlign:"center"}}>{published?"✓ Published to children":"Preview mode · not published"}</div>
-      </div>
-    </div>
-  );
+  const section = (title, items, color, icon, render) => items.length ? <div style={{ background:"#fff",border:`1px solid ${color}33`,borderRadius:14,padding:11,marginTop:9 }}><div style={{ display:"flex",alignItems:"center",gap:7,fontFamily:F.body,fontSize:10,fontWeight:900,color,textTransform:"uppercase" }}><span>{icon}</span>{title}</div><div style={{ display:"grid",gap:7,marginTop:8 }}>{items.map(render)}</div></div> : null;
+  const taskRow=(item)=><div key={item.id} style={{ display:"flex",alignItems:"center",gap:8,padding:"8px 9px",borderRadius:10,background:"#f8fafc" }}><div style={{flex:1,minWidth:0}}><div style={{fontFamily:F.body,fontSize:10,fontWeight:900,color:P.ink}}>{item.title}</div><div style={{fontFamily:F.body,fontSize:8,color:P.muted,marginTop:2}}>{item.target || item.description || item.instruction || "Complete this mission"}</div></div><span style={{fontFamily:F.body,fontSize:8,fontWeight:900,color:"#b45309"}}>+{item.xp || item.xp_reward || 10} XP</span></div>;
+  const skillRow=(item)=><div key={item.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 9px",borderRadius:10,background:"#f8fafc"}}><div style={{width:32,height:32,borderRadius:9,background:"#e0f2fe",display:"grid",placeItems:"center"}}>▶</div><div style={{flex:1,minWidth:0}}><div style={{fontFamily:F.body,fontSize:10,fontWeight:900,color:P.ink}}>{item.matchedSkill?.name || "Choose weekly video"}</div><div style={{fontFamily:F.body,fontSize:8,color:P.muted,marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>Based on {item.sourceDrills.length} Coach drill{item.sourceDrills.length===1?"":"s"}</div></div><span style={{fontFamily:F.body,fontSize:8,fontWeight:900,color:"#b45309"}}>+20 XP</span></div>;
+  const visibleCount = football.length+hurling.length+Object.values(grouped).reduce((sum,items)=>sum+items.length,0);
+  return <div style={{ width: compact ? 300 : "min(390px,100%)", maxHeight: compact ? 600 : "none", overflow:"hidden", background:"#fff",borderRadius:compact?26:32,border:compact?"6px solid #16324a":"8px solid #16324a",boxShadow:"0 22px 52px rgba(7,89,133,.2)" }}><div style={{background:"linear-gradient(135deg,#38bdf8,#0284c7)",padding:compact?"16px 14px":"22px 18px",color:"#fff",position:"relative",overflow:"hidden"}}><img src="/spraoi-academy-icon.png" alt="" style={{position:"absolute",right:8,bottom:-8,width:compact?68:88,height:compact?68:88,objectFit:"contain",background:"#fff",borderRadius:18,padding:6}}/><div style={{fontFamily:F.body,fontSize:8,fontWeight:900,opacity:.85,textTransform:"uppercase"}}>Club Spraoi Academy</div><div style={{fontFamily:F.display,fontSize:compact?18:24,fontWeight:900,marginTop:3,maxWidth:"70%"}}>Your weekly adventure</div><div style={{display:"flex",gap:6,marginTop:11}}><span style={previewPill}>⭐ {recommendations.length*20+extras.reduce((s,x)=>s+Number(x.xp||x.xp_reward||0),0)} XP</span><span style={previewPill}>🏅 Badges</span></div></div><div style={{padding:compact?10:15,background:"#f3f9fd",maxHeight:compact?460:"none",overflowY:"auto"}}>{visibleCount===0?<div style={{padding:18,textAlign:"center",fontFamily:F.body,fontSize:10,color:P.muted}}>Add weekly content to see the child experience here.</div>:<>{section("Step Goals",grouped.steps,"#0f9f6e","👟",taskRow)}{section("Exercises",grouped.exercises,"#7c3aed","💪",taskRow)}{section("Run Challenge",grouped.runs,"#e65100","🏃",taskRow)}{section("Football Skills",football,"#2563eb","⚽",skillRow)}{section(selectedTeam?.gender === "girls" ? "Camogie Skills" : "Hurling Skills",hurling,"#dc2626","🏑",skillRow)}{section("Bonus",grouped.bonus,"#d97706","✨",taskRow)}{section("Rest & Recovery",grouped.recovery,"#0f766e","🌙",taskRow)}</>}<div style={{marginTop:10,padding:9,borderRadius:11,background:published?"#dcfce7":"#fff7ed",color:published?"#15803d":"#b45309",fontFamily:F.body,fontSize:8,fontWeight:900,textAlign:"center"}}>{published?"✓ Published to children":"Preview mode · not published"}</div></div></div>;
 }
 
 function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras = [], skills = [], overrides = {}, published = false, onSetOverride, onNav }) {
@@ -3397,7 +3432,7 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
 
             <section style={{ background: academySoft, borderRadius: 16, border: "1px solid #cfeeff", padding: 16 }}>
               <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:12 }}><div><div style={{ fontFamily:F.display,fontSize:16,fontWeight:900,color:academyDark }}>Live child preview</div><div style={{fontFamily:F.body,fontSize:10,color:"#477084",marginTop:2}}>Only sections with content are shown.</div></div><button onClick={()=>onNav("academy-preview")} style={{border:0,background:"transparent",color:academyBlue,fontFamily:F.body,fontSize:10,fontWeight:900,cursor:"pointer"}}>Open full →</button></div>
-              <div style={{display:"grid",placeItems:"center"}}><AcademyPhonePreview weeklyPlan={weeklyPlan} planSessions={planSessions} extras={extras} skills={skills} overrides={overrides} published={published} compact selectedTeam={selectedTeam} /></div>
+              <div style={{display:"grid",placeItems:"center"}}><AcademyPhonePreview planSessions={planSessions} extras={extras} skills={skills} overrides={overrides} published={published} compact selectedTeam={selectedTeam} /></div>
             </section>
           </div>
         </div>
@@ -3536,7 +3571,7 @@ function AcademyParents({ selectedTeam, parentRows, setParentRows }) {
 }
 const td={padding:"10px 8px",borderBottom:`1px solid ${P.line}`,fontFamily:F.body,fontSize:10,color:P.ink};
 
-function AcademyPreview({ planSessions, extras, skills = [], overrides = {}, published, selectedTeam }) { return <div style={{flex:1,overflow:"auto",background:"linear-gradient(180deg,#e8f7ff,#f8fbff)"}}><AcademyPageHeader title="Child Preview" sub="Exactly what a child will see after publishing" /><div style={{padding:24,display:"grid",placeItems:"center"}}><AcademyPhonePreview weeklyPlan={weeklyPlan} planSessions={planSessions} extras={extras} skills={skills} overrides={overrides} published={published} selectedTeam={selectedTeam} /></div></div>;
+function AcademyPreview({ planSessions, extras, skills = [], overrides = {}, published, selectedTeam }) { return <div style={{flex:1,overflow:"auto",background:"linear-gradient(180deg,#e8f7ff,#f8fbff)"}}><AcademyPageHeader title="Child Preview" sub="Exactly what a child will see after publishing" /><div style={{padding:24,display:"grid",placeItems:"center"}}><AcademyPhonePreview planSessions={planSessions} extras={extras} skills={skills} overrides={overrides} published={published} selectedTeam={selectedTeam} /></div></div>;
 }
 
 
@@ -3625,10 +3660,18 @@ function MobileHeader({ activeModule, setActiveModule, onNav, enabledModules, cl
   const clubName = club?.name || "Club Spraoi";
   const mobileTeams = myTeams?.length ? ageGroups.filter((ag)=>myTeams.includes(ag.id)) : ageGroups;
   function openModule(key, module) {
-    setActiveModule(key);
-    onNav(enabledModules.includes(key) ? module.nav[0].id : `access-denied-${key}`);
     setOpen(false);
+
+    if (!enabledModules.includes(key)) {
+      setActiveModule(key);
+      onNav(`access-denied-${key}`);
+      return;
+    }
+
+    setActiveModule(key);
+    onNav(module.nav[0].id);
   }
+
   return (
     <>
       <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 62, zIndex: 200, padding: "0 12px", background: mod.color, color: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: `0 5px 18px ${mod.color}35` }}>
@@ -4716,7 +4759,14 @@ export default function App() {
   const [skills, setSkills] = useState([]);
   const [allActivities, setAllActivities] = useState([]);
   const [coaches, setCoaches] = useState([]);
-  const [favouriteIds, setFavouriteIds] = useState([]);
+  const [favouriteIds, setFavouriteIds] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("spraoi_coach_favourites") || "[]");
+      return Array.isArray(saved) ? saved : [];
+    } catch {
+      return [];
+    }
+  });
   const [diagramMap, setDiagramMap] = useState({});
   const [weeklyPlan, setWeeklyPlan] = useState(null);
   const [planSessions, setPlanSessions] = useState([]);
@@ -4859,12 +4909,23 @@ export default function App() {
       const capabilities = roleCapabilities(effectiveRole);
       setUserRole({ ...(roleData || {}), role: effectiveRole, club_id: effectiveClubId, capabilities });
       setMyTeams(capabilities.isClubAdmin ? [] : assignedTeamIds);
+
+      // Default landing: setup/admin users start in Club; coaches start in Coach.
+      if (capabilities.isClubAdmin) {
+        setActiveModule("club");
+        setScreen("club-dashboard");
+      } else {
+        setActiveModule("coach");
+        setScreen("coach-dashboard");
+      }
     } catch (error) {
       console.error("Unable to initialise platform access:", error);
       // Never lock Elaine out of a module because an older RBAC table differs.
       setEnabledModules(allModules);
       setUserRole({ role: "super_admin", club_id: null });
       setMyTeams([]);
+      setActiveModule("club");
+      setScreen("club-dashboard");
       loadSkills();
       loadActivities();
       loadUpcoming();
@@ -5048,13 +5109,37 @@ export default function App() {
 
   async function toggleFavourite(activityId) {
     const isFav = favouriteIds.includes(activityId);
+    const nextIds = isFav
+      ? favouriteIds.filter((id) => id !== activityId)
+      : [...favouriteIds, activityId];
+
+    // Update UI and local persistence immediately.
+    setFavouriteIds(nextIds);
+    localStorage.setItem("spraoi_coach_favourites", JSON.stringify(nextIds));
+
+    // Persist to Supabase against the signed-in coach when that mapping exists.
+    const signedInUserId = session?.user?.id;
+    const signedInEmail = String(session?.user?.email || "").toLowerCase();
+    const currentCoach =
+      (coaches || []).find((coach) => coach.user_id && String(coach.user_id) === String(signedInUserId)) ||
+      (coaches || []).find((coach) => String(coach.email || "").toLowerCase() === signedInEmail) ||
+      null;
+
+    if (!currentCoach?.id) return;
+
     if (isFav) {
-      setFavouriteIds((prev) => prev.filter((id) => id !== activityId));
-      await supabase.from("coach_favourites").delete().eq("activity_id", activityId);
+      await supabase
+        .from("coach_favourites")
+        .delete()
+        .eq("coach_id", currentCoach.id)
+        .eq("activity_id", activityId);
     } else {
-      setFavouriteIds((prev) => [...prev, activityId]);
-      const coachId = coaches[0]?.id;
-      if (coachId) await supabase.from("coach_favourites").insert({ coach_id: coachId, activity_id: activityId });
+      await supabase
+        .from("coach_favourites")
+        .upsert(
+          { coach_id: currentCoach.id, activity_id: activityId },
+          { onConflict: "coach_id,activity_id" }
+        );
     }
   }
 
@@ -5269,11 +5354,6 @@ export default function App() {
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", width: "100%", fontFamily: F.body, paddingTop: showMobile ? 62 : 0, paddingBottom: showMobile ? 68 : 0, boxSizing: "border-box" }}>
-      {userRole?.role && (
-        <div style={{ position: "fixed", top: 8, right: 12, zIndex: 12000, padding: "7px 11px", borderRadius: 999, background: "rgba(255,255,255,.94)", border: `1px solid ${P.line}`, boxShadow: Sh.card, fontFamily: F.body, fontSize: 10, fontWeight: 800, color: P.ink }}>
-          {String(userRole.role).replaceAll("_", " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-        </div>
-      )}
       <style id="spraoi-mobile-fixes">{`
         @media(max-width:760px){
           .cup-dashboard-stats,.cup-dashboard-main,.club-teams-layout{grid-template-columns:1fr!important}
@@ -5287,9 +5367,10 @@ export default function App() {
       {!showMobile && <Sidebar activeModule={activeModule} setActiveModule={setActiveModule} activeScreen={screen} onNav={setScreen} club={club} selectedTeam={selectedTeam} onSelectTeam={selectTeam} enabledModules={enabledModules} onLogout={logout} ageGroups={ageGroups} myTeams={myTeams} onShowProfile={() => setShowProfile(true)} />}
 
       {/* COACH screens */}
-      {screen === "coach-dashboard" && <DashboardScreen club={club} ageGroups={ageGroups} planSessions={planSessions} weeklyPlan={weeklyPlan} upcomingSessions={upcomingSessions} onNav={setScreen} onOpenSession={openSession} allActivities={allActivities} selectedTeam={selectedTeam} canEdit={permissions.canEditCoachPlans} />}
-      {screen === "coach-planner" && <PlannerScreen onNav={setScreen} club={club} ageGroups={ageGroups} upcomingSessions={upcomingSessions} onOpenSession={openSession} allActivities={allActivities} coaches={coaches} skills={skills} diagramMap={diagramMap} selectedTeam={selectedTeam} canEdit={permissions.canEditCoachPlans} />}
-      {screen === "coach-sessions" && <SessionsListScreen club={club} selectedTeam={selectedTeam} onOpenSession={openSession} onNav={setScreen} onEditSession={editSession} canEdit={permissions.canEditCoachPlans} />}
+      {screen === "admin-home" && <AdminHomeScreen club={club} selectedTeam={selectedTeam} enabledModules={enabledModules} />}
+      {screen === "coach-dashboard" && <DashboardScreen club={club} ageGroups={ageGroups} planSessions={planSessions} weeklyPlan={weeklyPlan} upcomingSessions={upcomingSessions} onNav={setScreen} onOpenSession={openSession} allActivities={allActivities} selectedTeam={selectedTeam} favouriteIds={favouriteIds} coaches={coaches} />}
+      {screen === "coach-planner" && <PlannerScreen onNav={setScreen} club={club} ageGroups={ageGroups} upcomingSessions={upcomingSessions} onOpenSession={openSession} allActivities={allActivities} coaches={coaches} skills={skills} diagramMap={diagramMap} selectedTeam={selectedTeam} />}
+      {screen === "coach-sessions" && <SessionsListScreen club={club} selectedTeam={selectedTeam} onOpenSession={openSession} onNav={setScreen} onEditSession={editSession} />}
       {screen === "coach-builder" && (
         permissions.canEditCoachPlans
           ? <SessionBuilderScreen club={club} ageGroups={ageGroups} skills={skills} allActivities={allActivities} coaches={coaches} diagramMap={diagramMap} selectedTeam={selectedTeam} onNav={setScreen} editingSession={editingSession} onClearEdit={() => setEditingSession(null)} />
