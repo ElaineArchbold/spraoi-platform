@@ -114,9 +114,9 @@ function getCategoryIcon(activity) {
    ============================================================ */
 const APP_MODULE = import.meta.env.VITE_APP_MODULE || "coach";
 const MODULE_URLS = {
-  coach: import.meta.env.VITE_COACH_URL || "http://localhost:5173",
-  academy: import.meta.env.VITE_ACADEMY_ADMIN_URL || "http://localhost:5176",
-  club: import.meta.env.VITE_CLUB_URL || "http://localhost:5174",
+  coach: null,
+  academy: null,
+  club: null,
 };
 
 const MODULES = {
@@ -209,11 +209,6 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
   const clubName = club?.name || "Club Spraoi";
 
   function openModule(key, module) {
-    const externalUrl = MODULE_URLS[key];
-    if (key !== APP_MODULE && externalUrl) {
-      window.location.assign(externalUrl);
-      return;
-    }
     setActiveModule(key);
     onNav(module.nav[0].id);
   }
@@ -3540,6 +3535,40 @@ function MobileNav({ activeModule, screen, onNav, enabledModules }) {
 /* ============================================================
    MAIN APP
    ============================================================ */
+
+/* ============================================================
+   COACH MODULE ENTRY
+   Single source of truth for Coach screens rendered by Admin.
+   ============================================================ */
+export function CoachModule({
+  screen, onNav, club, ageGroups, planSessions, weeklyPlan, upcomingSessions,
+  openSession, allActivities, selectedTeam, favouriteIds = [], coaches = [],
+  skills = [], diagramMap = {}, editSession, editingSession, setEditingSession,
+  toggleFavourite, userRole, canEditCoachPlans,
+}) {
+  const effectiveCanEdit = typeof canEditCoachPlans === "boolean"
+    ? canEditCoachPlans
+    : roleCapabilities(userRole?.role).canEditCoachPlans;
+
+  return (
+    <>
+      {screen === "coach-dashboard" && <DashboardScreen club={club} ageGroups={ageGroups} planSessions={planSessions} weeklyPlan={weeklyPlan} upcomingSessions={upcomingSessions} onNav={onNav} onOpenSession={openSession} allActivities={allActivities} selectedTeam={selectedTeam} favouriteIds={favouriteIds} coaches={coaches} />}
+      {screen === "coach-planner" && <PlannerScreen onNav={onNav} club={club} ageGroups={ageGroups} upcomingSessions={upcomingSessions} onOpenSession={openSession} allActivities={allActivities} coaches={coaches} skills={skills} diagramMap={diagramMap} selectedTeam={selectedTeam} />}
+      {screen === "coach-sessions" && <SessionsListScreen club={club} selectedTeam={selectedTeam} onOpenSession={openSession} onNav={onNav} onEditSession={editSession} />}
+      {screen === "coach-builder" && (
+        effectiveCanEdit
+          ? <SessionBuilderScreen club={club} ageGroups={ageGroups} skills={skills} allActivities={allActivities} coaches={coaches} diagramMap={diagramMap} selectedTeam={selectedTeam} onNav={onNav} editingSession={editingSession} onClearEdit={() => setEditingSession?.(null)} />
+          : <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
+              <TopBar title="Session Builder" sub={selectedTeam?.label || "No team selected"} />
+              <CoachReadOnlyNotice title="Editing unavailable" message="Your Coach / Mentor role is read-only. Ask a Club Admin to assign Lead Coach access if you need to create or amend sessions." />
+            </div>
+      )}
+      {screen === "coach-drills" && <DrillsScreen allActivities={allActivities} diagramMap={diagramMap} favouriteIds={favouriteIds} onToggleFavourite={toggleFavourite} userRole={userRole} />}
+      {screen === "coach-players" && <PlayersScreen club={club} ageGroups={ageGroups} selectedTeam={selectedTeam} userRole={userRole} />}
+    </>
+  );
+}
+
 export default function App() {
   useSpraoiFonts();
   // Auth state

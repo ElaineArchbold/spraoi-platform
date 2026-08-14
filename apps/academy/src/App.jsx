@@ -114,9 +114,9 @@ function getCategoryIcon(activity) {
    ============================================================ */
 const APP_MODULE = import.meta.env.VITE_APP_MODULE || "academy";
 const MODULE_URLS = {
-  coach: import.meta.env.VITE_COACH_URL || "http://localhost:5173",
-  academy: import.meta.env.VITE_ACADEMY_ADMIN_URL || "http://localhost:5176",
-  club: import.meta.env.VITE_CLUB_URL || "http://localhost:5174",
+  coach: null,
+  academy: null,
+  club: null,
 };
 
 const MODULES = {
@@ -206,11 +206,6 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
   const clubName = club?.name || "Club Spraoi";
 
   function openModule(key, module) {
-    const externalUrl = MODULE_URLS[key];
-    if (key !== APP_MODULE && externalUrl) {
-      window.location.assign(externalUrl);
-      return;
-    }
     setActiveModule(key);
     onNav(module.nav[0].id);
   }
@@ -3487,6 +3482,57 @@ function MobileNav({ activeModule, screen, onNav, enabledModules }) {
 /* ============================================================
    MAIN APP
    ============================================================ */
+
+/* ============================================================
+   ACADEMY MODULE ENTRY
+   Single source of truth for Academy screens rendered by Admin.
+   ============================================================ */
+export function AcademyModule({
+  screen, onNav, club, selectedTeam, weeklyPlan, planSessions, extras, skills,
+  overrides, published, onSetOverride, onAddExtra, onUpdateExtra, onRemoveExtra,
+  onMoveExtra, onPublish, parentRows, setParentRows,
+}) {
+  return (
+    <>
+      {screen === "academy-dashboard" && (
+        <AcademyDashboardScreen
+          selectedTeam={selectedTeam}
+          weeklyPlan={weeklyPlan}
+          planSessions={planSessions}
+          extras={extras}
+          skills={skills}
+          overrides={overrides}
+          published={published}
+          onSetOverride={onSetOverride}
+          onNav={onNav}
+        />
+      )}
+      {screen.startsWith("academy-") && screen !== "academy-dashboard" && (
+        <AcademySectionScreen
+          screen={screen}
+          onNav={onNav}
+          club={club}
+          selectedTeam={selectedTeam}
+          weeklyPlan={weeklyPlan}
+          planSessions={planSessions}
+          extras={extras}
+          skills={skills}
+          overrides={overrides}
+          onSetOverride={onSetOverride}
+          onAddExtra={onAddExtra}
+          onUpdateExtra={onUpdateExtra}
+          onRemoveExtra={onRemoveExtra}
+          onMoveExtra={onMoveExtra}
+          published={published}
+          onPublish={onPublish}
+          parentRows={parentRows}
+          setParentRows={setParentRows}
+        />
+      )}
+    </>
+  );
+}
+
 export default function App() {
   useSpraoiFonts();
   // Auth state
