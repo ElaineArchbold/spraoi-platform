@@ -16,9 +16,22 @@ const P = {
   green: "#43a047", orange: "#fb8c00", coral: "#e64a19", sky: "#29b6f6", yellow: "#fbc02d",
 };
 const F = {
-  display: "'Nunito', system-ui, sans-serif",
-  body: "'Work Sans', system-ui, sans-serif",
+  display: "'Nunito', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+  body: "'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
 };
+
+function useSpraoiFonts() {
+  useEffect(() => {
+    const id = "spraoi-google-fonts";
+    if (document.getElementById(id)) return;
+    const link = document.createElement("link");
+    link.id = id;
+    link.rel = "stylesheet";
+    link.href = "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Nunito:wght@600;700;800;900&display=swap";
+    document.head.appendChild(link);
+  }, []);
+}
+
 const Sh = {
   card: "0 2px 12px rgba(142,36,170,.06), 0 1px 3px rgba(13,49,87,.05)",
   lift: "0 8px 24px rgba(142,36,170,.12), 0 2px 6px rgba(13,49,87,.06)",
@@ -209,7 +222,9 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
     <div style={{ width: 306, minHeight: "100vh", display: "flex", flexShrink: 0, position: "sticky", top: 0, alignSelf: "flex-start", height: "100vh", zIndex: 30 }}>
       {/* Fixed global module rail: all modules are always reachable without scrolling */}
       <aside style={{ width: 78, background: "#10243e", display: "flex", flexDirection: "column", alignItems: "center", padding: "12px 8px", gap: 8, borderRight: "1px solid rgba(255,255,255,.08)" }}>
-        <img src="/spraoi-logo-white.png" alt="Spraoi Sports" style={{ width: 56, height: 36, objectFit: "contain", marginBottom: 6 }} />
+        <div title={clubName} style={{ width: 60, height: 60, borderRadius: 17, background: "#fff", display: "grid", placeItems: "center", overflow: "hidden", boxShadow: "0 5px 16px rgba(0,0,0,.20)", border: "1px solid rgba(255,255,255,.55)", marginBottom: 5 }}>
+          <img src={club?.logo_url || "/spraoi-club-icon.png"} alt={`${clubName} crest`} style={{ width: 52, height: 52, objectFit: "contain" }} />
+        </div>
         <div style={{ flex: 1, width: "100%", display: "flex", flexDirection: "column", justifyContent: "center", gap: 7 }}>
           {Object.entries(MODULES).map(([key, module]) => {
             const isActive = activeModule === key;
@@ -218,25 +233,26 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
             return (
               <button key={key} title={`${module.label}${locked ? " — contact your administrator" : ""}`} onClick={() => openModule(key, module)} style={{ width: "100%", minHeight: 62, border: "none", borderRadius: 14, cursor: "pointer", background: isActive ? module.color : "transparent", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, position: "relative", boxShadow: isActive ? "0 8px 22px rgba(0,0,0,.24)" : "none" }}>
                 <span style={{ width: 38, height: 38, borderRadius: 12, background: "#fff", border: "1px solid rgba(15,23,42,.08)", display: "grid", placeItems: "center", boxShadow: isActive ? "0 6px 16px rgba(0,0,0,.18)" : "0 3px 10px rgba(0,0,0,.10)" }}><img src={module.icon} alt="" style={{ width: 28, height: 28, objectFit: "contain", filter: locked ? "grayscale(1) opacity(.55)" : "none" }} /></span>
-                <span style={{ fontFamily: F.body, fontSize: 9, fontWeight: 800, color: isActive ? (darkText ? "#332800" : "#fff") : "rgba(255,255,255,.7)" }}>{module.label}</span>
+                <span style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, letterSpacing: "-.01em", color: isActive ? (darkText ? "#332800" : "#fff") : "rgba(255,255,255,.7)" }}>{module.label}</span>
                 {locked && <span style={{ position: "absolute", top: 5, right: 5, fontSize: 9, color: "rgba(255,255,255,.8)" }}>🔒</span>}
               </button>
             );
           })}
         </div>
-        <button onClick={onShowProfile} title="Profile" style={{ width: 42, height: 42, borderRadius: 13, border: "1px solid rgba(255,255,255,.16)", background: "rgba(255,255,255,.08)", color: "#fff", cursor: "pointer", fontWeight: 900 }}>EA</button>
+        <img src="/spraoi-logo-white.png" alt="Spraoi Sports" style={{ width: 58, height: 38, objectFit: "contain", marginBottom: 4, opacity: .96 }} />
+        <button onClick={onShowProfile} title="Profile & sign out" style={{ width: 42, height: 42, borderRadius: 13, border: "1px solid rgba(255,255,255,.36)", background: "rgba(255,255,255,.12)", color: "#fff", cursor: "pointer", fontFamily: F.body, fontWeight: 800 }}>EA</button>
       </aside>
 
       {/* Fixed navigation for the active module */}
       <aside style={{ width: 228, background: `linear-gradient(180deg, ${mod.color} 0%, ${mod.color}ee 58%, #10243e 100%)`, display: "flex", flexDirection: "column", minHeight: "100vh", transition: "background .22s ease", color: activeModule === "connect" ? "#332800" : "#fff" }}>
         <div style={{ padding: "18px 16px 14px", borderBottom: activeModule === "connect" ? "1px solid rgba(51,40,0,.18)" : "1px solid rgba(255,255,255,.16)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-            <div style={{ width: 52, height: 52, borderRadius: 16, background: "#fff", display: "grid", placeItems: "center", border: "1px solid rgba(15,23,42,.08)", boxShadow: "0 7px 18px rgba(0,0,0,.14)" }}>
-              <img src={mod.icon} alt="" style={{ width: 36, height: 36, objectFit: "contain" }} />
+            <div style={{ width: 54, height: 54, borderRadius: 16, background: "#fff", display: "grid", placeItems: "center", border: "1px solid rgba(15,23,42,.10)", boxShadow: "0 7px 18px rgba(0,0,0,.16)", overflow: "hidden", flexShrink: 0 }}>
+              <img src={mod.icon} alt={`${mod.label} module`} style={{ width: 38, height: 38, objectFit: "contain" }} />
             </div>
-            <div>
-              <div style={{ fontFamily: F.display, fontSize: 19, fontWeight: 900, color: activeModule === "connect" ? "#332800" : "#fff", lineHeight: 1 }}>{mod.label}</div>
-              <div style={{ fontFamily: F.body, fontSize: 10, color: activeModule === "connect" ? "rgba(51,40,0,.72)" : "rgba(255,255,255,.74)", marginTop: 5 }}>{clubName}</div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontFamily: F.display, fontSize: 21, fontWeight: 900, letterSpacing: "-.02em", color: activeModule === "connect" ? "#332800" : "#fff", lineHeight: 1.05 }}>{mod.label}</div>
+              <div style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, color: activeModule === "connect" ? "#5b4600" : "#fff", marginTop: 5 }}>{clubName}</div>
             </div>
           </div>
         </div>
@@ -256,9 +272,9 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
             const isActive = activeScreen === item.id || (item.id === "coach-sessions" && activeScreen === "coach-builder");
             const fg = activeModule === "connect" ? "#332800" : "#fff";
             return (
-              <button key={item.id} onClick={() => onNav(item.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 11px", borderRadius: 10, border: "none", cursor: "pointer", width: "100%", background: isActive ? (activeModule === "connect" ? "rgba(255,255,255,.55)" : "rgba(255,255,255,.2)") : "transparent", textAlign: "left" }}>
-                <span style={{ fontSize: 15, color: fg, opacity: isActive ? 1 : .7 }}>{item.icon}</span>
-                <span style={{ fontFamily: F.body, fontSize: 12, fontWeight: isActive ? 800 : 600, color: fg, opacity: isActive ? 1 : .76 }}>{item.label}</span>
+              <button key={item.id} onClick={() => onNav(item.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 11px", borderRadius: 10, border: "none", cursor: "pointer", width: "100%", background: isActive ? "#fff" : "transparent", textAlign: "left" }}>
+                <span style={{ fontSize: 15, color: isActive ? (activeModule === "connect" ? "#5b4600" : mod.color) : "#fff", opacity: 1 }}>{item.icon}</span>
+                <span style={{ fontFamily: F.body, fontSize: 12, fontWeight: isActive ? 700 : 550, letterSpacing: "-.01em", color: isActive ? (activeModule === "connect" ? "#5b4600" : mod.color) : "#fff", opacity: 1 }}>{item.label}</span>
               </button>
             );
           })}
@@ -474,7 +490,7 @@ function DashboardScreen({ club, ageGroups, planSessions, weeklyPlan, upcomingSe
         }
       `}
 </style>
-      <TopBar title="Dashboard" sub={today}>
+      <TopBar title="Coach Dashboard" sub={today}>
         <Btn label="+ New Session" variant="primary" onClick={() => onNav("coach-builder")} />
       </TopBar>
       <div style={{ padding: "20px 24px" }}>
@@ -1986,7 +2002,10 @@ function DrillCardBuilder({ diagramMap, allActivities, userRole, copyFrom, onBac
 
 function PlayersScreen({ club, ageGroups, selectedTeam, userRole }) {
   const [players, setPlayers] = useState([]);
-  const [csvPreview, setCsvPreview] = useState(null);
+  const [csvPreview, setCsvPreview] = useState([]);
+  const [csvFileName, setCsvFileName] = useState("");
+  const [csvImporting, setCsvImporting] = useState(false);
+  const [csvError, setCsvError] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState(null);
   const [editName, setEditName] = useState("");
@@ -2012,34 +2031,154 @@ function PlayersScreen({ club, ageGroups, selectedTeam, userRole }) {
 
   useEffect(() => { loadPlayers(); }, [club?.id, selectedTeam?.id]);
 
-  function handleFile(e) {
-    const file = e.target.files[0];
+  function downloadPlayerTemplate() {
+    const headers = ["player_name", "team_label", "gender", "football_panel", "hurling_panel"];
+    const exampleTeam = ageGroups?.[0];
+    const rows = [
+      headers,
+      [
+        "Example Player",
+        exampleTeam?.label || "U12",
+        exampleTeam?.gender || "boys",
+        "A",
+        "B",
+      ],
+    ];
+    const esc = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
+    const csv = rows.map((row) => row.map(esc).join(",")).join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "spraoi-player-import-template.csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function parsePlayerCsvLine(line) {
+    const cells = [];
+    let current = "";
+    let quoted = false;
+
+    for (let i = 0; i < line.length; i += 1) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (quoted && line[i + 1] === '"') {
+          current += '"';
+          i += 1;
+        } else {
+          quoted = !quoted;
+        }
+      } else if (ch === "," && !quoted) {
+        cells.push(current.trim());
+        current = "";
+      } else {
+        current += ch;
+      }
+    }
+    cells.push(current.trim());
+    return cells;
+  }
+
+  async function handleFile(e) {
+    const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const lines = ev.target.result.split("\n").map((l) => l.trim()).filter(Boolean);
-      const hasHeader = lines[0].toLowerCase().includes("name");
-      const data = (hasHeader ? lines.slice(1) : lines).map((line) => {
-        const parts = line.split(",").map((p) => p.trim().replace(/^"|"$/g, ""));
-        return { name: parts[0] || "", ageGroup: parts[1] || "", email: parts[2] || "" };
-      }).filter((p) => p.name);
-      setCsvPreview(data);
-    };
-    reader.readAsText(file);
+
+    setCsvError("");
+    setCsvFileName(file.name);
+
+    const raw = await file.text();
+    const lines = raw.replace(/^\uFEFF/, "").split(/\r?\n/).filter((line) => line.trim());
+
+    if (lines.length < 2) {
+      setCsvPreview([]);
+      setCsvError("The CSV has no player rows.");
+      return;
+    }
+
+    const headers = parsePlayerCsvLine(lines[0]).map((header) => header.trim().toLowerCase());
+    const required = ["player_name", "team_label"];
+    const missing = required.filter((header) => !headers.includes(header));
+
+    if (missing.length) {
+      setCsvPreview([]);
+      setCsvError(`Missing required columns: ${missing.join(", ")}`);
+      return;
+    }
+
+    const rows = lines.slice(1).map((line, index) => {
+      const values = parsePlayerCsvLine(line);
+      const row = Object.fromEntries(headers.map((header, i) => [header, values[i] ?? ""]));
+
+      const playerName = String(row.player_name || "").trim();
+      const teamLabel = String(row.team_label || "").trim();
+      const gender = String(row.gender || "").trim().toLowerCase();
+
+      const possibleTeams = (ageGroups || []).filter(
+        (team) => String(team.label || "").trim().toLowerCase() === teamLabel.toLowerCase()
+      );
+
+      const matchingTeam = gender
+        ? possibleTeams.find((team) => String(team.gender || "").trim().toLowerCase() === gender)
+        : possibleTeams.length === 1
+          ? possibleTeams[0]
+          : null;
+
+      const errors = [];
+      if (!playerName) errors.push("Player name required");
+      if (!teamLabel) errors.push("Team required");
+      if (!matchingTeam) {
+        if (possibleTeams.length > 1 && !gender) errors.push("Gender required because this team label exists more than once");
+        else errors.push("Team not found");
+      }
+
+      return {
+        rowNumber: index + 2,
+        playerName,
+        teamLabel,
+        gender,
+        team: matchingTeam || null,
+        footballPanel: String(row.football_panel || "").trim(),
+        hurlingPanel: String(row.hurling_panel || "").trim(),
+        errors,
+        valid: errors.length === 0,
+      };
+    });
+
+    setCsvPreview(rows);
   }
 
   async function importPlayers() {
-    if (!csvPreview || !club) return;
-    const agMap = Object.fromEntries(ageGroups.map((ag) => [ag.label.toLowerCase(), ag.id]));
-    const rows = csvPreview.map((p) => ({
+    if (!canManagePlayers || !club?.id) return;
+
+    const validRows = csvPreview.filter((row) => row.valid);
+    if (!validRows.length) return;
+
+    setCsvImporting(true);
+    setCsvError("");
+
+    const rows = validRows.map((row) => ({
       parent_user_id: "00000000-0000-0000-0000-000000000000",
       club_id: club.id,
-      age_group_id: agMap[p.ageGroup.toLowerCase()] || (selectedTeam?.id || null),
-      name: p.name,
+      age_group_id: row.team.id,
+      name: row.playerName,
+      football_panel: row.footballPanel || null,
+      hurling_panel: row.hurlingPanel || null,
     }));
+
     const { error } = await supabase.from("journey_players").insert(rows);
-    if (error) { alert("Could not import players: " + error.message); return; }
-    setCsvPreview(null);
+
+    if (error) {
+      setCsvError("Could not import players: " + error.message);
+      setCsvImporting(false);
+      return;
+    }
+
+    setCsvPreview([]);
+    setCsvFileName("");
+    setCsvImporting(false);
     await loadPlayers();
   }
 
@@ -2099,19 +2238,86 @@ function PlayersScreen({ club, ageGroups, selectedTeam, userRole }) {
         {canManagePlayers && <Btn label="+ Add Player" variant="primary" onClick={() => { setNewPlayerTeamId(selectedTeam?.id || ""); setShowAddPlayer(true); }} />}
       </TopBar>
       <div style={{ padding: "20px 28px" }}>
-        <div style={{ background: P.white, borderRadius: 14, padding: 18, border: `1.5px dashed ${P.p600}44`, marginBottom: 16, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-          <div style={{ flex: 1, minWidth: 220 }}>
-            <div style={{ fontFamily: F.display, fontSize: 14, fontWeight: 800, color: P.ink }}>Import Players</div>
-            <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 2 }}>Upload CSV: Name, Age Group, Parent Email</div>
-          </div>
-          <input type="file" accept=".csv" onChange={handleFile} style={{ fontFamily: F.body, fontSize: 11 }} />
-        </div>
+        {canManagePlayers && (
+          <div style={{ background: P.white, borderRadius: 14, padding: 18, border: `1px solid ${P.line}`, marginBottom: 16 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap", marginBottom: 13 }}>
+              <div style={{ flex: 1, minWidth: 220 }}>
+                <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 800, color: P.ink }}>Bulk Import Players</div>
+                <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 3 }}>
+                  Download the template, complete it in Excel or Google Sheets, upload the CSV, review errors, then confirm.
+                </div>
+              </div>
+              <Btn label="Download CSV Template" variant="ghost" onClick={downloadPlayerTemplate} />
+            </div>
 
-        {csvPreview && (
+            <label style={{ display: "block", border: `1.5px dashed ${P.p600}66`, borderRadius: 12, padding: 17, textAlign: "center", cursor: "pointer", background: P.p50 }}>
+              <input type="file" accept=".csv,text/csv" onChange={handleFile} style={{ display: "none" }} />
+              <div style={{ fontFamily: F.body, fontSize: 11, fontWeight: 800, color: P.ink }}>Choose completed CSV</div>
+              <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted, marginTop: 3 }}>
+                Required: Player Name and Team. Gender is used when two teams share the same label.
+              </div>
+            </label>
+
+            {csvFileName && (
+              <div style={{ marginTop: 9, fontFamily: F.body, fontSize: 9, color: P.muted }}>Loaded: {csvFileName}</div>
+            )}
+
+            {csvError && (
+              <div style={{ marginTop: 10, padding: 9, borderRadius: 8, background: "#fff1f1", color: "#a61b1b", fontFamily: F.body, fontSize: 10 }}>
+                {csvError}
+              </div>
+            )}
+          </div>
+        )}
+
+        {canManagePlayers && csvPreview.length > 0 && (
           <div style={{ background: P.white, borderRadius: 12, padding: 16, border: `1px solid ${P.line}`, marginBottom: 16 }}>
-            <div style={{ fontFamily: F.display, fontSize: 13, fontWeight: 800, color: P.ink, marginBottom: 8 }}>Preview ({csvPreview.length} players)</div>
-            {csvPreview.slice(0, 8).map((p, i) => <div key={i} style={{ fontFamily: F.body, fontSize: 12, padding: "4px 0", borderBottom: `1px solid ${P.line}` }}>{p.name} {p.ageGroup && `(${p.ageGroup})`}</div>)}
-            <div style={{ display: "flex", gap: 8, marginTop: 10 }}><Btn label="Cancel" variant="ghost" onClick={() => setCsvPreview(null)} /><Btn label={`Import ${csvPreview.length}`} variant="primary" onClick={importPlayers} /></div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
+              <div>
+                <div style={{ fontFamily: F.display, fontSize: 14, fontWeight: 800, color: P.ink }}>Import Preview</div>
+                <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted, marginTop: 2 }}>
+                  {csvPreview.filter((row) => row.valid).length} ready · {csvPreview.filter((row) => !row.valid).length} need attention
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <Btn label="Cancel" variant="ghost" onClick={() => { setCsvPreview([]); setCsvFileName(""); setCsvError(""); }} />
+                <Btn
+                  label={csvImporting ? "Importing…" : `Import ${csvPreview.filter((row) => row.valid).length} Valid Rows`}
+                  variant="primary"
+                  onClick={importPlayers}
+                />
+              </div>
+            </div>
+
+            <div style={{ overflowX: "auto", border: `1px solid ${P.line}`, borderRadius: 10 }}>
+              <div style={{ minWidth: 720 }}>
+                {csvPreview.map((row) => (
+                  <div
+                    key={row.rowNumber}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "55px 1.2fr 1fr .7fr .8fr 1.5fr",
+                      gap: 8,
+                      alignItems: "center",
+                      padding: "8px 10px",
+                      borderTop: row.rowNumber === 2 ? "none" : `1px solid ${P.line}`,
+                      background: row.valid ? "#fff" : "#fff7f7",
+                    }}
+                  >
+                    <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted }}>Row {row.rowNumber}</div>
+                    <div style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, color: P.ink }}>{row.playerName || "—"}</div>
+                    <div style={{ fontFamily: F.body, fontSize: 9, color: P.ink }}>{row.teamLabel || "—"}</div>
+                    <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted }}>{row.gender || "—"}</div>
+                    <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted }}>
+                      F {row.footballPanel || "—"} · H {row.hurlingPanel || "—"}
+                    </div>
+                    <div style={{ fontFamily: F.body, fontSize: 8, fontWeight: 800, color: row.valid ? "#1f6b32" : "#a61b1b" }}>
+                      {row.valid ? "Ready" : row.errors.join(" · ")}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
@@ -3335,6 +3541,7 @@ function MobileNav({ activeModule, screen, onNav, enabledModules }) {
    MAIN APP
    ============================================================ */
 export default function App() {
+  useSpraoiFonts();
   // Auth state
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
