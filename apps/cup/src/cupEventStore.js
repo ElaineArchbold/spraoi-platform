@@ -88,12 +88,49 @@ export function cupGenerateSchedule(teams, config = {}) {
   const turnaround=Math.max(0,Number(config.turnaroundMins)||5);
   const slotMins=matchMins+turnaround;
   const lunchMinutes=Math.max(30,Number(config.lunchMinutes)||30);
+  const lunchCapacity=Math.max(1,Number(config.lunchCapacity)||90);
   const [sh,sm]=String(config.startTime||"10:00").split(":").map(Number);
   const startMinutes=(Number(sh)||10)*60+(Number(sm)||0);
   const timeLabel=(mins)=>`${String(Math.floor(mins/60)%24).padStart(2,"0")}:${String(mins%60).padStart(2,"0")}`;
   const gradeOf=(team)=>String(team.grade||team.name?.match(/\b([A-D])$/)?.[1]||"").toUpperCase();
   const grades=[...new Set(teams.map(gradeOf).filter(Boolean))].sort();
   const clubIds=[...new Set(teams.map(t=>t.clubId).filter(Boolean))];
+
+  // Catering groups are separate from competition groups.
+  // Keep a club together wherever possible and build as many
+  // lunch slots as are required by the host club's capacity.
+  const lunchClubTotals=clubIds.map(clubId=>{
+    const clubTeams=teams.filter(t=>t.clubId===clubId);
+    const players=clubTeams.reduce((n,t)=>n+Number(t.playerCount||0),0);
+    const mentors=clubTeams.reduce((n,t)=>n+Number(t.mentorCount||0),0);
+    return {clubId,players,mentors,people:players+mentors};
+  }).sort((a,b)=>b.people-a.people);
+
+  const lunchGroups=[];
+
+  lunchClubTotals.forEach(club=>{
+    let target=null;
+
+    if(club.people<=lunchCapacity){
+      target=lunchGroups.find(group=>
+        !group.overCapacity &&
+        group.people+club.people<=lunchCapacity
+      )||null;
+    }
+
+    if(!target){
+      target={
+        clubIds:[],
+        people:0,
+        overCapacity:false
+      };
+      lunchGroups.push(target);
+    }
+
+    target.clubIds.push(club.clubId);
+    target.people+=club.people;
+    target.overCapacity=target.people>lunchCapacity;
+  });
 
   // Clubs are distributed once; all of a club's A/B/C/D sides remain in the same numbered group.
   const groupN=Math.min(groupCount,Math.max(1,clubIds.length));
@@ -132,12 +169,32 @@ export function cupGenerateSchedule(teams, config = {}) {
 
   fill([...firstRound]);
   const lunchWindows=[];const fullSlots=Math.max(1,Math.floor(lunchMinutes/slotMins));const remainder=Math.max(0,lunchMinutes-fullSlots*slotMins);
-  clubGroups.forEach(clubGroup=>{
-    const excluded=new Set(teams.filter(t=>clubGroup.includes(t.clubId)).map(t=>t.id));
+
+  lunchGroups.forEach((lunchGroup,index)=>{
+    const excluded=new Set(
+      teams
+        .filter(t=>lunchGroup.clubIds.includes(t.clubId))
+        .map(t=>t.id)
+    );
+
     const from=startMinutes+slotIndex*slotMins+extraOffset;
-    fill(remaining,fullSlots,excluded,true);extraOffset+=remainder;
+
+    // Continue scheduling other clubs while this catering group eats.
+    fill(remaining,fullSlots,excluded,true);
+    extraOffset+=remainder;
+
     const to=startMinutes+slotIndex*slotMins+extraOffset;
-    lunchWindows.push({from:timeLabel(from),to:timeLabel(to),clubIds:[...clubGroup],clubs:[...clubGroup]});
+
+    lunchWindows.push({
+      id:`lunch-${index+1}`,
+      from:timeLabel(from),
+      to:timeLabel(to),
+      clubIds:[...lunchGroup.clubIds],
+      clubs:[...lunchGroup.clubIds],
+      people:lunchGroup.people,
+      capacity:lunchCapacity,
+      overCapacity:lunchGroup.people>lunchCapacity
+    });
   });
   fill(remaining);
 

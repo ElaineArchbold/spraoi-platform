@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabaseClient";
 import html2canvas from "html2canvas";
+import { openAdminModule, requestedTeamFromUrl, readModuleScreen, writeModuleScreen } from "../../../packages/ui/src/platformNavigation.js";
+import { LEGAL_POLICIES, LEGAL_POLICY_VERSION, LEGAL_EFFECTIVE_DATE } from "../../../packages/ui/src/legalPolicies.js";
 
 /* ============================================================
    SPRAOI COACH — Desktop-first redesign
@@ -44,6 +46,8 @@ const Sh = {
 const ACTIVE_TEAM_KEY = "spraoi_active_team_id";
 const ACTIVE_CLUB_KEY = "spraoi_active_club_id";
 const ACTIVE_CONTEXT_EVENT = "spraoi-active-context";
+const ACTIVE_MODULE_KEY = "spraoi_active_module";
+const ACTIVE_SCREEN_KEY = "spraoi_active_screen";
 
 function saveActiveContext(team, club) {
   if (team?.id) {
@@ -82,6 +86,36 @@ function roleCapabilities(role) {
     canDeleteSharedDrills: ["club_admin", "super_admin", "admin"].includes(normalized),
     canManageTeamStaff: ["club_admin", "super_admin", "admin"].includes(normalized),
   };
+}
+
+function teamDisplayName(team, fallback = "Team") {
+  if (!team) return fallback;
+  const base = String(team.label || team.name || fallback).trim();
+  const gender = String(team.gender || "").toLowerCase();
+  const suffix = gender === "girls" ? "Girls" : gender === "boys" ? "Boys" : "";
+  return suffix && !new RegExp(`\\b${suffix}$`, "i").test(base) ? `${base} ${suffix}` : base;
+}
+
+
+function SpraoiNavIcon({ name = "", size = 18 }) {
+  const key = String(name || "").toLowerCase();
+  const common = { width:size, height:size, viewBox:"0 0 24 24", fill:"none", stroke:"currentColor", strokeWidth:1.9, strokeLinecap:"round", strokeLinejoin:"round", "aria-hidden":true };
+  let shape;
+  if (key.includes("dashboard")) shape=<><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V20h13v-9.5"/><path d="M9.5 20v-6h5v6"/></>;
+  else if (key.includes("planner")||key.includes("schedule")||key.includes("event")) shape=<><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M7 3v4M17 3v4M3.5 9h17"/></>;
+  else if (key.includes("session")||key.includes("matchday")) shape=<><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m10 9 5 3-5 3V9Z"/></>;
+  else if (key.includes("drill")||key.includes("content")||key.includes("template")) shape=<><path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H20v17H7.5A2.5 2.5 0 0 0 5 21.5v-17Z"/><path d="M5 18.5A2.5 2.5 0 0 1 7.5 16H20"/></>;
+  else if (key.includes("team")||key.includes("player")||key.includes("participant")||key.includes("audience")||key.includes("member")) shape=<><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3.5 20c.4-4 2.3-6 5.5-6s5.1 2 5.5 6M14.5 14.5c3.4-.3 5.3 1.5 6 4.5"/></>;
+  else if (key.includes("parent")||key.includes("coach")) shape=<><circle cx="8" cy="8" r="3"/><path d="M2.8 20c.6-4 2.4-6 5.2-6s4.6 2 5.2 6"/><path d="M16 8h5M18.5 5.5v5"/></>;
+  else if (key.includes("preview")) shape=<><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.8"/></>;
+  else if (key.includes("leader")||key.includes("result")||key.includes("competition")||key.includes("reward")) shape=<><path d="M8 4h8v4a4 4 0 0 1-8 0V4Z"/><path d="M8 6H4v1a4 4 0 0 0 4 4M16 6h4v1a4 4 0 0 1-4 4M12 12v5M8 21h8M9 17h6"/></>;
+  else if (key.includes("engagement")||key.includes("report")) shape=<><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></>;
+  else if (key.includes("setting")||key.includes("setup")) shape=<><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.12 2.12-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V20.3h-3v-.08a1.7 1.7 0 0 0-1.03-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06-2.12-2.12.06-.06A1.7 1.7 0 0 0 5 15a1.7 1.7 0 0 0-1.56-1.03H3.3v-3h.14A1.7 1.7 0 0 0 5 9.94a1.7 1.7 0 0 0-.34-1.88L4.6 8l2.12-2.12.06.06A1.7 1.7 0 0 0 8.66 6.3a1.7 1.7 0 0 0 1.03-1.56V4.7h3v.04a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06L17.8 8l-.06.06a1.7 1.7 0 0 0-.34 1.88 1.7 1.7 0 0 0 1.56 1.03h.14v3h-.14A1.7 1.7 0 0 0 19.4 15Z"/></>;
+  else if (key.includes("permission")||key.includes("compliance")) shape=<><path d="M12 3 5 6v5c0 4.7 2.8 8 7 10 4.2-2 7-5.3 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></>;
+  else if (key.includes("food")) shape=<><path d="M7 3v8M4 3v5a3 3 0 0 0 6 0V3M7 11v10M16 3v18M16 3c3 2 4 6 4 9h-4"/></>;
+  else if (key.includes("compose")||key.includes("announcement")||key.includes("inbox")) shape=<><path d="M4 5h16v12H8l-4 4V5Z"/><path d="m7 9 5 3 5-3"/></>;
+  else shape=<><circle cx="12" cy="12" r="8"/><path d="M8 12h8"/></>;
+  return <svg {...common}>{shape}</svg>;
 }
 
 function getDrillIcons(activity) {
@@ -219,8 +253,13 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
   const clubName = club?.name || "Club Spraoi";
 
   function openModule(key, module) {
-    setActiveModule(key);
-    onNav(module.nav[0].id);
+    const target = readModuleScreen(key, module.nav[0].id);
+    if (key !== APP_MODULE) {
+      openAdminModule(key, target);
+      return;
+    }
+    setActiveModule(APP_MODULE);
+    onNav(target);
   }
 
   return (
@@ -231,7 +270,7 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
           <img src={club?.logo_url || "/spraoi-club-icon.png"} alt={`${clubName} crest`} style={{ width: 52, height: 52, objectFit: "contain" }} />
         </div>
         <div style={{ flex: 1, width: "100%", display: "flex", flexDirection: "column", justifyContent: "center", gap: 7 }}>
-          {Object.entries(MODULES).map(([key, module]) => {
+          {Object.entries(MODULES).filter(([key]) => !["plus","connect"].includes(key)).map(([key, module]) => {
             const isActive = activeModule === key;
             const locked = !enabledModules.includes(key);
             const darkText = key === "connect";
@@ -265,10 +304,10 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
         {activeModule !== "club" && <div style={{ margin: "11px 12px 4px" }}>
           {visibleTeams.length > 1 ? (
             <select value={selectedTeam?.id || ""} onChange={(e) => { const ag = ageGroups?.find((a) => a.id === e.target.value); if (ag) onSelectTeam(ag); }} style={{ width: "100%", padding: "9px 10px", borderRadius: 9, border: activeModule === "connect" ? "1px solid rgba(51,40,0,.2)" : "1px solid rgba(255,255,255,.2)", background: activeModule === "connect" ? "rgba(255,255,255,.5)" : "rgba(255,255,255,.14)", fontFamily: F.body, fontSize: 11, fontWeight: 700, color: activeModule === "connect" ? "#332800" : "#fff", cursor: "pointer" }}>
-              {visibleTeams.map((ag) => <option key={ag.id} value={ag.id} style={{ color: P.ink }}>{ag.label} {ag.gender === "girls" ? "Girls" : "Boys"}</option>)}
+              {visibleTeams.map((ag) => <option key={ag.id} value={ag.id} style={{ color: P.ink }}>{teamDisplayName(ag)}</option>)}
             </select>
           ) : selectedTeam ? (
-            <div style={{ padding: "9px 10px", borderRadius: 9, background: activeModule === "connect" ? "rgba(255,255,255,.5)" : "rgba(255,255,255,.14)", fontFamily: F.body, fontSize: 11, fontWeight: 700 }}>{selectedTeam.label} {selectedTeam.gender === "girls" ? "Girls" : "Boys"}</div>
+            <div style={{ padding: "9px 10px", borderRadius: 9, background: activeModule === "connect" ? "rgba(255,255,255,.5)" : "rgba(255,255,255,.14)", fontFamily: F.body, fontSize: 11, fontWeight: 700 }}>{teamDisplayName(selectedTeam)}</div>
           ) : null}
         </div>}
 
@@ -279,7 +318,7 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
             return (
               <button key={item.id} onClick={() => onNav(item.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 11px", borderRadius: 10, border: isActive ? "1px solid rgba(255,255,255,.75)" : "1px solid transparent", cursor: "pointer", width: "100%", background: isActive ? "#fff" : "transparent", textAlign: "left", boxShadow: isActive ? "0 4px 12px rgba(16,36,62,.14)" : "none" }}>
                 <span style={{ width: 20, height: 20, display: "grid", placeItems: "center", color: isActive ? (activeModule === "connect" ? "#5b4600" : mod.color) : "#fff", opacity: 1 }}>
-                  {activeModule === "club" ? <ClubNavIcon name={item.icon} /> : <span style={{ fontSize: 15 }}>{item.icon}</span>}
+                  {activeModule === "club" ? <ClubNavIcon name={item.icon} /> : <span style={{ fontSize: 15 }}><SpraoiNavIcon name={item.id} size={16} /></span>}
                 </span>
                 <span style={{ fontFamily: F.body, fontSize: 12, fontWeight: isActive ? 750 : 650, letterSpacing: "-.01em", color: isActive ? (activeModule === "connect" ? "#5b4600" : mod.color) : "#fff", opacity: 1 }}>{item.label}</span>
               </button>
@@ -856,7 +895,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
 
   return (
     <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
-      <TopBar title="Session Builder" sub={selectedTeam ? `${selectedTeam.label} ${selectedTeam.gender === "girls" ? "Girls" : "Boys"}` : "Select a team"}>
+      <TopBar title="Session Builder" sub={selectedTeam ? teamDisplayName(selectedTeam) : "Select a team"}>
         <Btn label="Share" variant="ghost" onClick={shareAsImage} />
         <Btn label="Save Session" variant="primary" onClick={saveSession} style={{ opacity: allDrills.length > 0 ? 1 : 0.5 }} />
       </TopBar>
@@ -2100,7 +2139,7 @@ function ClubDashboardScreen({ club, ageGroups, coaches, selectedTeam, onNav }) 
 }
 
 
-function ClubSetupScreen({ club, userRole, onClubUpdated }) {
+function ClubSetupScreen({ club, userRole, onClubUpdated, onNav }) {
   const canEdit = ["super_admin", "admin", "club_admin"].includes(userRole?.role);
   const [name, setName] = useState(club?.name || "");
   const [logoUrl, setLogoUrl] = useState(club?.logo_url || "");
@@ -2266,6 +2305,59 @@ function ClubSetupScreen({ club, userRole, onClubUpdated }) {
         </ClubCard>
       </div>
 
+      <ClubCard style={{ marginBottom: 16 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 14,
+            flexWrap: "wrap",
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontFamily: F.display,
+                fontSize: 16,
+                fontWeight: 800,
+                color: P.ink,
+              }}
+            >
+              Legal & Policies
+            </div>
+
+            <div
+              style={{
+                fontFamily: F.body,
+                fontSize: 10,
+                color: P.muted,
+                marginTop: 4,
+              }}
+            >
+              Terms, Privacy, Parent / Guardian Terms, Acceptable Use and Cookie Policy.
+            </div>
+
+            <div
+              style={{
+                fontFamily: F.body,
+                fontSize: 9,
+                color: P.muted,
+                marginTop: 5,
+              }}
+            >
+              Current version: {LEGAL_POLICY_VERSION} · Effective {LEGAL_EFFECTIVE_DATE}
+            </div>
+          </div>
+
+          <Btn
+            label="Open Legal & Policies"
+            onClick={() => onNav?.("club-legal")}
+            style={{ background: CLUB_RED }}
+          />
+        </div>
+      </ClubCard>
+
       <ClubCard>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
           <div>
@@ -2327,12 +2419,368 @@ function ClubSetupScreen({ club, userRole, onClubUpdated }) {
   );
 }
 
+function ClubLegalScreen({ club, currentUserId, onNav }) {
+  const [activeKey, setActiveKey] = useState("terms");
+  const [acceptedRows, setAcceptedRows] = useState([]);
+  const [loadingAcceptances, setLoadingAcceptances] = useState(true);
+  const [accepting, setAccepting] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const activePolicy =
+    LEGAL_POLICIES.find((policy) => policy.key === activeKey) ||
+    LEGAL_POLICIES[0];
+
+  async function loadMyAcceptances() {
+    if (!currentUserId) {
+      setAcceptedRows([]);
+      setLoadingAcceptances(false);
+      return;
+    }
+
+    setLoadingAcceptances(true);
+
+    const { data, error } = await supabase
+      .from("spraoi_policy_acceptances")
+      .select("id,policy_key,policy_version,accepted_at")
+      .eq("user_id", currentUserId)
+      .order("accepted_at", { ascending: false });
+
+    if (error) {
+      console.warn(
+        "Could not load policy acceptances",
+        error.message
+      );
+      setAcceptedRows([]);
+    } else {
+      setAcceptedRows(data || []);
+    }
+
+    setLoadingAcceptances(false);
+  }
+
+  useEffect(() => {
+    loadMyAcceptances();
+  }, [currentUserId]);
+
+  const currentAcceptance = acceptedRows.find(
+    (row) =>
+      row.policy_key === activePolicy.key &&
+      row.policy_version === activePolicy.version
+  );
+
+  async function acceptCurrentPolicy() {
+    if (!currentUserId) {
+      setMessage(
+        "You must be signed in to record an acceptance."
+      );
+      return;
+    }
+
+    if (currentAcceptance) {
+      setMessage(
+        `${activePolicy.title} ${activePolicy.version} is already accepted.`
+      );
+      return;
+    }
+
+    setAccepting(true);
+    setMessage("");
+
+    const { error } = await supabase
+      .from("spraoi_policy_acceptances")
+      .insert({
+        club_id: club?.id || null,
+        user_id: currentUserId,
+        policy_key: activePolicy.key,
+        policy_version: activePolicy.version,
+        actor_type: "adult_user",
+        parent_guardian_confirmation: false,
+      });
+
+    setAccepting(false);
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    setMessage(
+      `${activePolicy.title} ${activePolicy.version} accepted.`
+    );
+
+    await loadMyAcceptances();
+  }
+
+  return (
+    <ClubPage
+      title="Legal & Policies"
+      sub={`Spraoi Sports private beta · ${LEGAL_POLICY_VERSION}`}
+      actions={
+        <Btn
+          label="Back to Club Setup"
+          variant="ghost"
+          onClick={() => onNav?.("club-setup")}
+        />
+      }
+    >
+      <div
+        style={{
+          marginBottom: 14,
+          padding: 11,
+          borderRadius: 10,
+          background: "#fff8e1",
+          border: "1px solid #f4d58d",
+          fontFamily: F.body,
+          fontSize: 10,
+          lineHeight: 1.55,
+          color: "#7a4b00",
+        }}
+      >
+        <b>Private beta:</b> Spraoi Sports does not publish a personal
+        email address or home address. A permanent in-platform contact
+        route will be added before broader public release.
+      </div>
+
+      <div
+        className="club-legal-layout"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "230px minmax(0,1fr)",
+          gap: 16,
+        }}
+      >
+        <ClubCard style={{ alignSelf: "start" }}>
+          <div
+            style={{
+              fontFamily: F.display,
+              fontSize: 15,
+              fontWeight: 900,
+              color: P.ink,
+              marginBottom: 10,
+            }}
+          >
+            Policies
+          </div>
+
+          <div style={{ display: "grid", gap: 6 }}>
+            {LEGAL_POLICIES.map((policy) => {
+              const accepted = acceptedRows.some(
+                (row) =>
+                  row.policy_key === policy.key &&
+                  row.policy_version === policy.version
+              );
+
+              return (
+                <button
+                  key={policy.key}
+                  type="button"
+                  onClick={() => {
+                    setActiveKey(policy.key);
+                    setMessage("");
+                  }}
+                  style={{
+                    textAlign: "left",
+                    padding: "10px 11px",
+                    borderRadius: 9,
+                    border: `1px solid ${
+                      activeKey === policy.key
+                        ? CLUB_RED
+                        : P.line
+                    }`,
+                    background:
+                      activeKey === policy.key
+                        ? "#fff4f4"
+                        : "#fff",
+                    color:
+                      activeKey === policy.key
+                        ? CLUB_RED
+                        : P.ink,
+                    cursor: "pointer",
+                    fontFamily: F.body,
+                    fontSize: 10,
+                    fontWeight: 800,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 8,
+                  }}
+                >
+                  <span>{policy.shortTitle}</span>
+
+                  {accepted && (
+                    <span
+                      title="Accepted"
+                      style={{
+                        color: "#16803c",
+                        fontSize: 12,
+                      }}
+                    >
+                      ✓
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </ClubCard>
+
+        <ClubCard>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              gap: 12,
+              flexWrap: "wrap",
+              marginBottom: 14,
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  fontFamily: F.display,
+                  fontSize: 21,
+                  fontWeight: 900,
+                  color: P.ink,
+                }}
+              >
+                {activePolicy.title}
+              </div>
+
+              <div
+                style={{
+                  fontFamily: F.body,
+                  fontSize: 9.5,
+                  color: P.muted,
+                  marginTop: 4,
+                }}
+              >
+                Version {activePolicy.version} · Effective{" "}
+                {activePolicy.effectiveDate}
+              </div>
+
+              {currentAcceptance && (
+                <div
+                  style={{
+                    fontFamily: F.body,
+                    fontSize: 9.5,
+                    color: "#16803c",
+                    marginTop: 5,
+                    fontWeight: 800,
+                  }}
+                >
+                  ✓ Accepted{" "}
+                  {new Date(
+                    currentAcceptance.accepted_at
+                  ).toLocaleString("en-IE")}
+                </div>
+              )}
+            </div>
+
+            {!currentAcceptance && (
+              <Btn
+                label={
+                  accepting
+                    ? "Saving…"
+                    : `Accept ${activePolicy.shortTitle}`
+                }
+                onClick={acceptCurrentPolicy}
+                style={{ background: CLUB_RED }}
+              />
+            )}
+          </div>
+
+          <div style={{ display: "grid", gap: 15 }}>
+            {activePolicy.sections.map((section) => (
+              <section key={section.heading}>
+                <div
+                  style={{
+                    fontFamily: F.display,
+                    fontSize: 14,
+                    fontWeight: 900,
+                    color: P.ink,
+                    marginBottom: 6,
+                  }}
+                >
+                  {section.heading}
+                </div>
+
+                {section.body.map((paragraph, index) => (
+                  <p
+                    key={index}
+                    style={{
+                      margin: index ? "7px 0 0" : 0,
+                      fontFamily: F.body,
+                      fontSize: 10.5,
+                      lineHeight: 1.65,
+                      color: "#344054",
+                    }}
+                  >
+                    {paragraph}
+                  </p>
+                ))}
+              </section>
+            ))}
+          </div>
+
+          {loadingAcceptances && (
+            <div
+              style={{
+                marginTop: 14,
+                fontFamily: F.body,
+                fontSize: 10,
+                color: P.muted,
+              }}
+            >
+              Checking your acceptance record…
+            </div>
+          )}
+
+          {message && (
+            <div
+              style={{
+                marginTop: 14,
+                padding: 10,
+                borderRadius: 9,
+                background:
+                  message.includes("accepted") ||
+                  message.includes("already")
+                    ? "#ecfdf3"
+                    : "#fff1f1",
+                color:
+                  message.includes("accepted") ||
+                  message.includes("already")
+                    ? "#16803c"
+                    : "#b42318",
+                fontFamily: F.body,
+                fontSize: 10,
+              }}
+            >
+              {message}
+            </div>
+          )}
+        </ClubCard>
+      </div>
+
+      <style>{`
+        @media(max-width:820px) {
+          .club-legal-layout {
+            grid-template-columns:1fr!important;
+          }
+        }
+      `}</style>
+    </ClubPage>
+  );
+}
+
+
 function ClubTeamsScreen({ club, ageGroups, coaches, selectedTeam, onSelectTeam, onReloadTeams, userRole }) {
   const [staff, setStaff] = useState([]);
   const [seasonHistory, setSeasonHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState("");
   const [error, setError] = useState("");
+  const [teamAssignments, setTeamAssignments] = useState([]);
   const [showRollover, setShowRollover] = useState(false);
   const [nextAgeLabel, setNextAgeLabel] = useState("");
   const [nextSeason, setNextSeason] = useState("");
@@ -2353,7 +2801,7 @@ function ClubTeamsScreen({ club, ageGroups, coaches, selectedTeam, onSelectTeam,
     setLoading(true);
     const { data, error: loadError } = await supabase
       .from("team_staff")
-      .select("*, coach:coaches(id,name,email,user_id)")
+      .select("*, coach:coaches(id,name,email,user_id), team:age_groups(id,label,gender)")
       .eq("club_id", club.id)
       .order("created_at");
     if (loadError) setError(loadError.message);
@@ -2601,7 +3049,7 @@ function ClubTeamsScreen({ club, ageGroups, coaches, selectedTeam, onSelectTeam,
               }}>
                 <span style={{ width: 34, height: 34, borderRadius: 10, display: "grid", placeItems: "center", background: active ? "#fff" : P.soft, color: active ? CLUB_RED : P.muted, fontWeight: 900 }}>◆</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: F.body, fontSize: 12, fontWeight: 900, color: P.ink }}>{team.label} {team.gender === "girls" ? "Girls" : team.gender === "boys" ? "Boys" : ""}</div>
+                  <div style={{ fontFamily: F.body, fontSize: 12, fontWeight: 900, color: P.ink }}>{teamDisplayName(team)}</div>
                   <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted, marginTop: 3 }}>
                     {lead?.coach?.name ? `Lead: ${lead.coach.name} · ` : ""}{teamStaff.length} staff
                   </div>
@@ -2808,7 +3256,7 @@ function ClubCoachesScreen({ club, ageGroups, coaches, selectedTeam, onReloadCoa
     if (!club?.id) return;
     const { data } = await supabase
       .from("team_staff")
-      .select("*, coach:coaches(id,name,email,user_id)")
+      .select("*, coach:coaches(id,name,email,user_id), team:age_groups(id,label,gender)")
       .eq("club_id", club.id)
       .eq("status", "active");
     setStaff(data || []);
@@ -2973,7 +3421,7 @@ function ClubCoachesScreen({ club, ageGroups, coaches, selectedTeam, onReloadCoa
               <label style={{ display: "block", fontFamily: F.body, fontSize: 9, fontWeight: 800, color: P.muted, marginBottom: 4 }}>Team</label>
               <select value={teamId} onChange={(e) => setTeamId(e.target.value)} style={{ width: "100%", padding: 9, borderRadius: 8, border: `1px solid ${P.line}` }}>
                 <option value="">Choose team</option>
-                {availableTeams.map((team) => <option key={team.id} value={team.id}>{team.label} {team.gender === "girls" ? "Girls" : team.gender === "boys" ? "Boys" : ""}</option>)}
+                {availableTeams.map((team) => <option key={team.id} value={team.id}>{teamDisplayName(team)}</option>)}
               </select>
             </div>
             <Btn label={saving ? "Adding…" : isAdmin ? "Add Lead Coach" : "Invite Coach/Mentor"} onClick={invitePerson} style={{ background: CLUB_RED }} />
@@ -3016,7 +3464,7 @@ function ClubCoachesScreen({ club, ageGroups, coaches, selectedTeam, onReloadCoa
                       <span style={{ fontFamily: F.body, fontSize: 9, color: P.muted }}>No team assignment</span>
                     ) : visibleAssignments.map((row) => (
                       <span key={row.id} style={{ padding: "3px 7px", borderRadius: 999, background: row.role === "lead_coach" ? "#fff3e0" : CLUB_SOFT, color: row.role === "lead_coach" ? "#9a5b00" : CLUB_RED, fontFamily: F.body, fontSize: 9, fontWeight: 800 }}>
-                        {row.team?.label || "Team"} · {row.role === "lead_coach" ? "Lead Coach" : "Coach/Mentor"}
+                        {teamDisplayName(row.team)} · {row.role === "lead_coach" ? "Lead Coach" : "Coach/Mentor"}
                       </span>
                     ))}
                   </div>
@@ -3419,7 +3867,7 @@ function ClubComplianceScreen({ club, coaches, userRole }) {
   );
 }
 
-function ClubPermissionsScreen({ club, userRole }) {
+function ClubPermissionsScreen({ club, userRole, ageGroups = [] }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingUser, setEditingUser] = useState(null);
@@ -3442,14 +3890,41 @@ function ClubPermissionsScreen({ club, userRole }) {
   async function loadUsers() {
     setLoading(true);
     setError("");
-    const { data, error: loadError } = await supabase.from("user_roles").select("*").order("user_email").order("squad_key");
+
+    const [{ data, error: loadError }, { data: staffData, error: staffError }] = await Promise.all([
+      supabase.from("user_roles").select("*").order("user_email").order("squad_key"),
+      club?.id
+        ? supabase
+            .from("team_staff")
+            .select("id, role, status, age_group_id, coach:coaches(id,email,user_id), team:age_groups(id,label,gender)")
+            .eq("club_id", club.id)
+            .eq("status", "active")
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+
     if (loadError) {
       setUsers([]);
       setError(loadError.message);
     } else {
       setUsers(data || []);
     }
+
+    if (staffError) {
+      console.warn("Unable to load exact team assignments:", staffError.message);
+      setTeamAssignments([]);
+    } else {
+      setTeamAssignments(staffData || []);
+    }
+
     setLoading(false);
+  }
+
+  function assignmentsForUser(user) {
+    const email = String(user?.user_email || user?.email || "").trim().toLowerCase();
+    if (!email) return [];
+    return (teamAssignments || []).filter((row) =>
+      String(row.coach?.email || "").trim().toLowerCase() === email
+    );
   }
 
   async function saveUserRole() {
@@ -3510,7 +3985,26 @@ function ClubPermissionsScreen({ club, userRole }) {
             users.map((u) => <div key={u.id} onClick={() => startEdit(u)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 4px", borderTop: `1px solid ${P.line}`, cursor: isSuperAdmin ? "pointer" : "default" }}>
               <div style={{ flex: 1 }}>
                 <div style={{ fontFamily: F.body, fontSize: 12, fontWeight: 800, color: P.ink }}>{u.user_email || "No email"}</div>
-                <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted }}>{u.squad || "All squads"} · {u.squad_key || "all"}</div>
+                {(() => {
+                  const assignments = assignmentsForUser(u);
+                  if (assignments.length) {
+                    return (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 5 }}>
+                        {assignments.map((row) => (
+                          <span key={row.id} style={{ padding: "3px 7px", borderRadius: 999, background: P.soft, border: `1px solid ${P.line}`, fontFamily: F.body, fontSize: 9, color: P.ink, fontWeight: 800 }}>
+                            {teamDisplayName(row.team)} · {displayRoleLabel(row.role)}
+                          </span>
+                        ))}
+                      </div>
+                    );
+                  }
+
+                  if (["super_admin", "admin", "club_admin"].includes(String(u.role || "").toLowerCase())) {
+                    return <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted, marginTop: 3 }}>All club teams</div>;
+                  }
+
+                  return <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted, marginTop: 3 }}>No exact team assignment</div>;
+                })()}
               </div>
               <span style={{ padding: "4px 9px", borderRadius: 999, background: CLUB_SOFT, color: CLUB_RED, fontFamily: F.body, fontSize: 9, fontWeight: 900 }}>{displayRoleLabel(u.role)}</span>
             </div>)
@@ -3763,7 +4257,7 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
   const academyDark = "#075985";
   const academySoft = "#eef8ff";
   const teamName = selectedTeam
-    ? `${selectedTeam.label} ${selectedTeam.gender === "girls" ? "Girls" : "Boys"}`
+    ? teamDisplayName(selectedTeam)
     : "No team selected";
 
   const weeklyRecommendations = getAcademyWeeklyRecommendations(planSessions, skills, overrides, selectedTeam);
@@ -4207,37 +4701,47 @@ function AccessDeniedScreen({ module, club }) {
 /* ============================================================
    MOBILE BOTTOM NAV — shows modules
    ============================================================ */
-function MobileHeader({ activeModule, setActiveModule, onNav, enabledModules, club, selectedTeam }) {
+function MobileHeader({ activeModule, setActiveModule, onNav, enabledModules, club, selectedTeam, ageGroups = [], myTeams = [], onSelectTeam, onShowProfile }) {
   const [open, setOpen] = useState(false);
   const mod = MODULES[activeModule];
   const clubName = club?.name || "Club Spraoi";
+  const mobileTeams = myTeams?.length ? ageGroups.filter((ag) => myTeams.includes(ag.id)) : ageGroups;
   function openModule(key, module) {
-    setActiveModule(key);
-    onNav(enabledModules.includes(key) ? module.nav[0].id : `access-denied-${key}`);
+    if (!enabledModules.includes(key)) {
+      onNav(`access-denied-${key}`);
+      setOpen(false);
+      return;
+    }
+    const target = readModuleScreen(key, module.nav[0].id);
+    if (key !== APP_MODULE) {
+      openAdminModule(key, target);
+      return;
+    }
+    setActiveModule(APP_MODULE);
+    onNav(target);
     setOpen(false);
   }
   return (
     <>
       <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 62, zIndex: 200, padding: "0 12px", background: mod.color, color: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: `0 5px 18px ${mod.color}35` }}>
-        <button onClick={() => setOpen(true)} style={{ border: "none", background: "rgba(255,255,255,.16)", width: 42, height: 42, borderRadius: 12, display: "grid", placeItems: "center", cursor: "pointer" }}>
-          <img src={mod.icon} alt={mod.label} style={{ width: 31, height: 31, objectFit: "contain" }} />
+        <button onClick={() => setOpen(true)} style={{ border: "1px solid rgba(15,23,42,.08)", background: "#fff", width: 42, height: 42, borderRadius: 12, display: "grid", placeItems: "center", padding: 0, boxSizing: "border-box", cursor: "pointer", boxShadow: "0 4px 12px rgba(15,23,42,.14)" }}>
+          <img src={mod.icon} alt={mod.label} style={{ width: 31, height: 31, objectFit: "contain", display: "block", margin: "0 auto" }} />
         </button>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900 }}>{mod.label}</div>
-          <div style={{ fontFamily: F.body, fontSize: 9, opacity: .78 }}>{selectedTeam ? `${selectedTeam.label} ${selectedTeam.gender === "girls" ? "Girls" : "Boys"}` : clubName}</div>
+        <div style={{ minWidth:0, flex:1, padding:"0 10px", display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <div style={{ fontFamily:F.display, fontSize:14, fontWeight:900, color:"#fff", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", textAlign:"center" }}>{clubName}</div>
         </div>
-        <div style={{ width: 42, height: 42, borderRadius: 12, background: "rgba(255,255,255,.14)", display: "grid", placeItems: "center", fontFamily: F.display, fontWeight: 900 }}>{clubName[0]}</div>
+        <button onClick={onShowProfile} aria-label="Open profile" style={{ width:42,height:42,borderRadius:12,border:"1px solid rgba(255,255,255,.2)",background:"rgba(255,255,255,.14)",color:"#fff",display:"grid",placeItems:"center",fontFamily:F.display,fontWeight:900,cursor:"pointer" }}>{clubName[0]}</button>
       </div>
       {open && (
         <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(5,18,34,.62)", padding: 16, display: "flex", alignItems: "flex-start", justifyContent: "center" }}>
           <div onClick={(e) => e.stopPropagation()} style={{ marginTop: 58, width: "100%", maxWidth: 430, background: P.white, borderRadius: 20, padding: 16, boxShadow: Sh.lift }}>
             <div style={{ fontFamily: F.display, fontWeight: 900, color: P.ink, fontSize: 18, marginBottom: 12 }}>Switch module</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
-              {Object.entries(MODULES).map(([key, m]) => {
+              {Object.entries(MODULES).filter(([key]) => !["plus","connect"].includes(key)).map(([key, m]) => {
                 const unlocked = enabledModules.includes(key);
                 return (
                   <button key={key} onClick={() => openModule(key, m)} style={{ position: "relative", border: `1px solid ${activeModule === key ? m.color : P.line}`, background: activeModule === key ? `${m.color}0d` : P.white, borderRadius: 14, padding: 13, display: "flex", alignItems: "center", gap: 10, textAlign: "left", cursor: "pointer" }}>
-                    <img src={m.icon} alt="" style={{ width: 38, height: 38, objectFit: "contain", opacity: unlocked ? 1 : .5, filter: unlocked ? "none" : "grayscale(1)" }} />
+                    <span style={{ width: 46, height: 46, borderRadius: 13, background: "#fff", border: "1px solid rgba(15,23,42,.08)", display: "grid", placeItems: "center", padding: 0, boxSizing: "border-box", flexShrink: 0, boxShadow: "0 3px 10px rgba(15,23,42,.08)" }}><img src={m.icon} alt="" style={{ width: 34, height: 34, objectFit: "contain", display: "block", margin: "0 auto", opacity: unlocked ? 1 : .5, filter: unlocked ? "none" : "grayscale(1)" }} /></span>
                     <div>
                       <div style={{ fontFamily: F.display, fontWeight: 900, color: P.ink, fontSize: 13 }}>{m.label}</div>
                       <div style={{ fontFamily: F.body, color: unlocked ? P.muted : m.color, fontSize: 9 }}>{unlocked ? "Open module" : "Access required"}</div>
@@ -4265,7 +4769,7 @@ function MobileNav({ activeModule, screen, onNav, enabledModules }) {
         const isActive = screen === item.id || (item.id === "coach-sessions" && screen === "coach-builder");
         return (
           <button key={item.id} onClick={() => onNav(item.id)} style={{ flex: 1, minWidth: 0, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 2, cursor: "pointer", color: isActive ? module.color : P.muted, padding: "3px 1px" }}>
-            <span style={{ width: 28, height: 24, borderRadius: 8, display: "grid", placeItems: "center", background: isActive ? `${module.color}12` : "transparent", fontSize: 14, fontWeight: 900 }}>{item.icon}</span>
+            <span style={{ width: 28, height: 24, borderRadius: 8, display: "grid", placeItems: "center", background: isActive ? `${module.color}12` : "transparent", fontSize: 14, fontWeight: 900 }}><SpraoiNavIcon name={item.id} size={16} /></span>
             <span style={{ fontSize: 8, lineHeight: 1.1, fontWeight: isActive ? 900 : 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>{item.label.replace("Weekly ", "").replace("Parent ", "")}</span>
           </button>
         );
@@ -4289,11 +4793,12 @@ export function ClubModule({
   return (
     <>
       {screen === "club-dashboard" && <ClubDashboardScreen club={club} ageGroups={ageGroups} coaches={coaches} selectedTeam={selectedTeam} onNav={onNav} />}
-      {screen === "club-setup" && <ClubSetupScreen club={club} userRole={userRole} onClubUpdated={onClubUpdated} />}
+      {screen === "club-setup" && <ClubSetupScreen club={club} userRole={userRole} onClubUpdated={onClubUpdated} onNav={onNav} />}
+      {screen === "club-legal" && <ClubLegalScreen club={club} currentUserId={currentUserId} onNav={onNav} />}
       {screen === "club-teams" && <ClubTeamsScreen club={club} ageGroups={ageGroups} coaches={coaches} selectedTeam={selectedTeam} onSelectTeam={onSelectTeam} onReloadTeams={onReloadTeams} userRole={userRole} />}
       {screen === "club-coaches" && <ClubCoachesScreen club={club} ageGroups={ageGroups} coaches={coaches} selectedTeam={selectedTeam} onReloadCoaches={onReloadCoaches} userRole={userRole} currentUserId={currentUserId} />}
       {screen === "club-compliance" && <ClubComplianceScreen club={club} coaches={coaches} userRole={userRole} />}
-      {screen === "club-permissions" && <ClubPermissionsScreen club={club} userRole={userRole} />}
+      {screen === "club-permissions" && <ClubPermissionsScreen club={club} userRole={userRole} ageGroups={ageGroups} />}
     </>
   );
 }
@@ -4312,15 +4817,18 @@ export default function App() {
   const [userRole, setUserRole] = useState(null); // { role, club_id, modules }
   const [enabledModules, setEnabledModules] = useState([]);
 
-  // App state
-  const [screen, setScreen] = useState("club-dashboard");
-  const [activeModule, setActiveModule] = useState("club");
+  // App state — this standalone build owns CLUB only.
+  // Other module buttons return to the single Admin shell, which renders the canonical module.
+  const [screen, setScreen] = useState(() => readModuleScreen(APP_MODULE, MODULES[APP_MODULE]?.nav?.[0]?.id || "club-dashboard"));
+  const [activeModule, setActiveModule] = useState(APP_MODULE);
 
   useEffect(() => {
-    const prefix = String(screen || "").split("-")[0];
-    if (MODULES[prefix] && prefix !== activeModule) {
-      setActiveModule(prefix);
+    if (!String(screen || "").startsWith(`${APP_MODULE}-`)) {
+      setScreen(readModuleScreen(APP_MODULE, MODULES[APP_MODULE]?.nav?.[0]?.id || "club-dashboard"));
+      return;
     }
+    if (activeModule !== APP_MODULE) setActiveModule(APP_MODULE);
+    writeModuleScreen(APP_MODULE, screen);
   }, [screen, activeModule]);
   const [club, setClub] = useState(null);
   const [ageGroups, setAgeGroups] = useState([]);
@@ -4420,7 +4928,7 @@ export default function App() {
       // During platform build/testing Elaine has access to every module.
       // RBAC can later narrow this list without changing the navigation shell.
       setEnabledModules(allModules);
-      setUserRole(roleData || { role: "super_admin", club_id: clubData?.id || null });
+      setUserRole(roleData || { role: "coach_mentor", club_id: clubData?.id || null, capabilities: roleCapabilities("coach_mentor") });
 
       const effectiveClubId = clubId || clubData?.id;
       if (effectiveClubId) {
@@ -4476,30 +4984,115 @@ export default function App() {
           effectiveRole = [...staffRows]
             .sort((a, b) => (priority[b.role] || 0) - (priority[a.role] || 0))[0]?.role || effectiveRole;
         }
-      } else {
-        const { data: assignments, error: assignmentError } = await supabase
-          .from("coach_assignments")
-          .select("age_group_id")
-          .eq("user_id", userId);
-        if (!assignmentError && assignments?.length) {
-          assignedTeamIds = assignments.map((assignment) => assignment.age_group_id);
-        }
+      }
+
+      // Keep legacy coach_assignments in sync during the migration period and
+      // merge them with team_staff so Profile and Sidebar never disagree.
+      const { data: assignments, error: assignmentError } = await supabase
+        .from("coach_assignments")
+        .select("age_group_id")
+        .eq("user_id", userId);
+      if (!assignmentError && assignments?.length) {
+        assignedTeamIds = [...new Set([
+          ...assignedTeamIds,
+          ...assignments.map((assignment) => assignment.age_group_id).filter(Boolean),
+        ])];
       }
 
       const capabilities = roleCapabilities(effectiveRole);
       setUserRole({ ...(roleData || {}), role: effectiveRole, club_id: effectiveClubId, capabilities });
-      setMyTeams(capabilities.isClubAdmin ? [] : assignedTeamIds);
+      setMyTeams([...new Set(assignedTeamIds)]);
     } catch (error) {
       console.error("Unable to initialise platform access:", error);
       // Never lock Elaine out of a module because an older RBAC table differs.
       setEnabledModules(allModules);
-      setUserRole({ role: "super_admin", club_id: null });
+      setUserRole({ role: "coach_mentor", club_id: null, capabilities: roleCapabilities("coach_mentor") });
       setMyTeams([]);
       loadSkills();
       loadActivities();
       loadUpcoming();
     } finally {
       setAuthLoading(false);
+    }
+  }
+
+
+  async function currentCoachId() {
+    if (!session?.user?.id || !club?.id) return null;
+    const { data: byUser } = await supabase
+      .from("coaches")
+      .select("id")
+      .eq("club_id", club.id)
+      .eq("user_id", session.user.id)
+      .maybeSingle();
+    if (byUser?.id) return byUser.id;
+
+    const userEmail = String(session.user.email || "").trim();
+    if (!userEmail) return null;
+    const { data: byEmail } = await supabase
+      .from("coaches")
+      .select("id")
+      .eq("club_id", club.id)
+      .ilike("email", userEmail)
+      .maybeSingle();
+    return byEmail?.id || null;
+  }
+
+  async function addProfileTeam(ageGroupId) {
+    if (!ageGroupId || !session?.user?.id || !club?.id) return;
+    const coachId = await currentCoachId();
+
+    // Legacy membership is retained during migration.
+    await supabase.from("coach_assignments").upsert(
+      { user_id: session.user.id, club_id: club.id, age_group_id: ageGroupId },
+      { onConflict: "user_id,age_group_id", ignoreDuplicates: true }
+    );
+
+    // Current membership source used by RBAC and the other modules.
+    if (coachId) {
+      const role = permissions.isClubAdmin ? "club_admin" : (permissions.isLeadCoach ? "lead_coach" : "coach_mentor");
+      const { error } = await supabase.from("team_staff").upsert(
+        {
+          club_id: club.id,
+          age_group_id: ageGroupId,
+          coach_id: coachId,
+          user_id: session.user.id,
+          role,
+          status: "active",
+        },
+        { onConflict: "age_group_id,coach_id" }
+      );
+      if (error) console.warn("Could not sync team_staff assignment:", error.message);
+    }
+
+    setMyTeams((current) => [...new Set([...(current || []), ageGroupId])]);
+  }
+
+  async function removeProfileTeam(ageGroupId) {
+    if (!ageGroupId || !session?.user?.id) return;
+
+    await supabase
+      .from("coach_assignments")
+      .delete()
+      .eq("user_id", session.user.id)
+      .eq("age_group_id", ageGroupId);
+
+    const coachId = await currentCoachId();
+    let staffDelete = supabase
+      .from("team_staff")
+      .delete()
+      .eq("age_group_id", ageGroupId);
+    if (coachId) staffDelete = staffDelete.eq("coach_id", coachId);
+    else staffDelete = staffDelete.eq("user_id", session.user.id);
+    const { error } = await staffDelete;
+    if (error) console.warn("Could not remove team_staff assignment:", error.message);
+
+    setMyTeams((current) => (current || []).filter((id) => String(id) !== String(ageGroupId)));
+    if (String(selectedTeam?.id || "") === String(ageGroupId)) {
+      const nextId = (myTeams || []).find((id) => String(id) !== String(ageGroupId));
+      const nextTeam = ageGroups.find((team) => String(team.id) === String(nextId));
+      setSelectedTeam(nextTeam || null);
+      saveActiveContext(nextTeam || null, club);
     }
   }
 
@@ -4510,10 +5103,11 @@ export default function App() {
   // Restore and synchronise the one active team shared by every Spraoi module.
   useEffect(() => {
     if (!ageGroups.length) return;
-    const savedId = localStorage.getItem(ACTIVE_TEAM_KEY) || localStorage.getItem("spraoi_team_id");
+    const savedId = requestedTeamFromUrl(null) || localStorage.getItem(ACTIVE_TEAM_KEY) || localStorage.getItem("spraoi_team_id");
     const found = ageGroups.find((ag) => String(ag.id) === String(savedId));
     if (found && String(found.id) !== String(selectedTeam?.id || "")) {
       setSelectedTeam(found);
+      saveActiveContext(found, club);
     } else if (!found && selectedTeam && !ageGroups.some((ag) => String(ag.id) === String(selectedTeam.id))) {
       setSelectedTeam(null);
     }
@@ -4770,9 +5364,9 @@ export default function App() {
           <div style={{ background: P.white, borderRadius: 18, padding: 28, boxShadow: Sh.lift }}>
             <div style={{ fontFamily: F.display, fontSize: 17, fontWeight: 800, color: P.ink, marginBottom: 16 }}>Sign In</div>
             <label style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>Email</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="coach@email.com" style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 13, marginTop: 4, marginBottom: 12, background: P.soft }} />
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="coach@email.com" style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 10, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 13, marginTop: 4, marginBottom: 12, background: P.soft }} />
             <label style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>Password</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" onKeyDown={(e) => e.key === "Enter" && login()} style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 13, marginTop: 4, marginBottom: 16, background: P.soft }} />
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" onKeyDown={(e) => e.key === "Enter" && login()} style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 10, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 13, marginTop: 4, marginBottom: 16, background: P.soft }} />
             {authError && <div style={{ color: P.coral, fontSize: 12, fontWeight: 700, marginBottom: 12, textAlign: "center" }}>{authError}</div>}
             <button onClick={login} disabled={loggingIn || !email || !password} style={{ width: "100%", padding: 14, borderRadius: 12, border: "none", fontFamily: F.display, fontSize: 14, fontWeight: 800, background: CLUB_RED, color: "#fff", cursor: "pointer", boxShadow: "0 4px 14px rgba(211,47,47,.28)" }}>
               {loggingIn ? "Signing in..." : "Sign In"}
@@ -4817,8 +5411,7 @@ export default function App() {
                   <div key={label} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                     {boys && (
                       <button onClick={async () => {
-                        await supabase.from("coach_assignments").insert({ user_id: session.user.id, club_id: club.id, age_group_id: boys.id });
-                        setMyTeams((t) => [...(t === "all" ? [] : t), boys.id]);
+                        await addProfileTeam(boys.id);
                         selectTeam(boys);
                       }} style={{ flex: 1, padding: "14px 10px", borderRadius: 12, border: `1.5px solid ${P.line}`, background: P.soft, cursor: "pointer", textAlign: "center" }}>
                         <div style={{ fontFamily: F.display, fontWeight: 800, fontSize: 18, color: P.p600 }}>{label}</div>
@@ -4827,8 +5420,7 @@ export default function App() {
                     )}
                     {girls && (
                       <button onClick={async () => {
-                        await supabase.from("coach_assignments").insert({ user_id: session.user.id, club_id: club.id, age_group_id: girls.id });
-                        setMyTeams((t) => [...(t === "all" ? [] : t), girls.id]);
+                        await addProfileTeam(girls.id);
                         selectTeam(girls);
                       }} style={{ flex: 1, padding: "14px 10px", borderRadius: 12, border: `1.5px solid #d81b6033`, background: "#fef0f5", cursor: "pointer", textAlign: "center" }}>
                         <div style={{ fontFamily: F.display, fontWeight: 800, fontSize: 18, color: "#d81b60" }}>{label}</div>
@@ -4878,7 +5470,7 @@ export default function App() {
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", width: "100%", fontFamily: F.body, paddingTop: showMobile ? 62 : 0, paddingBottom: showMobile ? 68 : 0, boxSizing: "border-box" }}>
-      {showMobile && <MobileHeader activeModule={activeModule} setActiveModule={setActiveModule} onNav={setScreen} enabledModules={enabledModules} club={club} selectedTeam={selectedTeam} />}
+      {showMobile && <MobileHeader activeModule={activeModule} setActiveModule={setActiveModule} onNav={setScreen} enabledModules={enabledModules} club={club} selectedTeam={selectedTeam} ageGroups={ageGroups} myTeams={myTeams} onSelectTeam={selectTeam} onShowProfile={()=>setShowProfile(true)} />}
 
       {/* Sidebar — desktop only */}
       {!showMobile && <Sidebar activeModule={activeModule} setActiveModule={setActiveModule} activeScreen={screen} onNav={setScreen} club={club} selectedTeam={selectedTeam} onSelectTeam={selectTeam} enabledModules={enabledModules} onLogout={logout} ageGroups={ageGroups} myTeams={myTeams} onShowProfile={() => setShowProfile(true)} />}
@@ -4893,11 +5485,12 @@ export default function App() {
 
       {/* CLUB screens */}
       {screen === "club-dashboard" && <ClubDashboardScreen club={club} ageGroups={ageGroups} coaches={coaches} selectedTeam={selectedTeam} onNav={setScreen} />}
-      {screen === "club-setup" && <ClubSetupScreen club={club} userRole={userRole} onClubUpdated={setClub} />}
+      {screen === "club-setup" && <ClubSetupScreen club={club} userRole={userRole} onClubUpdated={setClub} onNav={setScreen} />}
+      {screen === "club-legal" && <ClubLegalScreen club={club} currentUserId={session?.user?.id} onNav={setScreen} />}
       {screen === "club-teams" && <ClubTeamsScreen club={club} ageGroups={ageGroups} coaches={coaches} selectedTeam={selectedTeam} onSelectTeam={selectTeam} onReloadTeams={() => loadAgeGroups(club?.id)} userRole={userRole} />}
       {screen === "club-coaches" && <ClubCoachesScreen club={club} ageGroups={ageGroups} coaches={coaches} selectedTeam={selectedTeam} onReloadCoaches={() => loadCoaches(club?.id)} userRole={userRole} currentUserId={session?.user?.id} />}
       {screen === "club-compliance" && <ClubComplianceScreen club={club} coaches={coaches} userRole={userRole} />}
-      {screen === "club-permissions" && <ClubPermissionsScreen club={club} userRole={userRole} />}
+      {screen === "club-permissions" && <ClubPermissionsScreen club={club} userRole={userRole} ageGroups={ageGroups} />}
 
       {/* CUP screens */}
       {screen.startsWith("cup-") && <ModulePlaceholder module={MODULES.cup} screen={screen} club={club} />}
@@ -4954,29 +5547,26 @@ export default function App() {
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
                   {ageGroups.filter((ag) => myTeams.includes(ag.id)).map((ag) => (
                     <div key={ag.id} style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 10px", borderRadius: 8, background: P.soft, border: `1px solid ${P.line}` }}>
-                      <span style={{ fontFamily: F.body, fontSize: 11, fontWeight: 600, color: P.ink }}>{ag.label} {ag.gender === "girls" ? "Girls" : "Boys"}</span>
-                      <button onClick={async () => {
-                        await supabase.from("coach_assignments").delete().eq("user_id", session.user.id).eq("age_group_id", ag.id);
-                        setMyTeams((t) => t.filter((id) => id !== ag.id));
-                        if (selectedTeam?.id === ag.id) setSelectedTeam(null);
-                      }} style={{ background: "none", border: "none", color: P.coral, cursor: "pointer", fontSize: 12, padding: 0 }}>×</button>
+                      <span style={{ fontFamily: F.body, fontSize: 11, fontWeight: 600, color: P.ink }}>{teamDisplayName(ag)}</span>
+                      {permissions.canManageTeamStaff && <button onClick={async () => {
+                        await removeProfileTeam(ag.id);
+                      }} title="Remove team" style={{ background: "none", border: "none", color: P.coral, cursor: "pointer", fontSize: 12, padding: 0 }}>×</button>}
                     </div>
                   ))}
                   {myTeams.length === 0 && <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted }}>No teams selected yet</div>}
                 </div>
-                {/* Add more teams */}
-                <select onChange={async (e) => {
+                {/* Add more teams — only users with team-management permission */}
+                {permissions.canManageTeamStaff && <select onChange={async (e) => {
                   const agId = e.target.value;
                   if (!agId || myTeams.includes(agId)) return;
-                  await supabase.from("coach_assignments").insert({ user_id: session.user.id, club_id: club.id, age_group_id: agId });
-                  setMyTeams((t) => [...t, agId]);
+                  await addProfileTeam(agId);
                   e.target.value = "";
-                }} style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 12, color: P.muted }}>
+                }} style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 12, color: P.muted }}>
                   <option value="">+ Add another team...</option>
                   {ageGroups.filter((ag) => !myTeams.includes(ag.id)).sort((a, b) => parseInt(a.label.replace("U", "")) - parseInt(b.label.replace("U", ""))).map((ag) => (
-                    <option key={ag.id} value={ag.id}>{ag.label} {ag.gender === "girls" ? "Girls" : "Boys"}</option>
+                    <option key={ag.id} value={ag.id}>{teamDisplayName(ag)}</option>
                   ))}
-                </select>
+                </select>}
               </div>
 
               {/* Logout */}

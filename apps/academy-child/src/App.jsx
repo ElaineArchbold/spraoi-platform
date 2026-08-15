@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabaseClient";
+import { LEGAL_POLICIES, LEGAL_POLICY_VERSION } from "../../../packages/ui/src/legalPolicies.js";
 import { CheckCircle, Circle, Trophy, Flame, Target, Zap, Home, Award, BookOpen, LogOut, Plus, ChevronDown, ChevronUp, User } from "lucide-react";
 import { registerSW } from "virtual:pwa-register";
 
@@ -346,6 +347,11 @@ export default function App() {
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
+  const [parentGuardianConfirmed, setParentGuardianConfirmed] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [privacyRead, setPrivacyRead] = useState(false);
+  const [legalPolicyKey, setLegalPolicyKey] = useState(null);
+  const [signupMessage, setSignupMessage] = useState("");
   const [players, setPlayers] = useState([]);
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [ageGroups, setAgeGroups] = useState([]);
@@ -385,7 +391,42 @@ export default function App() {
       if (s) loadParentData(s.user.id);
       else setInitialLoading(false);
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => { setSession(s); if (s) loadParentData(s.user.id); });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, s) => {
+      setSession(s);
+
+      if (s) {
+        await loadParentData(s.user.id);
+
+        try {
+          const pendingRaw = localStorage.getItem("spraoi_pending_parent_consent");
+          const pending = pendingRaw ? JSON.parse(pendingRaw) : null;
+
+          if (
+            pending?.parentGuardianConfirmation &&
+            (!pending.userId || String(pending.userId) === String(s.user.id))
+          ) {
+            const { data: clubRow } = await supabase
+              .from("clubs")
+              .select("id")
+              .eq("slug", "fingallians")
+              .maybeSingle();
+
+            const { error: acceptanceError } = await recordParentPolicyAcceptances(
+              s.user.id,
+              clubRow?.id || null
+            );
+
+            if (acceptanceError) {
+              console.error("Pending policy acceptance failed:", acceptanceError);
+            } else {
+              localStorage.removeItem("spraoi_pending_parent_consent");
+            }
+          }
+        } catch (consentError) {
+          console.error("Pending parent consent processing failed:", consentError);
+        }
+      }
+    });
     return () => subscription.unsubscribe();
   }, []);
 
@@ -502,7 +543,89 @@ export default function App() {
     if (selectedPlayer?.id) selectPlayer(selectedPlayer, weekOffset);
   }, [weekOffset]);
 
-  async function signup() { setAuthLoading(true); setAuthError(""); const { error } = await supabase.auth.signUp({ email, password }); if (error) setAuthError(error.message); setAuthLoading(false); }
+  const legalPolicy = LEGAL_POLICIES.find((policy) => policy.key === legalPolicyKey) || null;
+
+  async function recordParentPolicyAcceptances(userId, clubId = null) {
+    if (!userId) return { error: new Error("No authenticated user available for policy acceptance.") };
+
+    const requiredPolicies = ["terms", "parent_guardian", "privacy"]
+      .map((key) => LEGAL_POLICIES.find((policy) => policy.key === key))
+      .filter(Boolean);
+
+    const rows = requiredPolicies.map((policy) => ({
+      club_id: clubId || null,
+      user_id: userId,
+      child_id: null,
+      policy_key: policy.key,
+      policy_version: policy.version || LEGAL_POLICY_VERSION,
+      actor_type: "parent_guardian",
+      parent_guardian_confirmation: true,
+    }));
+
+    if (!rows.length) {
+      return { error: new Error("Required legal policies could not be loaded.") };
+    }
+
+    const { error } = await supabase
+      .from("spraoi_policy_acceptances")
+      .insert(rows);
+
+    return { error };
+  }
+
+  async function signup() {
+    if (!parentGuardianConfirmed || !termsAccepted || !privacyRead) {
+      setAuthError("Please complete the parent / guardian confirmations before creating an account.");
+      return;
+    }
+
+    setAuthLoading(true);
+    setAuthError("");
+    setSignupMessage("");
+
+    const { data, error } = await supabase.auth.signUp({ email, password });
+
+    if (error) {
+      setAuthError(error.message);
+      setAuthLoading(false);
+      return;
+    }
+
+    // If Supabase returns an authenticated session immediately,
+    // record acceptance now.
+    if (data?.session?.user?.id) {
+      const { error: acceptanceError } = await recordParentPolicyAcceptances(
+        data.session.user.id,
+        club?.id || null
+      );
+
+      if (acceptanceError) {
+        console.error("Policy acceptance failed:", acceptanceError);
+        setAuthError(
+          "Your account was created, but we could not record the policy acceptance: " +
+          acceptanceError.message
+        );
+        setAuthLoading(false);
+        return;
+      }
+    } else if (data?.user?.id) {
+      // Email confirmation may be enabled. Keep a small pending marker
+      // so acceptance can be recorded after the parent authenticates.
+      localStorage.setItem(
+        "spraoi_pending_parent_consent",
+        JSON.stringify({
+          userId: data.user.id,
+          policyVersion: LEGAL_POLICY_VERSION,
+          parentGuardianConfirmation: true,
+          createdAt: new Date().toISOString(),
+        })
+      );
+
+      setSignupMessage("Account created. Please check your email to confirm your account, then log in.");
+    }
+
+    setAuthLoading(false);
+  }
   async function login() { setAuthLoading(true); setAuthError(""); const { error } = await supabase.auth.signInWithPassword({ email, password }); if (error) setAuthError(error.message); setAuthLoading(false); }
   async function logout() { await supabase.auth.signOut(); setSession(null); setPlayers([]); setSelectedPlayer(null); }
 
@@ -736,10 +859,260 @@ export default function App() {
                 {showPassword ? "Hide" : "Show"}
               </button>
             </div>
+            {authMode === "signup" && (
+              <div style={{
+                margin: "4px 0 14px",
+                padding: 13,
+                borderRadius: 13,
+                background: "#f7faf8",
+                border: `1px solid ${C.border}`,
+                display: "grid",
+                gap: 10
+              }}>
+                <label style={{ display: "flex", alignItems: "flex-start", gap: 9, fontSize: 11.5, lineHeight: 1.45, color: C.text, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={parentGuardianConfirmed}
+                    onChange={(e) => setParentGuardianConfirmed(e.target.checked)}
+                    style={{ marginTop: 2, width: 16, height: 16 }}
+                  />
+                  <span>
+                    I confirm that I am the parent or legal guardian of the child using Spraoi Academy.
+                  </span>
+                </label>
+
+                <label style={{ display: "flex", alignItems: "flex-start", gap: 9, fontSize: 11.5, lineHeight: 1.45, color: C.text, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={termsAccepted}
+                    onChange={(e) => setTermsAccepted(e.target.checked)}
+                    style={{ marginTop: 2, width: 16, height: 16 }}
+                  />
+                  <span>
+                    I agree to the{" "}
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); setLegalPolicyKey("terms"); }}
+                      style={{ border: 0, padding: 0, background: "transparent", color: C.primary, font: "inherit", fontWeight: 800, cursor: "pointer", textDecoration: "underline" }}
+                    >
+                      Terms of Service
+                    </button>
+                    {" "}and{" "}
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); setLegalPolicyKey("parent_guardian"); }}
+                      style={{ border: 0, padding: 0, background: "transparent", color: C.primary, font: "inherit", fontWeight: 800, cursor: "pointer", textDecoration: "underline" }}
+                    >
+                      Parent / Guardian Terms
+                    </button>.
+                  </span>
+                </label>
+
+                <label style={{ display: "flex", alignItems: "flex-start", gap: 9, fontSize: 11.5, lineHeight: 1.45, color: C.text, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={privacyRead}
+                    onChange={(e) => setPrivacyRead(e.target.checked)}
+                    style={{ marginTop: 2, width: 16, height: 16 }}
+                  />
+                  <span>
+                    I have read the{" "}
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); setLegalPolicyKey("privacy"); }}
+                      style={{ border: 0, padding: 0, background: "transparent", color: C.primary, font: "inherit", fontWeight: 800, cursor: "pointer", textDecoration: "underline" }}
+                    >
+                      Privacy Policy
+                    </button>.
+                  </span>
+                </label>
+
+                <div style={{ fontSize: 9.5, color: C.textSecondary, lineHeight: 1.45 }}>
+                  Spraoi Sports private beta · Policy version {LEGAL_POLICY_VERSION}
+                </div>
+              </div>
+            )}
+
             {authError && <div style={{ color: "#dc2626", fontSize: 12, fontWeight: 700, marginBottom: 10, textAlign: "center" }}>{authError}</div>}
-            <button onClick={authMode === "login" ? login : signup} disabled={authLoading || !email || !password} style={{ width: "100%", boxSizing: "border-box", borderRadius: 12, padding: 14, border: "none", fontSize: 15, fontWeight: 900, fontFamily: "'League Spartan', sans-serif", background: C.primary, color: "#fff", cursor: "pointer", boxShadow: "0 4px 12px rgba(26,92,45,0.25)" }}>{authLoading ? "..." : authMode === "login" ? "Log In" : "Create Account"}</button>
+
+            {signupMessage && authMode === "signup" && (
+              <div style={{
+                color: "#16803c",
+                background: "#edf8f0",
+                border: "1px solid #b7dfc1",
+                padding: 10,
+                borderRadius: 10,
+                fontSize: 11,
+                fontWeight: 700,
+                marginBottom: 10,
+                textAlign: "center"
+              }}>
+                {signupMessage}
+              </div>
+            )}
+
+            <button
+              onClick={authMode === "login" ? login : signup}
+              disabled={
+                authLoading ||
+                !email ||
+                !password ||
+                (authMode === "signup" && (!parentGuardianConfirmed || !termsAccepted || !privacyRead))
+              }
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                borderRadius: 12,
+                padding: 14,
+                border: "none",
+                fontSize: 15,
+                fontWeight: 900,
+                fontFamily: "'League Spartan', sans-serif",
+                background: C.primary,
+                color: "#fff",
+                cursor: (
+                  authLoading ||
+                  !email ||
+                  !password ||
+                  (authMode === "signup" && (!parentGuardianConfirmed || !termsAccepted || !privacyRead))
+                ) ? "not-allowed" : "pointer",
+                opacity: (
+                  authLoading ||
+                  !email ||
+                  !password ||
+                  (authMode === "signup" && (!parentGuardianConfirmed || !termsAccepted || !privacyRead))
+                ) ? 0.5 : 1,
+                boxShadow: "0 4px 12px rgba(26,92,45,0.25)"
+              }}
+            >
+              {authLoading ? "..." : authMode === "login" ? "Log In" : "Create Account"}
+            </button>
           </div>
         </div>
+
+        {legalPolicy && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={legalPolicy.title}
+            onClick={() => setLegalPolicyKey(null)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 9999,
+              background: "rgba(11,37,69,.58)",
+              backdropFilter: "blur(5px)",
+              display: "grid",
+              placeItems: "center",
+              padding: 16
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: "min(680px, 100%)",
+                maxHeight: "86vh",
+                overflow: "hidden",
+                display: "flex",
+                flexDirection: "column",
+                background: "#fff",
+                borderRadius: 20,
+                boxShadow: "0 24px 70px rgba(0,0,0,.24)"
+              }}
+            >
+              <div style={{
+                padding: "18px 20px",
+                borderBottom: `1px solid ${C.border}`,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+                gap: 14
+              }}>
+                <div>
+                  <div style={{ fontFamily: "'League Spartan', sans-serif", fontSize: 20, fontWeight: 900, color: C.text }}>
+                    {legalPolicy.title}
+                  </div>
+                  <div style={{ marginTop: 4, fontSize: 10, color: C.textSecondary }}>
+                    Version {legalPolicy.version} · Effective {legalPolicy.effectiveDate}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setLegalPolicyKey(null)}
+                  aria-label="Close"
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 10,
+                    border: `1px solid ${C.border}`,
+                    background: "#fff",
+                    color: C.text,
+                    cursor: "pointer",
+                    fontSize: 19,
+                    lineHeight: 1
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div style={{ padding: 20, overflowY: "auto" }}>
+                {(legalPolicy.sections || []).map((section) => (
+                  <section key={section.heading} style={{ marginBottom: 20 }}>
+                    <div style={{
+                      fontFamily: "'League Spartan', sans-serif",
+                      fontSize: 15,
+                      fontWeight: 900,
+                      color: C.primary,
+                      marginBottom: 7
+                    }}>
+                      {section.heading}
+                    </div>
+
+                    {(section.body || []).map((paragraph, index) => (
+                      <p
+                        key={index}
+                        style={{
+                          margin: index ? "8px 0 0" : 0,
+                          fontSize: 11.5,
+                          lineHeight: 1.65,
+                          color: C.text
+                        }}
+                      >
+                        {paragraph}
+                      </p>
+                    ))}
+                  </section>
+                ))}
+              </div>
+
+              <div style={{
+                padding: 14,
+                borderTop: `1px solid ${C.border}`,
+                background: "#fafcfb"
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setLegalPolicyKey(null)}
+                  style={{
+                    width: "100%",
+                    padding: 12,
+                    borderRadius: 11,
+                    border: "none",
+                    background: C.primary,
+                    color: "#fff",
+                    fontFamily: "'League Spartan', sans-serif",
+                    fontWeight: 900,
+                    cursor: "pointer"
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
