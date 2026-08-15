@@ -8,6 +8,15 @@ const DEV_MODULE_URLS = {
   cup: "http://localhost:5177",
   coach: "http://localhost:5179",
   admin: "http://localhost:5180",
+  connect: "http://localhost:5181",
+};
+
+const PROD_MODULE_PATHS = {
+  club: "/club/",
+  academy: "/academy/",
+  cup: "/cup/",
+  coach: "/coach/",
+  admin: "/",
 };
 
 const DEFAULT_SCREENS = {
@@ -17,7 +26,18 @@ const DEFAULT_SCREENS = {
   cup: "cup-dashboard",
   coach: "coach-dashboard",
   admin: "admin-home",
+  connect: "connect-dashboard",
 };
+
+function isLocalDevelopment() {
+  if (typeof window === "undefined") return false;
+
+  return (
+    import.meta.env.DEV ||
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1"
+  );
+}
 
 export function moduleScreenKey(moduleId) {
   return `spraoi_${String(moduleId || "").toLowerCase()}_active_screen`;
@@ -25,15 +45,19 @@ export function moduleScreenKey(moduleId) {
 
 export function readModuleScreen(moduleId, fallback = null) {
   if (typeof window === "undefined") return fallback;
+
   const key = String(moduleId || "").toLowerCase();
   const saved = localStorage.getItem(moduleScreenKey(key));
+
   return saved && saved.startsWith(`${key}-`) ? saved : fallback;
 }
 
 export function writeModuleScreen(moduleId, screen) {
   if (typeof window === "undefined" || !moduleId || !screen) return;
+
   const key = String(moduleId).toLowerCase();
   const value = String(screen);
+
   if (!value.startsWith(`${key}-`)) return;
 
   localStorage.setItem(ACTIVE_MODULE_KEY, key);
@@ -47,32 +71,45 @@ export function requestedModuleFromUrl(fallbackModule = null) {
   }
 
   const params = new URLSearchParams(window.location.search);
-  const moduleId = String(params.get("module") || fallbackModule || "").toLowerCase() || null;
+  const moduleId =
+    String(params.get("module") || fallbackModule || "").toLowerCase() || null;
 
-  return { moduleId, screen: params.get("screen") };
+  return {
+    moduleId,
+    screen: params.get("screen"),
+  };
 }
 
 export function requestedScreenFromUrl(fallback = null) {
   if (typeof window === "undefined") return fallback;
-  return new URLSearchParams(window.location.search).get("screen") || fallback;
+
+  return (
+    new URLSearchParams(window.location.search).get("screen") ||
+    fallback
+  );
 }
 
 export function requestedTeamFromUrl(fallback = null) {
   if (typeof window === "undefined") return fallback;
-  return new URLSearchParams(window.location.search).get("team") || fallback;
+
+  return (
+    new URLSearchParams(window.location.search).get("team") ||
+    fallback
+  );
 }
 
 export function moduleBaseUrl(moduleId) {
   if (typeof window === "undefined") return "";
+
   const key = String(moduleId || "").toLowerCase();
 
-  if (import.meta.env.DEV) {
+  if (isLocalDevelopment()) {
     return DEV_MODULE_URLS[key] || DEV_MODULE_URLS.club;
   }
 
-  const url = new URL(window.location.origin);
-  url.searchParams.set("module", key);
-  return url.toString();
+  const path = PROD_MODULE_PATHS[key] || PROD_MODULE_PATHS.club;
+
+  return new URL(path, window.location.origin).toString();
 }
 
 export function adminShellBaseUrl() {
@@ -94,19 +131,17 @@ export function openAdminModule(moduleId, screen = null) {
     target.searchParams.set("screen", targetScreen);
   }
 
-  // localhost ports are separate browser origins, so localStorage is not
-  // shared between Club/Coach/Academy/Cup. Carry the selected team explicitly
-  // in the URL and let the destination persist it into its own localStorage.
   const activeTeamId =
     localStorage.getItem("spraoi_active_team_id") ||
     localStorage.getItem("spraoi_team_id");
+
   if (activeTeamId) {
     target.searchParams.set("team", activeTeamId);
   }
 
-  // Save only for the current origin as a convenience; navigation itself
-  // never relies on another port's localStorage.
-  if (targetScreen) writeModuleScreen(key, targetScreen);
+  if (targetScreen) {
+    writeModuleScreen(key, targetScreen);
+  }
 
   window.location.assign(target.toString());
 }
