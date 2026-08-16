@@ -1,1 +1,1 @@
-Cup production recursion fix: 2026-08-15 21:23
+Cup team switching production fix: 2026-08-16 10:43

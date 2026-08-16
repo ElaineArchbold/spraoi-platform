@@ -4977,12 +4977,24 @@ export default function App() {
   function selectTeam(ag) {
     setSelectedTeam(ag);
     saveActiveContext(ag, club);
+
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("team", String(ag.id));
+      window.history.replaceState({}, "", url.toString());
+    }
     loadUpcoming(ag.id);
     loadAcademyCoachPlan(ag.id);
   }
   function clearTeam() {
     setSelectedTeam(null);
     saveActiveContext(null, club);
+
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("team");
+      window.history.replaceState({}, "", url.toString());
+    }
   }
 
   async function loadAgeGroups(clubId) { const { data } = await supabase.from("age_groups").select("*").eq("club_id", clubId).order("label"); setAgeGroups(data || []); }
