@@ -6016,7 +6016,19 @@ export default function App() {
   const [authError, setAuthError] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loggingIn, setLoggingIn] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+  const [recoveryMode, setRecoveryMode] = useState(() => {
+    const search = new URLSearchParams(window.location.search);
+    const hash = new URLSearchParams(String(window.location.hash || "").replace(/^#/, ""));
+    return search.get("type") === "recovery" || hash.get("type") === "recovery";
+  });
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [recoverySaving, setRecoverySaving] = useState(false);
 
   // User role state
   const [userRole, setUserRole] = useState(null); // { role, club_id, modules }
@@ -6069,8 +6081,15 @@ export default function App() {
       if (s) loadUserRole(s.user.id, s.user.email);
       else setAuthLoading(false);
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
+
+      if (event === "PASSWORD_RECOVERY") {
+        setRecoveryMode(true);
+        setAuthLoading(false);
+        return;
+      }
+
       if (s) loadUserRole(s.user.id, s.user.email);
       else { setAuthLoading(false); setUserRole(null); }
     });
@@ -6302,6 +6321,80 @@ export default function App() {
     }
   }
 
+  async function sendPasswordReset() {
+    const cleanEmail = String(email || "").trim();
+
+    if (!cleanEmail) {
+      setAuthError("Enter your email address first.");
+      return;
+    }
+
+    setLoggingIn(true);
+    setAuthError("");
+    setResetSent(false);
+
+    const redirectTo =
+      `${window.location.origin}${window.location.pathname}`;
+
+    const { error } =
+      await supabase.auth.resetPasswordForEmail(
+        cleanEmail,
+        { redirectTo }
+      );
+
+    if (error) {
+      setAuthError(error.message);
+    } else {
+      setResetSent(true);
+    }
+
+    setLoggingIn(false);
+  }
+
+  async function saveRecoveredPassword() {
+    setAuthError("");
+
+    if (newPassword.length < 8) {
+      setAuthError("Your new password must be at least 8 characters.");
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      setAuthError("The passwords do not match.");
+      return;
+    }
+
+    setRecoverySaving(true);
+
+    const { error } =
+      await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+    if (error) {
+      setAuthError(error.message);
+      setRecoverySaving(false);
+      return;
+    }
+
+    setNewPassword("");
+    setConfirmNewPassword("");
+    setRecoveryMode(false);
+
+    await supabase.auth.signOut();
+
+    setSession(null);
+    setAuthError(
+      "Password updated successfully. Sign in with your new password."
+    );
+    setRecoverySaving(false);
+
+    window.history.replaceState(
+      {},
+      document.title,
+      window.location.pathname
+    );
+  }
   async function login() { setLoggingIn(true); setAuthError(""); const { error } = await supabase.auth.signInWithPassword({ email, password }); if (error) setAuthError(error.message); setLoggingIn(false); }
   async function signup() { setLoggingIn(true); setAuthError(""); const { error } = await supabase.auth.signUp({ email, password }); if (error) setAuthError(error.message); else setAuthError("Check your email to confirm."); setLoggingIn(false); }
   async function logout() { await supabase.auth.signOut(); setSession(null); setUserRole(null); setClub(null); setSelectedTeam(null); }
@@ -6558,6 +6651,227 @@ export default function App() {
     );
   }
 
+  // Password recovery takes priority over normal authenticated routing.
+  if (recoveryMode && session) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          background: P.navy,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: F.body,
+          padding: 16,
+        }}
+      >
+        <div style={{ maxWidth: 400, width: "100%" }}>
+          <div style={{ textAlign: "center", marginBottom: 28 }}>
+            <img
+              src="/spraoi-logo-white.png"
+              alt="Spraoi Sports"
+              style={{
+                width: 180,
+                height: "auto",
+                marginBottom: 10,
+              }}
+            />
+            <div
+              style={{
+                fontSize: 12,
+                color: "rgba(255,255,255,.55)",
+              }}
+            >
+              Reset your password
+            </div>
+          </div>
+
+          <div
+            style={{
+              background: P.white,
+              borderRadius: 18,
+              padding: 28,
+              boxShadow: Sh.lift,
+            }}
+          >
+            <div
+              style={{
+                fontFamily: F.display,
+                fontSize: 20,
+                fontWeight: 900,
+                color: P.ink,
+              }}
+            >
+              Choose a new password
+            </div>
+
+            <div
+              style={{
+                fontSize: 12,
+                lineHeight: 1.5,
+                color: P.muted,
+                marginTop: 5,
+                marginBottom: 18,
+              }}
+            >
+              Enter a new password for your Spraoi Sports account.
+            </div>
+
+            <label
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: P.muted,
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+              }}
+            >
+              New password
+            </label>
+
+            <div
+              style={{
+                position: "relative",
+                marginTop: 4,
+                marginBottom: 14,
+              }}
+            >
+              <input
+                type={showNewPassword ? "text" : "password"}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                autoComplete="new-password"
+                placeholder="At least 8 characters"
+                style={{
+                  width: "100%",
+                  boxSizing: "border-box",
+                  padding: "12px 58px 12px 14px",
+                  borderRadius: 10,
+                  border: `1.5px solid ${P.line}`,
+                  fontFamily: F.body,
+                  fontSize: 13,
+                  background: P.soft,
+                }}
+              />
+
+              <button
+                type="button"
+                onClick={() =>
+                  setShowNewPassword((current) => !current)
+                }
+                aria-label={
+                  showNewPassword
+                    ? "Hide password"
+                    : "Show password"
+                }
+                aria-pressed={showNewPassword}
+                style={{
+                  position: "absolute",
+                  right: 10,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  border: "none",
+                  background: "transparent",
+                  padding: "5px 4px",
+                  fontFamily: F.body,
+                  fontSize: 11,
+                  fontWeight: 800,
+                  color: P.muted,
+                  cursor: "pointer",
+                }}
+              >
+                {showNewPassword ? "Hide" : "Show"}
+              </button>
+            </div>
+
+            <label
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: P.muted,
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+              }}
+            >
+              Confirm new password
+            </label>
+
+            <input
+              type={showNewPassword ? "text" : "password"}
+              value={confirmNewPassword}
+              onChange={(e) =>
+                setConfirmNewPassword(e.target.value)
+              }
+              autoComplete="new-password"
+              placeholder="Repeat your new password"
+              onKeyDown={(e) =>
+                e.key === "Enter" &&
+                saveRecoveredPassword()
+              }
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                padding: "12px 14px",
+                borderRadius: 10,
+                border: `1.5px solid ${P.line}`,
+                fontFamily: F.body,
+                fontSize: 13,
+                marginTop: 4,
+                background: P.soft,
+              }}
+            />
+
+            {authError && (
+              <div
+                style={{
+                  color: P.coral,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  marginTop: 12,
+                  textAlign: "center",
+                }}
+              >
+                {authError}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={saveRecoveredPassword}
+              disabled={
+                recoverySaving ||
+                !newPassword ||
+                !confirmNewPassword
+              }
+              style={{
+                width: "100%",
+                padding: 14,
+                borderRadius: 12,
+                border: "none",
+                fontFamily: F.display,
+                fontSize: 14,
+                fontWeight: 800,
+                background: CLUB_RED,
+                color: "#fff",
+                cursor: "pointer",
+                marginTop: 18,
+                opacity:
+                  recoverySaving ||
+                  !newPassword ||
+                  !confirmNewPassword
+                    ? 0.6
+                    : 1,
+              }}
+            >
+              {recoverySaving
+                ? "Updating..."
+                : "Update password"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
   // Invitation acceptance takes priority once the recipient is authenticated.
   if (session && inviteToken) {
     return (
@@ -6584,7 +6898,132 @@ export default function App() {
             <label style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>Email</label>
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="coach@email.com" style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 10, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 13, marginTop: 4, marginBottom: 12, background: P.soft }} />
             <label style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>Password</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" onKeyDown={(e) => e.key === "Enter" && login()} style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 10, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 13, marginTop: 4, marginBottom: 16, background: P.soft }} />
+            <div style={{ position: "relative", width: "100%", marginTop: 4, marginBottom: 16 }}>
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+                onKeyDown={(e) => e.key === "Enter" && login()}
+                style={{
+                  width: "100%",
+                  boxSizing: "border-box",
+                  padding: "12px 58px 12px 14px",
+                  borderRadius: 10,
+                  border: `1.5px solid ${P.line}`,
+                  fontFamily: F.body,
+                  fontSize: 13,
+                  background: P.soft
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((current) => !current)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-pressed={showPassword}
+                style={{
+                  position: "absolute",
+                  right: 10,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  border: "none",
+                  background: "transparent",
+                  padding: "5px 4px",
+                  fontFamily: F.body,
+                  fontSize: 11,
+                  fontWeight: 800,
+                  color: P.muted,
+                  cursor: "pointer"
+                }}
+              >
+                {showPassword ? "Hide" : "Show"}
+              </button>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                marginTop: -8,
+                marginBottom: 14,
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setShowForgotPassword((current) => !current);
+                  setResetSent(false);
+                  setAuthError("");
+                }}
+                style={{
+                  border: "none",
+                  background: "transparent",
+                  padding: 0,
+                  fontFamily: F.body,
+                  fontSize: 11,
+                  fontWeight: 800,
+                  color: CLUB_RED,
+                  cursor: "pointer",
+                }}
+              >
+                Forgot password?
+              </button>
+            </div>
+
+            {showForgotPassword && (
+              <div
+                style={{
+                  background: "#fff7f7",
+                  border: "1px solid #fecaca",
+                  borderRadius: 12,
+                  padding: 13,
+                  marginBottom: 14,
+                }}
+              >
+                <div
+                  style={{
+                    fontFamily: F.body,
+                    fontSize: 11,
+                    lineHeight: 1.5,
+                    color: P.ink,
+                  }}
+                >
+                  {resetSent
+                    ? `We've sent a password reset link to ${email}.`
+                    : "Enter your email above and we'll send you a secure password reset link."}
+                </div>
+
+                {!resetSent && (
+                  <button
+                    type="button"
+                    onClick={sendPasswordReset}
+                    disabled={loggingIn || !email}
+                    style={{
+                      width: "100%",
+                      height: 36,
+                      border: "none",
+                      borderRadius: 9,
+                      background: CLUB_RED,
+                      color: "#fff",
+                      fontFamily: F.body,
+                      fontSize: 11,
+                      fontWeight: 800,
+                      cursor: "pointer",
+                      marginTop: 10,
+                      opacity:
+                        loggingIn || !email
+                          ? 0.6
+                          : 1,
+                    }}
+                  >
+                    {loggingIn
+                      ? "Sending..."
+                      : "Send reset link"}
+                  </button>
+                )}
+              </div>
+            )}
+
             {authError && <div style={{ color: P.coral, fontSize: 12, fontWeight: 700, marginBottom: 12, textAlign: "center" }}>{authError}</div>}
             <button onClick={login} disabled={loggingIn || !email || !password} style={{ width: "100%", padding: 14, borderRadius: 12, border: "none", fontFamily: F.display, fontSize: 14, fontWeight: 800, background: CLUB_RED, color: "#fff", cursor: "pointer", boxShadow: "0 4px 14px rgba(211,47,47,.28)" }}>
               {loggingIn ? "Signing in..." : "Sign In"}

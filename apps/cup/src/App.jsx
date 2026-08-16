@@ -5620,6 +5620,280 @@ export default function App() {
   const [password, setPassword] = useState("");
   const [loggingIn, setLoggingIn] = useState(false);
 
+
+function SpraoiPasswordRecovery({
+  accent = "#0277bd",
+  lightBackground = false,
+  logo = "/spraoi-logo-white.png",
+  onDone,
+}) {
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showRecoveryPassword, setShowRecoveryPassword] = useState(false);
+  const [savingRecovery, setSavingRecovery] = useState(false);
+  const [recoveryError, setRecoveryError] = useState("");
+
+  async function saveRecoveryPassword() {
+    setRecoveryError("");
+
+    if (newPassword.length < 8) {
+      setRecoveryError("Your password must be at least 8 characters.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setRecoveryError("The passwords do not match.");
+      return;
+    }
+
+    setSavingRecovery(true);
+
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (error) {
+      setRecoveryError(error.message);
+      setSavingRecovery(false);
+      return;
+    }
+
+    await supabase.auth.signOut();
+
+    window.history.replaceState(
+      {},
+      document.title,
+      window.location.pathname
+    );
+
+    if (onDone) onDone();
+
+    alert(
+      "Password updated successfully. Please sign in with your new password."
+    );
+  }
+
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        background: lightBackground ? "#f0f7fc" : "#0b2545",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16,
+        fontFamily: "Inter, Segoe UI, sans-serif",
+      }}
+    >
+      <div style={{ width: "100%", maxWidth: 400 }}>
+        <div style={{ textAlign: "center", marginBottom: 22 }}>
+          <img
+            src={logo}
+            alt="Spraoi Sports"
+            style={{
+              width: 170,
+              maxWidth: "70%",
+              height: "auto",
+              objectFit: "contain",
+            }}
+          />
+        </div>
+
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: 18,
+            padding: 28,
+            boxShadow: "0 10px 30px rgba(0,0,0,.12)",
+          }}
+        >
+          <div
+            style={{
+              fontSize: 21,
+              fontWeight: 900,
+              color: "#13243b",
+              marginBottom: 6,
+            }}
+          >
+            Choose a new password
+          </div>
+
+          <div
+            style={{
+              fontSize: 12,
+              lineHeight: 1.5,
+              color: "#627187",
+              marginBottom: 20,
+            }}
+          >
+            Enter a new password for your Spraoi Sports account.
+          </div>
+
+          <label
+            style={{
+              display: "block",
+              fontSize: 11,
+              fontWeight: 800,
+              color: "#627187",
+              textTransform: "uppercase",
+              marginBottom: 5,
+            }}
+          >
+            New password
+          </label>
+
+          <div style={{ position: "relative", marginBottom: 14 }}>
+            <input
+              type={showRecoveryPassword ? "text" : "password"}
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              autoComplete="new-password"
+              placeholder="At least 8 characters"
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                padding: "12px 62px 12px 13px",
+                borderRadius: 10,
+                border: "1.5px solid #dfe7ef",
+                background: "#f6f9fc",
+                fontSize: 13,
+              }}
+            />
+
+            <button
+              type="button"
+              onClick={() => setShowRecoveryPassword((v) => !v)}
+              aria-label={
+                showRecoveryPassword
+                  ? "Hide password"
+                  : "Show password"
+              }
+              aria-pressed={showRecoveryPassword}
+              style={{
+                position: "absolute",
+                right: 10,
+                top: "50%",
+                transform: "translateY(-50%)",
+                border: "none",
+                background: "transparent",
+                color: "#627187",
+                fontSize: 11,
+                fontWeight: 800,
+                cursor: "pointer",
+              }}
+            >
+              {showRecoveryPassword ? "Hide" : "Show"}
+            </button>
+          </div>
+
+          <label
+            style={{
+              display: "block",
+              fontSize: 11,
+              fontWeight: 800,
+              color: "#627187",
+              textTransform: "uppercase",
+              marginBottom: 5,
+            }}
+          >
+            Confirm new password
+          </label>
+
+          <div style={{ position: "relative", marginBottom: 16 }}>
+            <input
+              type={showRecoveryPassword ? "text" : "password"}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              autoComplete="new-password"
+              placeholder="Repeat your new password"
+              onKeyDown={(e) =>
+                e.key === "Enter" && saveRecoveryPassword()
+              }
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                padding: "12px 62px 12px 13px",
+                borderRadius: 10,
+                border: "1.5px solid #dfe7ef",
+                background: "#f6f9fc",
+                fontSize: 13,
+              }}
+            />
+
+            <button
+              type="button"
+              onClick={() => setShowRecoveryPassword((v) => !v)}
+              aria-label={
+                showRecoveryPassword
+                  ? "Hide password"
+                  : "Show password"
+              }
+              aria-pressed={showRecoveryPassword}
+              style={{
+                position: "absolute",
+                right: 10,
+                top: "50%",
+                transform: "translateY(-50%)",
+                border: "none",
+                background: "transparent",
+                color: "#627187",
+                fontSize: 11,
+                fontWeight: 800,
+                cursor: "pointer",
+              }}
+            >
+              {showRecoveryPassword ? "Hide" : "Show"}
+            </button>
+          </div>
+
+          {recoveryError && (
+            <div
+              style={{
+                color: "#c62828",
+                fontSize: 12,
+                fontWeight: 700,
+                textAlign: "center",
+                marginBottom: 12,
+              }}
+            >
+              {recoveryError}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={saveRecoveryPassword}
+            disabled={
+              savingRecovery ||
+              !newPassword ||
+              !confirmPassword
+            }
+            style={{
+              width: "100%",
+              padding: 14,
+              border: "none",
+              borderRadius: 11,
+              background: accent,
+              color: "#fff",
+              fontSize: 14,
+              fontWeight: 800,
+              cursor: "pointer",
+              opacity:
+                savingRecovery ||
+                !newPassword ||
+                !confirmPassword
+                  ? 0.55
+                  : 1,
+            }}
+          >
+            {savingRecovery ? "Updating..." : "Update password"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
   // User role state
   const [userRole, setUserRole] = useState(null); // { role, club_id, modules }
   const [enabledModules, setEnabledModules] = useState([]);
@@ -5628,7 +5902,11 @@ export default function App() {
       setEnabledModules((mods) => mods.includes("cup") ? mods : [...mods, "cup"]);
     }
   }, []);
+  const [showPassword, setShowPassword] = useState(false);
 
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+  const [recoveryMode, setRecoveryMode] = useState(false);
   // App state — this standalone build owns CUP only.
   // Other module buttons return to the single Admin shell, which renders the canonical module.
   const [screen, setScreen] = useState(() => {
@@ -5680,7 +5958,7 @@ export default function App() {
       if (s) loadUserRole(s.user.id, s.user.email);
       else setAuthLoading(false);
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
       if (s) loadUserRole(s.user.id, s.user.email);
       else { setAuthLoading(false); setUserRole(null); }
@@ -5692,6 +5970,12 @@ export default function App() {
   }, []);
 
   async function loadUserRole(userId, userEmail) {
+
+      if (event === "PASSWORD_RECOVERY") {
+        setRecoveryMode(true);
+        setAuthLoading(false);
+        return;
+      }
     const allModules = ["coach", "club", "cup", "connect", "academy", "plus"];
 
     try {
@@ -5819,6 +6103,35 @@ export default function App() {
     const allowedTeams = permissions.isClubAdmin
       ? ageGroups
       : ageGroups.filter((ag) => (myTeams || []).includes(ag.id));
+  async function sendPasswordReset() {
+    const cleanEmail = String(email || "").trim();
+
+    if (!cleanEmail) {
+      setAuthError("Enter your email address first.");
+      return;
+    }
+
+    setLoggingIn(true);
+    setAuthError("");
+    setResetSent(false);
+
+    const redirectTo =
+      `${window.location.origin}${window.location.pathname}`;
+
+    const { error } =
+      await supabase.auth.resetPasswordForEmail(
+        cleanEmail,
+        { redirectTo }
+      );
+
+    if (error) {
+      setAuthError(error.message);
+    } else {
+      setResetSent(true);
+    }
+
+    setLoggingIn(false);
+  }
     const savedId = requestedTeamFromUrl(null) || localStorage.getItem(ACTIVE_TEAM_KEY) || localStorage.getItem("spraoi_team_id");
     const found = allowedTeams.find((ag) => String(ag.id) === String(savedId));
 
@@ -6100,10 +6413,143 @@ export default function App() {
           </div>
           <div style={{ background: P.white, borderRadius: 18, padding: 28, boxShadow: Sh.lift }}>
             <div style={{ fontFamily: F.display, fontSize: 17, fontWeight: 800, color: P.ink, marginBottom: 16 }}>Sign In</div>
+  if (recoveryMode && session) {
+    return (
+      <SpraoiPasswordRecovery
+        accent={MODULES[APP_MODULE]?.color || "#0277bd"}
+        onDone={() => setRecoveryMode(false)}
+      />
+    );
+  }
             <label style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>Email</label>
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="organiser@email.com" style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 10, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 13, marginTop: 4, marginBottom: 12, background: P.soft }} />
             <label style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>Password</label>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" onKeyDown={(e) => e.key === "Enter" && login()} style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 10, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 13, marginTop: 4, marginBottom: 16, background: P.soft }} />
+            <div style={{ position: "relative", width: "100%", marginTop: 4, marginBottom: 16 }}>
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+                onKeyDown={(e) => e.key === "Enter" && login()}
+                style={{
+                  width: "100%",
+                  boxSizing: "border-box",
+                  padding: "12px 58px 12px 14px",
+                  borderRadius: 10,
+                  border: `1.5px solid ${P.line}`,
+                  fontFamily: F.body,
+                  fontSize: 13,
+                  background: P.soft
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((current) => !current)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-pressed={showPassword}
+                style={{
+                  position: "absolute",
+                  right: 10,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  border: "none",
+                  background: "transparent",
+                  padding: "5px 4px",
+                  fontFamily: F.body,
+                  fontSize: 11,
+                  fontWeight: 800,
+                  color: P.muted,
+                  cursor: "pointer"
+                }}
+              >
+                {showPassword ? "Hide" : "Show"}
+              </button>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                marginTop: -8,
+                marginBottom: 13,
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setShowForgotPassword((v) => !v);
+                  setResetSent(false);
+                  setAuthError("");
+                }}
+                style={{
+                  border: "none",
+                  background: "transparent",
+                  padding: 0,
+                  fontFamily: F.body,
+                  fontSize: 11,
+                  fontWeight: 800,
+                  color: MODULES[APP_MODULE]?.color || "#0277bd",
+                  cursor: "pointer",
+                }}
+              >
+                Forgot password?
+              </button>
+            </div>
+
+            {showForgotPassword && (
+              <div
+                style={{
+                  background: P.soft,
+                  border: `1px solid ${P.line}`,
+                  borderRadius: 11,
+                  padding: 13,
+                  marginBottom: 14,
+                }}
+              >
+                <div
+                  style={{
+                    fontFamily: F.body,
+                    fontSize: 11,
+                    lineHeight: 1.5,
+                    color: P.ink,
+                  }}
+                >
+                  {resetSent
+                    ? `We've sent a password reset link to ${email}.`
+                    : "Enter your email above and we'll send you a secure password reset link."}
+                </div>
+
+                {!resetSent && (
+                  <button
+                    type="button"
+                    onClick={sendPasswordReset}
+                    disabled={loggingIn || !email}
+                    style={{
+                      width: "100%",
+                      height: 36,
+                      border: "none",
+                      borderRadius: 9,
+                      background:
+                        MODULES[APP_MODULE]?.color || "#0277bd",
+                      color: "#fff",
+                      fontFamily: F.body,
+                      fontSize: 11,
+                      fontWeight: 800,
+                      cursor: "pointer",
+                      marginTop: 10,
+                      opacity:
+                        loggingIn || !email
+                          ? 0.55
+                          : 1,
+                    }}
+                  >
+                    {loggingIn
+                      ? "Sending..."
+                      : "Send reset link"}
+                  </button>
+                )}
+              </div>
+            )}
+
             {authError && <div style={{ color: P.coral, fontSize: 12, fontWeight: 700, marginBottom: 12, textAlign: "center" }}>{authError}</div>}
             <button onClick={login} disabled={loggingIn || !email || !password} style={{ width: "100%", padding: 14, borderRadius: 12, border: "none", fontFamily: F.display, fontSize: 14, fontWeight: 800, background: CUP_ORANGE, color: "#fff", cursor: "pointer", boxShadow: "0 4px 14px rgba(230,81,0,.28)" }}>
               {loggingIn ? "Signing in..." : "Sign In"}
