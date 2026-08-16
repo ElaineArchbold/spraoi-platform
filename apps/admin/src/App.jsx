@@ -45,6 +45,7 @@ export default function App() {
 
     const screen = params.get("screen");
     const team = params.get("team");
+    const invite = params.get("invite");
 
     if (screen && screen.startsWith(`${moduleId}-`)) {
       target.searchParams.set("screen", screen);
@@ -52,6 +53,10 @@ export default function App() {
 
     if (team) {
       target.searchParams.set("team", team);
+    }
+
+    if (invite) {
+      target.searchParams.set("invite", invite);
     }
 
     window.location.replace(target.toString());

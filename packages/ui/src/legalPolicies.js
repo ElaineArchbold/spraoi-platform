@@ -82,8 +82,8 @@ export const LEGAL_POLICIES = [
       {
         heading: "11. Contact",
         body: [
-          "Spraoi Sports does not publish the operator's personal email address during the private beta. A dedicated in-platform contact route will be added before broader public release.",
-          "During the private beta, users should use the same trusted contact or onboarding channel through which access to Spraoi Sports was provided."
+          "Contact Spraoi Sports at spraoisportsapp@gmail.com.",
+          "For account, access or support queries, contact spraoisportsapp@gmail.com."
         ]
       }
     ]
@@ -160,8 +160,8 @@ export const LEGAL_POLICIES = [
       {
         heading: "10. Contact",
         body: [
-          "A dedicated Spraoi Sports privacy contact form will be added before broader public release. The operator's personal email address is not published during the private beta.",
-          "For the current private beta, privacy requests should be raised through the trusted onboarding/contact channel used to obtain access. This section must be updated with the permanent contact route before public launch."
+          "Privacy queries can be sent to spraoisportsapp@gmail.com.",
+          "Privacy and data-rights requests can be sent to spraoisportsapp@gmail.com."
         ]
       }
     ]

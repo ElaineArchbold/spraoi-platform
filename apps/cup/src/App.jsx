@@ -171,6 +171,7 @@ const MODULES = {
     label: "Cup", color: "#e65100", icon: "/spraoi-cup-icon.png", tagline: "Set up and run blitzes and tournaments.", nav: [
       { id: "cup-events", icon: "◆", label: "Events" },
       { id: "cup-dashboard", icon: "⌂", label: "Dashboard" },
+      { id: "cup-checklist", icon: "✓", label: "Checklist" },
       { id: "cup-teams", icon: "●", label: "Teams" },
       { id: "cup-competition", icon: "◇", label: "Competition" },
       { id: "cup-matchday", icon: "★", label: "Matchday" },
@@ -230,7 +231,7 @@ function normalizeModuleIds(moduleIds = []) {
    SIDEBAR — with module switcher
    ============================================================ */
 function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, selectedTeam, onSelectTeam, enabledModules, onLogout, ageGroups, myTeams, onShowProfile, canManageAllTeams = false }) {
-  const visibleTeams = canManageAllTeams ? (ageGroups || []) : (ageGroups || []).filter((ag) => (myTeams || []).includes(ag.id));
+  const visibleTeams = myTeams?.length ? (ageGroups || []).filter((ag) => myTeams.includes(ag.id)) : (ageGroups || []);
   const mod = MODULES[activeModule];
   const clubName = club?.name || "Club Spraoi";
   const [cupSidebarEvents, setCupSidebarEvents] = useState([]);
@@ -3056,7 +3057,18 @@ function MobileHeader({ activeModule, setActiveModule, onNav, enabledModules, cl
     <>
       <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 62, zIndex: 200, padding: "0 12px", background: mod.color, color: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: `0 5px 18px ${mod.color}35` }}>
         <button onClick={() => setOpen(true)} style={{ border: "1px solid rgba(15,23,42,.10)", background: "#fff", width: 42, height: 42, borderRadius: 12, display: "grid", placeItems: "center", cursor: "pointer", padding: 0, boxSizing: "border-box", boxShadow: "0 5px 14px rgba(15,23,42,.14)" }}>
-          <img src={mod.icon} alt={mod.label} style={{ width: 31, height: 31, objectFit: "contain", display: "block" }} />
+          <img
+            src={activeModule === "cup"
+              ? (club?.logo_url || "/spraoi-club-icon.png")
+              : mod.icon}
+            alt={activeModule === "cup" ? `${clubName} crest` : mod.label}
+            style={{
+              width: activeModule === "cup" ? 36 : 31,
+              height: activeModule === "cup" ? 36 : 31,
+              objectFit: "contain",
+              display: "block"
+            }}
+          />
         </button>
         <div style={{ minWidth:0, flex:1, padding:"0 10px", display:"flex", alignItems:"center", justifyContent:"center" }}>
           {mobileTeams.length > 1 ? (
@@ -3096,23 +3108,238 @@ function MobileHeader({ activeModule, setActiveModule, onNav, enabledModules, cl
 
 function MobileNav({ activeModule, screen, onNav, enabledModules }) {
   const module = MODULES[activeModule];
-  const hasAccess = true;
-  const items = module.nav.slice(0, 5);
-  if (!hasAccess) return null;
+  const [showMore, setShowMore] = useState(false);
+
+  const items = [
+    { id: "cup-dashboard", label: "Dashboard" },
+    { id: "cup-matchday", label: "Matchday" },
+    { id: "cup-food", label: "Logistics" },
+    { id: "cup-checklist", label: "Checklist" },
+  ];
+
+  const moreItems = [
+    { id: "cup-teams", label: "Teams" },
+    { id: "cup-competition", label: "Competition" },
+    { id: "cup-content", label: "Event Content" },
+    { id: "cup-events", label: "Events" },
+  ];
+
+  const moreActive = moreItems.some((item) => item.id === screen);
+
   return (
-    <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#fff", borderTop: `1px solid ${P.line}`, display: "flex", padding: "6px 4px calc(env(safe-area-inset-bottom, 0px) + 5px)", zIndex: 200, boxShadow: "0 -7px 24px rgba(15,35,60,.08)" }}>
-      {items.map((item) => {
-        const isActive = screen === item.id || (item.id === "coach-sessions" && screen === "coach-builder");
-        return (
-          <button key={item.id} onClick={() => onNav(item.id)} style={{ flex: 1, minWidth: 0, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 2, cursor: "pointer", color: isActive ? module.color : P.muted, padding: "3px 1px" }}>
-            <span style={{ width: 28, height: 24, borderRadius: 8, display: "grid", placeItems: "center", background: isActive ? `${module.color}12` : "transparent", fontSize: 14, fontWeight: 900 }}><SpraoiNavIcon name={item.id} size={16} /></span>
-            <span style={{ fontSize: 8, lineHeight: 1.1, fontWeight: isActive ? 900 : 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>{item.label.replace("Weekly ", "").replace("Parent ", "")}</span>
-          </button>
-        );
-      })}
-    </div>
+    <>
+      {showMore && (
+        <>
+          <div
+            onClick={() => setShowMore(false)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(15,35,60,.28)",
+              zIndex: 198
+            }}
+          />
+
+          <div
+            style={{
+              position: "fixed",
+              left: 12,
+              right: 12,
+              bottom: "calc(72px + env(safe-area-inset-bottom, 0px))",
+              zIndex: 199,
+              background: "#fff",
+              borderRadius: 18,
+              border: `1px solid ${P.line}`,
+              boxShadow: "0 18px 50px rgba(15,35,60,.20)",
+              padding: 10
+            }}
+          >
+            <div
+              style={{
+                fontFamily: F.display,
+                fontSize: 14,
+                fontWeight: 900,
+                color: P.ink,
+                padding: "7px 8px 10px"
+              }}
+            >
+              More Cup tools
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(2,minmax(0,1fr))",
+                gap: 8
+              }}
+            >
+              {moreItems.map((item) => {
+                const isActive = screen === item.id;
+
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setShowMore(false);
+                      onNav(item.id);
+                    }}
+                    style={{
+                      border: `1px solid ${isActive ? module.color : P.line}`,
+                      background: isActive ? `${module.color}10` : P.soft,
+                      borderRadius: 12,
+                      padding: "13px 10px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 9,
+                      cursor: "pointer",
+                      textAlign: "left",
+                      color: P.ink
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 30,
+                        height: 30,
+                        borderRadius: 9,
+                        display: "grid",
+                        placeItems: "center",
+                        background: isActive ? `${module.color}15` : "#fff",
+                        flexShrink: 0
+                      }}
+                    >
+                      <SpraoiNavIcon name={item.id} size={17} />
+                    </span>
+
+                    <span
+                      style={{
+                        fontFamily: F.body,
+                        fontSize: 10,
+                        fontWeight: 800
+                      }}
+                    >
+                      {item.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
+
+      <div
+        style={{
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          background: "#fff",
+          borderTop: `1px solid ${P.line}`,
+          display: "flex",
+          padding: "6px 4px calc(env(safe-area-inset-bottom, 0px) + 5px)",
+          zIndex: 200,
+          boxShadow: "0 -7px 24px rgba(15,35,60,.08)"
+        }}
+      >
+        {items.map((item) => {
+          const isActive = screen === item.id;
+
+          return (
+            <button
+              key={item.id}
+              onClick={() => {
+                setShowMore(false);
+                onNav(item.id);
+              }}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                background: "none",
+                border: "none",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 2,
+                cursor: "pointer",
+                color: isActive ? module.color : P.muted,
+                padding: "3px 1px"
+              }}
+            >
+              <span
+                style={{
+                  width: 28,
+                  height: 24,
+                  borderRadius: 8,
+                  display: "grid",
+                  placeItems: "center",
+                  background: isActive ? `${module.color}12` : "transparent",
+                  fontSize: 14,
+                  fontWeight: 900
+                }}
+              >
+                <SpraoiNavIcon name={item.id} size={16} />
+              </span>
+
+              <span
+                style={{
+                  fontSize: 8,
+                  lineHeight: 1.1,
+                  fontWeight: isActive ? 900 : 600,
+                  whiteSpace: "nowrap"
+                }}
+              >
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
+
+        <button
+          onClick={() => setShowMore((current) => !current)}
+          style={{
+            flex: 1,
+            minWidth: 0,
+            background: "none",
+            border: "none",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 2,
+            cursor: "pointer",
+            color: moreActive || showMore ? module.color : P.muted,
+            padding: "3px 1px"
+          }}
+        >
+          <span
+            style={{
+              width: 28,
+              height: 24,
+              borderRadius: 8,
+              display: "grid",
+              placeItems: "center",
+              background: moreActive || showMore ? `${module.color}12` : "transparent",
+              fontSize: 17,
+              fontWeight: 900
+            }}
+          >
+            •••
+          </span>
+
+          <span
+            style={{
+              fontSize: 8,
+              lineHeight: 1.1,
+              fontWeight: moreActive || showMore ? 900 : 600
+            }}
+          >
+            More
+          </span>
+        </button>
+      </div>
+    </>
   );
 }
+
 
 
 /* ============================================================
@@ -3491,6 +3718,476 @@ const cupParticipantBase=()=>{
   return configured || "https://cup.spraoisports.com";
 };
 
+function CupChecklistPanel({ eventId, automaticReadiness = [], onNav }) {
+  const [manual, setManual] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [saveState, setSaveState] = useState("");
+
+  const organiserItems = [
+    {
+      id: "countyBoardInformed",
+      label: "County Board informed?",
+      type: "required",
+      hint: "Confirm the relevant County Board has been informed."
+    },
+    {
+      id: "umpiresBooked",
+      label: "Umpires booked?",
+      type: "required",
+      hint: "Confirm umpires are arranged for event day."
+    },
+    {
+      id: "refereesBooked",
+      label: "Referees booked?",
+      type: "required",
+      hint: "Confirm referees are arranged."
+    },
+    {
+      id: "parkingStewardsBooked",
+      label: "Parking stewards booked?",
+      type: "required",
+      hint: "Confirm parking / traffic stewards are arranged."
+    },
+    {
+      id: "photographerNeeded",
+      label: "Photographer needed?",
+      type: "decision",
+      hint: "Record the decision even when a photographer is not needed."
+    },
+    {
+      id: "capacitySharedWithClub",
+      label: "Lunch / bus capacity shared with Club?",
+      type: "required",
+      hint: "Confirm catering and coach / bus capacity has been shared with the Club."
+    },
+    {
+      id: "medicsBooked",
+      label: "Medics booked?",
+      type: "required",
+      hint: "Confirm event-day medical cover."
+    },
+    {
+      id: "cakeSale",
+      label: "Cake Sale?",
+      type: "decision",
+      hint: "Record Yes or No so the decision is complete."
+    },
+    {
+      id: "participantViewChecked",
+      label: "Participant View checked?",
+      type: "required",
+      hint: "Open the participant app and verify event-day information before publishing."
+    }
+  ];
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      if (!eventId) {
+        if (!cancelled) {
+          setManual({});
+          setLoading(false);
+        }
+        return;
+      }
+
+      try {
+        const saved = await cupReadSection(eventId, "organiserChecklist", {});
+        if (!cancelled) {
+          setManual(saved && typeof saved === "object" ? saved : {});
+        }
+      } catch (error) {
+        console.error("Cup organiser checklist load failed", error);
+        if (!cancelled) setManual({});
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId]);
+
+  async function updateManual(id, patch) {
+    const next = {
+      ...manual,
+      [id]: {
+        ...(manual[id] || {}),
+        ...patch
+      }
+    };
+
+    setManual(next);
+
+    if (!eventId) return;
+
+    setSaveState("saving");
+
+    try {
+      await cupWriteSection(eventId, "organiserChecklist", next);
+      setSaveState("saved");
+    } catch (error) {
+      console.error("Cup organiser checklist save failed", error);
+      setSaveState("error");
+    }
+  }
+
+  function manualComplete(item) {
+    const answer = manual[item.id]?.answer || "";
+
+    if (item.type === "decision") {
+      return answer === "yes" || answer === "no";
+    }
+
+    return answer === "yes";
+  }
+
+  const manualCompleted = organiserItems.filter(manualComplete).length;
+  const automaticCompleted = automaticReadiness.filter((item) => item.ok).length;
+  const completed = manualCompleted + automaticCompleted;
+  const total = organiserItems.length + automaticReadiness.length;
+  const percent = total ? Math.round((completed / total) * 100) : 0;
+
+  if (loading) {
+    return (
+      <CupCard style={{ padding: 18 }}>
+        <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted }}>
+          Loading event checklist…
+        </div>
+      </CupCard>
+    );
+  }
+
+  return (
+    <div className="cup-checklist">
+      <style>{`
+        .cup-checklist-row {
+          min-width: 0;
+        }
+
+        @media (max-width: 900px) {
+          .cup-checklist-row {
+            grid-template-columns: minmax(0, 1fr) !important;
+            gap: 9px !important;
+            align-items: stretch !important;
+          }
+
+          .cup-checklist-row select,
+          .cup-checklist-row input {
+            width: 100% !important;
+            min-width: 0 !important;
+            box-sizing: border-box !important;
+          }
+
+          .cup-checklist-auto {
+            grid-template-columns: minmax(0, 1fr) !important;
+          }
+        }
+
+        @media (max-width: 560px) {
+          .cup-checklist-row {
+            padding: 11px !important;
+          }
+
+          .cup-checklist {
+            min-width: 0 !important;
+            width: 100% !important;
+          }
+        }
+      `}</style>
+      <CupCard style={{ padding: 18, marginBottom: 16 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 16,
+            alignItems: "flex-start",
+            flexWrap: "wrap"
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontFamily: F.display,
+                fontSize: 20,
+                fontWeight: 900,
+                color: P.ink
+              }}
+            >
+              Event readiness
+            </div>
+
+            <div
+              style={{
+                fontFamily: F.body,
+                fontSize: 10,
+                color: P.muted,
+                marginTop: 4
+              }}
+            >
+              Manual organiser checks and automatic Cup setup checks for this event.
+            </div>
+          </div>
+
+          <div style={{ textAlign: "right" }}>
+            <div
+              style={{
+                fontFamily: F.display,
+                fontSize: 20,
+                fontWeight: 900,
+                color: CUP_ORANGE
+              }}
+            >
+              {completed} of {total}
+            </div>
+            <div
+              style={{
+                fontFamily: F.body,
+                fontSize: 9,
+                fontWeight: 800,
+                color: P.muted
+              }}
+            >
+              complete
+            </div>
+          </div>
+        </div>
+
+        <div
+          style={{
+            height: 10,
+            borderRadius: 999,
+            background: "#f1f5f9",
+            overflow: "hidden",
+            marginTop: 16
+          }}
+        >
+          <div
+            style={{
+              width: `${percent}%`,
+              height: "100%",
+              background: CUP_ORANGE,
+              borderRadius: 999,
+              transition: "width .2s ease"
+            }}
+          />
+        </div>
+
+        <div
+          style={{
+            fontFamily: F.body,
+            fontSize: 9,
+            color: P.muted,
+            marginTop: 6
+          }}
+        >
+          {percent}% ready
+          {saveState === "saving" ? " · Saving…" : ""}
+          {saveState === "saved" ? " · Saved" : ""}
+          {saveState === "error" ? " · Save failed" : ""}
+        </div>
+      </CupCard>
+
+      <CupCard style={{ padding: 18, marginBottom: 16 }}>
+        <div
+          style={{
+            fontFamily: F.display,
+            fontSize: 18,
+            fontWeight: 900,
+            color: P.ink
+          }}
+        >
+          Organiser checks
+        </div>
+
+        <div
+          style={{
+            fontFamily: F.body,
+            fontSize: 9.5,
+            color: P.muted,
+            marginTop: 3,
+            marginBottom: 14
+          }}
+        >
+          These are saved separately for each Cup event.
+        </div>
+
+        <div style={{ display: "grid", gap: 10 }}>
+          {organiserItems.map((item) => {
+            const row = manual[item.id] || {};
+            const done = manualComplete(item);
+
+            return (
+              <div
+                key={item.id}
+                className="cup-checklist-row"
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "minmax(220px,1fr) 130px minmax(220px,1fr)",
+                  gap: 10,
+                  alignItems: "center",
+                  padding: 12,
+                  borderRadius: 12,
+                  background: done ? "#fff7ed" : "#f8fafc",
+                  border: `1px solid ${done ? "#fed7aa" : P.line}`
+                }}
+              >
+                <div>
+                  <div
+                    style={{
+                      fontFamily: F.body,
+                      fontSize: 11,
+                      fontWeight: 900,
+                      color: P.ink
+                    }}
+                  >
+                    <span
+                      style={{
+                        color: done ? "#15803d" : P.muted,
+                        marginRight: 7
+                      }}
+                    >
+                      {done ? "✓" : "○"}
+                    </span>
+                    {item.label}
+                  </div>
+
+                  <div
+                    style={{
+                      fontFamily: F.body,
+                      fontSize: 8.5,
+                      color: P.muted,
+                      marginTop: 3,
+                      lineHeight: 1.4
+                    }}
+                  >
+                    {item.hint}
+                  </div>
+                </div>
+
+                <select
+                  value={row.answer || ""}
+                  onChange={(e) =>
+                    updateManual(item.id, { answer: e.target.value })
+                  }
+                  style={{
+                    width: "100%",
+                    padding: "9px 10px",
+                    borderRadius: 9,
+                    border: `1px solid ${P.line}`,
+                    background: P.white,
+                    fontFamily: F.body,
+                    fontSize: 11,
+                    fontWeight: 800,
+                    color: P.ink
+                  }}
+                >
+                  <option value="">Select…</option>
+                  <option value="yes">Yes</option>
+                  <option value="no">No</option>
+                </select>
+
+                <input
+                  value={row.notes || ""}
+                  placeholder="Notes / contact / details"
+                  onChange={(e) =>
+                    updateManual(item.id, { notes: e.target.value })
+                  }
+                  style={{
+                    width: "100%",
+                    boxSizing: "border-box",
+                    padding: "9px 10px",
+                    borderRadius: 9,
+                    border: `1px solid ${P.line}`,
+                    background: P.white,
+                    fontFamily: F.body,
+                    fontSize: 11,
+                    color: P.ink
+                  }}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </CupCard>
+
+      <CupCard style={{ padding: 18 }}>
+        <div
+          style={{
+            fontFamily: F.display,
+            fontSize: 18,
+            fontWeight: 900,
+            color: P.ink
+          }}
+        >
+          Cup setup checks
+        </div>
+
+        <div
+          style={{
+            fontFamily: F.body,
+            fontSize: 9.5,
+            color: P.muted,
+            marginTop: 3,
+            marginBottom: 14
+          }}
+        >
+          These update automatically from the current event setup.
+        </div>
+
+        <div
+          className="cup-checklist-auto"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2,minmax(0,1fr))",
+            gap: 9
+          }}
+        >
+          {automaticReadiness.map((item) => (
+            <button
+              key={item.label}
+              onClick={() => item.action && onNav(item.action)}
+              style={{
+                border: `1px solid ${item.ok ? "#bbf7d0" : P.line}`,
+                background: item.ok ? "#f0fdf4" : "#f8fafc",
+                borderRadius: 12,
+                padding: 12,
+                textAlign: "left",
+                cursor: item.action ? "pointer" : "default"
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: F.body,
+                  fontSize: 10,
+                  fontWeight: 900,
+                  color: item.ok ? "#15803d" : P.ink
+                }}
+              >
+                {item.ok ? "✓" : "○"} {item.label}
+              </div>
+
+              <div
+                style={{
+                  fontFamily: F.body,
+                  fontSize: 8.5,
+                  color: P.muted,
+                  marginTop: 4
+                }}
+              >
+                {item.ok ? "Complete" : "Needs attention"}
+                {item.action ? " · Open →" : ""}
+              </div>
+            </button>
+          ))}
+        </div>
+      </CupCard>
+    </div>
+  );
+}
+
 function CupModuleScreen({ screen, onNav, contextTeam, selectedEventId = "", cupStore = null, canEditSchedule = false, canManageAllEvents = false }) {
   const storeEventsKey = cupStore?.CUP_EVENTS_KEY || CUP_EVENTS_KEY;
   const storeRead = cupStore?.cupRead || cupRead;
@@ -3826,6 +4523,112 @@ function CupModuleScreen({ screen, onNav, contextTeam, selectedEventId = "", cup
         .cup-page-header-icon img { width: 39px !important; height: 39px !important; }
         .cup-page-header-title { font-size: 21px !important; }
         .cup-page-header-actions > button { flex: 1 1 auto !important; }
+
+        .cup-logistics-bus-wrap {
+          max-width: 100%;
+          -webkit-overflow-scrolling: touch;
+        }
+
+        @media (max-width: 900px) {
+          .cup-logistics-lunch-row {
+            grid-template-columns: 1fr 1fr !important;
+            align-items: stretch !important;
+          }
+
+          .cup-logistics-lunch-row > div:nth-child(3),
+          .cup-logistics-lunch-row > button {
+            grid-column: 1 / -1 !important;
+          }
+
+          .cup-logistics-food-row {
+            grid-template-columns: 1fr 1fr !important;
+            align-items: stretch !important;
+          }
+
+          .cup-logistics-food-row > input:first-child {
+            grid-column: 1 / -1 !important;
+          }
+
+          .cup-logistics-food-row input,
+          .cup-logistics-food-row button {
+            width: 100% !important;
+            box-sizing: border-box !important;
+          }
+        }
+
+        @media (max-width: 700px) {
+          .cup-logistics-bus-wrap {
+            overflow: visible !important;
+          }
+
+          .cup-logistics-bus-table {
+            min-width: 0 !important;
+            width: 100% !important;
+            display: block !important;
+          }
+
+          .cup-logistics-bus-table thead {
+            display: none !important;
+          }
+
+          .cup-logistics-bus-table tbody {
+            display: grid !important;
+            gap: 10px !important;
+          }
+
+          .cup-logistics-bus-table tr {
+            display: block !important;
+            padding: 12px !important;
+            border: 1px solid #dfe7ef !important;
+            border-radius: 12px !important;
+            background: #fff !important;
+          }
+
+          .cup-logistics-bus-table td {
+            display: grid !important;
+            grid-template-columns: 105px minmax(0,1fr) !important;
+            gap: 8px !important;
+            align-items: center !important;
+            padding: 6px 0 !important;
+            border-bottom: 1px solid #eef2f6 !important;
+          }
+
+          .cup-logistics-bus-table td:last-child {
+            border-bottom: none !important;
+          }
+
+          .cup-logistics-bus-table td::before {
+            font-size: 8px;
+            font-weight: 900;
+            color: #64748b;
+            text-transform: uppercase;
+          }
+
+          .cup-logistics-bus-table td:nth-child(1)::before { content: "Club"; }
+          .cup-logistics-bus-table td:nth-child(2)::before { content: "Coaches / buses"; }
+          .cup-logistics-bus-table td:nth-child(3)::before { content: "Passengers"; }
+          .cup-logistics-bus-table td:nth-child(4)::before { content: "Arrival"; }
+          .cup-logistics-bus-table td:nth-child(5)::before { content: "Departure"; }
+          .cup-logistics-bus-table td:nth-child(6)::before { content: "Notes"; }
+
+          .cup-logistics-bus-table input {
+            width: 100% !important;
+            min-width: 0 !important;
+            box-sizing: border-box !important;
+          }
+        }
+
+        @media (max-width: 560px) {
+          .cup-logistics-lunch-row,
+          .cup-logistics-food-row {
+            grid-template-columns: minmax(0,1fr) !important;
+          }
+
+          .cup-logistics-lunch-row > *,
+          .cup-logistics-food-row > * {
+            grid-column: 1 !important;
+          }
+        }
       }
     `}</style>
     <CupTopBar title={title} sub={sub}>{action}</CupTopBar>
@@ -4492,7 +5295,7 @@ function CupModuleScreen({ screen, onNav, contextTeam, selectedEventId = "", cup
             {lunchWindows.map((w,idx)=>{
               const totals=slotPeople(w);
               return <div key={w.id||idx} style={{border:`1px solid ${P.line}`,borderRadius:14,padding:14,background:"#fffaf5"}}>
-                <div style={{display:"grid",gridTemplateColumns:"120px 120px 1fr auto",gap:8,alignItems:"end"}}>
+                <div className="cup-logistics-lunch-row" style={{display:"grid",gridTemplateColumns:"120px 120px 1fr auto",gap:8,alignItems:"end"}}>
                   {field("From",<input type="time" value={w.from||""} onChange={e=>updateLunchWindow(idx,{from:e.target.value})} style={inp}/>)}
                   {field("To",<input type="time" value={w.to||""} onChange={e=>updateLunchWindow(idx,{to:e.target.value})} style={inp}/>)}
                   <div>
@@ -4539,7 +5342,7 @@ function CupModuleScreen({ screen, onNav, contextTeam, selectedEventId = "", cup
           <div style={{fontFamily:F.display,fontSize:18,fontWeight:900,color:P.ink}}>Food items</div>
           <div style={{fontFamily:F.body,fontSize:9.5,color:P.muted,marginTop:3}}>Mark which items are provided to players and/or mentors. Those settings drive the quantities above.</div>
           <div style={{display:"grid",gap:8,marginTop:12}}>
-            {food.map((f,i)=><div key={f.id} style={{display:"grid",gridTemplateColumns:"1fr 90px 120px 120px auto",gap:7,alignItems:"center"}}>
+            {food.map((f,i)=><div key={f.id} className="cup-logistics-food-row" style={{display:"grid",gridTemplateColumns:"1fr 90px 120px 120px auto",gap:7,alignItems:"center"}}>
               <input value={f.name||""} onChange={e=>save("foodMenu",food.map((x,j)=>j===i?{...x,name:e.target.value}:x),setFood)} style={inp}/>
               <input type="number" step=".5" placeholder="Optional €" value={f.price??""} onChange={e=>save("foodMenu",food.map((x,j)=>j===i?{...x,price:e.target.value===""?null:+e.target.value}:x),setFood)} style={inp}/>
               <label style={{fontSize:9,fontWeight:800}}><input type="checkbox" checked={!!f.freeForPlayers} onChange={e=>save("foodMenu",food.map((x,j)=>j===i?{...x,freeForPlayers:e.target.checked}:x),setFood)}/> For players</label>
@@ -4553,8 +5356,8 @@ function CupModuleScreen({ screen, onNav, contextTeam, selectedEventId = "", cup
         <CupCard style={{padding:18}}>
           <div style={{fontFamily:F.display,fontSize:18,fontWeight:900,color:P.ink}}>Buses / coaches</div>
           <div style={{fontFamily:F.body,fontSize:9.5,color:P.muted,marginTop:3}}>Each visiting club is listed once. Enter only the coach/bus information the host club needs for arrivals and departures.</div>
-          <div style={{overflowX:"auto",marginTop:12}}>
-            <table style={{width:"100%",minWidth:760,borderCollapse:"collapse",fontFamily:F.body,fontSize:9}}>
+          <div className="cup-logistics-bus-wrap" style={{overflowX:"auto",marginTop:12}}>
+            <table className="cup-logistics-bus-table" style={{width:"100%",minWidth:760,borderCollapse:"collapse",fontFamily:F.body,fontSize:9}}>
               <thead>
                 <tr>{["Club","Coaches / buses","Passengers","Arrival","Departure","Notes"].map(h=><th key={h} style={{textAlign:"left",padding:"7px",borderBottom:`1px solid ${P.line}`,fontSize:8,color:P.muted,textTransform:"uppercase"}}>{h}</th>)}</tr>
               </thead>
@@ -4643,6 +5446,93 @@ function CupModuleScreen({ screen, onNav, contextTeam, selectedEventId = "", cup
     {label:"Event info",ok:Object.values(info||{}).some(v=>String(v||"").trim()),value:"Participant content"},
     {label:"Food",ok:food.length>0,value:food.length?`${food.length} menu items`:"Optional"},
   ];
+  const checklistReadiness = [
+    {
+      label: "Event details complete",
+      ok: Boolean(event?.name && event?.date && event?.venue),
+      action: "cup-settings"
+    },
+    {
+      label: "Clubs / teams confirmed",
+      ok: clubs.length > 0 && teams.length > 0,
+      action: "cup-teams"
+    },
+    {
+      label: "Competition configured",
+      ok: teams.length > 1,
+      action: "cup-competition"
+    },
+    {
+      label: "Pitches configured",
+      ok: pitches.length > 0,
+      action: "cup-competition"
+    },
+    {
+      label: "Schedule generated",
+      ok: matches.length > 0,
+      action: "cup-competition"
+    },
+    {
+      label: "Lunch slots generated",
+      ok: lunchWindows.length > 0,
+      action: "cup-food"
+    },
+    {
+      label: "Lunch capacity confirmed",
+      ok:
+        Number(
+          config?.lunchCapacity ??
+          config?.maxLunchCapacity ??
+          config?.lunchSlotCapacity ??
+          0
+        ) > 0 || lunchWindows.length > 0,
+      action: "cup-food"
+    },
+    {
+      label: "Food items confirmed",
+      ok: food.length > 0,
+      action: "cup-food"
+    },
+    {
+      label: "Coach / bus information completed",
+      ok: dashboardCoachBusTotal > 0,
+      action: "cup-food"
+    },
+    {
+      label: "Event information completed",
+      ok: Object.values(info || {}).some((v) => String(v || "").trim()),
+      action: "cup-content"
+    },
+    {
+      label: "Sponsors added",
+      ok: activeSponsors > 0,
+      action: "cup-content"
+    },
+    {
+      label: "Announcements ready",
+      ok: announcements.length > 0,
+      action: "cup-content"
+    },
+    {
+      label: "Event published / live",
+      ok: ["published", "live"].includes(currentEffectiveStatus),
+      action: "cup-dashboard"
+    }
+  ];
+
+  if (screen === "cup-checklist") {
+    return sectionWrap(
+      "Event Checklist",
+      event?.name
+        ? `${event.name} · organiser and setup readiness`
+        : "Organiser and setup readiness",
+      <CupChecklistPanel
+        eventId={eventId}
+        automaticReadiness={checklistReadiness}
+        onNav={onNav}
+      />
+    );
+  }
   const participantUrl=`${cupParticipantBase()}/?event=${encodeURIComponent(eventId)}${event?.status==="draft"?"&preview=1":""}`;
   return sectionWrap("Cup Dashboard",event?.name?`${event.name}${event.date?` · ${event.date}`:""}`:"Set up and run your event",<>
     <div className="cup-dashboard-stats" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:18}}>
@@ -5207,10 +6097,6 @@ export default function App() {
         <div style={{ maxWidth: 380, width: "100%" }}>
           <div style={{ textAlign: "center", marginBottom: 28 }}>
             <img src="/spraoi-logo-white.png" alt="Spraoi Sports" style={{ width: 180, height: "auto", marginBottom: 10 }} />
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:7, fontFamily: F.body, fontSize: 12, color: "rgba(255,255,255,.72)", marginTop: 4 }}>
-              <img src="/spraoi-cup-icon.png" alt="" style={{ width:22, height:22, objectFit:"contain", background:"#fff", borderRadius:7, padding:2, boxSizing:"border-box" }} />
-              <span>Cup</span>
-            </div>
           </div>
           <div style={{ background: P.white, borderRadius: 18, padding: 28, boxShadow: Sh.lift }}>
             <div style={{ fontFamily: F.display, fontSize: 17, fontWeight: 800, color: P.ink, marginBottom: 16 }}>Sign In</div>
@@ -5376,7 +6262,7 @@ export default function App() {
               <div style={{ marginBottom: 20 }}>
                 <div style={{ fontFamily: F.display, fontSize: 14, fontWeight: 800, color: P.ink, marginBottom: 8 }}>My Teams</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                  {(permissions.isClubAdmin ? ageGroups : ageGroups.filter((ag) => myTeams.includes(ag.id))).map((ag) => (
+                  {ageGroups.filter((ag) => myTeams.includes(ag.id)).map((ag) => (
                     <div key={ag.id} style={{ padding: "6px 10px", borderRadius: 8, background: P.soft, border: `1px solid ${P.line}` }}>
                       <span style={{ fontFamily: F.body, fontSize: 11, fontWeight: 600, color: P.ink }}>{teamDisplayName(ag)}</span>
                     </div>

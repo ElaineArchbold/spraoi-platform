@@ -350,9 +350,9 @@ function TopBar({ title, sub, children, moduleKey }) {
       ? "linear-gradient(135deg, #fff8d6 0%, #fbcf45 100%)"
       : `linear-gradient(135deg, ${module.color}16 0%, ${module.color}32 100%)`;
   return (
-    <div style={{ padding: "20px 28px", background, borderBottom: `1px solid ${module.color}28`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, minHeight: 92 }}>
+    <div className={`spraoi-topbar spraoi-topbar-${key}`} style={{ padding: "20px 28px", background, borderBottom: `1px solid ${module.color}28`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, minHeight: 92 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
-        <div style={{ width: 64, height: 64, borderRadius: 20, display: "grid", placeItems: "center", background: "#fff", border: "1px solid rgba(15,23,42,.08)", boxShadow: "0 10px 26px rgba(16,36,62,.12)", flexShrink: 0 }}>
+        <div className="spraoi-topbar-icon" style={{ width: 64, height: 64, borderRadius: 20, display: "grid", placeItems: "center", background: "#fff", border: "1px solid rgba(15,23,42,.08)", boxShadow: "0 10px 26px rgba(16,36,62,.12)", flexShrink: 0 }}>
           <img src={module.icon} alt="" style={{ width: 48, height: 48, objectFit: "contain" }} />
         </div>
         <div style={{ minWidth: 0 }}>
@@ -2039,7 +2039,58 @@ const CLUB_SOFT = "#fff1f1";
 function ClubPage({ title, sub, children, actions }) {
   return (
     <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
+      <style>{`
+        @media (max-width: 700px) {
+          .spraoi-topbar-club {
+            padding: 18px 18px 16px !important;
+            min-height: auto !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: stretch !important;
+            justify-content: flex-start !important;
+            gap: 14px !important;
+          }
+
+          .spraoi-topbar-club .spraoi-topbar-icon {
+            display: none !important;
+          }
+
+          .spraoi-topbar-club > div:first-of-type {
+            width: 100% !important;
+            min-width: 0 !important;
+            align-items: flex-start !important;
+          }
+
+          .spraoi-topbar-club > div:first-of-type > div:last-child {
+            width: 100% !important;
+            min-width: 0 !important;
+          }
+
+          .club-team-actions {
+            width: 100% !important;
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 9px !important;
+          }
+
+          .club-team-actions > * {
+            width: 100% !important;
+            min-width: 0 !important;
+            min-height: 42px !important;
+            justify-content: center !important;
+            white-space: nowrap !important;
+          }
+        }
+
+        @media (max-width: 390px) {
+          .club-team-actions {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
+
       <TopBar title={title} sub={sub} moduleKey="club">{actions}</TopBar>
+
       <div style={{ padding: "22px 24px", maxWidth: 1220, margin: "0 auto" }}>
         {children}
       </div>
@@ -3231,147 +3282,245 @@ function ClubTeamsScreen({ club, ageGroups, coaches, selectedTeam, onSelectTeam,
 
 function ClubCoachesScreen({ club, ageGroups, coaches, selectedTeam, onReloadCoaches, userRole, currentUserId }) {
   const [staff, setStaff] = useState([]);
+  const [invitations, setInvitations] = useState([]);
+  const [invitationTeams, setInvitationTeams] = useState([]);
+  const [invitationChildren, setInvitationChildren] = useState([]);
+  const [journeyPlayers, setJourneyPlayers] = useState([]);
+
   const [name, setName] = useState("");
   const [emailValue, setEmailValue] = useState("");
+  const [inviteType, setInviteType] = useState(
+    ["super_admin", "admin", "club_admin"].includes(userRole?.role)
+      ? "lead_coach"
+      : "coach"
+  );
   const [teamId, setTeamId] = useState(selectedTeam?.id || "");
+  const [childIds, setChildIds] = useState([]);
+
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
-  const [copied, setCopied] = useState(false);
 
   const isAdmin = ["super_admin", "admin", "club_admin"].includes(userRole?.role);
   const isLeadCoach = userRole?.role === "lead_coach";
   const canInvite = isAdmin || isLeadCoach;
-  const inviteRole = isAdmin ? "lead_coach" : "coach_mentor";
-  const loginUrl = import.meta.env.VITE_ADMIN_URL || "https://admin.spraoisports.com";
 
   useEffect(() => {
-    loadStaff();
+    loadPeopleData();
   }, [club?.id, currentUserId]);
 
   useEffect(() => {
     if (selectedTeam?.id) setTeamId(selectedTeam.id);
   }, [selectedTeam?.id]);
 
-  async function loadStaff() {
+  useEffect(() => {
+    setChildIds([]);
+  }, [teamId, inviteType]);
+
+  async function loadPeopleData() {
     if (!club?.id) return;
-    const { data } = await supabase
-      .from("team_staff")
-      .select("*, coach:coaches(id,name,email,user_id), team:age_groups(id,label,gender)")
-      .eq("club_id", club.id)
-      .eq("status", "active");
-    setStaff(data || []);
+
+    const [
+      staffResult,
+      inviteResult,
+      playerResult,
+    ] = await Promise.all([
+      supabase
+        .from("team_staff")
+        .select("*, coach:coaches(id,name,email,user_id), team:age_groups(id,label,gender)")
+        .eq("club_id", club.id)
+        .eq("status", "active"),
+
+      supabase
+        .from("spraoi_invitations")
+        .select("*")
+        .eq("club_id", club.id)
+        .order("created_at", { ascending: false }),
+
+      supabase
+        .from("journey_players")
+        .select("id,name,age_group_id,parent_user_id,club_id")
+        .eq("club_id", club.id)
+        .order("name"),
+    ]);
+
+    setStaff(staffResult.data || []);
+    setInvitations(inviteResult.data || []);
+    setJourneyPlayers(playerResult.data || []);
+
+    const inviteIds = (inviteResult.data || []).map((row) => row.id);
+
+    if (inviteIds.length === 0) {
+      setInvitationTeams([]);
+      setInvitationChildren([]);
+      return;
+    }
+
+    const [teamRelationResult, childRelationResult] = await Promise.all([
+      supabase
+        .from("spraoi_invitation_teams")
+        .select("invitation_id,age_group_id")
+        .in("invitation_id", inviteIds),
+
+      supabase
+        .from("spraoi_invitation_children")
+        .select("invitation_id,player_id")
+        .in("invitation_id", inviteIds),
+    ]);
+
+    setInvitationTeams(teamRelationResult.data || []);
+    setInvitationChildren(childRelationResult.data || []);
   }
 
   const leadCoachTeamIds = isLeadCoach
-    ? [...new Set((staff || []).filter((row) => row.user_id === currentUserId && row.role === "lead_coach").map((row) => row.age_group_id).filter(Boolean))]
+    ? [...new Set(
+        (staff || [])
+          .filter(
+            (row) =>
+              row.user_id === currentUserId &&
+              row.role === "lead_coach"
+          )
+          .map((row) => row.age_group_id)
+          .filter(Boolean)
+      )]
     : [];
 
   const availableTeams = isLeadCoach
     ? (ageGroups || []).filter((team) => leadCoachTeamIds.includes(team.id))
     : (ageGroups || []);
 
-  async function invitePerson() {
-    if (!canInvite || !club?.id || !name.trim() || !emailValue.trim() || !teamId) return;
+  const availableInviteTypes = isAdmin
+    ? [
+        { value: "lead_coach", label: "Lead Coach" },
+        { value: "coach", label: "Coach / Mentor" },
+        { value: "parent_guardian", label: "Parent / Guardian" },
+      ]
+    : [
+        { value: "coach", label: "Coach / Mentor" },
+      ];
+
+  const selectedTeamPlayers = (journeyPlayers || []).filter(
+    (player) => String(player.age_group_id) === String(teamId)
+  );
+
+  async function sendInvitation() {
+    if (!canInvite || !club?.id) return;
+
+    const cleanName = name.trim();
+    const cleanEmail = emailValue.trim().toLowerCase();
+
+    if (!cleanName || !cleanEmail || !teamId) {
+      setMessage("Please enter a name, email address and team.");
+      return;
+    }
+
     if (isLeadCoach && !leadCoachTeamIds.includes(teamId)) {
-      setMessage("You can only invite Coach/Mentors to a team where you are the Lead Coach.");
+      setMessage(
+        "You can only invite Coach/Mentors to a team where you are the Lead Coach."
+      );
+      return;
+    }
+
+    if (inviteType === "parent_guardian" && childIds.length === 0) {
+      setMessage("Please select at least one child for this Parent / Guardian.");
       return;
     }
 
     setSaving(true);
     setMessage("");
 
-    // Re-use an existing coach directory record for the same email when possible.
-    let coach = (coaches || []).find((row) => String(row.email || "").toLowerCase() === emailValue.trim().toLowerCase()) || null;
+    const body = {
+      clubId: club.id,
+      name: cleanName,
+      email: cleanEmail,
+      inviteType,
+      teamIds: [teamId],
+      childIds: inviteType === "parent_guardian" ? childIds : [],
+    };
 
-    if (!coach) {
-      const { data: createdCoach, error: coachError } = await supabase
-        .from("coaches")
-        .insert({
-          club_id: club.id,
-          name: name.trim(),
-          email: emailValue.trim(),
-          age_group_id: teamId,
-          role: "coach",
-        })
-        .select("*")
-        .single();
+    const { data, error } = await supabase.functions.invoke(
+      "send-spraoi-invite",
+      { body }
+    );
 
-      if (coachError) {
-        setMessage("Could not create coach record: " + coachError.message);
-        setSaving(false);
-        return;
-      }
-      coach = createdCoach;
+    if (error) {
+      setMessage("Could not send invitation: " + error.message);
+      setSaving(false);
+      return;
     }
 
-    if (inviteRole === "lead_coach") {
-      const currentLead = (staff || []).find((row) => row.age_group_id === teamId && row.role === "lead_coach" && row.coach_id !== coach.id);
-      if (currentLead) {
-        const replace = window.confirm(`${currentLead.coach?.name || "Another coach"} is already Lead Coach for this team. Replace them?`);
-        if (!replace) {
-          setSaving(false);
-          return;
-        }
-        await supabase.from("team_staff").update({ role: "coach_mentor", updated_at: new Date().toISOString() }).eq("id", currentLead.id);
-      }
-    }
-
-    const existing = (staff || []).find((row) => row.age_group_id === teamId && row.coach_id === coach.id);
-    let staffError = null;
-
-    if (existing) {
-      const result = await supabase
-        .from("team_staff")
-        .update({ role: inviteRole, status: "active", updated_at: new Date().toISOString() })
-        .eq("id", existing.id);
-      staffError = result.error;
-    } else {
-      const result = await supabase.from("team_staff").insert({
-        club_id: club.id,
-        age_group_id: teamId,
-        coach_id: coach.id,
-        user_id: coach.user_id || null,
-        role: inviteRole,
-        status: "active",
-      });
-      staffError = result.error;
-    }
-
-    if (staffError) {
-      setMessage("Could not create team invitation: " + staffError.message);
+    if (data?.ok === false) {
+      setMessage(data.error || "Could not send invitation.");
       setSaving(false);
       return;
     }
 
     setName("");
     setEmailValue("");
-    setMessage(`${inviteRole === "lead_coach" ? "Lead Coach" : "Coach/Mentor"} added. Send them the Spraoi login link.`);
-    await onReloadCoaches?.();
-    await loadStaff();
+    setChildIds([]);
+
+    setMessage(
+      `${availableInviteTypes.find((x) => x.value === inviteType)?.label || "Invitation"} sent to ${cleanEmail}.`
+    );
+
+    await loadPeopleData();
     setSaving(false);
   }
 
-  async function copyLoginLink() {
-    try {
-      await navigator.clipboard.writeText(loginUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1600);
-    } catch {
-      setCopied(false);
+  async function cancelInvitation(invitation) {
+    if (!invitation?.id) return;
+
+    const confirmed = window.confirm(
+      `Cancel the pending invitation for ${invitation.email}?`
+    );
+
+    if (!confirmed) return;
+
+    const { error } = await supabase
+      .from("spraoi_invitations")
+      .update({
+        status: "cancelled",
+        cancelled_at: new Date().toISOString(),
+      })
+      .eq("id", invitation.id)
+      .eq("status", "pending");
+
+    if (error) {
+      setMessage("Could not cancel invitation: " + error.message);
+      return;
     }
+
+    setMessage("Invitation cancelled.");
+    await loadPeopleData();
   }
 
   async function removeCoachRecord(coach) {
     if (!isAdmin || !coach?.id || !club?.id) return;
-    if (!window.confirm(`Remove ${coach.name || "this coach"} from the club directory and team assignments?\n\nTheir login account itself will not be deleted.`)) return;
 
-    const { error: staffError } = await supabase.from("team_staff").delete().eq("coach_id", coach.id).eq("club_id", club.id);
+    if (
+      !window.confirm(
+        `Remove ${coach.name || "this coach"} from the club directory and team assignments?\n\nTheir login account itself will not be deleted.`
+      )
+    ) {
+      return;
+    }
+
+    const { error: staffError } = await supabase
+      .from("team_staff")
+      .delete()
+      .eq("coach_id", coach.id)
+      .eq("club_id", club.id);
+
     if (staffError) {
       setMessage("Could not remove team assignments: " + staffError.message);
       return;
     }
 
-    const { error } = await supabase.from("coaches").delete().eq("id", coach.id).eq("club_id", club.id);
+    const { error } = await supabase
+      .from("coaches")
+      .delete()
+      .eq("id", coach.id)
+      .eq("club_id", club.id);
+
     if (error) {
       setMessage("Could not remove coach: " + error.message);
       return;
@@ -3379,7 +3528,7 @@ function ClubCoachesScreen({ club, ageGroups, coaches, selectedTeam, onReloadCoa
 
     setMessage("Coach removed.");
     await onReloadCoaches?.();
-    await loadStaff();
+    await loadPeopleData();
   }
 
   function assignmentsForCoach(coachId) {
@@ -3387,104 +3536,697 @@ function ClubCoachesScreen({ club, ageGroups, coaches, selectedTeam, onReloadCoa
       .filter((row) => row.coach_id === coachId)
       .map((row) => ({
         ...row,
-        team: (ageGroups || []).find((team) => team.id === row.age_group_id),
+        team: (ageGroups || []).find(
+          (team) => String(team.id) === String(row.age_group_id)
+        ),
       }));
   }
 
+  function invitationTeamNames(invitationId) {
+    const ids = invitationTeams
+      .filter((row) => row.invitation_id === invitationId)
+      .map((row) => row.age_group_id);
+
+    return ids
+      .map((id) =>
+        (ageGroups || []).find((team) => String(team.id) === String(id))
+      )
+      .filter(Boolean)
+      .map(teamDisplayName)
+      .join(", ");
+  }
+
+  function invitationChildNames(invitationId) {
+    const ids = invitationChildren
+      .filter((row) => row.invitation_id === invitationId)
+      .map((row) => row.player_id);
+
+    return ids
+      .map((id) =>
+        (journeyPlayers || []).find(
+          (player) => String(player.id) === String(id)
+        )
+      )
+      .filter(Boolean)
+      .map((player) => player.name)
+      .join(", ");
+  }
+
+  function inviteTypeLabel(value) {
+    if (value === "lead_coach") return "Lead Coach";
+    if (value === "coach") return "Coach / Mentor";
+    if (value === "parent_guardian") return "Parent / Guardian";
+    return value || "Invitation";
+  }
+
+  const visibleInvitations = (invitations || []).filter((invite) => {
+    if (!isLeadCoach) return true;
+
+    const ids = invitationTeams
+      .filter((row) => row.invitation_id === invite.id)
+      .map((row) => row.age_group_id);
+
+    return ids.some((id) => leadCoachTeamIds.includes(id));
+  });
+
+  const pendingInvitations = visibleInvitations.filter(
+    (row) => row.status === "pending"
+  );
+
+  const previousInvitations = visibleInvitations.filter(
+    (row) => row.status !== "pending"
+  );
+
   return (
     <ClubPage
-      title="Coaches & Mentors"
-      sub={isLeadCoach ? "Invite Coach/Mentors to the teams you lead" : "Appoint Lead Coaches and manage the club coaching directory"}
-      actions={canInvite ? <Btn label={copied ? "Login Link Copied" : "Copy Spraoi Login Link"} variant="ghost" onClick={copyLoginLink} /> : null}
+      title="People & Invitations"
+      sub={
+        isLeadCoach
+          ? "Invite Coach/Mentors to the teams you lead"
+          : "Manage coaches, parents and invitations for your club"
+      }
     >
       {canInvite && (
         <ClubCard style={{ marginBottom: 15 }}>
-          <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink }}>
-            {isAdmin ? "Add Lead Coach" : "Invite Coach / Mentor"}
-          </div>
-          <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 4, marginBottom: 12 }}>
-            {isAdmin
-              ? "Admins appoint a Lead Coach to a team. That Lead Coach can then add the rest of their coaching group."
-              : "Add a coach or mentor to one of your assigned teams. They will link to this record when they first sign in with the same email address."}
+          <div
+            style={{
+              fontFamily: F.display,
+              fontSize: 17,
+              fontWeight: 900,
+              color: P.ink,
+            }}
+          >
+            Invite Person
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr 1fr auto", gap: 8, alignItems: "end" }} className="club-coach-invite-grid">
+          <div
+            style={{
+              fontFamily: F.body,
+              fontSize: 10,
+              color: P.muted,
+              marginTop: 4,
+              marginBottom: 14,
+              lineHeight: 1.5,
+            }}
+          >
+            Access remains pending until the recipient signs in, accepts the
+            relevant Spraoi policies and completes their invitation.
+          </div>
+
+          <div
+            className="club-person-invite-grid"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1.2fr 1fr 1fr",
+              gap: 9,
+              alignItems: "end",
+            }}
+          >
             <div>
-              <label style={{ display: "block", fontFamily: F.body, fontSize: 9, fontWeight: 800, color: P.muted, marginBottom: 4 }}>Name</label>
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" style={{ width: "100%", boxSizing: "border-box", padding: 9, borderRadius: 8, border: `1px solid ${P.line}` }} />
+              <label
+                style={{
+                  display: "block",
+                  fontFamily: F.body,
+                  fontSize: 9,
+                  fontWeight: 800,
+                  color: P.muted,
+                  marginBottom: 4,
+                }}
+              >
+                Name
+              </label>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Name"
+                style={{
+                  width: "100%",
+                  boxSizing: "border-box",
+                  padding: 9,
+                  borderRadius: 8,
+                  border: `1px solid ${P.line}`,
+                }}
+              />
             </div>
+
             <div>
-              <label style={{ display: "block", fontFamily: F.body, fontSize: 9, fontWeight: 800, color: P.muted, marginBottom: 4 }}>Login email</label>
-              <input value={emailValue} onChange={(e) => setEmailValue(e.target.value)} type="email" placeholder="email@example.ie" style={{ width: "100%", boxSizing: "border-box", padding: 9, borderRadius: 8, border: `1px solid ${P.line}` }} />
+              <label
+                style={{
+                  display: "block",
+                  fontFamily: F.body,
+                  fontSize: 9,
+                  fontWeight: 800,
+                  color: P.muted,
+                  marginBottom: 4,
+                }}
+              >
+                Email
+              </label>
+              <input
+                value={emailValue}
+                onChange={(e) => setEmailValue(e.target.value)}
+                type="email"
+                placeholder="email@example.ie"
+                style={{
+                  width: "100%",
+                  boxSizing: "border-box",
+                  padding: 9,
+                  borderRadius: 8,
+                  border: `1px solid ${P.line}`,
+                }}
+              />
             </div>
+
             <div>
-              <label style={{ display: "block", fontFamily: F.body, fontSize: 9, fontWeight: 800, color: P.muted, marginBottom: 4 }}>Team</label>
-              <select value={teamId} onChange={(e) => setTeamId(e.target.value)} style={{ width: "100%", padding: 9, borderRadius: 8, border: `1px solid ${P.line}` }}>
-                <option value="">Choose team</option>
-                {availableTeams.map((team) => <option key={team.id} value={team.id}>{teamDisplayName(team)}</option>)}
+              <label
+                style={{
+                  display: "block",
+                  fontFamily: F.body,
+                  fontSize: 9,
+                  fontWeight: 800,
+                  color: P.muted,
+                  marginBottom: 4,
+                }}
+              >
+                Role
+              </label>
+              <select
+                value={inviteType}
+                onChange={(e) => setInviteType(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: 9,
+                  borderRadius: 8,
+                  border: `1px solid ${P.line}`,
+                }}
+              >
+                {availableInviteTypes.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             </div>
-            <Btn label={saving ? "Adding…" : isAdmin ? "Add Lead Coach" : "Invite Coach/Mentor"} onClick={invitePerson} style={{ background: CLUB_RED }} />
+
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  fontFamily: F.body,
+                  fontSize: 9,
+                  fontWeight: 800,
+                  color: P.muted,
+                  marginBottom: 4,
+                }}
+              >
+                Team
+              </label>
+              <select
+                value={teamId}
+                onChange={(e) => setTeamId(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: 9,
+                  borderRadius: 8,
+                  border: `1px solid ${P.line}`,
+                }}
+              >
+                <option value="">Choose team</option>
+                {availableTeams.map((team) => (
+                  <option key={team.id} value={team.id}>
+                    {teamDisplayName(team)}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          {isLeadCoach && availableTeams.length === 0 && (
-            <div style={{ marginTop: 10, padding: 10, borderRadius: 8, background: "#fff8e1", color: "#7a4b00", fontFamily: F.body, fontSize: 10 }}>
-              You are not currently assigned as Lead Coach to a team, so there is nowhere to invite a Coach/Mentor yet.
+          {inviteType === "parent_guardian" && teamId && (
+            <div
+              style={{
+                marginTop: 13,
+                padding: 12,
+                borderRadius: 10,
+                background: CLUB_SOFT,
+                border: `1px solid ${CLUB_RED}22`,
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: F.body,
+                  fontSize: 10,
+                  fontWeight: 900,
+                  color: P.ink,
+                  marginBottom: 8,
+                }}
+              >
+                Children
+              </div>
+
+              {selectedTeamPlayers.length === 0 ? (
+                <div
+                  style={{
+                    fontFamily: F.body,
+                    fontSize: 10,
+                    color: P.muted,
+                  }}
+                >
+                  No Academy children are currently attached to this team.
+                </div>
+              ) : (
+                <div
+                  className="club-child-picker"
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns:
+                      "repeat(auto-fit,minmax(180px,1fr))",
+                    gap: 7,
+                  }}
+                >
+                  {selectedTeamPlayers.map((player) => {
+                    const checked = childIds.includes(player.id);
+
+                    return (
+                      <label
+                        key={player.id}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          padding: "8px 9px",
+                          borderRadius: 8,
+                          background: "#fff",
+                          border: `1px solid ${checked ? CLUB_RED : P.line}`,
+                          cursor: "pointer",
+                          fontFamily: F.body,
+                          fontSize: 10,
+                          color: P.ink,
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            setChildIds((current) =>
+                              e.target.checked
+                                ? [...new Set([...current, player.id])]
+                                : current.filter((id) => id !== player.id)
+                            );
+                          }}
+                        />
+                        {player.name}
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
-          {message && <div style={{ marginTop: 10, fontFamily: F.body, fontSize: 10, color: message.includes("Could not") || message.includes("only invite") ? "#b42318" : "#16803c" }}>{message}</div>}
+          <div
+            style={{
+              marginTop: 13,
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              flexWrap: "wrap",
+            }}
+          >
+            <Btn
+              label={saving ? "Sending…" : "Send Invitation"}
+              onClick={sendInvitation}
+              style={{ background: CLUB_RED }}
+            />
+
+            {message && (
+              <div
+                style={{
+                  fontFamily: F.body,
+                  fontSize: 10,
+                  color:
+                    message.includes("Could not") ||
+                    message.includes("Please") ||
+                    message.includes("only invite")
+                      ? "#b42318"
+                      : "#16803c",
+                }}
+              >
+                {message}
+              </div>
+            )}
+          </div>
         </ClubCard>
       )}
 
-      <ClubCard>
-        <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink, marginBottom: 12 }}>Club coaching directory</div>
+      <ClubCard style={{ marginBottom: 15 }}>
+        <div
+          style={{
+            fontFamily: F.display,
+            fontSize: 16,
+            fontWeight: 900,
+            color: P.ink,
+            marginBottom: 4,
+          }}
+        >
+          Pending Invitations
+        </div>
+
+        <div
+          style={{
+            fontFamily: F.body,
+            fontSize: 10,
+            color: P.muted,
+            marginBottom: 10,
+          }}
+        >
+          People do not receive active access until they accept.
+        </div>
+
+        {pendingInvitations.length === 0 ? (
+          <div
+            style={{
+              fontFamily: F.body,
+              fontSize: 11,
+              color: P.muted,
+            }}
+          >
+            No pending invitations.
+          </div>
+        ) : (
+          <div style={{ display: "grid", gap: 8 }}>
+            {pendingInvitations.map((invite) => (
+              <div
+                key={invite.id}
+                className="club-invitation-row"
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1.4fr 1fr 1.2fr auto",
+                  gap: 10,
+                  alignItems: "center",
+                  padding: 11,
+                  border: `1px solid ${P.line}`,
+                  borderRadius: 10,
+                }}
+              >
+                <div style={{ minWidth: 0 }}>
+                  <div
+                    style={{
+                      fontFamily: F.body,
+                      fontSize: 11,
+                      fontWeight: 800,
+                      color: P.ink,
+                    }}
+                  >
+                    {invite.name || invite.email}
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: F.body,
+                      fontSize: 9,
+                      color: P.muted,
+                      marginTop: 2,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {invite.email}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    fontFamily: F.body,
+                    fontSize: 10,
+                    fontWeight: 800,
+                    color: CLUB_RED,
+                  }}
+                >
+                  {inviteTypeLabel(invite.invite_type)}
+                </div>
+
+                <div
+                  style={{
+                    fontFamily: F.body,
+                    fontSize: 9,
+                    color: P.muted,
+                  }}
+                >
+                  <div>{invitationTeamNames(invite.id) || "No team"}</div>
+                  {invite.invite_type === "parent_guardian" && (
+                    <div style={{ marginTop: 3 }}>
+                      {invitationChildNames(invite.id) || "No child"}
+                    </div>
+                  )}
+                </div>
+
+                {(isAdmin || invite.invited_by === currentUserId) && (
+                  <Btn
+                    label="Cancel"
+                    variant="ghost"
+                    style={{ color: P.coral }}
+                    onClick={() => cancelInvitation(invite)}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </ClubCard>
+
+      <ClubCard style={{ marginBottom: 15 }}>
+        <div
+          style={{
+            fontFamily: F.display,
+            fontSize: 16,
+            fontWeight: 900,
+            color: P.ink,
+            marginBottom: 12,
+          }}
+        >
+          Active Coaching Team
+        </div>
 
         {(coaches || []).length === 0 ? (
-          <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted }}>No coaches added yet.</div>
+          <div
+            style={{
+              fontFamily: F.body,
+              fontSize: 11,
+              color: P.muted,
+            }}
+          >
+            No coaches added yet.
+          </div>
         ) : (
           (coaches || []).map((coach) => {
             const assignments = assignmentsForCoach(coach.id);
+
             const visibleAssignments = isLeadCoach
-              ? assignments.filter((row) => leadCoachTeamIds.includes(row.age_group_id))
+              ? assignments.filter((row) =>
+                  leadCoachTeamIds.includes(row.age_group_id)
+                )
               : assignments;
 
             if (isLeadCoach && visibleAssignments.length === 0) return null;
 
             return (
-              <div key={coach.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 0", borderTop: `1px solid ${P.line}` }}>
-                <div style={{ width: 36, height: 36, borderRadius: "50%", background: CLUB_SOFT, display: "grid", placeItems: "center", color: CLUB_RED, fontFamily: F.display, fontSize: 11, fontWeight: 800 }}>
-                  {(coach.name || "C").split(" ").map((part) => part[0]).join("").slice(0,2).toUpperCase()}
+              <div
+                key={coach.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "11px 0",
+                  borderTop: `1px solid ${P.line}`,
+                }}
+              >
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: "50%",
+                    background: CLUB_SOFT,
+                    display: "grid",
+                    placeItems: "center",
+                    color: CLUB_RED,
+                    fontFamily: F.display,
+                    fontSize: 11,
+                    fontWeight: 800,
+                    flexShrink: 0,
+                  }}
+                >
+                  {(coach.name || "C")
+                    .split(" ")
+                    .map((part) => part[0])
+                    .join("")
+                    .slice(0, 2)
+                    .toUpperCase()}
                 </div>
+
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: F.body, fontSize: 12, fontWeight: 700, color: P.ink }}>{coach.name || "Coach"}</div>
-                  <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>{coach.email || "No login email"}</div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 5 }}>
+                  <div
+                    style={{
+                      fontFamily: F.body,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: P.ink,
+                    }}
+                  >
+                    {coach.name || "Coach"}
+                  </div>
+
+                  <div
+                    style={{
+                      fontFamily: F.body,
+                      fontSize: 10,
+                      color: P.muted,
+                    }}
+                  >
+                    {coach.email || "No login email"}
+                  </div>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 5,
+                      marginTop: 5,
+                    }}
+                  >
                     {visibleAssignments.length === 0 ? (
-                      <span style={{ fontFamily: F.body, fontSize: 9, color: P.muted }}>No team assignment</span>
-                    ) : visibleAssignments.map((row) => (
-                      <span key={row.id} style={{ padding: "3px 7px", borderRadius: 999, background: row.role === "lead_coach" ? "#fff3e0" : CLUB_SOFT, color: row.role === "lead_coach" ? "#9a5b00" : CLUB_RED, fontFamily: F.body, fontSize: 9, fontWeight: 800 }}>
-                        {teamDisplayName(row.team)} · {row.role === "lead_coach" ? "Lead Coach" : "Coach/Mentor"}
+                      <span
+                        style={{
+                          fontFamily: F.body,
+                          fontSize: 9,
+                          color: P.muted,
+                        }}
+                      >
+                        No team assignment
                       </span>
-                    ))}
+                    ) : (
+                      visibleAssignments.map((row) => (
+                        <span
+                          key={row.id}
+                          style={{
+                            padding: "3px 7px",
+                            borderRadius: 999,
+                            background:
+                              row.role === "lead_coach"
+                                ? "#fff3e0"
+                                : CLUB_SOFT,
+                            color:
+                              row.role === "lead_coach"
+                                ? "#9a5b00"
+                                : CLUB_RED,
+                            fontFamily: F.body,
+                            fontSize: 9,
+                            fontWeight: 800,
+                          }}
+                        >
+                          {teamDisplayName(row.team)} ·{" "}
+                          {row.role === "lead_coach"
+                            ? "Lead Coach"
+                            : "Coach/Mentor"}
+                        </span>
+                      ))
+                    )}
                   </div>
                 </div>
-                {isAdmin && <Btn label="Remove" variant="ghost" style={{ color: P.coral }} onClick={() => removeCoachRecord(coach)} />}
+
+                {isAdmin && (
+                  <Btn
+                    label="Remove"
+                    variant="ghost"
+                    style={{ color: P.coral }}
+                    onClick={() => removeCoachRecord(coach)}
+                  />
+                )}
               </div>
             );
           })
         )}
       </ClubCard>
 
+      {previousInvitations.length > 0 && (
+        <ClubCard>
+          <div
+            style={{
+              fontFamily: F.display,
+              fontSize: 15,
+              fontWeight: 900,
+              color: P.ink,
+              marginBottom: 10,
+            }}
+          >
+            Invitation History
+          </div>
+
+          <div style={{ display: "grid", gap: 7 }}>
+            {previousInvitations.slice(0, 20).map((invite) => (
+              <div
+                key={invite.id}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "8px 0",
+                  borderTop: `1px solid ${P.line}`,
+                  fontFamily: F.body,
+                  fontSize: 10,
+                }}
+              >
+                <div>
+                  <strong>{invite.name || invite.email}</strong>
+                  <span style={{ color: P.muted }}>
+                    {" · "}
+                    {inviteTypeLabel(invite.invite_type)}
+                  </span>
+                </div>
+
+                <span
+                  style={{
+                    fontWeight: 900,
+                    textTransform: "capitalize",
+                    color:
+                      invite.status === "accepted"
+                        ? "#16803c"
+                        : invite.status === "cancelled"
+                          ? P.coral
+                          : P.muted,
+                  }}
+                >
+                  {invite.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        </ClubCard>
+      )}
+
       <style>{`
-        @media(max-width:850px){.club-coach-invite-grid{grid-template-columns:1fr 1fr!important}}
-        @media(max-width:560px){.club-coach-invite-grid{grid-template-columns:1fr!important}}
+        @media(max-width:900px){
+          .club-person-invite-grid{
+            grid-template-columns:1fr 1fr!important;
+          }
+          .club-invitation-row{
+            grid-template-columns:1fr 1fr!important;
+          }
+        }
+
+        @media(max-width:560px){
+          .club-person-invite-grid,
+          .club-invitation-row{
+            grid-template-columns:1fr!important;
+          }
+
+          .club-child-picker{
+            grid-template-columns:1fr!important;
+          }
+        }
       `}</style>
     </ClubPage>
   );
 }
-
-
 
 function ClubComplianceScreen({ club, coaches, userRole }) {
   const canManage = ["super_admin", "admin", "club_admin"].includes(userRole?.role);
@@ -4725,7 +5467,19 @@ function MobileHeader({ activeModule, setActiveModule, onNav, enabledModules, cl
     <>
       <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 62, zIndex: 200, padding: "0 12px", background: mod.color, color: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: `0 5px 18px ${mod.color}35` }}>
         <button onClick={() => setOpen(true)} style={{ border: "1px solid rgba(15,23,42,.08)", background: "#fff", width: 42, height: 42, borderRadius: 12, display: "grid", placeItems: "center", padding: 0, boxSizing: "border-box", cursor: "pointer", boxShadow: "0 4px 12px rgba(15,23,42,.14)" }}>
-          <img src={mod.icon} alt={mod.label} style={{ width: 31, height: 31, objectFit: "contain", display: "block", margin: "0 auto" }} />
+          <img
+            src={activeModule === "club"
+              ? (club?.logo_url || "/spraoi-club-icon.png")
+              : mod.icon}
+            alt={activeModule === "club" ? `${clubName} crest` : mod.label}
+            style={{
+              width: activeModule === "club" ? 36 : 31,
+              height: activeModule === "club" ? 36 : 31,
+              objectFit: "contain",
+              display: "block",
+              margin: "0 auto"
+            }}
+          />
         </button>
         <div style={{ minWidth:0, flex:1, padding:"0 10px", display:"flex", alignItems:"center", justifyContent:"center" }}>
           <div style={{ fontFamily:F.display, fontSize:14, fontWeight:900, color:"#fff", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", textAlign:"center" }}>{clubName}</div>
@@ -4803,6 +5557,457 @@ export function ClubModule({
   );
 }
 
+function SpraoiInviteAcceptance({ token, session }) {
+  const [invitation, setInvitation] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [accepting, setAccepting] = useState(false);
+  const [message, setMessage] = useState("");
+  const [acceptedKeys, setAcceptedKeys] = useState([]);
+  const [guardianConfirmed, setGuardianConfirmed] = useState(false);
+  const [openPolicyKey, setOpenPolicyKey] = useState(null);
+
+  useEffect(() => {
+    loadInvitation();
+  }, [token, session?.user?.id]);
+
+  async function loadInvitation() {
+    if (!token || !session?.user?.id) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+
+    const { data, error } = await supabase
+      .from("spraoi_invitations")
+      .select("id,club_id,email,name,invite_type,role,status,token,expires_at,accepted_at,clubs(name)")
+      .eq("token", token)
+      .maybeSingle();
+
+    if (error) {
+      setMessage("We could not load this invitation: " + error.message);
+      setLoading(false);
+      return;
+    }
+
+    if (!data) {
+      setMessage(
+        "This invitation could not be found or does not belong to the signed-in account."
+      );
+      setLoading(false);
+      return;
+    }
+
+    setInvitation(data);
+    setLoading(false);
+  }
+
+  const isParent = invitation?.invite_type === "parent_guardian";
+
+  const requiredKeys = isParent
+    ? ["terms", "privacy", "parent_guardian"]
+    : ["terms", "privacy", "acceptable_use"];
+
+  const requiredPolicies = requiredKeys
+    .map((key) => LEGAL_POLICIES.find((policy) => policy.key === key))
+    .filter(Boolean);
+
+  const allPoliciesAccepted =
+    requiredKeys.length > 0 &&
+    requiredKeys.every((key) => acceptedKeys.includes(key));
+
+  const canAccept =
+    invitation?.status === "pending" &&
+    allPoliciesAccepted &&
+    (!isParent || guardianConfirmed);
+
+  function togglePolicy(key) {
+    setAcceptedKeys((current) =>
+      current.includes(key)
+        ? current.filter((item) => item !== key)
+        : [...current, key]
+    );
+  }
+
+  async function acceptInvitation() {
+    if (!canAccept || !token) return;
+
+    setAccepting(true);
+    setMessage("");
+
+    const body = {
+      token,
+      inviteToken: token,
+      acceptedPolicies: requiredKeys,
+      acceptedPolicyKeys: requiredKeys,
+      policyKeys: requiredKeys,
+      policyVersion: LEGAL_POLICY_VERSION,
+      parentGuardianConfirmation: isParent ? guardianConfirmed : false,
+    };
+
+    const { data, error } = await supabase.functions.invoke(
+      "accept-spraoi-invite",
+      { body }
+    );
+
+    if (error) {
+      setMessage("Could not accept invitation: " + error.message);
+      setAccepting(false);
+      return;
+    }
+
+    if (data?.ok === false) {
+      setMessage(data.error || "Could not accept invitation.");
+      setAccepting(false);
+      return;
+    }
+
+    setMessage("Invitation accepted.");
+
+    const isLocal =
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1";
+
+    window.setTimeout(() => {
+      if (isParent) {
+        window.location.assign(
+          isLocal
+            ? "http://localhost:5178"
+            : "https://academy.spraoisports.com"
+        );
+      } else {
+        window.location.assign(
+          isLocal
+            ? "http://localhost:5174"
+            : "https://admin.spraoisports.com/?module=club"
+        );
+      }
+    }, 650);
+  }
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          background: P.navy,
+          display: "grid",
+          placeItems: "center",
+          padding: 20,
+          fontFamily: F.body,
+        }}
+      >
+        <div style={{ color: "#fff" }}>Loading invitation…</div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        background: P.navy,
+        padding: "28px 16px",
+        fontFamily: F.body,
+      }}
+    >
+      <div
+        style={{
+          width: "min(620px,100%)",
+          margin: "0 auto",
+        }}
+      >
+        <div style={{ textAlign: "center", marginBottom: 22 }}>
+          <img
+            src="/spraoi-logo-white.png"
+            alt="Spraoi Sports"
+            style={{ width: 180, height: "auto" }}
+          />
+        </div>
+
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: 18,
+            padding: 22,
+            boxShadow: "0 18px 48px rgba(0,0,0,.22)",
+          }}
+        >
+          <div
+            style={{
+              fontFamily: F.display,
+              fontSize: 24,
+              fontWeight: 900,
+              color: P.ink,
+            }}
+          >
+            Accept your invitation
+          </div>
+
+          {invitation && (
+            <>
+              <div
+                style={{
+                  marginTop: 7,
+                  fontSize: 11,
+                  color: P.muted,
+                  lineHeight: 1.5,
+                }}
+              >
+                {invitation.name || invitation.email}
+                {" · "}
+                {invitation.clubs?.name || "Spraoi Sports"}
+              </div>
+
+              <div
+                style={{
+                  display: "inline-flex",
+                  marginTop: 12,
+                  padding: "5px 9px",
+                  borderRadius: 999,
+                  background: CLUB_SOFT,
+                  color: CLUB_RED,
+                  fontWeight: 900,
+                  fontSize: 10,
+                }}
+              >
+                {isParent
+                  ? "Parent / Guardian"
+                  : invitation.invite_type === "lead_coach"
+                    ? "Lead Coach"
+                    : "Coach / Mentor"}
+              </div>
+
+              {invitation.status !== "pending" && (
+                <div
+                  style={{
+                    marginTop: 14,
+                    padding: 11,
+                    borderRadius: 9,
+                    background: "#fff7ed",
+                    color: "#9a3412",
+                    fontSize: 11,
+                    fontWeight: 700,
+                  }}
+                >
+                  This invitation is {invitation.status}.
+                </div>
+              )}
+
+              <div
+                style={{
+                  marginTop: 20,
+                  fontFamily: F.display,
+                  fontWeight: 900,
+                  fontSize: 16,
+                  color: P.ink,
+                }}
+              >
+                Required policies
+              </div>
+
+              <div
+                style={{
+                  marginTop: 5,
+                  marginBottom: 12,
+                  fontSize: 10,
+                  color: P.muted,
+                }}
+              >
+                Version {LEGAL_POLICY_VERSION} · Effective {LEGAL_EFFECTIVE_DATE}
+              </div>
+
+              <div style={{ display: "grid", gap: 8 }}>
+                {requiredPolicies.map((policy) => {
+                  const checked = acceptedKeys.includes(policy.key);
+
+                  return (
+                    <div
+                      key={policy.key}
+                      style={{
+                        border: `1px solid ${checked ? CLUB_RED : P.line}`,
+                        borderRadius: 10,
+                        padding: 11,
+                      }}
+                    >
+                      <label
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 9,
+                          cursor: "pointer",
+                          fontSize: 11,
+                          fontWeight: 800,
+                          color: P.ink,
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => togglePolicy(policy.key)}
+                        />
+                        <span style={{ flex: 1 }}>
+                          I accept the {policy.title}
+                        </span>
+                      </label>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOpenPolicyKey(
+                            openPolicyKey === policy.key ? null : policy.key
+                          )
+                        }
+                        style={{
+                          marginTop: 7,
+                          border: 0,
+                          background: "transparent",
+                          color: CLUB_RED,
+                          padding: 0,
+                          cursor: "pointer",
+                          fontSize: 10,
+                          fontWeight: 800,
+                        }}
+                      >
+                        {openPolicyKey === policy.key
+                          ? "Hide policy"
+                          : "Read policy"}
+                      </button>
+
+                      {openPolicyKey === policy.key && (
+                        <div
+                          style={{
+                            marginTop: 10,
+                            maxHeight: 260,
+                            overflowY: "auto",
+                            padding: 10,
+                            borderRadius: 8,
+                            background: "#f8fafc",
+                            fontSize: 10,
+                            lineHeight: 1.55,
+                            color: P.ink,
+                          }}
+                        >
+                          {(policy.sections || []).map((section, index) => (
+                            <div
+                              key={`${policy.key}-${index}`}
+                              style={{ marginBottom: 12 }}
+                            >
+                              <div style={{ fontWeight: 900 }}>
+                                {section.heading}
+                              </div>
+
+                              {(section.body || []).map((paragraph, pIndex) => (
+                                <div
+                                  key={pIndex}
+                                  style={{ marginTop: 5 }}
+                                >
+                                  {paragraph}
+                                </div>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {isParent && (
+                <label
+                  style={{
+                    marginTop: 13,
+                    padding: 11,
+                    borderRadius: 10,
+                    background: CLUB_SOFT,
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 9,
+                    cursor: "pointer",
+                    fontSize: 10,
+                    lineHeight: 1.5,
+                    color: P.ink,
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={guardianConfirmed}
+                    onChange={(e) =>
+                      setGuardianConfirmed(e.target.checked)
+                    }
+                    style={{ marginTop: 2 }}
+                  />
+                  <span>
+                    I confirm that I am the parent or legal guardian,
+                    or I am otherwise authorised to link this child
+                    profile to my account.
+                  </span>
+                </label>
+              )}
+
+              <button
+                type="button"
+                disabled={!canAccept || accepting}
+                onClick={acceptInvitation}
+                style={{
+                  width: "100%",
+                  marginTop: 18,
+                  height: 44,
+                  border: 0,
+                  borderRadius: 10,
+                  background: CLUB_RED,
+                  color: "#fff",
+                  fontFamily: F.body,
+                  fontSize: 12,
+                  fontWeight: 900,
+                  cursor: canAccept ? "pointer" : "default",
+                  opacity: canAccept && !accepting ? 1 : 0.45,
+                }}
+              >
+                {accepting ? "Accepting…" : "Accept Invitation"}
+              </button>
+            </>
+          )}
+
+          {message && (
+            <div
+              style={{
+                marginTop: 13,
+                padding: 10,
+                borderRadius: 9,
+                background: message === "Invitation accepted."
+                  ? "#ecfdf3"
+                  : "#fff1f2",
+                color: message === "Invitation accepted."
+                  ? "#166534"
+                  : "#b42318",
+                fontSize: 10,
+                lineHeight: 1.5,
+              }}
+            >
+              {message}
+            </div>
+          )}
+
+          <div
+            style={{
+              marginTop: 16,
+              textAlign: "center",
+              fontSize: 9,
+              color: P.muted,
+            }}
+          >
+            Need help? Contact spraoisportsapp@gmail.com
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 export default function App() {
   useSpraoiFonts();
   // Auth state
@@ -4854,6 +6059,7 @@ export default function App() {
   const [shareUrl, setShareUrl] = useState(null);
   const [pitchView, setPitchView] = useState(false);
   const [shareToken] = useState(() => new URLSearchParams(window.location.search).get("share"));
+  const [inviteToken] = useState(() => new URLSearchParams(window.location.search).get("invite"));
   const [sharedSession, setSharedSession] = useState(null);
   const [shareLoading, setShareLoading] = useState(!!new URLSearchParams(window.location.search).get("share"));
 
@@ -5352,6 +6558,16 @@ export default function App() {
     );
   }
 
+  // Invitation acceptance takes priority once the recipient is authenticated.
+  if (session && inviteToken) {
+    return (
+      <SpraoiInviteAcceptance
+        token={inviteToken}
+        session={session}
+      />
+    );
+  }
+
   // Login screen
   if (!session) {
     return (
@@ -5359,7 +6575,9 @@ export default function App() {
         <div style={{ maxWidth: 380, width: "100%" }}>
           <div style={{ textAlign: "center", marginBottom: 28 }}>
             <img src="/spraoi-logo-white.png" alt="Spraoi Sports" style={{ width: 180, height: "auto", marginBottom: 10 }} />
-            <div style={{ fontFamily: F.body, fontSize: 12, color: "rgba(255,255,255,.5)", marginTop: 4 }}>Club Admin</div>
+            <div style={{ fontFamily: F.body, fontSize: 12, color: "rgba(255,255,255,.5)", marginTop: 4 }}>
+              {inviteToken ? "Sign in to accept your invitation" : "Club Admin"}
+            </div>
           </div>
           <div style={{ background: P.white, borderRadius: 18, padding: 28, boxShadow: Sh.lift }}>
             <div style={{ fontFamily: F.display, fontSize: 17, fontWeight: 800, color: P.ink, marginBottom: 16 }}>Sign In</div>
