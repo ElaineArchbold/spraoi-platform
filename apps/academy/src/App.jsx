@@ -3541,7 +3541,11 @@ export default function App() {
   const [authError, setAuthError] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loggingIn, setLoggingIn] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+  const [recoveryMode, setRecoveryMode] = useState(false);
 
   // User role state
   const [userRole, setUserRole] = useState(null); // { role, club_id, modules }
@@ -3592,6 +3596,11 @@ export default function App() {
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
+      if (event === "PASSWORD_RECOVERY") {
+        setRecoveryMode(true);
+        setAuthLoading(false);
+        return;
+      }
       if (s) loadUserRole(s.user.id, s.user.email);
       else { setAuthLoading(false); setUserRole(null); }
     });
@@ -4103,6 +4112,14 @@ export default function App() {
     );
   }
 
+  if (recoveryMode && session) {
+    return (
+      <SpraoiPasswordRecovery
+        accent={MODULES[APP_MODULE]?.color || "#0277bd"}
+        onDone={() => setRecoveryMode(false)}
+      />
+    );
+  }
   // Login screen
   if (!session) {
     return (
@@ -4878,21 +4895,3 @@ function SpraoiPasswordRecovery({
   );
 }
 
-  const [showPassword, setShowPassword] = useState(false);
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [resetSent, setResetSent] = useState(false);
-  const [recoveryMode, setRecoveryMode] = useState(false);
-
-      if (event === "PASSWORD_RECOVERY") {
-        setRecoveryMode(true);
-        setAuthLoading(false);
-        return;
-      }
-  if (recoveryMode && session) {
-    return (
-      <SpraoiPasswordRecovery
-        accent={MODULES[APP_MODULE]?.color || "#0277bd"}
-        onDone={() => setRecoveryMode(false)}
-      />
-    );
-  }
