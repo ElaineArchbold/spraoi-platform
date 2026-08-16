@@ -1,1 +1,1 @@
-Cup team switching production fix: 2026-08-16 10:43
+Password recovery production release: 2026-08-16 21:09
