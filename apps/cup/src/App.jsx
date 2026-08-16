@@ -6093,16 +6093,6 @@ function SpraoiPasswordRecovery({
     }
   }
 
-  async function login() { setLoggingIn(true); setAuthError(""); const { error } = await supabase.auth.signInWithPassword({ email, password }); if (error) setAuthError(error.message); setLoggingIn(false); }
-  async function signup() { setLoggingIn(true); setAuthError(""); const { error } = await supabase.auth.signUp({ email, password }); if (error) setAuthError(error.message); else setAuthError("Check your email to confirm."); setLoggingIn(false); }
-  async function logout() { await supabase.auth.signOut(); setSession(null); setUserRole(null); setClub(null); setSelectedTeam(null); }
-
-  // Restore and synchronise the one active team shared by every Spraoi module.
-  useEffect(() => {
-    if (!ageGroups.length || !userRole?.role) return;
-    const allowedTeams = permissions.isClubAdmin
-      ? ageGroups
-      : ageGroups.filter((ag) => (myTeams || []).includes(ag.id));
   async function sendPasswordReset() {
     const cleanEmail = String(email || "").trim();
 
@@ -6132,6 +6122,16 @@ function SpraoiPasswordRecovery({
 
     setLoggingIn(false);
   }
+  async function login() { setLoggingIn(true); setAuthError(""); const { error } = await supabase.auth.signInWithPassword({ email, password }); if (error) setAuthError(error.message); setLoggingIn(false); }
+  async function signup() { setLoggingIn(true); setAuthError(""); const { error } = await supabase.auth.signUp({ email, password }); if (error) setAuthError(error.message); else setAuthError("Check your email to confirm."); setLoggingIn(false); }
+  async function logout() { await supabase.auth.signOut(); setSession(null); setUserRole(null); setClub(null); setSelectedTeam(null); }
+
+  // Restore and synchronise the one active team shared by every Spraoi module.
+  useEffect(() => {
+    if (!ageGroups.length || !userRole?.role) return;
+    const allowedTeams = permissions.isClubAdmin
+      ? ageGroups
+      : ageGroups.filter((ag) => (myTeams || []).includes(ag.id));
     const savedId = requestedTeamFromUrl(null) || localStorage.getItem(ACTIVE_TEAM_KEY) || localStorage.getItem("spraoi_team_id");
     const found = allowedTeams.find((ag) => String(ag.id) === String(savedId));
 
