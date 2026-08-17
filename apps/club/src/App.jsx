@@ -437,7 +437,7 @@ function DashboardScreen({ club, ageGroups, planSessions, weeklyPlan, upcomingSe
             <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 6 }}>Review skills generated from this week's plan</div>
           </div>
           <StatCard label="Drills" value={String(allActivities?.length || 0)} sub={`${allActivities?.filter(a => a.sport === 'football').length || 0} football`} color={P.sky} icon="ðŸ“–" />
-          <StatCard label="Next Session" value={teamSessions?.[0]?.session_date ? new Date(upcomingSessions[0].session_date).getDate() : "â€”"} sub={teamSessions?.[0]?.session_date ? new Date(upcomingSessions[0].session_date).toLocaleDateString("en-IE", { weekday: "short", month: "short" }) : "None scheduled"} color={P.green} icon="ðŸ“…" />
+          <StatCard label="Next Session" value={teamSessions?.[0]?.session_date ? new Date(upcomingSessions[0].session_date).getDate() : "—"} sub={teamSessions?.[0]?.session_date ? new Date(upcomingSessions[0].session_date).toLocaleDateString("en-IE", { weekday: "short", month: "short" }) : "None scheduled"} color={P.green} icon="ðŸ“…" />
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
@@ -2120,7 +2120,7 @@ function ClubDashboardScreen({ club, ageGroups, coaches, selectedTeam, onNav }) 
   return (
     <ClubPage
       title="Club Dashboard"
-      sub={`${club?.name || "Club Spraoi"} Â· Operating centre`}
+      sub={`${club?.name || "Club Spraoi"} \u00B7 Operating centre`}
       actions={<Btn label="Manage Teams" onClick={() => onNav("club-teams")} style={{ background: CLUB_RED }} />}
     >
       <div style={{
@@ -2151,10 +2151,10 @@ function ClubDashboardScreen({ club, ageGroups, coaches, selectedTeam, onNav }) 
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12, marginBottom: 18 }}>
-        <StatCard label="Teams" value={String(ageGroups?.length || 0)} sub="Persistent club teams" color={CLUB_RED} icon="â—†" />
+        <StatCard label="Teams" value={String(ageGroups?.length || 0)} sub="Persistent club teams" color={CLUB_RED} icon="◆" />
         <StatCard label="Coaches" value={String(coaches?.length || 0)} sub="Club staff records" color={CLUB_RED_DARK} icon="â—" />
-        <StatCard label="Active Team" value={selectedTeam ? teamDisplayName(selectedTeam) : "â€”"} sub="Shared across modules" color="#e57373" icon="â†”" />
-        <StatCard label="Access Model" value="4 roles" sub="Super Admin, Admin, Lead Coach, Coach/Mentor" color="#ef5350" icon="â—‡" />
+        <StatCard label="Active Team" value={selectedTeam ? teamDisplayName(selectedTeam) : "—"} sub="Shared across modules" color="#e57373" icon="↔" />
+        <StatCard label="Access Model" value="4 roles" sub="Super Admin, Admin, Lead Coach, Coach/Mentor" color="#ef5350" icon="◇" />
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 14 }}>
@@ -2172,7 +2172,7 @@ function ClubDashboardScreen({ club, ageGroups, coaches, selectedTeam, onNav }) 
               background: "transparent", display: "flex", justifyContent: "space-between",
               cursor: "pointer", fontFamily: F.body, fontSize: 12, fontWeight: 700, color: P.ink,
             }}>
-              <span>{label}</span><span style={{ color: CLUB_RED }}>â€º</span>
+              <span>{label}</span><span style={{ color: CLUB_RED }}>{"\u203A"}</span>
             </button>
           ))}
         </ClubCard>
@@ -3139,7 +3139,7 @@ function ClubTeamsCoreScreen({ club, ageGroups, coaches, selectedTeam, onSelectT
               <>
                 <div className="club-team-detail-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 9, marginBottom: 14 }}>
                   {[
-                    ["Current age group", teamDisplayName(selectedTeam, "â€”")],
+                    ["Current age group", teamDisplayName(selectedTeam, "—")],
                     ["Cohort year", selectedTeam.cohort_year || "Not set"],
                     ["Code", selectedTeam.gender === "girls" ? "Camogie / Football" : selectedTeam.gender === "boys" ? "Hurling / Football" : "Club team"],
                   ].map(([label, value]) => (
@@ -3439,7 +3439,7 @@ function ClubPlayersParentsPanel({
 
     return team
       ? teamDisplayName(team)
-      : "â€”";
+      : "—";
   }
 
   function parentsForPlayer(playerId) {
@@ -7309,7 +7309,7 @@ function ClubComplianceScreen({ club, coaches, userRole }) {
                 {cert.certificate_number && <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted }}>{cert.certificate_number}</div>}
               </div>
               <div>
-                <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted }}>Expires {cert.expiry_date || "â€”"}</div>
+                <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted }}>Expires {cert.expiry_date || "—"}</div>
                 <span style={{ display: "inline-block", marginTop: 3, padding: "3px 7px", borderRadius: 999, background: tone.background, border: `1px solid ${tone.border}`, color: tone.color, fontFamily: F.body, fontSize: 8, fontWeight: 900 }}>{status.label}</span>
               </div>
               {canManage && <Btn label="Remove" variant="ghost" style={{ color: P.coral }} onClick={() => removeCertification(cert)} />}
@@ -10326,6 +10326,8 @@ export default function App() {
     </div>
   );
 }
+
+
 
 
 
