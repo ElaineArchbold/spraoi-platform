@@ -3,7 +3,7 @@ import { supabase } from "./supabaseClient";
 import html2canvas from "html2canvas";
 import { openAdminModule, requestedTeamFromUrl, readModuleScreen, writeModuleScreen } from "../../../packages/ui/src/platformNavigation.js";
 import { LEGAL_POLICIES, LEGAL_POLICY_VERSION, LEGAL_EFFECTIVE_DATE } from "../../../packages/ui/src/legalPolicies.js";
-
+import * as XLSX from "xlsx";
 /* ============================================================
    SPRAOI COACH — Desktop-first redesign
    Navy sidebar, purple accents, responsive
@@ -214,7 +214,8 @@ const MODULES = {
       { id: "club-dashboard", icon: "home", label: "Dashboard" },
       { id: "club-setup", icon: "setup", label: "Club Setup" },
       { id: "club-teams", icon: "teams", label: "Teams" },
-      { id: "club-coaches", icon: "coaches", label: "Coaches & Mentors" },
+      { id: "club-coaches", icon: "coaches", label: "People" },
+      { id: "club-scheduling", icon: "schedule", label: "Facilities & Slots" },
       { id: "club-compliance", icon: "compliance", label: "Compliance" },
       { id: "club-permissions", icon: "permissions", label: "Roles & Permissions" },
     ]
@@ -231,6 +232,7 @@ function ClubNavIcon({ name, size = 17 }) {
     coaches: <><circle cx="8" cy="8" r="3"/><circle cx="17" cy="7" r="2.4"/><path d="M2.8 20c.6-4 2.4-6 5.2-6 2.9 0 4.6 2 5.2 6"/><path d="M14 12.5h7"/><path d="M17.5 9v7"/></>,
     compliance: <><path d="M12 3 5 6v5c0 4.7 2.8 8 7 10 4.2-2 7-5.3 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></>,
     permissions: <><circle cx="9" cy="11" r="3"/><path d="M2.8 20c.5-3.6 2.6-5.5 6.2-5.5 1.2 0 2.2.2 3 .6"/><path d="M15 14h6"/><path d="M18 11v6"/></>,
+    schedule: <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/><path d="m9 15 2 2 4-4"/></>,
   };
   return <svg {...common}>{icons[name] || icons.home}</svg>;
 }
@@ -247,8 +249,8 @@ function normalizeModuleIds(moduleIds = []) {
 /* ============================================================
    SIDEBAR — with module switcher
    ============================================================ */
-function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, selectedTeam, onSelectTeam, enabledModules, onLogout, ageGroups, myTeams, onShowProfile }) {
-  const visibleTeams = myTeams?.length ? (ageGroups || []).filter((ag) => myTeams.includes(ag.id)) : (ageGroups || []);
+function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, selectedTeam, onSelectTeam, enabledModules, onLogout, ageGroups, myTeams, onShowProfile, userInitial }) {
+  const visibleTeams = (ageGroups || []).filter((ag) => (myTeams || []).includes(ag.id));
   const mod = MODULES[activeModule];
   const clubName = club?.name || "Club Spraoi";
 
@@ -284,7 +286,7 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
           })}
         </div>
         <img src="/spraoi-logo-white.png" alt="Spraoi Sports" style={{ width: 58, height: 38, objectFit: "contain", marginBottom: 4, opacity: .96 }} />
-        <button onClick={onShowProfile} title="Profile & sign out" style={{ width: 42, height: 42, borderRadius: 13, border: "1px solid rgba(255,255,255,.36)", background: "rgba(255,255,255,.12)", color: "#fff", cursor: "pointer", fontFamily: F.body, fontWeight: 800 }}>EA</button>
+        <button onClick={onShowProfile} title="Profile & sign out" style={{ width: 42, height: 42, borderRadius: 13, border: "1px solid rgba(255,255,255,.36)", background: "rgba(255,255,255,.12)", color: "#fff", cursor: "pointer", fontFamily: F.body, fontWeight: 800 }}>{userInitial || "U"}</button>
       </aside>
 
       {/* Fixed navigation for the active module */}
@@ -2150,7 +2152,7 @@ function ClubDashboardScreen({ club, ageGroups, coaches, selectedTeam, onNav }) 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12, marginBottom: 18 }}>
         <StatCard label="Teams" value={String(ageGroups?.length || 0)} sub="Persistent club teams" color={CLUB_RED} icon="◆" />
         <StatCard label="Coaches" value={String(coaches?.length || 0)} sub="Club staff records" color={CLUB_RED_DARK} icon="●" />
-        <StatCard label="Active Team" value={selectedTeam?.label || "—"} sub="Shared across modules" color="#e57373" icon="↔" />
+        <StatCard label="Active Team" value={selectedTeam ? teamDisplayName(selectedTeam) : "—"} sub="Shared across modules" color="#e57373" icon="↔" />
         <StatCard label="Access Model" value="4 roles" sub="Super Admin, Admin, Lead Coach, Coach/Mentor" color="#ef5350" icon="◇" />
       </div>
 
@@ -2178,7 +2180,7 @@ function ClubDashboardScreen({ club, ageGroups, coaches, selectedTeam, onNav }) 
           <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink, marginBottom: 10 }}>Active team context</div>
           <div style={{ padding: 14, borderRadius: 12, background: CLUB_SOFT, border: "1px solid #f4caca" }}>
             <div style={{ fontFamily: F.body, fontSize: 10, fontWeight: 900, color: CLUB_RED, textTransform: "uppercase" }}>Currently selected</div>
-            <div style={{ fontFamily: F.display, fontSize: 23, fontWeight: 900, color: P.ink, marginTop: 4 }}>{selectedTeam?.label || "No team selected"}</div>
+            <div style={{ fontFamily: F.display, fontSize: 23, fontWeight: 900, color: P.ink, marginTop: 4 }}>{selectedTeam ? teamDisplayName(selectedTeam) : "No team selected"}</div>
             <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 6 }}>
               Coach, Academy, Cup, Connect and Plus use this same team selection.
             </div>
@@ -2825,7 +2827,7 @@ function ClubLegalScreen({ club, currentUserId, onNav }) {
 }
 
 
-function ClubTeamsScreen({ club, ageGroups, coaches, selectedTeam, onSelectTeam, onReloadTeams, userRole }) {
+function ClubTeamsCoreScreen({ club, ageGroups, coaches, selectedTeam, onSelectTeam, onReloadTeams, userRole }) {
   const [staff, setStaff] = useState([]);
   const [seasonHistory, setSeasonHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -3047,7 +3049,7 @@ function ClubTeamsScreen({ club, ageGroups, coaches, selectedTeam, onSelectTeam,
   }
 
   const selectedDisplay = selectedTeam
-    ? `${selectedTeam.label || "Team"}${selectedTeam.gender ? ` ${selectedTeam.gender === "girls" ? "Girls" : selectedTeam.gender === "boys" ? "Boys" : selectedTeam.gender}` : ""}`
+    ? teamDisplayName(selectedTeam)
     : "";
 
   return (
@@ -3131,7 +3133,7 @@ function ClubTeamsScreen({ club, ageGroups, coaches, selectedTeam, onSelectTeam,
               <>
                 <div className="club-team-detail-grid" style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 9, marginBottom: 14 }}>
                   {[
-                    ["Current age group", selectedTeam.label || "—"],
+                    ["Current age group", teamDisplayName(selectedTeam, "—")],
                     ["Cohort year", selectedTeam.cohort_year || "Not set"],
                     ["Code", selectedTeam.gender === "girls" ? "Camogie / Football" : selectedTeam.gender === "boys" ? "Hurling / Football" : "Club team"],
                   ].map(([label, value]) => (
@@ -3277,6 +3279,1410 @@ function ClubTeamsScreen({ club, ageGroups, coaches, selectedTeam, onSelectTeam,
         @media(max-width:620px){.club-team-summary-grid{grid-template-columns:1fr!important}.club-staff-row,.club-team-detail-grid{grid-template-columns:1fr!important}}
       `}</style>
     </ClubPage>
+  );
+}
+
+function clubImportHeader(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function clubImportValue(row, names) {
+  const wanted = names.map(clubImportHeader);
+
+  for (const [key, value] of Object.entries(row || {})) {
+    if (wanted.includes(clubImportHeader(key))) {
+      return String(value ?? "").trim();
+    }
+  }
+
+  return "";
+}
+
+async function readClubImportFile(file) {
+  if (!file) return [];
+
+  const lower = String(file.name || "").toLowerCase();
+
+  if (lower.endsWith(".xlsx") || lower.endsWith(".xls")) {
+    const buffer = await file.arrayBuffer();
+    const workbook = XLSX.read(buffer, { type: "array" });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+
+    return XLSX.utils.sheet_to_json(sheet, {
+      defval: "",
+      raw: false,
+    });
+  }
+
+  const raw = await file.text();
+  const workbook = XLSX.read(raw, { type: "string" });
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+
+  return XLSX.utils.sheet_to_json(sheet, {
+    defval: "",
+    raw: false,
+  });
+}
+
+
+function ClubPlayersParentsPanel({
+  club,
+  ageGroups = [],
+  selectedTeam,
+}) {
+  const [players, setPlayers] = useState([]);
+  const [guardians, setGuardians] = useState([]);
+  const [links, setLinks] = useState([]);
+  const [invitations, setInvitations] = useState([]);
+
+  const [preview, setPreview] = useState([]);
+  const [fileName, setFileName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  async function loadData() {
+    if (!club?.id) return;
+
+    setLoading(true);
+
+    const [playerResult, guardianResult, inviteResult] =
+      await Promise.all([
+        supabase
+          .from("journey_players")
+          .select("id,name,age_group_id")
+          .eq("club_id", club.id)
+          .order("name"),
+
+        supabase
+          .from("club_guardians")
+          .select("id,name,email,phone,user_id")
+          .eq("club_id", club.id)
+          .order("name"),
+
+        supabase
+          .from("spraoi_invitations")
+          .select("id,email,status,invite_type,created_at")
+          .eq("club_id", club.id)
+          .eq("invite_type", "parent_guardian")
+          .order("created_at", { ascending: false }),
+      ]);
+
+    if (playerResult.error) setMessage(playerResult.error.message);
+    if (guardianResult.error) setMessage(guardianResult.error.message);
+
+    const guardianRows = guardianResult.data || [];
+
+    setPlayers(playerResult.data || []);
+    setGuardians(guardianRows);
+    setInvitations(inviteResult.data || []);
+
+    if (guardianRows.length) {
+      const { data, error } = await supabase
+        .from("club_player_guardians")
+        .select("player_id,guardian_id,is_primary")
+        .in(
+          "guardian_id",
+          guardianRows.map((guardian) => guardian.id)
+        );
+
+      if (error) setMessage(error.message);
+
+      setLinks(data || []);
+    } else {
+      setLinks([]);
+    }
+
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    loadData();
+  }, [club?.id]);
+
+  const visiblePlayers = selectedTeam?.id
+    ? players.filter(
+        (player) =>
+          String(player.age_group_id) ===
+          String(selectedTeam.id)
+      )
+    : players;
+
+  function teamLabel(player) {
+    const team = ageGroups.find(
+      (item) =>
+        String(item.id) === String(player.age_group_id)
+    );
+
+    return team
+      ? teamDisplayName(team)
+      : "—";
+  }
+
+  function parentsForPlayer(playerId) {
+    const guardianIds = links
+      .filter(
+        (link) =>
+          String(link.player_id) === String(playerId)
+      )
+      .map((link) => String(link.guardian_id));
+
+    return guardians.filter((guardian) =>
+      guardianIds.includes(String(guardian.id))
+    );
+  }
+
+  function academyStatus(guardian) {
+    if (guardian?.user_id) return "Active";
+
+    const invite = invitations.find(
+      (row) =>
+        String(row.email || "").toLowerCase() ===
+        String(guardian?.email || "").toLowerCase()
+    );
+
+    if (!invite) return "Not invited";
+    if (invite.status === "accepted") return "Active";
+    if (invite.status === "pending") return "Pending";
+
+    return invite.status || "Not invited";
+  }
+
+  async function chooseFile(file) {
+    if (!file) return;
+
+    setMessage("");
+    setFileName(file.name);
+
+    try {
+      const rows = await readClubImportFile(file);
+
+      const mapped = rows
+        .map((row, index) => {
+          const playerName = clubImportValue(row, [
+            "player name",
+            "child name",
+            "player",
+            "child",
+            "name",
+          ]);
+
+          const teamName = clubImportValue(row, [
+            "team",
+            "team name",
+            "age group",
+            "squad",
+          ]);
+
+          const parentName = clubImportValue(row, [
+            "parent name",
+            "guardian name",
+            "parent",
+            "guardian",
+          ]);
+
+          const parentEmail = clubImportValue(row, [
+            "parent email",
+            "guardian email",
+            "email",
+          ]);
+
+          const phone = clubImportValue(row, [
+            "parent phone",
+            "guardian phone",
+            "mobile",
+            "phone",
+          ]);
+
+          const matchedTeam =
+            ageGroups.find(
+              (team) =>
+                String(team.label || "")
+                  .trim()
+                  .toLowerCase() ===
+                String(teamName || "")
+                  .trim()
+                  .toLowerCase()
+            ) ||
+            (selectedTeam?.id ? selectedTeam : null);
+
+          return {
+            row: index + 2,
+            playerName,
+            parentName,
+            parentEmail,
+            phone,
+            teamName,
+            team: matchedTeam,
+            valid: Boolean(
+              playerName &&
+              matchedTeam?.id
+            ),
+          };
+        })
+        .filter(
+          (row) =>
+            row.playerName ||
+            row.parentName ||
+            row.parentEmail
+        );
+
+      setPreview(mapped);
+    } catch (error) {
+      setPreview([]);
+      setMessage(
+        error?.message || "Could not read that file."
+      );
+    }
+  }
+
+  async function importRoster() {
+    if (!club?.id) return;
+
+    const valid = preview.filter((row) => row.valid);
+
+    if (!valid.length) {
+      setMessage("No valid roster rows to import.");
+      return;
+    }
+
+    setBusy(true);
+    setMessage("");
+
+    try {
+      const { data: currentPlayers, error } =
+        await supabase
+          .from("journey_players")
+          .select("id,name,age_group_id")
+          .eq("club_id", club.id);
+
+      if (error) throw error;
+
+      const workingPlayers = [...(currentPlayers || [])];
+
+      const { data: currentGuardians, error: guardianLoadError } =
+        await supabase
+          .from("club_guardians")
+          .select("id,name,email,phone,user_id")
+          .eq("club_id", club.id);
+
+      if (guardianLoadError) throw guardianLoadError;
+
+      const workingGuardians = [...(currentGuardians || [])];
+
+      for (const row of valid) {
+        let player = workingPlayers.find(
+          (item) =>
+            String(item.name || "")
+              .trim()
+              .toLowerCase() ===
+              String(row.playerName || "")
+                .trim()
+                .toLowerCase() &&
+            String(item.age_group_id) ===
+              String(row.team.id)
+        );
+
+        if (!player) {
+          const { data, error: playerError } =
+            await supabase
+              .from("journey_players")
+              .insert({
+                parent_user_id:
+                  "00000000-0000-0000-0000-000000000000",
+                club_id: club.id,
+                age_group_id: row.team.id,
+                name: row.playerName,
+              })
+              .select("id,name,age_group_id")
+              .single();
+
+          if (playerError) throw playerError;
+
+          player = data;
+          workingPlayers.push(player);
+        }
+
+        if (row.parentEmail) {
+          const email = row.parentEmail
+            .trim()
+            .toLowerCase();
+
+          let guardian = workingGuardians.find(
+            (item) =>
+              String(item.email || "").toLowerCase() === email
+          );
+
+          if (!guardian) {
+            const { data, error: guardianError } =
+              await supabase
+                .from("club_guardians")
+                .upsert(
+                  {
+                    club_id: club.id,
+                    name:
+                      row.parentName ||
+                      email.split("@")[0],
+                    email,
+                    phone: row.phone || null,
+                  },
+                  {
+                    onConflict: "club_id,email",
+                  }
+                )
+                .select("id,name,email,phone,user_id")
+                .single();
+
+            if (guardianError) throw guardianError;
+
+            guardian = data;
+            workingGuardians.push(guardian);
+          }
+
+          const { error: linkError } = await supabase
+            .from("club_player_guardians")
+            .upsert(
+              {
+                player_id: player.id,
+                guardian_id: guardian.id,
+                is_primary: true,
+              },
+              {
+                onConflict:
+                  "player_id,guardian_id",
+              }
+            );
+
+          if (linkError) throw linkError;
+        }
+      }
+
+      setPreview([]);
+      setFileName("");
+
+      setMessage(
+        `${valid.length} roster row${
+          valid.length === 1 ? "" : "s"
+        } imported.`
+      );
+
+      await loadData();
+    } catch (error) {
+      setMessage(
+        error?.message || "Roster import failed."
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div
+      style={{
+        padding: 20,
+        maxWidth: 1180,
+        margin: "0 auto",
+      }}
+    >
+      {message && (
+        <div
+          style={{
+            marginBottom: 14,
+            padding: 11,
+            borderRadius: 10,
+            border: `1px solid ${P.line}`,
+            background: P.white,
+            fontFamily: F.body,
+            fontSize: 10,
+            color: P.ink,
+          }}
+        >
+          {message}
+        </div>
+      )}
+
+      <ClubCard>
+        <div
+          style={{
+            fontFamily: F.display,
+            fontSize: 18,
+            fontWeight: 900,
+            color: P.ink,
+          }}
+        >
+          Players & Parents
+        </div>
+
+        <div
+          style={{
+            fontFamily: F.body,
+            fontSize: 10,
+            color: P.muted,
+            marginTop: 3,
+          }}
+        >
+          {selectedTeam ? teamDisplayName(selectedTeam) : "All club teams"} ·
+          children, linked parents and Academy access
+        </div>
+
+        <div
+          style={{
+            overflowX: "auto",
+            marginTop: 15,
+          }}
+        >
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              minWidth: 760,
+            }}
+          >
+            <thead>
+              <tr>
+                {[
+                  "Child",
+                  "Team",
+                  "Parent / Guardian",
+                  "Parent email",
+                  "Academy",
+                ].map((heading) => (
+                  <th
+                    key={heading}
+                    style={{
+                      textAlign: "left",
+                      padding: "9px 8px",
+                      borderBottom: `1px solid ${P.line}`,
+                      fontFamily: F.body,
+                      fontSize: 9,
+                      color: P.muted,
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {heading}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+
+            <tbody>
+              {!loading &&
+                visiblePlayers.map((player) => {
+                  const parentRows =
+                    parentsForPlayer(player.id);
+
+                  if (!parentRows.length) {
+                    return (
+                      <tr key={player.id}>
+                        <td style={td}>{player.name}</td>
+                        <td style={td}>
+                          {teamLabel(player)}
+                        </td>
+                        <td style={td}>Not linked</td>
+                        <td style={td}>—</td>
+                        <td style={td}>Not invited</td>
+                      </tr>
+                    );
+                  }
+
+                  return parentRows.map(
+                    (guardian, index) => (
+                      <tr
+                        key={`${player.id}-${guardian.id}`}
+                      >
+                        <td style={td}>
+                          {index === 0
+                            ? player.name
+                            : ""}
+                        </td>
+
+                        <td style={td}>
+                          {index === 0
+                            ? teamLabel(player)
+                            : ""}
+                        </td>
+
+                        <td style={td}>
+                          {guardian.name}
+                        </td>
+
+                        <td style={td}>
+                          {guardian.email}
+                        </td>
+
+                        <td style={td}>
+                          {academyStatus(guardian)}
+                        </td>
+                      </tr>
+                    )
+                  );
+                })}
+
+              {!loading &&
+                visiblePlayers.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan="5"
+                      style={{
+                        padding: 24,
+                        textAlign: "center",
+                        fontFamily: F.body,
+                        fontSize: 11,
+                        color: P.muted,
+                      }}
+                    >
+                      No children are stored for this team yet.
+                    </td>
+                  </tr>
+                )}
+            </tbody>
+          </table>
+        </div>
+      </ClubCard>
+
+      <div style={{ height: 14 }} />
+
+      <ClubCard>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 14,
+            flexWrap: "wrap",
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontFamily: F.display,
+                fontSize: 16,
+                fontWeight: 900,
+                color: P.ink,
+              }}
+            >
+              Import players & parents
+            </div>
+
+            <div
+              style={{
+                fontFamily: F.body,
+                fontSize: 10,
+                color: P.muted,
+                marginTop: 3,
+              }}
+            >
+              Upload ClubZap CSV or Excel. We will look
+              for Child/Player Name, Team, Parent Name,
+              Parent Email and Phone.
+            </div>
+          </div>
+
+          <input
+            type="file"
+            accept=".csv,.xlsx,.xls,text/csv"
+            onChange={(event) =>
+              chooseFile(event.target.files?.[0])
+            }
+            style={{
+              fontFamily: F.body,
+              fontSize: 10,
+            }}
+          />
+        </div>
+
+        {fileName && (
+          <div
+            style={{
+              marginTop: 9,
+              fontFamily: F.body,
+              fontSize: 9,
+              color: P.muted,
+            }}
+          >
+            {fileName}
+          </div>
+        )}
+
+        {preview.length > 0 && (
+          <div
+            style={{
+              marginTop: 14,
+              padding: 13,
+              borderRadius: 12,
+              background: P.soft,
+            }}
+          >
+            <div
+              style={{
+                fontFamily: F.body,
+                fontSize: 10,
+                fontWeight: 900,
+                color: P.ink,
+              }}
+            >
+              {
+                preview.filter((row) => row.valid)
+                  .length
+              }{" "}
+              ready ·{" "}
+              {
+                preview.filter((row) => !row.valid)
+                  .length
+              }{" "}
+              need review
+            </div>
+
+            <div
+              style={{
+                marginTop: 8,
+                display: "grid",
+                gap: 5,
+              }}
+            >
+              {preview.slice(0, 6).map((row) => (
+                <div
+                  key={row.row}
+                  style={{
+                    fontFamily: F.body,
+                    fontSize: 9,
+                    color: row.valid
+                      ? P.ink
+                      : "#b45309",
+                  }}
+                >
+                  {row.playerName || "Missing child"} ·{" "}
+                  {row.team?.label ||
+                    row.teamName ||
+                    "Missing team"}{" "}
+                  · {row.parentEmail || "No parent email"}
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              disabled={busy}
+              onClick={importRoster}
+              style={{
+                marginTop: 12,
+                height: 36,
+                border: 0,
+                borderRadius: 9,
+                background: CLUB_RED,
+                color: "#fff",
+                padding: "0 13px",
+                fontFamily: F.body,
+                fontSize: 10,
+                fontWeight: 900,
+                cursor: busy
+                  ? "default"
+                  : "pointer",
+              }}
+            >
+              {busy
+                ? "Importing…"
+                : `Import ${
+                    preview.filter(
+                      (row) => row.valid
+                    ).length
+                  }`}
+            </button>
+          </div>
+        )}
+      </ClubCard>
+    </div>
+  );
+}
+
+
+function ClubAttendancePanel({
+  club,
+  ageGroups = [],
+  selectedTeam,
+}) {
+  const [sessions, setSessions] = useState([]);
+  const [preview, setPreview] = useState([]);
+  const [fileName, setFileName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+
+  async function loadSessions() {
+    if (!club?.id) return;
+
+    let query = supabase
+      .from("club_attendance_sessions")
+      .select("id,age_group_id,session_date,title,source")
+      .eq("club_id", club.id)
+      .order("session_date", { ascending: false })
+      .limit(20);
+
+    if (selectedTeam?.id) {
+      query = query.eq(
+        "age_group_id",
+        selectedTeam.id
+      );
+    }
+
+    const { data, error } = await query;
+
+    if (error) setMessage(error.message);
+    setSessions(data || []);
+  }
+
+  useEffect(() => {
+    loadSessions();
+  }, [club?.id, selectedTeam?.id]);
+
+  async function chooseFile(file) {
+    if (!file) return;
+
+    setFileName(file.name);
+    setMessage("");
+
+    try {
+      const rows = await readClubImportFile(file);
+
+      const mapped = rows
+        .map((row, index) => {
+          const playerName = clubImportValue(row, [
+            "player name",
+            "child name",
+            "player",
+            "child",
+            "name",
+          ]);
+
+          const teamName = clubImportValue(row, [
+            "team",
+            "team name",
+            "age group",
+            "squad",
+          ]);
+
+          let date = clubImportValue(row, [
+            "date",
+            "session date",
+            "training date",
+          ]);
+
+          if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(date)) {
+            const [day, month, year] =
+              date.split("/");
+
+            date =
+              `${year}-${month.padStart(2, "0")}-` +
+              day.padStart(2, "0");
+          }
+
+          const rawStatus = clubImportValue(row, [
+            "attendance",
+            "status",
+            "attended",
+            "present",
+          ]).toLowerCase();
+
+          let status = "unknown";
+
+          if (
+            [
+              "yes",
+              "y",
+              "present",
+              "attended",
+              "1",
+              "true",
+            ].includes(rawStatus)
+          ) {
+            status = "present";
+          } else if (
+            [
+              "no",
+              "n",
+              "absent",
+              "0",
+              "false",
+            ].includes(rawStatus)
+          ) {
+            status = "absent";
+          } else if (
+            [
+              "excused",
+              "apology",
+              "apologies",
+            ].includes(rawStatus)
+          ) {
+            status = "excused";
+          }
+
+          const team =
+            ageGroups.find(
+              (item) =>
+                String(item.label || "")
+                  .trim()
+                  .toLowerCase() ===
+                String(teamName || "")
+                  .trim()
+                  .toLowerCase()
+            ) ||
+            (selectedTeam?.id
+              ? selectedTeam
+              : null);
+
+          return {
+            row: index + 2,
+            playerName,
+            team,
+            teamName,
+            date,
+            status,
+            valid: Boolean(
+              playerName &&
+              team?.id &&
+              /^\d{4}-\d{2}-\d{2}$/.test(date)
+            ),
+          };
+        })
+        .filter(
+          (row) =>
+            row.playerName ||
+            row.teamName ||
+            row.date
+        );
+
+      setPreview(mapped);
+    } catch (error) {
+      setPreview([]);
+      setMessage(
+        error?.message ||
+          "Could not read attendance file."
+      );
+    }
+  }
+
+  async function importAttendance() {
+    if (!club?.id) return;
+
+    const valid = preview.filter((row) => row.valid);
+
+    if (!valid.length) {
+      setMessage(
+        "No valid attendance rows to import."
+      );
+      return;
+    }
+
+    setBusy(true);
+    setMessage("");
+
+    try {
+      const teamIds = [
+        ...new Set(
+          valid.map((row) => row.team.id)
+        ),
+      ];
+
+      const { data: players, error: playerError } =
+        await supabase
+          .from("journey_players")
+          .select("id,name,age_group_id")
+          .eq("club_id", club.id)
+          .in("age_group_id", teamIds);
+
+      if (playerError) throw playerError;
+
+      const grouped = valid.reduce(
+        (map, row) => {
+          const key =
+            `${row.team.id}|${row.date}`;
+
+          if (!map.has(key)) {
+            map.set(key, []);
+          }
+
+          map.get(key).push(row);
+          return map;
+        },
+        new Map()
+      );
+
+      for (const [key, rows] of grouped) {
+        const [teamId, date] =
+          key.split("|");
+
+        const { data: existing, error } =
+          await supabase
+            .from("club_attendance_sessions")
+            .select("id")
+            .eq("club_id", club.id)
+            .eq("age_group_id", teamId)
+            .eq("session_date", date)
+            .limit(1);
+
+        if (error) throw error;
+
+        let session = existing?.[0];
+
+        const dayStart = `${date}T00:00:00`;
+        const dayEnd = `${date}T23:59:59`;
+        const { data: matchingEvents } = await supabase
+          .from("club_events")
+          .select("id,event_type")
+          .eq("club_id", club.id)
+          .eq("age_group_id", teamId)
+          .gte("starts_at", dayStart)
+          .lte("starts_at", dayEnd)
+          .order("starts_at")
+          .limit(1);
+        const linkedEvent = matchingEvents?.[0] || null;
+
+        if (!session) {
+          const {
+            data,
+            error: sessionError,
+          } = await supabase
+            .from("club_attendance_sessions")
+            .insert({
+              club_id: club.id,
+              age_group_id: teamId,
+              session_date: date,
+              title: "Training",
+              source: "clubzap_import",
+              source_reference:
+                fileName || null,
+              event_id: linkedEvent?.id || null,
+            })
+            .select("id")
+            .single();
+
+          if (sessionError) {
+            throw sessionError;
+          }
+
+          session = data;
+        }
+
+        for (const row of rows) {
+          const player = (players || []).find(
+            (item) =>
+              String(item.age_group_id) ===
+                String(teamId) &&
+              String(item.name || "")
+                .trim()
+                .toLowerCase() ===
+                String(row.playerName || "")
+                  .trim()
+                  .toLowerCase()
+          );
+
+          if (!player) continue;
+
+          const {
+            error: attendanceError,
+          } = await supabase
+            .from("club_attendance_records")
+            .upsert(
+              {
+                attendance_session_id:
+                  session.id,
+                player_id: player.id,
+                status: row.status,
+                source: "clubzap_import",
+              },
+              {
+                onConflict:
+                  "attendance_session_id,player_id",
+              }
+            );
+
+          if (attendanceError) {
+            throw attendanceError;
+          }
+
+          if (linkedEvent?.id && ["present", "absent", "excused", "late"].includes(row.status)) {
+            const { error: eventAttendanceError } = await supabase
+              .from("event_attendance")
+              .upsert(
+                {
+                  event_id: linkedEvent.id,
+                  player_id: player.id,
+                  status: row.status,
+                  source: "clubzap_import",
+                },
+                { onConflict: "event_id,player_id" }
+              );
+            if (eventAttendanceError) throw eventAttendanceError;
+          }
+        }
+      }
+
+      setPreview([]);
+      setFileName("");
+
+      setMessage(
+        `${valid.length} attendance row${
+          valid.length === 1 ? "" : "s"
+        } imported.`
+      );
+
+      await loadSessions();
+    } catch (error) {
+      setMessage(
+        error?.message ||
+          "Attendance import failed."
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function sessionTeamLabel(session) {
+    const team = ageGroups.find(
+      (item) =>
+        String(item.id) ===
+        String(session.age_group_id)
+    );
+
+    return team
+      ? teamDisplayName(team)
+      : "Team";
+  }
+
+  return (
+    <div
+      style={{
+        padding: 20,
+        maxWidth: 1180,
+        margin: "0 auto",
+      }}
+    >
+      {message && (
+        <div
+          style={{
+            marginBottom: 14,
+            padding: 11,
+            borderRadius: 10,
+            border: `1px solid ${P.line}`,
+            background: P.white,
+            fontFamily: F.body,
+            fontSize: 10,
+            color: P.ink,
+          }}
+        >
+          {message}
+        </div>
+      )}
+
+      <ClubCard>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 14,
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontFamily: F.display,
+                fontSize: 17,
+                fontWeight: 900,
+                color: P.ink,
+              }}
+            >
+              Attendance
+            </div>
+
+            <div
+              style={{
+                fontFamily: F.body,
+                fontSize: 10,
+                color: P.muted,
+                marginTop: 3,
+              }}
+            >
+              Upload ClubZap CSV or Excel.
+              Required: Player Name, Team, Date,
+              Attendance/Status.
+            </div>
+          </div>
+
+          <input
+            type="file"
+            accept=".csv,.xlsx,.xls,text/csv"
+            onChange={(event) =>
+              chooseFile(event.target.files?.[0])
+            }
+            style={{
+              fontFamily: F.body,
+              fontSize: 10,
+            }}
+          />
+        </div>
+
+        {preview.length > 0 && (
+          <div
+            style={{
+              marginTop: 14,
+              background: P.soft,
+              borderRadius: 12,
+              padding: 13,
+            }}
+          >
+            <div
+              style={{
+                fontFamily: F.body,
+                fontSize: 10,
+                fontWeight: 900,
+                color: P.ink,
+              }}
+            >
+              {
+                preview.filter((row) => row.valid)
+                  .length
+              }{" "}
+              ready ·{" "}
+              {
+                preview.filter(
+                  (row) => !row.valid
+                ).length
+              }{" "}
+              need review
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gap: 5,
+                marginTop: 8,
+              }}
+            >
+              {preview.slice(0, 6).map((row) => (
+                <div
+                  key={row.row}
+                  style={{
+                    fontFamily: F.body,
+                    fontSize: 9,
+                    color: row.valid
+                      ? P.ink
+                      : "#b45309",
+                  }}
+                >
+                  {row.playerName || "Missing player"} ·{" "}
+                  {row.team?.label ||
+                    row.teamName ||
+                    "Missing team"}{" "}
+                  · {row.date || "Missing date"} ·{" "}
+                  {row.status}
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              disabled={busy}
+              onClick={importAttendance}
+              style={{
+                marginTop: 12,
+                height: 36,
+                border: 0,
+                borderRadius: 9,
+                background: CLUB_RED,
+                color: "#fff",
+                padding: "0 13px",
+                fontFamily: F.body,
+                fontSize: 10,
+                fontWeight: 900,
+                cursor: busy
+                  ? "default"
+                  : "pointer",
+              }}
+            >
+              {busy
+                ? "Importing…"
+                : "Import attendance"}
+            </button>
+          </div>
+        )}
+      </ClubCard>
+
+      <div style={{ height: 14 }} />
+
+      <ClubCard>
+        <div
+          style={{
+            fontFamily: F.display,
+            fontSize: 16,
+            fontWeight: 900,
+            color: P.ink,
+            marginBottom: 10,
+          }}
+        >
+          Recent attendance
+        </div>
+
+        {sessions.length === 0 ? (
+          <div
+            style={{
+              fontFamily: F.body,
+              fontSize: 10,
+              color: P.muted,
+              padding: "8px 0",
+            }}
+          >
+            No attendance imported yet.
+          </div>
+        ) : (
+          <div style={{ display: "grid", gap: 7 }}>
+            {sessions.map((session) => (
+              <div
+                key={session.id}
+                style={{
+                  border: `1px solid ${P.line}`,
+                  borderRadius: 10,
+                  padding: "10px 11px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 10,
+                }}
+              >
+                <div>
+                  <div
+                    style={{
+                      fontFamily: F.body,
+                      fontSize: 11,
+                      fontWeight: 900,
+                      color: P.ink,
+                    }}
+                  >
+                    {sessionTeamLabel(session)}
+                  </div>
+
+                  <div
+                    style={{
+                      fontFamily: F.body,
+                      fontSize: 9,
+                      color: P.muted,
+                      marginTop: 2,
+                    }}
+                  >
+                    {session.title || "Training"}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    fontFamily: F.body,
+                    fontSize: 10,
+                    fontWeight: 800,
+                    color: P.ink,
+                  }}
+                >
+                  {session.session_date}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </ClubCard>
+    </div>
+  );
+}
+
+
+function ClubTeamsScreen(props) {
+  const [clubTeamsTab, setClubTeamsTab] =
+    useState("teams");
+
+  const tabs = [
+    ["teams", "Teams"],
+    ["players", "Players & Parents"],
+    ["attendance", "Attendance"],
+  ];
+
+  return (
+    <div
+      style={{
+        flex: 1,
+        minWidth: 0,
+        overflow: "auto",
+        background: P.soft,
+      }}
+    >
+      <div
+        style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 40,
+          padding: "9px 16px",
+          display: "flex",
+          gap: 7,
+          overflowX: "auto",
+          background: P.white,
+          borderBottom: `1px solid ${P.line}`,
+        }}
+      >
+        {tabs.map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setClubTeamsTab(id)}
+            style={{
+              whiteSpace: "nowrap",
+              height: 34,
+              borderRadius: 9,
+              padding: "0 12px",
+              border: `1px solid ${
+                clubTeamsTab === id
+                  ? CLUB_RED
+                  : P.line
+              }`,
+              background:
+                clubTeamsTab === id
+                  ? CLUB_SOFT
+                  : P.white,
+              color:
+                clubTeamsTab === id
+                  ? CLUB_RED
+                  : P.ink,
+              fontFamily: F.body,
+              fontSize: 10,
+              fontWeight: 900,
+              cursor: "pointer",
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {clubTeamsTab === "teams" && (
+        <ClubTeamsCoreScreen {...props} />
+      )}
+
+      {clubTeamsTab === "players" && (
+        <ClubPlayersParentsPanel
+          club={props.club}
+          ageGroups={props.ageGroups}
+          selectedTeam={props.selectedTeam}
+        />
+      )}
+
+      {clubTeamsTab === "attendance" && (
+        <ClubAttendancePanel
+          club={props.club}
+          ageGroups={props.ageGroups}
+          selectedTeam={props.selectedTeam}
+        />
+      )}
+    </div>
   );
 }
 
@@ -3599,7 +5005,7 @@ function ClubCoachesScreen({ club, ageGroups, coaches, selectedTeam, onReloadCoa
 
   return (
     <ClubPage
-      title="People & Invitations"
+      title="People"
       sub={
         isLeadCoach
           ? "Invite Coach/Mentors to the teams you lead"
@@ -5443,11 +6849,11 @@ function AccessDeniedScreen({ module, club }) {
 /* ============================================================
    MOBILE BOTTOM NAV — shows modules
    ============================================================ */
-function MobileHeader({ activeModule, setActiveModule, onNav, enabledModules, club, selectedTeam, ageGroups = [], myTeams = [], onSelectTeam, onShowProfile }) {
+function MobileHeader({ activeModule, setActiveModule, onNav, enabledModules, club, selectedTeam, ageGroups = [], myTeams = [], onSelectTeam, onShowProfile, userInitial }) {
   const [open, setOpen] = useState(false);
   const mod = MODULES[activeModule];
   const clubName = club?.name || "Club Spraoi";
-  const mobileTeams = myTeams?.length ? ageGroups.filter((ag) => myTeams.includes(ag.id)) : ageGroups;
+  const mobileTeams = ageGroups.filter((ag) => (myTeams || []).includes(ag.id));
   function openModule(key, module) {
     if (!enabledModules.includes(key)) {
       onNav(`access-denied-${key}`);
@@ -5484,7 +6890,7 @@ function MobileHeader({ activeModule, setActiveModule, onNav, enabledModules, cl
         <div style={{ minWidth:0, flex:1, padding:"0 10px", display:"flex", alignItems:"center", justifyContent:"center" }}>
           <div style={{ fontFamily:F.display, fontSize:14, fontWeight:900, color:"#fff", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", textAlign:"center" }}>{clubName}</div>
         </div>
-        <button onClick={onShowProfile} aria-label="Open profile" style={{ width:42,height:42,borderRadius:12,border:"1px solid rgba(255,255,255,.2)",background:"rgba(255,255,255,.14)",color:"#fff",display:"grid",placeItems:"center",fontFamily:F.display,fontWeight:900,cursor:"pointer" }}>{clubName[0]}</button>
+        <button onClick={onShowProfile} aria-label="Open profile" style={{ width:42,height:42,borderRadius:12,border:"1px solid rgba(255,255,255,.2)",background:"rgba(255,255,255,.14)",color:"#fff",display:"grid",placeItems:"center",fontFamily:F.display,fontWeight:900,cursor:"pointer" }}>{userInitial || "U"}</button>
       </div>
       {open && (
         <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(5,18,34,.62)", padding: 16, display: "flex", alignItems: "flex-start", justifyContent: "center" }}>
@@ -5514,21 +6920,188 @@ function MobileHeader({ activeModule, setActiveModule, onNav, enabledModules, cl
 
 function MobileNav({ activeModule, screen, onNav, enabledModules }) {
   const module = MODULES[activeModule];
-  const hasAccess = true;
-  const items = module.nav.slice(0, 5);
-  if (!hasAccess) return null;
+  const [showMore, setShowMore] = useState(false);
+
+  const items = [
+    { id: "club-dashboard", label: "Dashboard" },
+    { id: "club-teams", label: "Teams" },
+    { id: "club-coaches", label: "People" },
+    { id: "club-setup", label: "Club Setup" },
+  ];
+
+  const moreItems = [
+    { id: "club-scheduling", label: "Facilities & Slots" },
+    { id: "club-compliance", label: "Compliance" },
+    { id: "club-permissions", label: "Roles & Permissions" },
+  ];
+
+  const moreActive = moreItems.some((item) => item.id === screen);
+
   return (
-    <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#fff", borderTop: `1px solid ${P.line}`, display: "flex", padding: "6px 4px calc(env(safe-area-inset-bottom, 0px) + 5px)", zIndex: 200, boxShadow: "0 -7px 24px rgba(15,35,60,.08)" }}>
-      {items.map((item) => {
-        const isActive = screen === item.id || (item.id === "coach-sessions" && screen === "coach-builder");
-        return (
-          <button key={item.id} onClick={() => onNav(item.id)} style={{ flex: 1, minWidth: 0, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 2, cursor: "pointer", color: isActive ? module.color : P.muted, padding: "3px 1px" }}>
-            <span style={{ width: 28, height: 24, borderRadius: 8, display: "grid", placeItems: "center", background: isActive ? `${module.color}12` : "transparent", fontSize: 14, fontWeight: 900 }}><SpraoiNavIcon name={item.id} size={16} /></span>
-            <span style={{ fontSize: 8, lineHeight: 1.1, fontWeight: isActive ? 900 : 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>{item.label.replace("Weekly ", "").replace("Parent ", "")}</span>
-          </button>
-        );
-      })}
-    </div>
+    <>
+      {showMore && (
+        <>
+          <div
+            onClick={() => setShowMore(false)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(15,35,60,.28)",
+              zIndex: 198
+            }}
+          />
+
+          <div
+            style={{
+              position: "fixed",
+              left: 12,
+              right: 12,
+              bottom: "calc(72px + env(safe-area-inset-bottom, 0px))",
+              zIndex: 199,
+              background: "#fff",
+              borderRadius: 18,
+              border: `1px solid ${P.line}`,
+              boxShadow: "0 18px 50px rgba(15,35,60,.20)",
+              padding: 10
+            }}
+          >
+            <div style={{
+              fontFamily: F.display,
+              fontSize: 14,
+              fontWeight: 900,
+              color: P.ink,
+              padding: "7px 8px 10px"
+            }}>
+              More Club tools
+            </div>
+
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2,minmax(0,1fr))",
+              gap: 8
+            }}>
+              {moreItems.map((item) => {
+                const isActive = screen === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setShowMore(false);
+                      onNav(item.id);
+                    }}
+                    style={{
+                      border: `1px solid ${isActive ? module.color : P.line}`,
+                      background: isActive ? `${module.color}0d` : "#fff",
+                      borderRadius: 12,
+                      padding: 12,
+                      color: isActive ? module.color : P.ink,
+                      fontFamily: F.body,
+                      fontSize: 11,
+                      fontWeight: 800,
+                      cursor: "pointer"
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
+
+      <div style={{
+        position: "fixed",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        background: "#fff",
+        borderTop: `1px solid ${P.line}`,
+        display: "flex",
+        padding: "6px 4px calc(env(safe-area-inset-bottom, 0px) + 5px)",
+        zIndex: 200,
+        boxShadow: "0 -7px 24px rgba(15,35,60,.08)"
+      }}>
+        {items.map((item) => {
+          const isActive = screen === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => onNav(item.id)}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                background: "none",
+                border: "none",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 2,
+                cursor: "pointer",
+                color: isActive ? module.color : P.muted,
+                padding: "3px 1px"
+              }}
+            >
+              <span style={{
+                width: 28,
+                height: 24,
+                borderRadius: 8,
+                display: "grid",
+                placeItems: "center",
+                background: isActive ? `${module.color}12` : "transparent"
+              }}>
+                <SpraoiNavIcon name={item.id} size={16} />
+              </span>
+
+              <span style={{
+                fontSize: 8,
+                lineHeight: 1.1,
+                fontWeight: isActive ? 900 : 600,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                maxWidth: "100%"
+              }}>
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
+
+        <button
+          onClick={() => setShowMore((value) => !value)}
+          aria-label="More Club sections"
+          style={{
+            flex: 1,
+            minWidth: 0,
+            background: "none",
+            border: "none",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 2,
+            cursor: "pointer",
+            color: moreActive || showMore ? module.color : P.muted,
+            padding: "3px 1px"
+          }}
+        >
+          <span style={{
+            width: 28,
+            height: 24,
+            borderRadius: 8,
+            display: "grid",
+            placeItems: "center",
+            background: moreActive || showMore ? `${module.color}12` : "transparent",
+            fontWeight: 900
+          }}>
+            •••
+          </span>
+          <span style={{fontSize:8,fontWeight:moreActive ? 900 : 600}}>
+            More
+          </span>
+        </button>
+      </div>
+    </>
   );
 }
 
@@ -6012,6 +7585,17 @@ export default function App() {
   useSpraoiFonts();
   // Auth state
   const [session, setSession] = useState(null);
+  const userDisplayName =
+    session?.user?.user_metadata?.full_name ||
+    session?.user?.user_metadata?.name ||
+    session?.user?.email ||
+    "";
+
+  const userInitial =
+    String(userDisplayName || "U")
+      .trim()
+      .charAt(0)
+      .toUpperCase();
   const [authLoading, setAuthLoading] = useState(true);
   const [authError, setAuthError] = useState("");
   const [email, setEmail] = useState("");
@@ -6211,17 +7795,23 @@ export default function App() {
         }
       }
 
-      // Keep legacy coach_assignments in sync during the migration period and
-      // merge them with team_staff so Profile and Sidebar never disagree.
-      const { data: assignments, error: assignmentError } = await supabase
-        .from("coach_assignments")
-        .select("age_group_id")
-        .eq("user_id", userId);
-      if (!assignmentError && assignments?.length) {
-        assignedTeamIds = [...new Set([
-          ...assignedTeamIds,
-          ...assignments.map((assignment) => assignment.age_group_id).filter(Boolean),
-        ])];
+      // team_staff is the authoritative membership source.
+      // coach_assignments is fallback-only for older unmigrated accounts.
+      if (!staffRows?.length) {
+        const { data: assignments, error: assignmentError } = await supabase
+          .from("coach_assignments")
+          .select("age_group_id")
+          .eq("user_id", userId);
+
+        if (!assignmentError && assignments?.length) {
+          assignedTeamIds = [
+            ...new Set(
+              assignments
+                .map((assignment) => assignment.age_group_id)
+                .filter(Boolean)
+            )
+          ];
+        }
       }
 
       const capabilities = roleCapabilities(effectiveRole);
@@ -7127,10 +8717,10 @@ export default function App() {
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", width: "100%", fontFamily: F.body, paddingTop: showMobile ? 62 : 0, paddingBottom: showMobile ? 68 : 0, boxSizing: "border-box" }}>
-      {showMobile && <MobileHeader activeModule={activeModule} setActiveModule={setActiveModule} onNav={setScreen} enabledModules={enabledModules} club={club} selectedTeam={selectedTeam} ageGroups={ageGroups} myTeams={myTeams} onSelectTeam={selectTeam} onShowProfile={()=>setShowProfile(true)} />}
+      {showMobile && <MobileHeader activeModule={activeModule} setActiveModule={setActiveModule} onNav={setScreen} enabledModules={enabledModules} club={club} selectedTeam={selectedTeam} ageGroups={ageGroups} myTeams={myTeams} onSelectTeam={selectTeam} onShowProfile={()=>setShowProfile(true)} userInitial={userInitial} />}
 
       {/* Sidebar — desktop only */}
-      {!showMobile && <Sidebar activeModule={activeModule} setActiveModule={setActiveModule} activeScreen={screen} onNav={setScreen} club={club} selectedTeam={selectedTeam} onSelectTeam={selectTeam} enabledModules={enabledModules} onLogout={logout} ageGroups={ageGroups} myTeams={myTeams} onShowProfile={() => setShowProfile(true)} />}
+      {!showMobile && <Sidebar activeModule={activeModule} setActiveModule={setActiveModule} activeScreen={screen} onNav={setScreen} club={club} selectedTeam={selectedTeam} onSelectTeam={selectTeam} enabledModules={enabledModules} onLogout={logout} ageGroups={ageGroups} myTeams={myTeams} onShowProfile={() => setShowProfile(true)} userInitial={userInitial} />}
 
       {/* COACH screens */}
       {screen === "coach-dashboard" && <DashboardScreen club={club} ageGroups={ageGroups} planSessions={planSessions} weeklyPlan={weeklyPlan} upcomingSessions={upcomingSessions} onNav={setScreen} onOpenSession={openSession} allActivities={allActivities} selectedTeam={selectedTeam} />}
@@ -7284,7 +8874,7 @@ export default function App() {
                   <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink }}>
                     {sessionDetail.session_date ? new Date(sessionDetail.session_date + "T12:00:00").toLocaleDateString("en-IE", { weekday: "long", day: "numeric", month: "short", year: "numeric" }) : "Training Session"}
                   </div>
-                  <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted }}>{selectedTeam?.label} {selectedTeam?.gender === "girls" ? "Girls" : "Boys"} · {sessionDetail.total_duration_mins}min · {sessionDetail.session_activities?.length || 0} drills</div>
+                  <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted }}>{selectedTeam ? teamDisplayName(selectedTeam) : "Team"} · {sessionDetail.total_duration_mins}min · {sessionDetail.session_activities?.length || 0} drills</div>
                 </div>
               </div>
 

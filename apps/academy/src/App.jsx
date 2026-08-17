@@ -3596,10 +3596,7 @@ function AcademyDashboardScreen({ club, selectedTeam, weeklyPlan, planSessions, 
     );
   }, [selectedTeam?.id]);
 
-  const showParentInvitePrompt =
-    Boolean(selectedTeam?.id) &&
-    Boolean(hasPlan || hasSkills || published) &&
-    !parentPromptDismissed;
+  const showParentInvitePrompt = false; // replaced by one-time first-session Coach modal
 
   function dismissParentInvitePrompt() {
     localStorage.setItem(

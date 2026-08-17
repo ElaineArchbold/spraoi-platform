@@ -171,6 +171,7 @@ const MODULES = {
       { id: "coach-sessions", icon: "▶", label: "Sessions" },
       { id: "coach-drills", icon: "◇", label: "Drills" },
       { id: "coach-players", icon: "●", label: "Players" },
+      { id: "coach-calendar", icon: "▣", label: "Calendar" },
     ]
   },
   academy: {
@@ -1805,6 +1806,7 @@ function PlannerScreen({ onNav, club, ageGroups, upcomingSessions, onOpenSession
   );
 }
 function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches, diagramMap, selectedTeam, onNav, editingSession, onClearEdit }) {
+  const [showFirstSessionModal, setShowFirstSessionModal] = useState(false);
   const [sections, setSections] = useState(() => {
     if (editingSession) {
       // Restore phases from JSON if available
@@ -1848,6 +1850,8 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
     return "";
   });
   const [weekOffset, setWeekOffset] = useState(0);
+  const [plannedStartTime, setPlannedStartTime] = useState(() => editingSession?.planned_starts_at ? new Date(editingSession.planned_starts_at).toTimeString().slice(0,5) : "");
+  const [plannedLocation, setPlannedLocation] = useState(editingSession?.planned_location || "");
   const [notes, setNotes] = useState(editingSession?.plan?.coach_notes || "");
   const [saving, setSaving] = useState(false);
   const [nextId, setNextId] = useState(2);
@@ -1919,6 +1923,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
     const hasSections = sections.some((s) => s.type !== "stations" && s.duration);
     if (!hasDrills && !hasSections) { alert("Add drills or set section times first. You have " + sections.length + " sections with " + allDrills.length + " drills."); return; }
     setSaving(true);
+    let firstSessionPrompt = false;
     try {
       let planId, sessionId;
       // Build phases JSON (stores warmup/cooldown/match sections)
@@ -1928,7 +1933,10 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
         planId = editingSession.plan_id;
         sessionId = editingSession.id;
         await supabase.from("session_activities").delete().eq("session_id", sessionId);
-        await supabase.from("sessions").update({ total_duration_mins: totalTime, station_count: allDrills.length, notes: phasesJson }).eq("id", sessionId);
+        await supabase.from("sessions").update({ total_duration_mins: totalTime, station_count: allDrills.length, notes: phasesJson,
+          planned_starts_at: editingSession.session_date && plannedStartTime ? `${editingSession.session_date}T${plannedStartTime}:00` : editingSession.planned_starts_at || null,
+          planned_location: plannedLocation.trim() || null
+        }).eq("id", sessionId);
         if (notes) await supabase.from("weekly_plans").update({ coach_notes: notes }).eq("id", planId);
       } else {
         const sessionDate = day ? (() => { const d = new Date(); const dayMap = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 0 }; const diff = dayMap[day] - d.getDay(); d.setDate(d.getDate() + (diff < 0 ? diff + 7 : diff)); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; })() : (() => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; })();
@@ -1952,8 +1960,45 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
         const { data: sess } = await supabase.from("sessions").insert({
           plan_id: plan.id, session_number: 1, sport: selectedTeam.gender === "girls" ? "camogie" : "hurling",
           format: "stations", total_duration_mins: totalTime, station_count: allDrills.length, notes: phasesJson, session_date: sessionDate,
+          planned_starts_at: plannedStartTime ? `${sessionDate}T${plannedStartTime}:00` : null, planned_location: plannedLocation.trim() || null,
         }).select().single();
         sessionId = sess?.id;
+      }
+      if (sessionId && !editingSession) {
+        const dayStart = `${sessionDate}T00:00:00`;
+        const dayEnd = `${sessionDate}T23:59:59`;
+        const { data: allocation } = await supabase
+          .from("weekly_training_allocations")
+          .select("*,facility:facilities(name)")
+          .eq("age_group_id", selectedTeam.id)
+          .eq("status", "published")
+          .gte("starts_at", dayStart)
+          .lte("starts_at", dayEnd)
+          .order("starts_at")
+          .limit(1)
+          .maybeSingle();
+        if (allocation) {
+          const { data: event } = await supabase.from("club_events").upsert({
+            club_id: club.id, age_group_id: selectedTeam.id, event_type: "training", title: "Training",
+            facility_id: allocation.facility_id, location: allocation.facility?.name || null,
+            starts_at: allocation.starts_at, ends_at: allocation.ends_at, status: "scheduled",
+            source: "club_allocation", training_allocation_id: allocation.id, session_id: sessionId,
+          }, { onConflict: "training_allocation_id" }).select().maybeSingle();
+          if (event?.id) await supabase.from("sessions").update({ event_id: event.id }).eq("id", sessionId);
+        }
+
+        const { data: onboarding } = await supabase.from("team_onboarding").select("*").eq("club_id", club.id).eq("age_group_id", selectedTeam.id).maybeSingle();
+        if (!onboarding?.first_session_created_at) {
+          const now = new Date().toISOString();
+          await supabase.from("team_onboarding").upsert({ club_id: club.id, age_group_id: selectedTeam.id, first_session_created_at: now, updated_at: now }, { onConflict: "club_id,age_group_id" });
+          const { data: children } = await supabase.from("journey_players").select("id,parent_user_id").eq("age_group_id", selectedTeam.id);
+          const needsParents = (children || []).some((child) => !child.parent_user_id);
+          if (needsParents) {
+            await supabase.from("team_onboarding").update({ parent_invite_prompt_shown_at: now, updated_at: now }).eq("club_id", club.id).eq("age_group_id", selectedTeam.id);
+            firstSessionPrompt = true;
+            setShowFirstSessionModal(true);
+          }
+        }
       }
       if (sessionId && allDrills.length > 0) {
         await supabase.from("session_activities").insert(allDrills.map((d, i) => ({
@@ -1964,10 +2009,14 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
         localStorage.setItem(ACTIVE_TEAM_KEY, String(selectedTeam.id));
         localStorage.setItem("spraoi_coach_plan_sync", JSON.stringify({ teamId: selectedTeam.id, planId, at: Date.now() }));
       }
-      setSections([{ id: 1, type: "warmup", label: "Warm-up", drills: [], duration: "10" }]); setNotes(""); setDay("");
+      setSections([{ id: 1, type: "warmup", label: "Warm-up", drills: [], duration: "10" }]); setNotes(""); setDay(""); setPlannedStartTime(""); setPlannedLocation("");
       if (onClearEdit) onClearEdit();
-      alert(editingSession ? "Session updated — Academy draft refreshed." : "Session saved — ready for Academy review.");
-      onNav("coach-sessions"); // Navigate back to sessions list
+      if (editingSession) {
+        alert("Session updated — Academy draft refreshed.");
+        onNav("coach-sessions");
+      } else if (!firstSessionPrompt) {
+        onNav("coach-sessions");
+      }
     } catch (e) { alert("Error: " + e.message); }
     setSaving(false);
   }
@@ -1992,6 +2041,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
         <Btn label="Share" variant="ghost" onClick={shareAsImage} />
         <Btn label="Save Session" variant="primary" onClick={saveSession} style={{ opacity: allDrills.length > 0 ? 1 : 0.5 }} />
       </TopBar>
+      {showFirstSessionModal && <div style={{ position:"fixed", inset:0, zIndex:3000, background:"rgba(11,37,69,.58)", display:"grid", placeItems:"center", padding:18 }}><div style={{ width:"min(430px,100%)", background:"#fff", borderRadius:20, padding:22, boxShadow:"0 24px 70px rgba(0,0,0,.24)" }}><div style={{ fontFamily:F.display, fontSize:22, fontWeight:900, color:P.ink }}>Nice work — your first session is ready!</div><div style={{ fontFamily:F.body, fontSize:12, lineHeight:1.55, color:P.muted, marginTop:8 }}>Invite parents now so they can access Academy activities, team updates and their child’s progress.</div><div style={{ display:"flex", gap:8, marginTop:18 }}><button onClick={async()=>{ await supabase.from("team_onboarding").update({ parent_invite_prompt_dismissed_at:new Date().toISOString(), updated_at:new Date().toISOString() }).eq("club_id",club.id).eq("age_group_id",selectedTeam.id); setShowFirstSessionModal(false); onNav("coach-sessions"); }} style={{ flex:1, height:40, borderRadius:10, border:`1px solid ${P.line}`, background:"#fff", fontWeight:800 }}>Maybe later</button><button onClick={async()=>{ await supabase.from("team_onboarding").update({ parent_invite_prompt_completed_at:new Date().toISOString(), updated_at:new Date().toISOString() }).eq("club_id",club.id).eq("age_group_id",selectedTeam.id); localStorage.setItem("spraoi_active_team_id",String(selectedTeam.id)); openAdminModule("academy","academy-parents"); }} style={{ flex:1, height:40, borderRadius:10, border:0, background:P.p600, color:"#fff", fontWeight:800 }}>Invite parents</button></div></div></div>}
       <div className="session-builder-layout" style={{ padding: "16px 20px", display: "flex", gap: 16 }}>
         {/* Main — session structure */}
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -2016,6 +2066,16 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
                   </button>
                 );
               })}
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1.5fr", gap:8, marginTop:10 }}>
+              <div>
+                <div style={{ fontFamily:F.body, fontSize:9, fontWeight:800, color:P.muted, marginBottom:4 }}>PLANNED TIME (OPTIONAL)</div>
+                <input type="time" value={plannedStartTime} onChange={(e)=>setPlannedStartTime(e.target.value)} style={{ width:"100%", boxSizing:"border-box", height:36, borderRadius:8, border:`1px solid ${P.line}`, padding:"0 9px", fontFamily:F.body }} />
+              </div>
+              <div>
+                <div style={{ fontFamily:F.body, fontSize:9, fontWeight:800, color:P.muted, marginBottom:4 }}>PLANNED LOCATION (OPTIONAL)</div>
+                <input value={plannedLocation} onChange={(e)=>setPlannedLocation(e.target.value)} placeholder="Can be confirmed later by Club" style={{ width:"100%", boxSizing:"border-box", height:36, borderRadius:8, border:`1px solid ${P.line}`, padding:"0 9px", fontFamily:F.body }} />
+              </div>
             </div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
               <span style={{ fontFamily: F.body, fontSize: 11, color: P.muted }}>{day ? `Selected: ${day}` : "Pick a day"}</span>
