@@ -6403,6 +6403,14 @@ function SpraoiPasswordRecovery({
     );
   }
 
+  if (recoveryMode && session) {
+    return (
+      <SpraoiPasswordRecovery
+        accent={MODULES[APP_MODULE]?.color || "#0277bd"}
+        onDone={() => setRecoveryMode(false)}
+      />
+    );
+  }
   // Login screen
   if (!session) {
     return (
@@ -6413,14 +6421,6 @@ function SpraoiPasswordRecovery({
           </div>
           <div style={{ background: P.white, borderRadius: 18, padding: 28, boxShadow: Sh.lift }}>
             <div style={{ fontFamily: F.display, fontSize: 17, fontWeight: 800, color: P.ink, marginBottom: 16 }}>Sign In</div>
-  if (recoveryMode && session) {
-    return (
-      <SpraoiPasswordRecovery
-        accent={MODULES[APP_MODULE]?.color || "#0277bd"}
-        onDone={() => setRecoveryMode(false)}
-      />
-    );
-  }
             <label style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>Email</label>
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="organiser@email.com" style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 10, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 13, marginTop: 4, marginBottom: 12, background: P.soft }} />
             <label style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>Password</label>
