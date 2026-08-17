@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabaseClient";
 import html2canvas from "html2canvas";
+import { openAdminModule, requestedScreenFromUrl, requestedTeamFromUrl, readModuleScreen, writeModuleScreen } from "../../../packages/ui/src/platformNavigation.js";
 
 /* ============================================================
    SPRAOI COACH — Desktop-first redesign
@@ -52,6 +53,8 @@ function mondayKeyForDate(value) {
 const ACTIVE_TEAM_KEY = "spraoi_active_team_id";
 const ACTIVE_CLUB_KEY = "spraoi_active_club_id";
 const ACTIVE_CONTEXT_EVENT = "spraoi-active-context";
+const ACTIVE_MODULE_KEY = "spraoi_active_module";
+const ACTIVE_SCREEN_KEY = "spraoi_active_screen";
 
 function saveActiveContext(team, club) {
   if (team?.id) {
@@ -82,6 +85,47 @@ function roleCapabilities(role) {
     canDeleteSharedDrills: ["club_admin", "super_admin", "admin"].includes(normalized),
     canManageTeamStaff: ["club_admin", "super_admin", "admin"].includes(normalized),
   };
+}
+
+
+function teamDisplayName(team, fallback = "Team") {
+  if (!team) return fallback;
+
+  const base = String(team.label || team.name || fallback).trim();
+  const gender = String(team.gender || "").toLowerCase();
+
+  const suffix =
+    gender === "girls"
+      ? "Girls"
+      : gender === "boys"
+        ? "Boys"
+        : "";
+
+  return suffix && !new RegExp(`\b${suffix}$`, "i").test(base)
+    ? `${base} ${suffix}`
+    : base;
+}
+
+
+function SpraoiNavIcon({ name = "", size = 18 }) {
+  const key = String(name || "").toLowerCase();
+  const common = { width:size, height:size, viewBox:"0 0 24 24", fill:"none", stroke:"currentColor", strokeWidth:1.9, strokeLinecap:"round", strokeLinejoin:"round", "aria-hidden":true };
+  let shape;
+  if (key.includes("dashboard")) shape=<><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V20h13v-9.5"/><path d="M9.5 20v-6h5v6"/></>;
+  else if (key.includes("planner")||key.includes("schedule")||key.includes("event")) shape=<><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M7 3v4M17 3v4M3.5 9h17"/></>;
+  else if (key.includes("session")||key.includes("matchday")) shape=<><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m10 9 5 3-5 3V9Z"/></>;
+  else if (key.includes("drill")||key.includes("content")||key.includes("template")) shape=<><path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H20v17H7.5A2.5 2.5 0 0 0 5 21.5v-17Z"/><path d="M5 18.5A2.5 2.5 0 0 1 7.5 16H20"/></>;
+  else if (key.includes("team")||key.includes("player")||key.includes("participant")||key.includes("audience")||key.includes("member")) shape=<><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3.5 20c.4-4 2.3-6 5.5-6s5.1 2 5.5 6M14.5 14.5c3.4-.3 5.3 1.5 6 4.5"/></>;
+  else if (key.includes("parent")||key.includes("coach")) shape=<><circle cx="8" cy="8" r="3"/><path d="M2.8 20c.6-4 2.4-6 5.2-6s4.6 2 5.2 6"/><path d="M16 8h5M18.5 5.5v5"/></>;
+  else if (key.includes("preview")) shape=<><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.8"/></>;
+  else if (key.includes("leader")||key.includes("result")||key.includes("competition")||key.includes("reward")) shape=<><path d="M8 4h8v4a4 4 0 0 1-8 0V4Z"/><path d="M8 6H4v1a4 4 0 0 0 4 4M16 6h4v1a4 4 0 0 1-4 4M12 12v5M8 21h8M9 17h6"/></>;
+  else if (key.includes("engagement")||key.includes("report")) shape=<><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></>;
+  else if (key.includes("setting")||key.includes("setup")) shape=<><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.12 2.12-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V20.3h-3v-.08a1.7 1.7 0 0 0-1.03-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06-2.12-2.12.06-.06A1.7 1.7 0 0 0 5 15a1.7 1.7 0 0 0-1.56-1.03H3.3v-3h.14A1.7 1.7 0 0 0 5 9.94a1.7 1.7 0 0 0-.34-1.88L4.6 8l2.12-2.12.06.06A1.7 1.7 0 0 0 8.66 6.3a1.7 1.7 0 0 0 1.03-1.56V4.7h3v.04a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06L17.8 8l-.06.06a1.7 1.7 0 0 0-.34 1.88 1.7 1.7 0 0 0 1.56 1.03h.14v3h-.14A1.7 1.7 0 0 0 19.4 15Z"/></>;
+  else if (key.includes("permission")||key.includes("compliance")) shape=<><path d="M12 3 5 6v5c0 4.7 2.8 8 7 10 4.2-2 7-5.3 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></>;
+  else if (key.includes("food")) shape=<><path d="M7 3v8M4 3v5a3 3 0 0 0 6 0V3M7 11v10M16 3v18M16 3c3 2 4 6 4 9h-4"/></>;
+  else if (key.includes("compose")||key.includes("announcement")||key.includes("inbox")) shape=<><path d="M4 5h16v12H8l-4 4V5Z"/><path d="m7 9 5 3 5-3"/></>;
+  else shape=<><circle cx="12" cy="12" r="8"/><path d="M8 12h8"/></>;
+  return <svg {...common}>{shape}</svg>;
 }
 
 function getDrillIcons(activity) {
@@ -135,6 +179,7 @@ const MODULES = {
       { id: "academy-content", icon: "✦", label: "Weekly Content" },
       { id: "academy-leaderboard", icon: "★", label: "Leaderboard" },
       { id: "academy-engagement", icon: "↗", label: "Engagement" },
+      { id: "academy-parents", icon: "♧", label: "Parents" },
       { id: "academy-approvals", icon: "✓", label: "Approvals" },
     ],
   },
@@ -206,7 +251,11 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
   const clubName = club?.name || "Club Spraoi";
 
   function openModule(key, module) {
-    setActiveModule(key);
+    if (key !== APP_MODULE) {
+      openAdminModule(key, module.nav[0].id);
+      return;
+    }
+    setActiveModule(APP_MODULE);
     onNav(module.nav[0].id);
   }
 
@@ -218,7 +267,7 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
           <img src={club?.logo_url || "/spraoi-club-icon.png"} alt={`${clubName} crest`} style={{ width: 52, height: 52, objectFit: "contain" }} />
         </div>
         <div style={{ flex: 1, width: "100%", display: "flex", flexDirection: "column", justifyContent: "center", gap: 7 }}>
-          {Object.entries(MODULES).map(([key, module]) => {
+          {Object.entries(MODULES).filter(([key]) => !["plus","connect"].includes(key)).map(([key, module]) => {
             const isActive = activeModule === key;
             const locked = !enabledModules.includes(key);
             const darkText = key === "connect";
@@ -252,10 +301,10 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
         <div style={{ margin: "11px 12px 4px" }}>
           {visibleTeams.length > 1 ? (
             <select value={selectedTeam?.id || ""} onChange={(e) => { const ag = ageGroups?.find((a) => a.id === e.target.value); if (ag) onSelectTeam(ag); }} style={{ width: "100%", padding: "9px 10px", borderRadius: 9, border: activeModule === "connect" ? "1px solid rgba(51,40,0,.2)" : "1px solid rgba(255,255,255,.2)", background: activeModule === "connect" ? "rgba(255,255,255,.5)" : "rgba(255,255,255,.14)", fontFamily: F.body, fontSize: 11, fontWeight: 700, color: activeModule === "connect" ? "#332800" : "#fff", cursor: "pointer" }}>
-              {visibleTeams.map((ag) => <option key={ag.id} value={ag.id} style={{ color: P.ink }}>{ag.label} {ag.gender === "girls" ? "Girls" : "Boys"}</option>)}
+              {visibleTeams.map((ag) => <option key={ag.id} value={ag.id} style={{ color: P.ink }}>{teamDisplayName(ag)}</option>)}
             </select>
           ) : selectedTeam ? (
-            <div style={{ padding: "9px 10px", borderRadius: 9, background: activeModule === "connect" ? "rgba(255,255,255,.5)" : "rgba(255,255,255,.14)", fontFamily: F.body, fontSize: 11, fontWeight: 700 }}>{selectedTeam.label} {selectedTeam.gender === "girls" ? "Girls" : "Boys"}</div>
+            <div style={{ padding: "9px 10px", borderRadius: 9, background: activeModule === "connect" ? "rgba(255,255,255,.5)" : "rgba(255,255,255,.14)", fontFamily: F.body, fontSize: 11, fontWeight: 700 }}>{teamDisplayName(selectedTeam)}</div>
           ) : null}
         </div>
 
@@ -265,7 +314,7 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
             const fg = activeModule === "connect" ? "#332800" : "#fff";
             return (
               <button key={item.id} onClick={() => onNav(item.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 11px", borderRadius: 10, border: "none", cursor: "pointer", width: "100%", background: isActive ? "#fff" : "transparent", textAlign: "left" }}>
-                <span style={{ fontSize: 15, color: isActive ? (activeModule === "connect" ? "#5b4600" : mod.color) : "#fff", opacity: 1 }}>{item.icon}</span>
+                <span style={{ fontSize: 15, color: isActive ? (activeModule === "connect" ? "#5b4600" : mod.color) : "#fff", opacity: 1 }}><SpraoiNavIcon name={item.id} size={16} /></span>
                 <span style={{ fontFamily: F.body, fontSize: 12, fontWeight: isActive ? 700 : 550, letterSpacing: "-.01em", color: isActive ? (activeModule === "connect" ? "#5b4600" : mod.color) : "#fff", opacity: 1 }}>{item.label}</span>
               </button>
             );
@@ -302,6 +351,9 @@ function MobileAccessibilityStyles() {
       .spraoi-touch-button { min-height: 42px !important; }
       .spraoi-shell input, .spraoi-shell select, .spraoi-shell textarea { font-size: 16px !important; }
       .spraoi-shell { overflow-x: hidden; }
+      .academy-dashboard-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+      .academy-dashboard-main-grid { grid-template-columns: minmax(0, 1fr) !important; }
+      .academy-dashboard-video-grid { grid-template-columns: minmax(0, 1fr) !important; }
     }
     @media (max-width: 520px) {
       .spraoi-page-header { padding: 12px !important; }
@@ -309,6 +361,7 @@ function MobileAccessibilityStyles() {
       .spraoi-page-header-icon { width: 44px !important; height: 44px !important; flex-basis: 44px !important; }
       .spraoi-page-header-icon img { width: 33px !important; height: 33px !important; }
       .spraoi-page-header-title { font-size: 19px !important; }
+      .academy-dashboard-metrics { grid-template-columns: minmax(0, 1fr) !important; }
     }
   `}</style>;
 }
@@ -875,7 +928,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
 
   return (
     <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
-      <TopBar title="Session Builder" sub={selectedTeam ? `${selectedTeam.label} ${selectedTeam.gender === "girls" ? "Girls" : "Boys"}` : "Select a team"}>
+      <TopBar title="Session Builder" sub={selectedTeam ? teamDisplayName(selectedTeam) : "Select a team"}>
         <Btn label="Share" variant="ghost" onClick={shareAsImage} />
         <Btn label="Save Session" variant="primary" onClick={saveSession} style={{ opacity: allDrills.length > 0 ? 1 : 0.5 }} />
       </TopBar>
@@ -1863,85 +1916,277 @@ function DrillCardBuilder({ diagramMap, allActivities, userRole, copyFrom, onBac
 }
 
 
-function PlayersScreen({ club, ageGroups, selectedTeam }) {
+function PlayersScreen({ club, ageGroups = [], selectedTeam }) {
   const [players, setPlayers] = useState([]);
-  const [csvPreview, setCsvPreview] = useState(null);
-  const [loaded, setLoaded] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
-    if (club && !loaded) {
-      supabase.from("journey_players").select("*, age_group:age_groups(label, gender)").eq("club_id", club.id).order("name").then(({ data }) => { setPlayers(data || []); setLoaded(true); });
+    let live = true;
+
+    async function loadPlayers() {
+      if (!club?.id) {
+        if (live) {
+          setPlayers([]);
+          setLoading(false);
+        }
+        return;
+      }
+
+      setLoading(true);
+      setMessage("");
+
+      let query = supabase
+        .from("journey_players")
+        .select("id,name,age_group_id,xp_total,streak_days,last_active,football_panel,hurling_panel")
+        .eq("club_id", club.id)
+        .order("name");
+
+      if (selectedTeam?.id) {
+        query = query.eq(
+          "age_group_id",
+          selectedTeam.id
+        );
+      }
+
+      const { data, error } = await query;
+
+      if (!live) return;
+
+      if (error) {
+        setMessage(error.message);
+        setPlayers([]);
+      } else {
+        setPlayers(data || []);
+      }
+
+      setLoading(false);
     }
-  }, [club]);
 
-  function handleFile(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const lines = ev.target.result.split("\n").map((l) => l.trim()).filter(Boolean);
-      const hasHeader = lines[0].toLowerCase().includes("name");
-      const data = (hasHeader ? lines.slice(1) : lines).map((line) => {
-        const parts = line.split(",").map((p) => p.trim().replace(/^"|"$/g, ""));
-        return { name: parts[0] || "", ageGroup: parts[1] || "", email: parts[2] || "" };
-      }).filter((p) => p.name);
-      setCsvPreview(data);
+    loadPlayers();
+
+    return () => {
+      live = false;
     };
-    reader.readAsText(file);
-  }
+  }, [club?.id, selectedTeam?.id]);
 
-  async function importPlayers() {
-    if (!csvPreview || !club) return;
-    const agMap = Object.fromEntries(ageGroups.map((ag) => [ag.label.toLowerCase(), ag.id]));
-    const rows = csvPreview.map((p) => ({
-      parent_user_id: "00000000-0000-0000-0000-000000000000",
-      club_id: club.id,
-      age_group_id: agMap[p.ageGroup.toLowerCase()] || (selectedTeam?.id || null),
-      name: p.name,
-    }));
-    await supabase.from("journey_players").insert(rows);
-    setCsvPreview(null);
-    setLoaded(false);
+  function displayTeam(player) {
+    const team = ageGroups.find(
+      (item) =>
+        String(item.id) ===
+        String(player.age_group_id)
+    );
+
+    if (!team) return "—";
+
+    const base = String(
+      team.label || team.name || "Team"
+    ).trim();
+
+    const gender = String(
+      team.gender || ""
+    ).toLowerCase();
+
+    const suffix =
+      gender === "girls"
+        ? "Girls"
+        : gender === "boys"
+        ? "Boys"
+        : "";
+
+    return suffix &&
+      !new RegExp(`\\b${suffix}$`, "i").test(base)
+      ? `${base} ${suffix}`
+      : base;
   }
 
   return (
-    <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
-      <TopBar title="Players" sub={`${players.length} in squad`} />
+    <div
+      style={{
+        flex: 1,
+        overflow: "auto",
+        background: P.soft,
+      }}
+    >
+      <TopBar
+        title="Players"
+        sub={`${players.length} in ${
+          selectedTeam?.label || "selected team"
+        }`}
+      />
+
       <div style={{ padding: "20px 28px" }}>
-        {/* Upload */}
-        <div style={{ background: P.white, borderRadius: 14, padding: 18, border: `1.5px dashed ${P.p600}44`, marginBottom: 16, display: "flex", alignItems: "center", gap: 16 }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: F.display, fontSize: 14, fontWeight: 800, color: P.ink }}>Import Players</div>
-            <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 2 }}>Upload CSV/Excel: Name, Age Group, Parent Email</div>
+        <div
+          style={{
+            background: P.white,
+            borderRadius: 14,
+            padding: 16,
+            border: `1px solid ${P.line}`,
+            marginBottom: 16,
+          }}
+        >
+          <div
+            style={{
+              fontFamily: F.display,
+              fontSize: 14,
+              fontWeight: 900,
+              color: P.ink,
+            }}
+          >
+            Club roster
           </div>
-          <input type="file" accept=".csv,.xlsx,.xls" onChange={handleFile} style={{ fontFamily: F.body, fontSize: 11 }} />
+
+          <div
+            style={{
+              fontFamily: F.body,
+              fontSize: 10,
+              color: P.muted,
+              marginTop: 4,
+            }}
+          >
+            Players and parent details are managed in
+            Spraoi Club. Academy uses the same roster
+            automatically.
+          </div>
+
+          <button
+            type="button"
+            onClick={() =>
+              window.location.assign(
+                MODULE_URLS.club
+              )
+            }
+            style={{
+              marginTop: 12,
+              height: 34,
+              border: 0,
+              borderRadius: 9,
+              padding: "0 12px",
+              background: ACADEMY_BLUE,
+              color: "#fff",
+              fontFamily: F.body,
+              fontSize: 10,
+              fontWeight: 900,
+              cursor: "pointer",
+            }}
+          >
+            Manage players in Club
+          </button>
         </div>
 
-        {/* CSV Preview */}
-        {csvPreview && (
-          <div style={{ background: P.white, borderRadius: 12, padding: 16, border: `1px solid ${P.line}`, marginBottom: 16 }}>
-            <div style={{ fontFamily: F.display, fontSize: 13, fontWeight: 800, color: P.ink, marginBottom: 8 }}>Preview ({csvPreview.length} players)</div>
-            {csvPreview.slice(0, 8).map((p, i) => <div key={i} style={{ fontFamily: F.body, fontSize: 12, padding: "4px 0", borderBottom: `1px solid ${P.line}` }}>{p.name} {p.ageGroup && `(${p.ageGroup})`}</div>)}
-            {csvPreview.length > 8 && <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 4 }}>...and {csvPreview.length - 8} more</div>}
-            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-              <Btn label="Cancel" variant="ghost" onClick={() => setCsvPreview(null)} />
-              <Btn label={`Import ${csvPreview.length}`} variant="primary" onClick={importPlayers} />
-            </div>
+        {message && (
+          <div
+            style={{
+              padding: 11,
+              marginBottom: 12,
+              borderRadius: 10,
+              background: "#fff7ed",
+              color: "#b45309",
+              fontFamily: F.body,
+              fontSize: 10,
+            }}
+          >
+            {message}
           </div>
         )}
 
-        {/* Player list */}
-        <div style={{ background: P.white, borderRadius: 14, border: `1px solid ${P.line}`, overflow: "hidden" }}>
-          {players.map((p, i) => (
-            <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 16px", borderBottom: i < players.length - 1 ? `1px solid ${P.line}` : "none" }}>
-              <div style={{ width: 30, height: 30, borderRadius: "50%", background: `${P.p600}18`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F.display, fontSize: 12, fontWeight: 800, color: P.p600 }}>{p.name[0]}</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: F.body, fontSize: 13, fontWeight: 600, color: P.ink }}>{p.name}</div>
-                <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>{p.age_group?.label || ""} {p.age_group?.gender === "girls" ? "Girls" : "Boys"}</div>
-              </div>
+        <div
+          style={{
+            background: P.white,
+            borderRadius: 14,
+            border: `1px solid ${P.line}`,
+            overflow: "hidden",
+          }}
+        >
+          {loading ? (
+            <div
+              style={{
+                padding: 24,
+                textAlign: "center",
+                fontFamily: F.body,
+                fontSize: 11,
+                color: P.muted,
+              }}
+            >
+              Loading players…
             </div>
-          ))}
-          {players.length === 0 && <div style={{ padding: 24, textAlign: "center", fontFamily: F.body, fontSize: 12, color: P.muted }}>No players yet. Import a CSV to get started.</div>}
+          ) : players.length === 0 ? (
+            <div
+              style={{
+                padding: 24,
+                textAlign: "center",
+                fontFamily: F.body,
+                fontSize: 11,
+                color: P.muted,
+              }}
+            >
+              No players are currently stored for this
+              team in Spraoi Club.
+            </div>
+          ) : (
+            players.map((player, index) => (
+              <div
+                key={player.id}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns:
+                    "minmax(160px,1fr) minmax(120px,.8fr) auto",
+                  gap: 12,
+                  alignItems: "center",
+                  padding: "11px 16px",
+                  borderBottom:
+                    index < players.length - 1
+                      ? `1px solid ${P.line}`
+                      : "none",
+                }}
+              >
+                <div>
+                  <div
+                    style={{
+                      fontFamily: F.body,
+                      fontSize: 12,
+                      fontWeight: 900,
+                      color: P.ink,
+                    }}
+                  >
+                    {player.name}
+                  </div>
+
+                  <div
+                    style={{
+                      fontFamily: F.body,
+                      fontSize: 9,
+                      color: P.muted,
+                      marginTop: 2,
+                    }}
+                  >
+                    {displayTeam(player)}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    fontFamily: F.body,
+                    fontSize: 10,
+                    color: P.muted,
+                  }}
+                >
+                  {player.xp_total || 0} XP
+                </div>
+
+                <div
+                  style={{
+                    fontFamily: F.body,
+                    fontSize: 9,
+                    fontWeight: 800,
+                    color: "#15803d",
+                  }}
+                >
+                  Club managed
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>
@@ -2617,20 +2862,711 @@ function AcademyPhonePreview({ weeklyPlan = null, planSessions = [], extras = []
   );
 }
 
-function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras = [], skills = [], overrides = {}, published = false, onSetOverride, onNav }) {
+function AcademyDashboardParents({
+  club,
+  selectedTeam,
+  onNav,
+}) {
+  const [parents, setParents] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let live = true;
+
+    async function loadParents() {
+      if (!club?.id) {
+        if (live) {
+          setParents([]);
+          setLoading(false);
+        }
+        return;
+      }
+
+      setLoading(true);
+
+      const [
+        guardianResult,
+        playerResult,
+        inviteResult,
+      ] = await Promise.all([
+        supabase
+          .from("club_guardians")
+          .select("id,name,email,user_id")
+          .eq("club_id", club.id)
+          .order("name"),
+
+        supabase
+          .from("journey_players")
+          .select("id,name,age_group_id")
+          .eq("club_id", club.id)
+          .order("name"),
+
+        supabase
+          .from("spraoi_invitations")
+          .select("email,status,invite_type,created_at")
+          .eq("club_id", club.id)
+          .eq("invite_type", "parent_guardian")
+          .order("created_at", {
+            ascending: false,
+          }),
+      ]);
+
+      const guardians =
+        guardianResult.data || [];
+
+      const players =
+        playerResult.data || [];
+
+      const invitations =
+        inviteResult.data || [];
+
+      let links = [];
+
+      if (guardians.length) {
+        const { data } = await supabase
+          .from("club_player_guardians")
+          .select("player_id,guardian_id")
+          .in(
+            "guardian_id",
+            guardians.map(
+              (guardian) => guardian.id
+            )
+          );
+
+        links = data || [];
+      }
+
+      const rows = guardians
+        .map((guardian) => {
+          const children = links
+            .filter(
+              (link) =>
+                String(link.guardian_id) ===
+                String(guardian.id)
+            )
+            .map((link) =>
+              players.find(
+                (player) =>
+                  String(player.id) ===
+                  String(link.player_id)
+              )
+            )
+            .filter(Boolean)
+            .filter(
+              (child) =>
+                !selectedTeam?.id ||
+                String(child.age_group_id) ===
+                  String(selectedTeam.id)
+            );
+
+          const latestInvite =
+            invitations.find(
+              (invite) =>
+                String(
+                  invite.email || ""
+                ).toLowerCase() ===
+                String(
+                  guardian.email || ""
+                ).toLowerCase()
+            );
+
+          let status = "Not invited";
+
+          if (
+            guardian.user_id ||
+            latestInvite?.status === "accepted"
+          ) {
+            status = "Active";
+          }
+          else if (
+            latestInvite?.status === "pending"
+          ) {
+            status = "Pending";
+          }
+          else if (
+            latestInvite?.status === "expired"
+          ) {
+            status = "Expired";
+          }
+          else if (
+            latestInvite?.status === "cancelled"
+          ) {
+            status = "Cancelled";
+          }
+
+          return {
+            ...guardian,
+            children,
+            status,
+          };
+        })
+        .filter(
+          (parent) =>
+            !selectedTeam?.id ||
+            parent.children.length > 0
+        );
+
+      if (live) {
+        setParents(rows);
+        setLoading(false);
+      }
+    }
+
+    loadParents();
+
+    return () => {
+      live = false;
+    };
+  }, [club?.id, selectedTeam?.id]);
+
+  const activeCount =
+    parents.filter(
+      (parent) =>
+        parent.status === "Active"
+    ).length;
+
+  const pendingCount =
+    parents.filter(
+      (parent) =>
+        parent.status === "Pending"
+    ).length;
+
+  return (
+    <section
+      style={{
+        background: P.white,
+        borderRadius: 16,
+        border: `1px solid ${P.line}`,
+        boxShadow: Sh.card,
+        overflow: "hidden",
+      }}
+    >
+      <div
+        style={{
+          padding: 18,
+          borderBottom: `1px solid ${P.line}`,
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 12,
+          alignItems: "center",
+        }}
+      >
+        <div>
+          <div
+            style={{
+              fontFamily: F.display,
+              fontSize: 16,
+              fontWeight: 900,
+              color: P.ink,
+            }}
+          >
+            Parents & Academy Access
+          </div>
+
+          <div
+            style={{
+              fontFamily: F.body,
+              fontSize: 10,
+              color: P.muted,
+              marginTop: 3,
+            }}
+          >
+            {parents.length} linked ·{" "}
+            {activeCount} active ·{" "}
+            {pendingCount} pending
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() =>
+            onNav("academy-parents")
+          }
+          style={{
+            border: 0,
+            background: "transparent",
+            color: ACADEMY_BLUE,
+            fontFamily: F.body,
+            fontSize: 10,
+            fontWeight: 900,
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+          }}
+        >
+          Manage all →
+        </button>
+      </div>
+
+      {loading ? (
+        <div
+          style={{
+            padding: 18,
+            fontFamily: F.body,
+            fontSize: 10,
+            color: P.muted,
+          }}
+        >
+          Loading parents…
+        </div>
+      ) : parents.length === 0 ? (
+        <div
+          style={{
+            padding: 18,
+            fontFamily: F.body,
+            fontSize: 10,
+            color: P.muted,
+          }}
+        >
+          No linked parents found for this team.
+        </div>
+      ) : (
+        <div>
+          {parents
+            .slice(0, 6)
+            .map((parent, index) => {
+              const statusStyle =
+                parent.status === "Active"
+                  ? {
+                      color: "#15803d",
+                      background: "#dcfce7",
+                    }
+                  : parent.status === "Pending"
+                    ? {
+                        color: "#b45309",
+                        background: "#fff7ed",
+                      }
+                    : {
+                        color: "#64748b",
+                        background: "#f1f5f9",
+                      };
+
+              return (
+                <div
+                  key={parent.id}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns:
+                      "minmax(0,1fr) auto",
+                    gap: 10,
+                    alignItems: "center",
+                    padding: "11px 18px",
+                    borderTop:
+                      index === 0
+                        ? "none"
+                        : `1px solid ${P.line}`,
+                  }}
+                >
+                  <div
+                    style={{
+                      minWidth: 0,
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontFamily: F.body,
+                        fontSize: 11,
+                        fontWeight: 900,
+                        color: P.ink,
+                      }}
+                    >
+                      {parent.name ||
+                        parent.email}
+                    </div>
+
+                    <div
+                      style={{
+                        fontFamily: F.body,
+                        fontSize: 9,
+                        color: P.muted,
+                        marginTop: 2,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {parent.children
+                        .map(
+                          (child) =>
+                            child.name
+                        )
+                        .join(", ") ||
+                        "No linked child"}
+                    </div>
+                  </div>
+
+                  <span
+                    style={{
+                      padding: "5px 8px",
+                      borderRadius: 999,
+                      fontFamily: F.body,
+                      fontSize: 8,
+                      fontWeight: 900,
+                      textTransform: "uppercase",
+                      ...statusStyle,
+                    }}
+                  >
+                    {parent.status}
+                  </span>
+                </div>
+              );
+            })}
+
+          {parents.length > 6 && (
+            <button
+              type="button"
+              onClick={() =>
+                onNav("academy-parents")
+              }
+              style={{
+                width: "100%",
+                height: 38,
+                border: 0,
+                borderTop: `1px solid ${P.line}`,
+                background: "#f8fafc",
+                color: ACADEMY_BLUE,
+                fontFamily: F.body,
+                fontSize: 10,
+                fontWeight: 900,
+                cursor: "pointer",
+              }}
+            >
+              View all {parents.length} parents
+            </button>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function AcademyDashboardScreen({ club, selectedTeam, weeklyPlan, planSessions, extras = [], skills = [], overrides = {}, published = false, onSetOverride, onNav }) {
   const academyBlue = "#0277bd";
   const academyDark = "#075985";
   const academySoft = "#eef8ff";
   const teamName = selectedTeam
-    ? `${selectedTeam.label} ${selectedTeam.gender === "girls" ? "Girls" : "Boys"}`
+    ? teamDisplayName(selectedTeam)
     : "No team selected";
 
   const weeklyRecommendations = getAcademyWeeklyRecommendations(planSessions, skills, overrides, selectedTeam);
   const [previewIndexes, setPreviewIndexes] = useState({});
   const [childLinkCopied, setChildLinkCopied] = useState(false);
-  const academyChildBase = import.meta.env.VITE_ACADEMY_CHILD_URL || ((window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") ? "http://localhost:5175" : "https://academy.spraoisports.com");
+
+  const [dashboardStats, setDashboardStats] = useState({
+    loading: true,
+    players: 0,
+    childAccess: 0,
+    childAccessPercent: 0,
+    activeThisWeek: 0,
+    completions: 0,
+    completionRate: 0,
+    activeStreaks: 0,
+    parentTotal: 0,
+    parentActive: 0,
+    parentPending: 0,
+    parentAccessPercent: 0,
+  });
+  const academyChildBase = import.meta.env.VITE_ACADEMY_CHILD_URL || ((window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") ? "http://localhost:5178" : "https://academy.spraoisports.com");
   const childAppLink = `${academyChildBase}/?team=${encodeURIComponent(selectedTeam?.id || "")}`;
 
+  useEffect(() => {
+    let live = true;
+
+    async function loadDashboardStats() {
+      if (!club?.id || !selectedTeam?.id) {
+        if (live) {
+          setDashboardStats({
+            loading: false,
+            players: 0,
+            childAccess: 0,
+            childAccessPercent: 0,
+            activeThisWeek: 0,
+            completions: 0,
+            completionRate: 0,
+            activeStreaks: 0,
+            parentTotal: 0,
+            parentActive: 0,
+            parentPending: 0,
+            parentAccessPercent: 0,
+          });
+        }
+        return;
+      }
+
+      try {
+        const [
+          playerResult,
+          guardianResult,
+          inviteResult,
+        ] = await Promise.all([
+          supabase
+            .from("journey_players")
+            .select("id,last_active,streak_days")
+            .eq("club_id", club.id)
+            .eq("age_group_id", selectedTeam.id),
+
+          supabase
+            .from("club_guardians")
+            .select("id,email,user_id")
+            .eq("club_id", club.id),
+
+          supabase
+            .from("spraoi_invitations")
+            .select("email,status,created_at")
+            .eq("club_id", club.id)
+            .eq("invite_type", "parent_guardian")
+            .order("created_at", { ascending: false }),
+        ]);
+
+        if (playerResult.error) throw playerResult.error;
+        if (guardianResult.error) throw guardianResult.error;
+
+        const players = playerResult.data || [];
+        const guardians = guardianResult.data || [];
+        const invitations = inviteResult.data || [];
+        const playerIds = players.map((player) => player.id);
+
+        let links = [];
+
+        if (guardians.length) {
+          const linkResult = await supabase
+            .from("club_player_guardians")
+            .select("player_id,guardian_id")
+            .in(
+              "guardian_id",
+              guardians.map((guardian) => guardian.id)
+            );
+
+          if (linkResult.error) throw linkResult.error;
+
+          links = linkResult.data || [];
+        }
+
+        const teamPlayerIds = new Set(
+          playerIds.map(String)
+        );
+
+        const latestInviteByEmail = new Map();
+
+        invitations.forEach((invite) => {
+          const email = String(invite.email || "")
+            .trim()
+            .toLowerCase();
+
+          if (email && !latestInviteByEmail.has(email)) {
+            latestInviteByEmail.set(email, invite);
+          }
+        });
+
+        const parentRows = guardians
+          .map((guardian) => {
+            const linkedPlayers = links
+              .filter(
+                (link) =>
+                  String(link.guardian_id) ===
+                  String(guardian.id)
+              )
+              .map((link) => String(link.player_id))
+              .filter((id) => teamPlayerIds.has(id));
+
+            if (!linkedPlayers.length) return null;
+
+            const email = String(guardian.email || "")
+              .trim()
+              .toLowerCase();
+
+            const invite = latestInviteByEmail.get(email);
+
+            let status = "Not invited";
+
+            if (
+              guardian.user_id ||
+              invite?.status === "accepted"
+            ) {
+              status = "Active";
+            } else if (invite?.status === "pending") {
+              status = "Pending";
+            }
+
+            return {
+              linkedPlayers,
+              status,
+            };
+          })
+          .filter(Boolean);
+
+        const activeParents = parentRows.filter(
+          (parent) => parent.status === "Active"
+        );
+
+        const pendingParents = parentRows.filter(
+          (parent) => parent.status === "Pending"
+        );
+
+        const childrenWithAccess = new Set();
+
+        activeParents.forEach((parent) => {
+          parent.linkedPlayers.forEach((playerId) =>
+            childrenWithAccess.add(playerId)
+          );
+        });
+
+        const mondayKey = mondayKeyForDate(
+          new Date().toISOString().slice(0, 10)
+        );
+
+        const monday = new Date(
+          `${mondayKey}T00:00:00`
+        );
+
+        const activeThisWeek = players.filter((player) => {
+          if (!player.last_active) return false;
+
+          const value = new Date(
+            `${String(player.last_active).slice(0, 10)}T12:00:00`
+          );
+
+          return (
+            !Number.isNaN(value.getTime()) &&
+            value >= monday
+          );
+        }).length;
+
+        const activeStreaks = players.filter(
+          (player) =>
+            Number(player.streak_days || 0) > 0
+        ).length;
+
+        let progressRows = [];
+
+        if (playerIds.length) {
+          let progressQuery = supabase
+            .from("player_progress")
+            .select(
+              "id,player_id,exercise_id,plan_id,status"
+            )
+            .in("player_id", playerIds);
+
+          if (weeklyPlan?.id) {
+            progressQuery = progressQuery.eq(
+              "plan_id",
+              weeklyPlan.id
+            );
+          }
+
+          const progressResult = await progressQuery;
+
+          if (!progressResult.error) {
+            progressRows = progressResult.data || [];
+          } else {
+            console.warn(
+              "Academy dashboard progress unavailable:",
+              progressResult.error.message
+            );
+          }
+        }
+
+        const approved = progressRows.filter(
+          (row) => row.status === "approved"
+        );
+
+        const uniqueCompletions = new Set(
+          approved.map(
+            (row) =>
+              `${row.player_id}:${row.exercise_id}`
+          )
+        ).size;
+
+        let exerciseCount = 0;
+
+        if (weeklyPlan?.id) {
+          const exerciseResult = await supabase
+            .from("journey_exercises")
+            .select("id")
+            .eq("age_group_id", selectedTeam.id)
+            .eq("plan_id", weeklyPlan.id);
+
+          if (!exerciseResult.error) {
+            exerciseCount =
+              (exerciseResult.data || []).length;
+          }
+        }
+
+        const possibleCompletions =
+          players.length * exerciseCount;
+
+        const completionRate =
+          possibleCompletions > 0
+            ? Math.min(
+                100,
+                Math.round(
+                  (uniqueCompletions /
+                    possibleCompletions) *
+                    100
+                )
+              )
+            : 0;
+
+        const playerCount = players.length;
+        const childAccess = childrenWithAccess.size;
+
+        const childAccessPercent = playerCount
+          ? Math.round(
+              (childAccess / playerCount) * 100
+            )
+          : 0;
+
+        const parentTotal = parentRows.length;
+        const parentActive = activeParents.length;
+        const parentPending = pendingParents.length;
+
+        const parentAccessPercent = parentTotal
+          ? Math.round(
+              (parentActive / parentTotal) * 100
+            )
+          : 0;
+
+        if (live) {
+          setDashboardStats({
+            loading: false,
+            players: playerCount,
+            childAccess,
+            childAccessPercent,
+            activeThisWeek,
+            completions: uniqueCompletions,
+            completionRate,
+            activeStreaks,
+            parentTotal,
+            parentActive,
+            parentPending,
+            parentAccessPercent,
+          });
+        }
+      } catch (error) {
+        console.error(
+          "Academy dashboard statistics failed:",
+          error
+        );
+
+        if (live) {
+          setDashboardStats((current) => ({
+            ...current,
+            loading: false,
+          }));
+        }
+      }
+    }
+
+    loadDashboardStats();
+
+    return () => {
+      live = false;
+    };
+  }, [
+    club?.id,
+    selectedTeam?.id,
+    weeklyPlan?.id,
+    published,
+  ]);
   async function copyChildAppLink() {
     try {
       await navigator.clipboard.writeText(childAppLink);
@@ -2641,8 +3577,39 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
     }
   }
   const sessionCount = Array.isArray(planSessions) ? planSessions.length : 0;
-  const hasPlan = Boolean(weeklyPlan);
-  const hasSkills = weeklyRecommendations.length > 0;
+  const hasPlan = Boolean(weeklyPlan);  const hasSkills = weeklyRecommendations.length > 0;
+
+  const parentPromptKey =
+    `spraoi_academy_parent_prompt_${selectedTeam?.id || "none"}`;
+
+  const [parentPromptDismissed, setParentPromptDismissed] =
+    useState(() =>
+      localStorage.getItem(parentPromptKey) === "dismissed"
+    );
+
+  useEffect(() => {
+    const key =
+      `spraoi_academy_parent_prompt_${selectedTeam?.id || "none"}`;
+
+    setParentPromptDismissed(
+      localStorage.getItem(key) === "dismissed"
+    );
+  }, [selectedTeam?.id]);
+
+  const showParentInvitePrompt =
+    Boolean(selectedTeam?.id) &&
+    Boolean(hasPlan || hasSkills || published) &&
+    !parentPromptDismissed;
+
+  function dismissParentInvitePrompt() {
+    localStorage.setItem(
+      parentPromptKey,
+      "dismissed"
+    );
+
+    setParentPromptDismissed(true);
+  }
+
   const setupSteps = [
     { label: "Coach plan connected", complete: hasPlan },
     { label: "Weekly videos suggested", complete: hasSkills },
@@ -2682,10 +3649,22 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
 
   return (
     <div style={{ flex: 1, minWidth: 0, overflow: "auto", background: "#f7f9fc" }}>
-      <TopBar title="Academy Dashboard" sub={`${teamName} ${weekLabel}`}>
-        <Btn label={childLinkCopied ? "Child App Link Copied" : "Copy Child App Link"} variant="ghost" icon="⧉" onClick={copyChildAppLink} />
-        <Btn label="Open Child Preview" variant="ghost" icon="◉" onClick={() => onNav("academy-preview")} />
-        <Btn label="Manage Weekly Content" variant="primary" icon="＋" onClick={() => onNav("academy-content")} style={{ background: academyBlue, boxShadow: "0 5px 16px rgba(2,119,189,.22)" }} />
+      <TopBar
+        title="Academy Dashboard"
+        sub={`${teamName} ${weekLabel}`}
+      >
+        <Btn
+          label="Manage Weekly Content"
+          variant="primary"
+          onClick={() =>
+            onNav("academy-content")
+          }
+          style={{
+            background: academyBlue,
+            boxShadow:
+              "0 5px 16px rgba(2,119,189,.22)",
+          }}
+        />
       </TopBar>
 
       <div style={{ padding: "22px 24px 32px", maxWidth: 1500, width: "100%", boxSizing: "border-box", margin: "0 auto" }}>
@@ -2711,22 +3690,139 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
                   : "Academy imports the selected team’s saved Coach plan automatically. Add bonus activities here when the weekly foundations are ready."}
               </p>
             </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button onClick={() => onNav("academy-content")} style={{ height: 38, padding: "0 15px", borderRadius: 10, border: "none", background: P.white, color: academyDark, fontFamily: F.body, fontSize: 11, fontWeight: 800, cursor: "pointer", boxShadow: "0 6px 16px rgba(0,0,0,.12)" }}>
-                Review Weekly Content →
-              </button>
-            </div>
+            
           </div>
         </section>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 18 }}>
-          <MetricCard label="Academy players" value="24" detail="in this squad" accent={academyBlue} icon="P" onClick={() => onNav("academy-engagement")} />
-          <MetricCard label="Child app access" value="19" detail="copy link for parents" trend={{ label: "79% linked", color: "#0369a1", bg: "#e0f2fe" }} accent="#0ea5e9" icon="↗" onClick={copyChildAppLink} />
-          <MetricCard label="Active this week" value="17" detail="of 24 players" trend={{ label: "+8%", color: "#15803d", bg: "#dcfce7" }} accent={P.green} icon="✓" onClick={() => onNav("academy-engagement")} />
-          <MetricCard label="Completion rate" value="68%" detail="across published practices" trend={{ label: "+12%", color: "#15803d", bg: "#dcfce7" }} accent={P.orange} icon="◒" onClick={() => onNav("academy-engagement")} />
+        {showParentInvitePrompt && (
+          <section
+            style={{
+              background: "#fff",
+              border: "1px solid #bae6fd",
+              borderRadius: 16,
+              padding: 18,
+              marginBottom: 18,
+              boxShadow: Sh.card,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 16,
+                flexWrap: "wrap",
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    fontFamily: F.display,
+                    fontSize: 18,
+                    fontWeight: 900,
+                    color: P.ink,
+                  }}
+                >
+                  Your first Academy week is ready
+                </div>
+
+                <div
+                  style={{
+                    fontFamily: F.body,
+                    fontSize: 11,
+                    lineHeight: 1.5,
+                    color: P.muted,
+                    marginTop: 4,
+                  }}
+                >
+                  Invite parents so they can access skills,
+                  challenges and updates for {teamName}.
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  flexWrap: "wrap",
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    localStorage.setItem(
+                      `spraoi_academy_invite_mode_${selectedTeam.id}`,
+                      "all"
+                    );
+
+                    onNav("academy-parents");
+                  }}
+                  style={{
+                    height: 38,
+                    border: 0,
+                    borderRadius: 10,
+                    background: academyBlue,
+                    color: "#fff",
+                    padding: "0 14px",
+                    fontFamily: F.body,
+                    fontSize: 10,
+                    fontWeight: 900,
+                    cursor: "pointer",
+                  }}
+                >
+                  Invite all parents
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    onNav("academy-parents")
+                  }
+                  style={{
+                    height: 38,
+                    borderRadius: 10,
+                    border: `1px solid ${P.line}`,
+                    background: "#fff",
+                    color: P.ink,
+                    padding: "0 14px",
+                    fontFamily: F.body,
+                    fontSize: 10,
+                    fontWeight: 900,
+                    cursor: "pointer",
+                  }}
+                >
+                  Choose parents
+                </button>
+
+                <button
+                  type="button"
+                  onClick={dismissParentInvitePrompt}
+                  style={{
+                    height: 38,
+                    border: 0,
+                    background: "transparent",
+                    color: P.muted,
+                    padding: "0 8px",
+                    fontFamily: F.body,
+                    fontSize: 10,
+                    fontWeight: 800,
+                    cursor: "pointer",
+                  }}
+                >
+                  Not now
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
+        <div className="academy-dashboard-metrics" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 12, marginBottom: 18 }}>
+          <MetricCard label="Academy players" value={dashboardStats.loading ? "…" : String(dashboardStats.players)} detail="in this team" accent={academyBlue} icon="P" onClick={() => onNav("academy-engagement")} />
+          <MetricCard label="Child app access" value={dashboardStats.loading ? "…" : String(dashboardStats.childAccess)} detail={`of ${dashboardStats.players} players`} trend={{ label: `${dashboardStats.childAccessPercent}% with access`, color: "#0369a1", bg: "#e0f2fe" }} accent="#0ea5e9" icon="↗" onClick={() => onNav("academy-parents")} />
+          <MetricCard label="Active this week" value={dashboardStats.loading ? "…" : String(dashboardStats.activeThisWeek)} detail={`of ${dashboardStats.players} players`} accent={P.green} icon="✓" onClick={() => onNav("academy-engagement")} />
+          <MetricCard label="Completion rate" value={dashboardStats.loading ? "…" : `${dashboardStats.completionRate}%`} detail={`${dashboardStats.completions} approved activities`} accent={P.orange} icon="◒" onClick={() => onNav("academy-engagement")} />
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.65fr) minmax(300px, .85fr)", gap: 18, alignItems: "start" }}>
+        <div className="academy-dashboard-main-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.65fr) minmax(300px, .85fr)", gap: 18, alignItems: "start" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 18, minWidth: 0 }}>
             <section style={{ background: P.white, borderRadius: 16, border: `1px solid ${P.line}`, boxShadow: Sh.card, overflow: "hidden" }}>
               <div style={{ padding: "17px 18px", borderBottom: `1px solid ${P.line}`, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
@@ -2738,7 +3834,7 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
               </div>
 
               {weeklyRecommendations.length > 0 ? (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14, padding: 16 }}>
+                <div className="academy-dashboard-video-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14, padding: 16 }}>
                   {weeklyRecommendations.map((rec) => {
                     const color = rec.code === "football" ? "#2563eb" : "#dc2626";
                     const bg = rec.code === "football" ? "#eff6ff" : "#fff1f2";
@@ -2800,19 +3896,40 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
                 </div>
                 <button onClick={() => onNav("academy-engagement")} style={{ border: "none", background: "transparent", color: academyBlue, fontFamily: F.body, fontSize: 11, fontWeight: 800, cursor: "pointer" }}>Open engagement →</button>
               </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(34px, 1fr))", gap: 10, alignItems: "end", height: 150, padding: "0 4px", borderBottom: `1px solid ${P.line}` }}>
-                {[42, 58, 46, 72, 65, 88, 76].map((height, index) => (
-                  <div key={index} style={{ display: "flex", height: "100%", flexDirection: "column", justifyContent: "flex-end", alignItems: "center", gap: 7 }}>
-                    <div style={{ width: "100%", maxWidth: 36, height: `${height}%`, borderRadius: "7px 7px 2px 2px", background: index === 5 ? academyBlue : "#bae6fd", transition: "height .2s ease" }} />
-                    <span style={{ fontFamily: F.body, fontSize: 9, color: P.muted }}>{["Thu", "Fri", "Sat", "Sun", "Mon", "Tue", "Wed"][index]}</span>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                  gap: 10,
+                  marginTop: 8,
+                }}
+              >
+                <div style={{ background: P.soft, borderRadius: 12, padding: 14 }}>
+                  <div style={{ fontFamily: F.display, fontSize: 22, fontWeight: 900, color: P.ink }}>
+                    {dashboardStats.completions}
                   </div>
-                ))}
-              </div>
-              <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginTop: 14 }}>
-                <div><span style={{ fontFamily: F.display, fontSize: 17, fontWeight: 900, color: P.ink }}>41</span><span style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginLeft: 5 }}>practice opens</span></div>
-                <div><span style={{ fontFamily: F.display, fontSize: 17, fontWeight: 900, color: P.ink }}>29</span><span style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginLeft: 5 }}>completions</span></div>
-                <div><span style={{ fontFamily: F.display, fontSize: 17, fontWeight: 900, color: P.ink }}>8</span><span style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginLeft: 5 }}>active streaks</span></div>
+                  <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 4 }}>
+                    approved completions
+                  </div>
+                </div>
+
+                <div style={{ background: P.soft, borderRadius: 12, padding: 14 }}>
+                  <div style={{ fontFamily: F.display, fontSize: 22, fontWeight: 900, color: P.ink }}>
+                    {dashboardStats.activeThisWeek}
+                  </div>
+                  <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 4 }}>
+                    active this week
+                  </div>
+                </div>
+
+                <div style={{ background: P.soft, borderRadius: 12, padding: 14 }}>
+                  <div style={{ fontFamily: F.display, fontSize: 22, fontWeight: 900, color: P.ink }}>
+                    {dashboardStats.activeStreaks}
+                  </div>
+                  <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 4 }}>
+                    active streaks
+                  </div>
+                </div>
               </div>
             </section>
           </div>
@@ -2843,14 +3960,14 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
                 <div>
                   <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink }}>Parent access</div>
-                  <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 2 }}>5 invitations still need attention</div>
+                  <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 2 }}>{dashboardStats.parentPending > 0 ? `${dashboardStats.parentPending} invitation${dashboardStats.parentPending === 1 ? "" : "s"} pending` : `${Math.max(0, dashboardStats.parentTotal - dashboardStats.parentActive)} parent${Math.max(0, dashboardStats.parentTotal - dashboardStats.parentActive) === 1 ? "" : "s"} not active yet`}</div>
                 </div>
                 <div style={{ width: 36, height: 36, borderRadius: 11, background: "#ecfeff", color: "#0891b2", display: "grid", placeItems: "center", fontWeight: 900 }}>@</div>
               </div>
-              <div style={{ marginTop: 15, height: 7, borderRadius: 999, background: "#e8edf3", overflow: "hidden" }}><div style={{ width: "79%", height: "100%", borderRadius: 999, background: "linear-gradient(90deg, #0284c7, #22d3ee)" }} /></div>
+              <div style={{ marginTop: 15, height: 7, borderRadius: 999, background: "#e8edf3", overflow: "hidden" }}><div style={{ width: `${dashboardStats.parentAccessPercent}%`, height: "100%", borderRadius: 999, background: "linear-gradient(90deg, #0284c7, #22d3ee)" }} /></div>
               <div style={{ display: "flex", justifyContent: "space-between", marginTop: 7 }}>
-                <span style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>19 linked</span>
-                <span style={{ fontFamily: F.body, fontSize: 10, fontWeight: 800, color: academyBlue }}>79%</span>
+                <span style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>{dashboardStats.parentActive} active of {dashboardStats.parentTotal}</span>
+                <span style={{ fontFamily: F.body, fontSize: 10, fontWeight: 800, color: academyBlue }}>{dashboardStats.parentAccessPercent}%</span>
               </div>
               <button onClick={() => onNav("academy-parents")} style={{ width: "100%", height: 34, borderRadius: 9, border: `1px solid ${P.line}`, background: P.white, color: P.ink, fontFamily: F.body, fontSize: 10, fontWeight: 800, cursor: "pointer", marginTop: 14 }}>Manage parent access</button>
             </section>
@@ -3001,85 +4118,138 @@ const modalButton=(primary)=>({height:38,border:primary?0:`1px solid ${P.line}`,
 const labelStyle={display:"block",fontFamily:F.body,fontSize:9,fontWeight:900,color:P.muted,textTransform:"uppercase",letterSpacing:".07em",marginBottom:5};
 const inputStyle={width:"100%",height:38,border:`1px solid ${P.line}`,borderRadius:9,padding:"0 10px",boxSizing:"border-box",fontFamily:F.body,fontSize:11,color:P.ink,background:P.white,outline:"none"};
 
-function AcademyPlayers({ selectedTeam, club }) {
+function AcademyPlayers({ club, selectedTeam }) {
   const [players, setPlayers] = useState([]);
-  const [name, setName] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  async function loadPlayers() {
-    if (!selectedTeam?.id) { setPlayers([]); return; }
-    const { data, error } = await supabase
-      .from("journey_players")
-      .select("*")
-      .eq("age_group_id", selectedTeam.id)
-      .order("name");
-    if (error) { setMessage(error.message); return; }
-    setPlayers(data || []);
-  }
+  useEffect(() => {
+    let live = true;
 
-  useEffect(() => { loadPlayers(); }, [selectedTeam?.id]);
+    async function load() {
+      if (!selectedTeam?.id) {
+        if (live) {
+          setPlayers([]);
+          setLoading(false);
+        }
+        return;
+      }
 
-  async function addPlayer() {
-    if (!name.trim() || !selectedTeam?.id || !club?.id) return;
-    setSaving(true);
-    setMessage("");
-    const { error } = await supabase.from("journey_players").insert({
-      parent_user_id: "00000000-0000-0000-0000-000000000000",
-      club_id: club.id,
-      age_group_id: selectedTeam.id,
-      name: name.trim(),
-    });
-    setSaving(false);
-    if (error) { setMessage(error.message); return; }
-    setName("");
-    setMessage("Player added");
-    await loadPlayers();
-  }
+      setLoading(true);
 
-  async function removePlayer(id) {
-    if (!window.confirm("Remove this player from Academy?")) return;
-    const { error } = await supabase.from("journey_players").delete().eq("id", id);
-    if (error) { setMessage(error.message); return; }
-    setMessage("Player removed");
-    await loadPlayers();
-  }
+      const { data } = await supabase
+        .from("journey_players")
+        .select("id,name,xp_total,streak_days,last_active")
+        .eq("age_group_id", selectedTeam.id)
+        .order("name");
+
+      if (live) {
+        setPlayers(data || []);
+        setLoading(false);
+      }
+    }
+
+    load();
+
+    return () => {
+      live = false;
+    };
+  }, [selectedTeam?.id]);
 
   return (
-    <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
-      <AcademyPageHeader title="Players" sub={`${selectedTeam?.label || "Select a team"} · Add players and manage parent access`} />
-      <div style={{ padding: 24, maxWidth: 1180, margin: "0 auto", display: "grid", gap: 16 }}>
+    <div
+      style={{
+        flex: 1,
+        overflow: "auto",
+        background: P.soft,
+      }}
+    >
+      <AcademyPageHeader
+        title="Players"
+        sub={`${selectedTeam?.label || "Team"} · Academy progress`}
+      />
+
+      <div
+        style={{
+          padding: 24,
+          maxWidth: 1180,
+          margin: "0 auto",
+        }}
+      >
         <AcademyCard>
-          <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 900, color: P.ink }}>Add a player</div>
-          <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 4 }}>Academy uses the existing Spraoi Club team. Add the child here, then send the Parent Access link.</div>
-          <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
-            <input value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addPlayer()} placeholder="Player name" style={{ ...inputStyle, flex: "1 1 260px" }} />
-            <button onClick={addPlayer} disabled={saving || !name.trim() || !selectedTeam?.id || !club?.id} style={{ height: 38, border: 0, borderRadius: 10, background: ACADEMY_BLUE, color: "#fff", padding: "0 16px", fontFamily: F.body, fontSize: 11, fontWeight: 900, cursor: "pointer", opacity: saving || !name.trim() || !selectedTeam?.id || !club?.id ? .55 : 1 }}>{saving ? "Adding…" : "＋ Add player"}</button>
+          <div
+            style={{
+              fontFamily: F.body,
+              fontSize: 10,
+              color: P.muted,
+              marginBottom: 14,
+            }}
+          >
+            Player identity and parent details are managed
+            in Spraoi Club. Academy shows progress only.
           </div>
-          {message && <div style={{ fontFamily: F.body, fontSize: 10, color: ACADEMY_BLUE, marginTop: 8 }}>{message}</div>}
-        </AcademyCard>
-        <AcademyCard>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginBottom: 12 }}>
-            <div>
-              <div style={{ fontFamily: F.display, fontSize: 17, fontWeight: 900, color: P.ink }}>Team players</div>
-              <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 2 }}>{players.length} Academy player{players.length === 1 ? "" : "s"}</div>
+
+          {loading ? (
+            <div
+              style={{
+                fontFamily: F.body,
+                fontSize: 11,
+                color: P.muted,
+              }}
+            >
+              Loading players…
             </div>
-          </div>
-          {players.length === 0 ? (
-            <div style={{ padding: 22, textAlign: "center", fontFamily: F.body, fontSize: 11, color: P.muted }}>No Academy players on this team yet.</div>
+          ) : players.length === 0 ? (
+            <div
+              style={{
+                fontFamily: F.body,
+                fontSize: 11,
+                color: P.muted,
+              }}
+            >
+              No Club players found for this team.
+            </div>
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 10 }}>
-              {players.map((player) => {
-                const linked = player.parent_user_id && player.parent_user_id !== "00000000-0000-0000-0000-000000000000";
-                return <div key={player.id} style={{ border: `1px solid ${P.line}`, borderRadius: 13, padding: 13, display: "flex", alignItems: "center", gap: 11 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: ACADEMY_SOFT, color: ACADEMY_BLUE, display: "grid", placeItems: "center", fontWeight: 900 }}>{player.name?.[0] || "P"}</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontFamily: F.body, fontSize: 12, fontWeight: 900, color: P.ink }}>{player.name}</div>
-                    <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 2 }}>{linked ? "Parent linked" : "Awaiting parent"}</div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "repeat(auto-fit,minmax(220px,1fr))",
+                gap: 10,
+              }}
+            >
+              {players.map((player) => (
+                <div
+                  key={player.id}
+                  style={{
+                    border: `1px solid ${P.line}`,
+                    borderRadius: 13,
+                    padding: 13,
+                  }}
+                >
+                  <div
+                    style={{
+                      fontFamily: F.body,
+                      fontSize: 12,
+                      fontWeight: 900,
+                      color: P.ink,
+                    }}
+                  >
+                    {player.name}
                   </div>
-                  <button onClick={() => removePlayer(player.id)} title="Remove player" style={{ border: 0, background: "transparent", color: "#b91c1c", cursor: "pointer", fontSize: 16 }}>×</button>
-                </div>;
-              })}
+
+                  <div
+                    style={{
+                      fontFamily: F.body,
+                      fontSize: 10,
+                      color: P.muted,
+                      marginTop: 4,
+                    }}
+                  >
+                    {player.xp_total || 0} XP ·{" "}
+                    {player.streak_days || 0} day streak
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </AcademyCard>
@@ -3087,69 +4257,648 @@ function AcademyPlayers({ selectedTeam, club }) {
     </div>
   );
 }
+function AcademyParents({ club, selectedTeam }) {
+  const [rows, setRows] = useState([]);
+  const [filter, setFilter] = useState("all");
+  const [selected, setSelected] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [copiedId, setCopiedId] = useState("");
+  const [sending, setSending] = useState(false);
+  const [message, setMessage] = useState("");
 
-function AcademyParents({ selectedTeam, parentRows, setParentRows }) {
-  const [copied, setCopied] = useState(false);
-  const academyChildBase = import.meta.env.VITE_ACADEMY_CHILD_URL || ((window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") ? "http://localhost:5175" : "https://academy.spraoisports.com");
-  const teamLink = `${academyChildBase}/?team=${encodeURIComponent(selectedTeam?.id || "")}`;
+  const academyChildBase =
+    import.meta.env.VITE_ACADEMY_CHILD_URL ||
+    ((window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1")
+      ? "http://localhost:5178"
+      : "https://academy.spraoisports.com");
 
-  async function copy(text) {
+  useEffect(() => {
+    let live = true;
+
+    async function loadParents() {
+      if (!club?.id) {
+        if (live) {
+          setRows([]);
+          setLoading(false);
+        }
+        return;
+      }
+
+      setLoading(true);
+
+      const [guardianResult, playerResult, inviteResult] =
+        await Promise.all([
+          supabase
+            .from("club_guardians")
+            .select("id,name,email,user_id")
+            .eq("club_id", club.id)
+            .order("name"),
+
+          supabase
+            .from("journey_players")
+            .select("id,name,age_group_id")
+            .eq("club_id", club.id)
+            .order("name"),
+
+          supabase
+            .from("spraoi_invitations")
+            .select("id,email,status,invite_type,created_at")
+            .eq("club_id", club.id)
+            .eq("invite_type", "parent_guardian")
+            .order("created_at", { ascending: false }),
+        ]);
+
+      const guardians = guardianResult.data || [];
+      const players = playerResult.data || [];
+      const invitations = inviteResult.data || [];
+
+      let links = [];
+
+      if (guardians.length) {
+        const { data } = await supabase
+          .from("club_player_guardians")
+          .select("player_id,guardian_id")
+          .in("guardian_id", guardians.map((g) => g.id));
+
+        links = data || [];
+      }
+
+      const assembled = guardians
+        .map((guardian) => {
+          const children = links
+            .filter(
+              (link) =>
+                String(link.guardian_id) ===
+                String(guardian.id)
+            )
+            .map((link) =>
+              players.find(
+                (player) =>
+                  String(player.id) ===
+                  String(link.player_id)
+              )
+            )
+            .filter(Boolean)
+            .filter(
+              (child) =>
+                !selectedTeam?.id ||
+                String(child.age_group_id) ===
+                  String(selectedTeam.id)
+            );
+
+          const latestInvite = invitations.find(
+            (invite) =>
+              String(invite.email || "").toLowerCase() ===
+              String(guardian.email || "").toLowerCase()
+          );
+
+          let status = "Not invited";
+
+          if (
+            guardian.user_id ||
+            latestInvite?.status === "accepted"
+          ) {
+            status = "Active";
+          } else if (latestInvite?.status === "pending") {
+            status = "Pending";
+          }
+
+          return {
+            ...guardian,
+            children,
+            status,
+          };
+        })
+        .filter(
+          (guardian) =>
+            !selectedTeam?.id ||
+            guardian.children.length > 0
+        );
+
+      if (live) {
+        setRows(assembled);
+        setLoading(false);
+      }
+    }
+
+    loadParents();
+
+    return () => {
+      live = false;
+    };
+  }, [club?.id, selectedTeam?.id]);
+
+  const filteredRows = rows.filter((row) => {
+    if (filter === "active") return row.status === "Active";
+    if (filter === "pending") return row.status === "Pending";
+    if (filter === "not-invited") {
+      return row.status === "Not invited";
+    }
+    return true;
+  });
+
+  function toggleSelected(id) {
+    setSelected((current) =>
+      current.includes(id)
+        ? current.filter((item) => item !== id)
+        : [...current, id]
+    );
+  }
+
+  async function sendParentInvites(parents) {
+    if (!club?.id || !parents?.length) {
+      return;
+    }
+
+    setSending(true);
+    setMessage("");
+
+    let sent = 0;
+    const failures = [];
+
+    for (const parent of parents) {
+      const childIds =
+        (parent.children || [])
+          .map((child) => child.id)
+          .filter(Boolean);
+
+      const teamIds = [
+        ...new Set(
+          (parent.children || [])
+            .map(
+              (child) =>
+                child.age_group_id
+            )
+            .filter(Boolean)
+        ),
+      ];
+
+      if (
+        !parent.email ||
+        !childIds.length ||
+        !teamIds.length
+      ) {
+        failures.push(
+          `${parent.name || parent.email}: missing linked child or team`
+        );
+        continue;
+      }
+
+      const { data, error } =
+        await supabase.functions.invoke(
+          "send-spraoi-invite",
+          {
+            body: {
+              clubId: club.id,
+              email: parent.email,
+              name: parent.name,
+              inviteType: "parent_guardian",
+              teamIds,
+              childIds,
+            },
+          }
+        );
+
+      if (
+        error ||
+        data?.ok === false
+      ) {
+        failures.push(
+          `${parent.name || parent.email}: ${
+            data?.error ||
+            error?.message ||
+            "Invitation failed"
+          }`
+        );
+      } else {
+        sent += 1;
+
+        setRows((current) =>
+          current.map((row) =>
+            row.id === parent.id
+              ? {
+                  ...row,
+                  status: "Pending",
+                }
+              : row
+          )
+        );
+      }
+    }
+
+    setSending(false);
+
+    if (sent) {
+      setSelected([]);
+    }
+
+    if (failures.length) {
+      setMessage(
+        `${
+          sent
+            ? `${sent} sent. `
+            : ""
+        }${
+          failures.length
+        } could not be sent: ${failures.join(
+          " · "
+        )}`
+      );
+    } else {
+      setMessage(
+        `${sent} parent invitation${
+          sent === 1 ? "" : "s"
+        } sent successfully.`
+      );
+    }
+  }
+  async function shareChildLink(parent) {
+    const child = parent.children?.[0];
+    if (!child) return;
+
+    const url =
+      `${academyChildBase}/?team=${encodeURIComponent(
+        child.age_group_id || ""
+      )}&child=${encodeURIComponent(child.id)}`;
+
     try {
-      await navigator.clipboard.writeText(text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
+      await navigator.clipboard.writeText(url);
+      setCopiedId(parent.id);
+      window.setTimeout(() => setCopiedId(""), 1500);
     } catch {
-      setCopied(false);
+      window.prompt("Share this Academy child link:", url);
     }
   }
 
-  function parseFile(file) {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const lines = String(reader.result || "").split(/\r?\n/).filter(Boolean);
-      const headers = lines.shift()?.split(",").map((h) => h.trim().toLowerCase()) || [];
-      const find = (names) => headers.findIndex((h) => names.includes(h));
-      const pi = find(["parent name", "parent", "guardian name"]);
-      const ei = find(["parent email", "email", "guardian email"]);
-      const ci = find(["child name", "child", "player name"]);
-      setParentRows(lines.map((line, i) => {
-        const cells = line.split(",").map((x) => x.trim());
-        return { id: `upload-${Date.now()}-${i}`, parent: cells[pi] || "", email: cells[ei] || "", child: cells[ci] || "", status: cells[ei] && cells[ci] ? "Ready" : "Needs review", link: `${teamLink}&invite=${i + 1}` };
-      }));
-    };
-    reader.readAsText(file);
-  }
+  const notInvited = rows.filter(
+    (row) => row.status === "Not invited"
+  );
+
+  const selectedParents = rows.filter(
+    (row) =>
+      selected.includes(row.id) &&
+      row.status === "Not invited"
+  );
 
   return (
     <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
-      <AcademyPageHeader title="Parent Access" sub={`${selectedTeam?.label || "Team"} · Send parents into the Academy child onboarding flow`} actions={<Btn label="Copy Child App Link" variant="primary" icon="⧉" onClick={() => copy(teamLink)} style={{ background: ACADEMY_BLUE }} />} />
-      <div style={{ padding: 24, maxWidth: 1180, margin: "0 auto", display: "grid", gap: 16 }}>
-        {copied && <div style={{ position: "fixed", right: 22, top: 76, zIndex: 6000, background: "#0f172a", color: "#fff", padding: "10px 14px", borderRadius: 10, fontFamily: F.body, fontSize: 11, fontWeight: 800, boxShadow: "0 12px 30px rgba(15,23,42,.25)" }}>Link copied</div>}
-        <AcademyCard>
-          <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 900, color: P.ink }}>Child app link</div>
-          <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 4 }}>Share this link with parents or open it to test the selected team in the child app.</div>
-          <div style={{ display: "flex", gap: 8, marginTop: 12, alignItems: "center", flexWrap: "wrap" }}>
-            <code style={{ flex: "1 1 420px", padding: "10px 12px", borderRadius: 9, background: P.soft, fontSize: 10, overflowWrap: "anywhere" }}>{teamLink}</code>
-            <button onClick={() => copy(teamLink)} style={{ height: 36, border: 0, borderRadius: 9, background: ACADEMY_BLUE, color: "#fff", padding: "0 13px", fontFamily: F.body, fontSize: 10, fontWeight: 900, cursor: "pointer" }}>Copy Child App Link</button>
+      <AcademyPageHeader
+        title="Parents"
+        sub={`${selectedTeam ? teamDisplayName(selectedTeam) : "All teams"} · All linked parents and Academy access status`}
+      />
+
+      <div
+        style={{
+          padding: 20,
+          maxWidth: 1100,
+          margin: "0 auto",
+          display: "grid",
+          gap: 14,
+        }}
+      >
+        {message && (
+          <div
+            style={{
+              padding: 11,
+              borderRadius: 10,
+              background: "#fff",
+              border: `1px solid ${P.line}`,
+              fontFamily: F.body,
+              fontSize: 10,
+              color: P.ink,
+            }}
+          >
+            {message}
           </div>
-        </AcademyCard>
+        )}
         <AcademyCard>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 16, alignItems: "center" }}>
-            <div>
-              <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 900, color: P.ink }}>Optional parent CSV</div>
-              <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 4 }}>CSV columns: Parent Name, Parent Email, Child Name.</div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 12,
+              flexWrap: "wrap",
+              alignItems: "center",
+            }}
+          >
+            <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
+              {[
+                ["all", "All parents"],
+                ["active", "Active"],
+                ["pending", "Pending"],
+                ["not-invited", "Not invited"],
+              ].map(([id, label]) => (
+                <button
+                  type="button"
+                  key={id}
+                  onClick={() => setFilter(id)}
+                  style={{
+                    height: 34,
+                    borderRadius: 9,
+                    border: `1px solid ${
+                      filter === id ? ACADEMY_BLUE : P.line
+                    }`,
+                    background:
+                      filter === id ? ACADEMY_SOFT : "#fff",
+                    color:
+                      filter === id ? ACADEMY_BLUE : P.ink,
+                    padding: "0 11px",
+                    fontFamily: F.body,
+                    fontSize: 10,
+                    fontWeight: 900,
+                    cursor: "pointer",
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
-            <label style={{ height: 38, padding: "0 14px", borderRadius: 10, background: ACADEMY_BLUE, color: "#fff", display: "flex", alignItems: "center", fontFamily: F.body, fontSize: 11, fontWeight: 900, cursor: "pointer" }}>
-              Upload CSV<input type="file" accept=".csv,text/csv" style={{ display: "none" }} onChange={(e) => e.target.files?.[0] && parseFile(e.target.files[0])} />
-            </label>
+
+            <div
+              style={{
+                fontFamily: F.body,
+                fontSize: 10,
+                color: P.muted,
+              }}
+            >
+              {rows.filter((r) => r.status === "Active").length} active ·{" "}
+              {rows.filter((r) => r.status === "Pending").length} pending ·{" "}
+              {notInvited.length} not invited
+            </div>
           </div>
         </AcademyCard>
-        {parentRows?.length > 0 && <AcademyCard><div style={{ display: "grid", gap: 8 }}>{parentRows.map((row) => <div key={row.id} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 8, padding: 10, border: `1px solid ${P.line}`, borderRadius: 10, fontFamily: F.body, fontSize: 10 }}><span>{row.parent}</span><span>{row.email}</span><span>{row.child}</span><span style={{ fontWeight: 800, color: row.status === "Ready" ? "#15803d" : "#b45309" }}>{row.status}</span></div>)}</div></AcademyCard>}
+
+        {notInvited.length > 0 && (
+          <AcademyCard>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 12,
+                flexWrap: "wrap",
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    fontFamily: F.display,
+                    fontSize: 15,
+                    fontWeight: 900,
+                    color: P.ink,
+                  }}
+                >
+                  {notInvited.length} parent
+                  {notInvited.length === 1
+                    ? ""
+                    : "s"} not invited
+                </div>
+
+                <div
+                  style={{
+                    fontFamily: F.body,
+                    fontSize: 10,
+                    color: P.muted,
+                    marginTop: 3,
+                  }}
+                >
+                  Invite everyone linked to this team.
+                </div>
+              </div>
+
+              <button
+                type="button"
+                disabled={sending}
+                onClick={() =>
+                  sendParentInvites(
+                    notInvited
+                  )
+                }
+                style={{
+                  height: 36,
+                  border: 0,
+                  borderRadius: 9,
+                  background: ACADEMY_BLUE,
+                  color: "#fff",
+                  padding: "0 13px",
+                  fontFamily: F.body,
+                  fontSize: 10,
+                  fontWeight: 900,
+                  cursor: sending
+                    ? "default"
+                    : "pointer",
+                }}
+              >
+                {sending
+                  ? "Sending…"
+                  : `Invite all (${notInvited.length})`}
+              </button>
+            </div>
+          </AcademyCard>
+        )}
+        {selectedParents.length > 0 && (
+          <AcademyCard>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 12,
+                alignItems: "center",
+                flexWrap: "wrap",
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    fontFamily: F.display,
+                    fontSize: 15,
+                    fontWeight: 900,
+                    color: P.ink,
+                  }}
+                >
+                  {selectedParents.length} parent
+                  {selectedParents.length === 1 ? "" : "s"} selected
+                </div>
+
+                <div
+                  style={{
+                    fontFamily: F.body,
+                    fontSize: 10,
+                    color: P.muted,
+                    marginTop: 3,
+                  }}
+                >
+                  Ready to invite to the Academy app.
+                </div>
+              </div>
+
+              <button
+                type="button"
+                disabled={sending} onClick={() => sendParentInvites(selectedParents)}
+                style={{
+                  height: 36,
+                  border: 0,
+                  borderRadius: 9,
+                  background: ACADEMY_BLUE,
+                  color: "#fff",
+                  padding: "0 13px",
+                  fontFamily: F.body,
+                  fontSize: 10,
+                  fontWeight: 900,
+                  cursor: "pointer",
+                }}
+              >
+                Invite selected
+              </button>
+            </div>
+          </AcademyCard>
+        )}
+
+        <AcademyCard>
+          {loading ? (
+            <div
+              style={{
+                padding: 24,
+                textAlign: "center",
+                fontFamily: F.body,
+                fontSize: 11,
+                color: P.muted,
+              }}
+            >
+              Loading parents…
+            </div>
+          ) : filteredRows.length === 0 ? (
+            <div
+              style={{
+                padding: 24,
+                textAlign: "center",
+                fontFamily: F.body,
+                fontSize: 11,
+                color: P.muted,
+              }}
+            >
+              No parents match this view. Parent and child records are managed in Spraoi Club.
+            </div>
+          ) : (
+            <div style={{ display: "grid", gap: 9 }}>
+              {filteredRows.map((parent) => (
+                <div
+                  key={parent.id}
+                  style={{
+                    border: `1px solid ${P.line}`,
+                    borderRadius: 12,
+                    padding: 12,
+                    display: "grid",
+                    gridTemplateColumns: "auto minmax(0,1fr) auto",
+                    gap: 10,
+                    alignItems: "center",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selected.includes(parent.id)}
+                    onChange={() => toggleSelected(parent.id)}
+                    aria-label={`Select ${parent.name}`}
+                  />
+
+                  <div style={{ minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontFamily: F.body,
+                        fontSize: 12,
+                        fontWeight: 900,
+                        color: P.ink,
+                      }}
+                    >
+                      {parent.name}
+                    </div>
+
+                    <div
+                      style={{
+                        fontFamily: F.body,
+                        fontSize: 10,
+                        color: P.muted,
+                        marginTop: 2,
+                      }}
+                    >
+                      {parent.email}
+                    </div>
+
+                    <div
+                      style={{
+                        fontFamily: F.body,
+                        fontSize: 10,
+                        color: P.ink,
+                        marginTop: 5,
+                      }}
+                    >
+                      Linked child
+                      {parent.children.length === 1 ? "" : "ren"}:{" "}
+                      {parent.children.length
+                        ? parent.children
+                            .map((child) => child.name)
+                            .join(", ")
+                        : "None"}
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      display: "grid",
+                      justifyItems: "end",
+                      gap: 7,
+                    }}
+                  >
+                    <AcademyBadge
+                      color={
+                        parent.status === "Active"
+                          ? "#15803d"
+                          : parent.status === "Pending"
+                          ? "#b45309"
+                          : P.muted
+                      }
+                      bg={
+                        parent.status === "Active"
+                          ? "#dcfce7"
+                          : parent.status === "Pending"
+                          ? "#fff7ed"
+                          : P.soft
+                      }
+                    >
+                      {parent.status}
+                    </AcademyBadge>
+
+                    {parent.children.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => shareChildLink(parent)}
+                        style={{
+                          border: `1px solid ${P.line}`,
+                          background: "#fff",
+                          borderRadius: 8,
+                          padding: "6px 9px",
+                          fontFamily: F.body,
+                          fontSize: 9,
+                          fontWeight: 800,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {copiedId === parent.id
+                          ? "Copied"
+                          : "Share child link"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </AcademyCard>
       </div>
     </div>
   );
 }
-
 function AcademyPreview({ weeklyPlan, planSessions, extras, skills = [], overrides = {}, published, selectedTeam }) { return <div style={{flex:1,overflow:"auto",background:"linear-gradient(180deg,#e8f7ff,#f8fbff)"}}><AcademyPageHeader title="Child Preview" sub={`${getAcademyWeekRange(weeklyPlan)} · Exactly what a child will see after publishing`} /><div style={{padding:24,display:"grid",placeItems:"center"}}><AcademyPhonePreview weeklyPlan={weeklyPlan} planSessions={planSessions} extras={extras} skills={skills} overrides={overrides} published={published} selectedTeam={selectedTeam} /></div></div>;
 }
 
@@ -3325,7 +5074,7 @@ function AcademyApprovals({ selectedTeam, weeklyPlan }) {
 
 function AcademySettings({ published, onNav }) {
   const items = [
-    { title: "Parent Access", desc: "Copy the live team link and test parent/player onboarding.", label: "Open", action: () => onNav?.("academy-parents") },
+    { title: "Parent Access", desc: "Manage linked parents, Academy access and invitations using the Club roster.", label: "Open", action: () => onNav?.("academy-parents") },
     { title: "Weekly Content", desc: "Review the Coach plan, choose Football/Hurling skills and publish homework.", label: published ? "Published" : "Open", action: () => onNav?.("academy-content") },
     { title: "Coach Approvals", desc: "Verify attendance and coach-approved Academy activities.", label: "Open", action: () => onNav?.("academy-approvals") },
     { title: "Teams", desc: "Create and amend teams in Spraoi Club. Academy uses those teams rather than maintaining a separate team list.", label: "Open Spraoi Club", action: () => window.location.assign(MODULE_URLS.club) },
@@ -3335,7 +5084,7 @@ function AcademySettings({ published, onNav }) {
 
 function AcademySectionScreen({ screen, onNav, club, selectedTeam, weeklyPlan, planSessions, extras, skills, overrides, onSetOverride, onAddExtra, onUpdateExtra, onRemoveExtra, onMoveExtra, published, onPublish, parentRows, setParentRows }) {
   if (screen === "academy-content") return <AcademyWeeklyContent selectedTeam={selectedTeam} weeklyPlan={weeklyPlan} planSessions={planSessions} extras={extras} skills={skills} overrides={overrides} onSetOverride={onSetOverride} onAddExtra={onAddExtra} onUpdateExtra={onUpdateExtra} onRemoveExtra={onRemoveExtra} onMoveExtra={onMoveExtra} published={published} onPublish={onPublish}/>;
-  if (screen === "academy-parents") return <AcademyParents selectedTeam={selectedTeam} parentRows={parentRows} setParentRows={setParentRows}/>;
+  if (screen === "academy-parents") return <AcademyParents club={club} selectedTeam={selectedTeam}/>;
   if (screen === "academy-preview") return <AcademyPreview weeklyPlan={weeklyPlan} planSessions={planSessions} extras={extras} skills={skills} overrides={overrides} published={published} selectedTeam={selectedTeam}/>;
   if (screen === "academy-engagement") return <AcademyEngagement selectedTeam={selectedTeam}/>;
   if (screen === "academy-approvals") return <AcademyApprovals selectedTeam={selectedTeam} weeklyPlan={weeklyPlan}/>;
@@ -3412,37 +5161,51 @@ function AccessDeniedScreen({ module, club }) {
 /* ============================================================
    MOBILE BOTTOM NAV — shows modules
    ============================================================ */
-function MobileHeader({ activeModule, setActiveModule, onNav, enabledModules, club, selectedTeam }) {
+function MobileHeader({ activeModule, setActiveModule, onNav, enabledModules, club, selectedTeam, ageGroups = [], myTeams = [], onSelectTeam, onShowProfile }) {
   const [open, setOpen] = useState(false);
   const mod = MODULES[activeModule];
   const clubName = club?.name || "Club Spraoi";
+  const mobileTeams = myTeams?.length ? ageGroups.filter((ag) => myTeams.includes(ag.id)) : ageGroups;
   function openModule(key, module) {
-    setActiveModule(key);
-    onNav(enabledModules.includes(key) ? module.nav[0].id : `access-denied-${key}`);
+    if (!enabledModules.includes(key)) {
+      onNav(`access-denied-${key}`);
+      setOpen(false);
+      return;
+    }
+    if (key !== APP_MODULE) {
+      openAdminModule(key, module.nav[0].id);
+      return;
+    }
+    setActiveModule(APP_MODULE);
+    onNav(module.nav[0].id);
     setOpen(false);
   }
   return (
     <>
       <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 62, zIndex: 200, padding: "0 12px", background: mod.color, color: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: `0 5px 18px ${mod.color}35` }}>
-        <button onClick={() => setOpen(true)} style={{ border: "none", background: "rgba(255,255,255,.16)", width: 42, height: 42, borderRadius: 12, display: "grid", placeItems: "center", cursor: "pointer" }}>
-          <img src={mod.icon} alt={mod.label} style={{ width: 31, height: 31, objectFit: "contain" }} />
+        <button onClick={() => setOpen(true)} style={{ border: "1px solid rgba(15,23,42,.08)", background: "#fff", width: 42, height: 42, borderRadius: 12, display: "grid", placeItems: "center", padding: 0, boxSizing: "border-box", cursor: "pointer", boxShadow: "0 4px 12px rgba(15,23,42,.14)" }}>
+          <img src={club?.logo_url || "/spraoi-club-icon.png"} alt={`${clubName} crest`} style={{ width: 36, height: 36, objectFit: "contain", display: "block", margin: "0 auto" }} />
         </button>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900 }}>{mod.label}</div>
-          <div style={{ fontFamily: F.body, fontSize: 9, opacity: .78 }}>{selectedTeam ? `${selectedTeam.label} ${selectedTeam.gender === "girls" ? "Girls" : "Boys"}` : clubName}</div>
+        <div style={{ minWidth:0, flex:1, padding:"0 10px", display:"flex", alignItems:"center", justifyContent:"center" }}>
+          {mobileTeams.length > 1 ? (
+            <select aria-label="Current team" value={selectedTeam?.id || ""} onChange={(e)=>{ const ag=ageGroups.find(a=>String(a.id)===String(e.target.value)); if(ag&&onSelectTeam) onSelectTeam(ag); }} style={{ maxWidth:220, width:"100%", border:"1px solid rgba(255,255,255,.42)", background:"rgba(255,255,255,.18)", color:"#fff", borderRadius:10, padding:"8px 10px", fontFamily:F.body, fontSize:11, fontWeight:900 }}>
+              {!selectedTeam && <option value="" style={{color:P.ink}}>Select team</option>}
+              {mobileTeams.map(ag=><option key={ag.id} value={ag.id} style={{color:P.ink}}>{teamDisplayName(ag)}</option>)}
+            </select>
+          ) : <div style={{fontFamily:F.body,fontSize:11,fontWeight:900}}>{selectedTeam ? teamDisplayName(selectedTeam) : clubName}</div>}
         </div>
-        <div style={{ width: 42, height: 42, borderRadius: 12, background: "rgba(255,255,255,.14)", display: "grid", placeItems: "center", fontFamily: F.display, fontWeight: 900 }}>{clubName[0]}</div>
+        <button onClick={onShowProfile} aria-label="Open profile" style={{ width:42,height:42,borderRadius:12,border:"1px solid rgba(255,255,255,.2)",background:"rgba(255,255,255,.14)",color:"#fff",display:"grid",placeItems:"center",fontFamily:F.display,fontWeight:900,cursor:"pointer" }}>{clubName[0]}</button>
       </div>
       {open && (
         <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(5,18,34,.62)", padding: 16, display: "flex", alignItems: "flex-start", justifyContent: "center" }}>
           <div onClick={(e) => e.stopPropagation()} style={{ marginTop: 58, width: "100%", maxWidth: 430, background: P.white, borderRadius: 20, padding: 16, boxShadow: Sh.lift }}>
             <div style={{ fontFamily: F.display, fontWeight: 900, color: P.ink, fontSize: 18, marginBottom: 12 }}>Switch module</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
-              {Object.entries(MODULES).map(([key, m]) => {
+              {Object.entries(MODULES).filter(([key]) => !["plus","connect"].includes(key)).map(([key, m]) => {
                 const unlocked = enabledModules.includes(key);
                 return (
                   <button key={key} onClick={() => openModule(key, m)} style={{ position: "relative", border: `1px solid ${activeModule === key ? m.color : P.line}`, background: activeModule === key ? `${m.color}0d` : P.white, borderRadius: 14, padding: 13, display: "flex", alignItems: "center", gap: 10, textAlign: "left", cursor: "pointer" }}>
-                    <img src={m.icon} alt="" style={{ width: 38, height: 38, objectFit: "contain", opacity: unlocked ? 1 : .5, filter: unlocked ? "none" : "grayscale(1)" }} />
+                    <span style={{ width: 46, height: 46, borderRadius: 13, background: "#fff", border: "1px solid rgba(15,23,42,.08)", display: "grid", placeItems: "center", padding: 0, boxSizing: "border-box", flexShrink: 0, boxShadow: "0 3px 10px rgba(15,23,42,.08)" }}><img src={m.icon} alt="" style={{ width: 34, height: 34, objectFit: "contain", display: "block", margin: "0 auto", opacity: unlocked ? 1 : .5, filter: unlocked ? "none" : "grayscale(1)" }} /></span>
                     <div>
                       <div style={{ fontFamily: F.display, fontWeight: 900, color: P.ink, fontSize: 13 }}>{m.label}</div>
                       <div style={{ fontFamily: F.body, color: unlocked ? P.muted : m.color, fontSize: 9 }}>{unlocked ? "Open module" : "Access required"}</div>
@@ -3461,21 +5224,188 @@ function MobileHeader({ activeModule, setActiveModule, onNav, enabledModules, cl
 
 function MobileNav({ activeModule, screen, onNav, enabledModules }) {
   const module = MODULES[activeModule];
-  const hasAccess = true;
-  const items = module.nav.slice(0, 5);
-  if (!hasAccess) return null;
+  const [showMore, setShowMore] = useState(false);
+
+  const items = [
+    { id: "academy-dashboard", label: "Dashboard" },
+    { id: "academy-content", label: "Content" },
+    { id: "academy-leaderboard", label: "Leaderboard" },
+    { id: "academy-engagement", label: "Engagement" },
+  ];
+
+  const moreItems = [
+    { id: "academy-parents", label: "Parents" },
+    { id: "academy-approvals", label: "Approvals" },
+    
+  ];
+
+  const moreActive = moreItems.some((item) => item.id === screen);
+
   return (
-    <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#fff", borderTop: `1px solid ${P.line}`, display: "flex", padding: "6px 4px calc(env(safe-area-inset-bottom, 0px) + 5px)", zIndex: 200, boxShadow: "0 -7px 24px rgba(15,35,60,.08)" }}>
-      {items.map((item) => {
-        const isActive = screen === item.id || (item.id === "coach-sessions" && screen === "coach-builder");
-        return (
-          <button key={item.id} onClick={() => onNav(item.id)} style={{ flex: 1, minWidth: 0, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 2, cursor: "pointer", color: isActive ? module.color : P.muted, padding: "3px 1px" }}>
-            <span style={{ width: 28, height: 24, borderRadius: 8, display: "grid", placeItems: "center", background: isActive ? `${module.color}12` : "transparent", fontSize: 14, fontWeight: 900 }}>{item.icon}</span>
-            <span style={{ fontSize: 8, lineHeight: 1.1, fontWeight: isActive ? 900 : 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>{item.label.replace("Weekly ", "").replace("Parent ", "")}</span>
-          </button>
-        );
-      })}
-    </div>
+    <>
+      {showMore && (
+        <>
+          <div
+            onClick={() => setShowMore(false)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(15,35,60,.28)",
+              zIndex: 198
+            }}
+          />
+
+          <div
+            style={{
+              position: "fixed",
+              left: 12,
+              right: 12,
+              bottom: "calc(72px + env(safe-area-inset-bottom, 0px))",
+              zIndex: 199,
+              background: "#fff",
+              borderRadius: 18,
+              border: `1px solid ${P.line}`,
+              boxShadow: "0 18px 50px rgba(15,35,60,.20)",
+              padding: 10
+            }}
+          >
+            <div style={{
+              fontFamily: F.display,
+              fontSize: 14,
+              fontWeight: 900,
+              color: P.ink,
+              padding: "7px 8px 10px"
+            }}>
+              More Academy tools
+            </div>
+
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2,minmax(0,1fr))",
+              gap: 8
+            }}>
+              {moreItems.map((item) => {
+                const isActive = screen === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setShowMore(false);
+                      onNav(item.id);
+                    }}
+                    style={{
+                      border: `1px solid ${isActive ? module.color : P.line}`,
+                      background: isActive ? `${module.color}0d` : "#fff",
+                      borderRadius: 12,
+                      padding: 12,
+                      color: isActive ? module.color : P.ink,
+                      fontFamily: F.body,
+                      fontSize: 11,
+                      fontWeight: 800,
+                      cursor: "pointer"
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
+
+      <div style={{
+        position: "fixed",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        background: "#fff",
+        borderTop: `1px solid ${P.line}`,
+        display: "flex",
+        padding: "6px 4px calc(env(safe-area-inset-bottom, 0px) + 5px)",
+        zIndex: 200,
+        boxShadow: "0 -7px 24px rgba(15,35,60,.08)"
+      }}>
+        {items.map((item) => {
+          const isActive = screen === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => onNav(item.id)}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                background: "none",
+                border: "none",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 2,
+                cursor: "pointer",
+                color: isActive ? module.color : P.muted,
+                padding: "3px 1px"
+              }}
+            >
+              <span style={{
+                width: 28,
+                height: 24,
+                borderRadius: 8,
+                display: "grid",
+                placeItems: "center",
+                background: isActive ? `${module.color}12` : "transparent"
+              }}>
+                <SpraoiNavIcon name={item.id} size={16} />
+              </span>
+
+              <span style={{
+                fontSize: 8,
+                lineHeight: 1.1,
+                fontWeight: isActive ? 900 : 600,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                maxWidth: "100%"
+              }}>
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
+
+        <button
+          onClick={() => setShowMore((value) => !value)}
+          aria-label="More Academy sections"
+          style={{
+            flex: 1,
+            minWidth: 0,
+            background: "none",
+            border: "none",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 2,
+            cursor: "pointer",
+            color: moreActive || showMore ? module.color : P.muted,
+            padding: "3px 1px"
+          }}
+        >
+          <span style={{
+            width: 28,
+            height: 24,
+            borderRadius: 8,
+            display: "grid",
+            placeItems: "center",
+            background: moreActive || showMore ? `${module.color}12` : "transparent",
+            fontWeight: 900
+          }}>
+            •••
+          </span>
+          <span style={{fontSize:8,fontWeight:moreActive ? 900 : 600}}>
+            More
+          </span>
+        </button>
+      </div>
+    </>
   );
 }
 
@@ -3496,6 +5426,7 @@ export function AcademyModule({
     <>
       {screen === "academy-dashboard" && (
         <AcademyDashboardScreen
+          club={club}
           selectedTeam={selectedTeam}
           weeklyPlan={weeklyPlan}
           planSessions={planSessions}
@@ -3533,6 +5464,280 @@ export function AcademyModule({
   );
 }
 
+
+function SpraoiPasswordRecovery({
+  accent = "#0277bd",
+  lightBackground = false,
+  logo = "/spraoi-logo-white.png",
+  onDone,
+}) {
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showRecoveryPassword, setShowRecoveryPassword] = useState(false);
+  const [savingRecovery, setSavingRecovery] = useState(false);
+  const [recoveryError, setRecoveryError] = useState("");
+
+  async function saveRecoveryPassword() {
+    setRecoveryError("");
+
+    if (newPassword.length < 8) {
+      setRecoveryError("Your password must be at least 8 characters.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setRecoveryError("The passwords do not match.");
+      return;
+    }
+
+    setSavingRecovery(true);
+
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (error) {
+      setRecoveryError(error.message);
+      setSavingRecovery(false);
+      return;
+    }
+
+    await supabase.auth.signOut();
+
+    window.history.replaceState(
+      {},
+      document.title,
+      window.location.pathname
+    );
+
+    if (onDone) onDone();
+
+    alert(
+      "Password updated successfully. Please sign in with your new password."
+    );
+  }
+
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        background: lightBackground ? "#f0f7fc" : "#0b2545",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16,
+        fontFamily: "Inter, Segoe UI, sans-serif",
+      }}
+    >
+      <div style={{ width: "100%", maxWidth: 400 }}>
+        <div style={{ textAlign: "center", marginBottom: 22 }}>
+          <img
+            src={logo}
+            alt="Spraoi Sports"
+            style={{
+              width: 170,
+              maxWidth: "70%",
+              height: "auto",
+              objectFit: "contain",
+            }}
+          />
+        </div>
+
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: 18,
+            padding: 28,
+            boxShadow: "0 10px 30px rgba(0,0,0,.12)",
+          }}
+        >
+          <div
+            style={{
+              fontSize: 21,
+              fontWeight: 900,
+              color: "#13243b",
+              marginBottom: 6,
+            }}
+          >
+            Choose a new password
+          </div>
+
+          <div
+            style={{
+              fontSize: 12,
+              lineHeight: 1.5,
+              color: "#627187",
+              marginBottom: 20,
+            }}
+          >
+            Enter a new password for your Spraoi Sports account.
+          </div>
+
+          <label
+            style={{
+              display: "block",
+              fontSize: 11,
+              fontWeight: 800,
+              color: "#627187",
+              textTransform: "uppercase",
+              marginBottom: 5,
+            }}
+          >
+            New password
+          </label>
+
+          <div style={{ position: "relative", marginBottom: 14 }}>
+            <input
+              type={showRecoveryPassword ? "text" : "password"}
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              autoComplete="new-password"
+              placeholder="At least 8 characters"
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                padding: "12px 62px 12px 13px",
+                borderRadius: 10,
+                border: "1.5px solid #dfe7ef",
+                background: "#f6f9fc",
+                fontSize: 13,
+              }}
+            />
+
+            <button
+              type="button"
+              onClick={() => setShowRecoveryPassword((v) => !v)}
+              aria-label={
+                showRecoveryPassword
+                  ? "Hide password"
+                  : "Show password"
+              }
+              aria-pressed={showRecoveryPassword}
+              style={{
+                position: "absolute",
+                right: 10,
+                top: "50%",
+                transform: "translateY(-50%)",
+                border: "none",
+                background: "transparent",
+                color: "#627187",
+                fontSize: 11,
+                fontWeight: 800,
+                cursor: "pointer",
+              }}
+            >
+              {showRecoveryPassword ? "Hide" : "Show"}
+            </button>
+          </div>
+
+          <label
+            style={{
+              display: "block",
+              fontSize: 11,
+              fontWeight: 800,
+              color: "#627187",
+              textTransform: "uppercase",
+              marginBottom: 5,
+            }}
+          >
+            Confirm new password
+          </label>
+
+          <div style={{ position: "relative", marginBottom: 16 }}>
+            <input
+              type={showRecoveryPassword ? "text" : "password"}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              autoComplete="new-password"
+              placeholder="Repeat your new password"
+              onKeyDown={(e) =>
+                e.key === "Enter" && saveRecoveryPassword()
+              }
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                padding: "12px 62px 12px 13px",
+                borderRadius: 10,
+                border: "1.5px solid #dfe7ef",
+                background: "#f6f9fc",
+                fontSize: 13,
+              }}
+            />
+
+            <button
+              type="button"
+              onClick={() => setShowRecoveryPassword((v) => !v)}
+              aria-label={
+                showRecoveryPassword
+                  ? "Hide password"
+                  : "Show password"
+              }
+              aria-pressed={showRecoveryPassword}
+              style={{
+                position: "absolute",
+                right: 10,
+                top: "50%",
+                transform: "translateY(-50%)",
+                border: "none",
+                background: "transparent",
+                color: "#627187",
+                fontSize: 11,
+                fontWeight: 800,
+                cursor: "pointer",
+              }}
+            >
+              {showRecoveryPassword ? "Hide" : "Show"}
+            </button>
+          </div>
+
+          {recoveryError && (
+            <div
+              style={{
+                color: "#c62828",
+                fontSize: 12,
+                fontWeight: 700,
+                textAlign: "center",
+                marginBottom: 12,
+              }}
+            >
+              {recoveryError}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={saveRecoveryPassword}
+            disabled={
+              savingRecovery ||
+              !newPassword ||
+              !confirmPassword
+            }
+            style={{
+              width: "100%",
+              padding: 14,
+              border: "none",
+              borderRadius: 11,
+              background: accent,
+              color: "#fff",
+              fontSize: 14,
+              fontWeight: 800,
+              cursor: "pointer",
+              opacity:
+                savingRecovery ||
+                !newPassword ||
+                !confirmPassword
+                  ? 0.55
+                  : 1,
+            }}
+          >
+            {savingRecovery ? "Updating..." : "Update password"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   useSpraoiFonts();
   // Auth state
@@ -3552,14 +5757,32 @@ export default function App() {
   const [enabledModules, setEnabledModules] = useState([]);
 
   // App state
-  const [screen, setScreen] = useState("academy-dashboard");
-  const [activeModule, setActiveModule] = useState("academy");
+  const [screen, setScreen] = useState(() => {
+    const requested = requestedScreenFromUrl(null);
+    if (requested && String(requested).startsWith(`${APP_MODULE}-`)) {
+      return requested;
+    }
+    return readModuleScreen(
+      APP_MODULE,
+      MODULES[APP_MODULE]?.nav?.[0]?.id || "academy-dashboard"
+    );
+  });
+  const [activeModule, setActiveModule] = useState(APP_MODULE);
 
   useEffect(() => {
-    const prefix = String(screen || "").split("-")[0];
-    if (MODULES[prefix] && prefix !== activeModule) {
-      setActiveModule(prefix);
+    if (activeModule !== APP_MODULE) {
+      setActiveModule(APP_MODULE);
     }
+    if (!String(screen || "").startsWith(`${APP_MODULE}-`)) {
+      setScreen(
+        readModuleScreen(
+          APP_MODULE,
+          MODULES[APP_MODULE]?.nav?.[0]?.id || "academy-dashboard"
+        )
+      );
+      return;
+    }
+    writeModuleScreen(APP_MODULE, screen);
   }, [screen, activeModule]);
   const [club, setClub] = useState(null);
   const [ageGroups, setAgeGroups] = useState([]);
@@ -3596,6 +5819,7 @@ export default function App() {
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
+
       if (event === "PASSWORD_RECOVERY") {
         setRecoveryMode(true);
         setAuthLoading(false);
@@ -3720,19 +5944,24 @@ export default function App() {
           effectiveRole = [...staffRows]
             .sort((a, b) => (priority[b.role] || 0) - (priority[a.role] || 0))[0]?.role || effectiveRole;
         }
-      } else {
-        const { data: assignments, error: assignmentError } = await supabase
-          .from("coach_assignments")
-          .select("age_group_id")
-          .eq("user_id", userId);
-        if (!assignmentError && assignments?.length) {
-          assignedTeamIds = assignments.map((assignment) => assignment.age_group_id);
-        }
+      }
+
+      // During migration, merge both membership sources so Profile, Sidebar,
+      // Coach and Academy all agree on the user's teams.
+      const { data: assignments, error: assignmentError } = await supabase
+        .from("coach_assignments")
+        .select("age_group_id")
+        .eq("user_id", userId);
+      if (!assignmentError && assignments?.length) {
+        assignedTeamIds = [...new Set([
+          ...assignedTeamIds,
+          ...assignments.map((assignment) => assignment.age_group_id).filter(Boolean),
+        ])];
       }
 
       const capabilities = roleCapabilities(effectiveRole);
       setUserRole({ ...(roleData || {}), role: effectiveRole, club_id: effectiveClubId, capabilities });
-      setMyTeams(capabilities.isClubAdmin ? [] : assignedTeamIds);
+      setMyTeams([...new Set(assignedTeamIds)]);
     } catch (error) {
       console.error("Unable to initialise platform access:", error);
       // Never lock Elaine out of a module because an older RBAC table differs.
@@ -3744,6 +5973,84 @@ export default function App() {
       loadUpcoming();
     } finally {
       setAuthLoading(false);
+    }
+  }
+
+
+  async function currentCoachId() {
+    if (!session?.user?.id || !club?.id) return null;
+    const { data: byUser } = await supabase
+      .from("coaches")
+      .select("id")
+      .eq("club_id", club.id)
+      .eq("user_id", session.user.id)
+      .maybeSingle();
+    if (byUser?.id) return byUser.id;
+
+    const userEmail = String(session.user.email || "").trim();
+    if (!userEmail) return null;
+    const { data: byEmail } = await supabase
+      .from("coaches")
+      .select("id")
+      .eq("club_id", club.id)
+      .ilike("email", userEmail)
+      .maybeSingle();
+    return byEmail?.id || null;
+  }
+
+  async function addProfileTeam(ageGroupId) {
+    if (!ageGroupId || !session?.user?.id || !club?.id) return;
+    const coachId = await currentCoachId();
+
+    await supabase.from("coach_assignments").upsert(
+      { user_id: session.user.id, club_id: club.id, age_group_id: ageGroupId },
+      { onConflict: "user_id,age_group_id", ignoreDuplicates: true }
+    );
+
+    if (coachId) {
+      const role = permissions.isClubAdmin ? "club_admin" : (permissions.isLeadCoach ? "lead_coach" : "coach_mentor");
+      const { error } = await supabase.from("team_staff").upsert(
+        {
+          club_id: club.id,
+          age_group_id: ageGroupId,
+          coach_id: coachId,
+          user_id: session.user.id,
+          role,
+          status: "active",
+        },
+        { onConflict: "age_group_id,coach_id" }
+      );
+      if (error) console.warn("Could not sync team_staff assignment:", error.message);
+    }
+
+    setMyTeams((current) => [...new Set([...(current || []), ageGroupId])]);
+  }
+
+  async function removeProfileTeam(ageGroupId) {
+    if (!ageGroupId || !session?.user?.id) return;
+
+    await supabase
+      .from("coach_assignments")
+      .delete()
+      .eq("user_id", session.user.id)
+      .eq("age_group_id", ageGroupId);
+
+    const coachId = await currentCoachId();
+    let staffDelete = supabase
+      .from("team_staff")
+      .delete()
+      .eq("age_group_id", ageGroupId);
+    if (coachId) staffDelete = staffDelete.eq("coach_id", coachId);
+    else staffDelete = staffDelete.eq("user_id", session.user.id);
+    const { error } = await staffDelete;
+    if (error) console.warn("Could not remove team_staff assignment:", error.message);
+
+    setMyTeams((current) => (current || []).filter((id) => String(id) !== String(ageGroupId)));
+    if (String(selectedTeam?.id || "") === String(ageGroupId)) {
+      const nextId = (myTeams || []).find((id) => String(id) !== String(ageGroupId));
+      const nextTeam = ageGroups.find((team) => String(team.id) === String(nextId));
+      setSelectedTeam(nextTeam || null);
+      saveActiveContext(nextTeam || null, club);
     }
   }
 
@@ -3783,10 +6090,11 @@ export default function App() {
   // Restore and synchronise the one active team shared by every Spraoi module.
   useEffect(() => {
     if (!ageGroups.length) return;
-    const savedId = localStorage.getItem(ACTIVE_TEAM_KEY) || localStorage.getItem("spraoi_team_id");
+    const savedId = requestedTeamFromUrl(null) || localStorage.getItem(ACTIVE_TEAM_KEY) || localStorage.getItem("spraoi_team_id");
     const found = ageGroups.find((ag) => String(ag.id) === String(savedId));
     if (found && String(found.id) !== String(selectedTeam?.id || "")) {
       setSelectedTeam(found);
+      saveActiveContext(found, club);
     } else if (!found && selectedTeam && !ageGroups.some((ag) => String(ag.id) === String(selectedTeam.id))) {
       setSelectedTeam(null);
     }
@@ -4132,7 +6440,7 @@ export default function App() {
           <div style={{ background: P.white, borderRadius: 18, padding: 28, boxShadow: Sh.lift }}>
             <div style={{ fontFamily: F.display, fontSize: 17, fontWeight: 800, color: P.ink, marginBottom: 16 }}>Sign In</div>
             <label style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>Email</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="coach@email.com" style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 13, marginTop: 4, marginBottom: 12, background: P.soft }} />
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="coach@email.com" style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 10, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 13, marginTop: 4, marginBottom: 12, background: P.soft }} />
             <label style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>Password</label>
             <div style={{ position: "relative", width: "100%", marginTop: 4, marginBottom: 16 }}>
               <input
@@ -4304,8 +6612,7 @@ export default function App() {
                   <div key={label} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                     {boys && (
                       <button onClick={async () => {
-                        await supabase.from("coach_assignments").insert({ user_id: session.user.id, club_id: club.id, age_group_id: boys.id });
-                        setMyTeams((t) => [...(t === "all" ? [] : t), boys.id]);
+                        await addProfileTeam(boys.id);
                         selectTeam(boys);
                       }} style={{ flex: 1, padding: "14px 10px", borderRadius: 12, border: `1.5px solid ${P.line}`, background: P.soft, cursor: "pointer", textAlign: "center" }}>
                         <div style={{ fontFamily: F.display, fontWeight: 800, fontSize: 18, color: P.p600 }}>{label}</div>
@@ -4314,8 +6621,7 @@ export default function App() {
                     )}
                     {girls && (
                       <button onClick={async () => {
-                        await supabase.from("coach_assignments").insert({ user_id: session.user.id, club_id: club.id, age_group_id: girls.id });
-                        setMyTeams((t) => [...(t === "all" ? [] : t), girls.id]);
+                        await addProfileTeam(girls.id);
                         selectTeam(girls);
                       }} style={{ flex: 1, padding: "14px 10px", borderRadius: 12, border: `1.5px solid #d81b6033`, background: "#fef0f5", cursor: "pointer", textAlign: "center" }}>
                         <div style={{ fontFamily: F.display, fontWeight: 800, fontSize: 18, color: "#d81b60" }}>{label}</div>
@@ -4366,7 +6672,7 @@ export default function App() {
   return (
     <div className="spraoi-shell" style={{ display: "flex", minHeight: "100vh", width: "100%", fontFamily: F.body, paddingTop: showMobile ? 62 : 0, paddingBottom: showMobile ? 68 : 0, boxSizing: "border-box" }}>
       <MobileAccessibilityStyles />
-      {showMobile && <MobileHeader activeModule={activeModule} setActiveModule={setActiveModule} onNav={setScreen} enabledModules={enabledModules} club={club} selectedTeam={selectedTeam} />}
+      {showMobile && <MobileHeader activeModule={activeModule} setActiveModule={setActiveModule} onNav={setScreen} enabledModules={enabledModules} club={club} selectedTeam={selectedTeam} ageGroups={ageGroups} myTeams={myTeams} onSelectTeam={selectTeam} onShowProfile={()=>setShowProfile(true)} />}
 
       {/* Sidebar — desktop only */}
       {!showMobile && <Sidebar activeModule={activeModule} setActiveModule={setActiveModule} activeScreen={screen} onNav={setScreen} club={club} selectedTeam={selectedTeam} onSelectTeam={selectTeam} enabledModules={enabledModules} onLogout={logout} ageGroups={ageGroups} myTeams={myTeams} onShowProfile={() => setShowProfile(true)} />}
@@ -4392,6 +6698,7 @@ export default function App() {
       {/* ACADEMY ADMIN screens */}
       {screen === "academy-dashboard" && (
         <AcademyDashboardScreen
+          club={club}
           selectedTeam={selectedTeam}
           weeklyPlan={weeklyPlan}
           planSessions={planSessions}
@@ -4438,29 +6745,26 @@ export default function App() {
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
                   {ageGroups.filter((ag) => myTeams.includes(ag.id)).map((ag) => (
                     <div key={ag.id} style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 10px", borderRadius: 8, background: P.soft, border: `1px solid ${P.line}` }}>
-                      <span style={{ fontFamily: F.body, fontSize: 11, fontWeight: 600, color: P.ink }}>{ag.label} {ag.gender === "girls" ? "Girls" : "Boys"}</span>
-                      <button onClick={async () => {
-                        await supabase.from("coach_assignments").delete().eq("user_id", session.user.id).eq("age_group_id", ag.id);
-                        setMyTeams((t) => t.filter((id) => id !== ag.id));
-                        if (selectedTeam?.id === ag.id) setSelectedTeam(null);
-                      }} style={{ background: "none", border: "none", color: P.coral, cursor: "pointer", fontSize: 12, padding: 0 }}>×</button>
+                      <span style={{ fontFamily: F.body, fontSize: 11, fontWeight: 600, color: P.ink }}>{teamDisplayName(ag)}</span>
+                      {permissions.canManageTeamStaff && <button onClick={async () => {
+                        await removeProfileTeam(ag.id);
+                      }} title="Remove team" style={{ background: "none", border: "none", color: P.coral, cursor: "pointer", fontSize: 12, padding: 0 }}>×</button>}
                     </div>
                   ))}
                   {myTeams.length === 0 && <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted }}>No teams selected yet</div>}
                 </div>
-                {/* Add more teams */}
-                <select onChange={async (e) => {
+                {/* Add more teams — only users with team-management permission */}
+                {permissions.canManageTeamStaff && <select onChange={async (e) => {
                   const agId = e.target.value;
                   if (!agId || myTeams.includes(agId)) return;
-                  await supabase.from("coach_assignments").insert({ user_id: session.user.id, club_id: club.id, age_group_id: agId });
-                  setMyTeams((t) => [...t, agId]);
+                  await addProfileTeam(agId);
                   e.target.value = "";
                 }} style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 12, color: P.muted }}>
                   <option value="">+ Add another team...</option>
                   {ageGroups.filter((ag) => !myTeams.includes(ag.id)).sort((a, b) => parseInt(a.label.replace("U", "")) - parseInt(b.label.replace("U", ""))).map((ag) => (
-                    <option key={ag.id} value={ag.id}>{ag.label} {ag.gender === "girls" ? "Girls" : "Boys"}</option>
+                    <option key={ag.id} value={ag.id}>{teamDisplayName(ag)}</option>
                   ))}
-                </select>
+                </select>}
               </div>
 
               {/* Logout */}
@@ -4621,277 +6925,3 @@ export default function App() {
 }
 
 // deployment refresh 2026-08-13
-
-function SpraoiPasswordRecovery({
-  accent = "#0277bd",
-  lightBackground = false,
-  logo = "/spraoi-logo-white.png",
-  onDone,
-}) {
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showRecoveryPassword, setShowRecoveryPassword] = useState(false);
-  const [savingRecovery, setSavingRecovery] = useState(false);
-  const [recoveryError, setRecoveryError] = useState("");
-
-  async function saveRecoveryPassword() {
-    setRecoveryError("");
-
-    if (newPassword.length < 8) {
-      setRecoveryError("Your password must be at least 8 characters.");
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setRecoveryError("The passwords do not match.");
-      return;
-    }
-
-    setSavingRecovery(true);
-
-    const { error } = await supabase.auth.updateUser({
-      password: newPassword,
-    });
-
-    if (error) {
-      setRecoveryError(error.message);
-      setSavingRecovery(false);
-      return;
-    }
-
-    await supabase.auth.signOut();
-
-    window.history.replaceState(
-      {},
-      document.title,
-      window.location.pathname
-    );
-
-    if (onDone) onDone();
-
-    alert(
-      "Password updated successfully. Please sign in with your new password."
-    );
-  }
-
-  return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: lightBackground ? "#f0f7fc" : "#0b2545",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 16,
-        fontFamily: "Inter, Segoe UI, sans-serif",
-      }}
-    >
-      <div style={{ width: "100%", maxWidth: 400 }}>
-        <div style={{ textAlign: "center", marginBottom: 22 }}>
-          <img
-            src={logo}
-            alt="Spraoi Sports"
-            style={{
-              width: 170,
-              maxWidth: "70%",
-              height: "auto",
-              objectFit: "contain",
-            }}
-          />
-        </div>
-
-        <div
-          style={{
-            background: "#fff",
-            borderRadius: 18,
-            padding: 28,
-            boxShadow: "0 10px 30px rgba(0,0,0,.12)",
-          }}
-        >
-          <div
-            style={{
-              fontSize: 21,
-              fontWeight: 900,
-              color: "#13243b",
-              marginBottom: 6,
-            }}
-          >
-            Choose a new password
-          </div>
-
-          <div
-            style={{
-              fontSize: 12,
-              lineHeight: 1.5,
-              color: "#627187",
-              marginBottom: 20,
-            }}
-          >
-            Enter a new password for your Spraoi Sports account.
-          </div>
-
-          <label
-            style={{
-              display: "block",
-              fontSize: 11,
-              fontWeight: 800,
-              color: "#627187",
-              textTransform: "uppercase",
-              marginBottom: 5,
-            }}
-          >
-            New password
-          </label>
-
-          <div style={{ position: "relative", marginBottom: 14 }}>
-            <input
-              type={showRecoveryPassword ? "text" : "password"}
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              autoComplete="new-password"
-              placeholder="At least 8 characters"
-              style={{
-                width: "100%",
-                boxSizing: "border-box",
-                padding: "12px 62px 12px 13px",
-                borderRadius: 10,
-                border: "1.5px solid #dfe7ef",
-                background: "#f6f9fc",
-                fontSize: 13,
-              }}
-            />
-
-            <button
-              type="button"
-              onClick={() => setShowRecoveryPassword((v) => !v)}
-              aria-label={
-                showRecoveryPassword
-                  ? "Hide password"
-                  : "Show password"
-              }
-              aria-pressed={showRecoveryPassword}
-              style={{
-                position: "absolute",
-                right: 10,
-                top: "50%",
-                transform: "translateY(-50%)",
-                border: "none",
-                background: "transparent",
-                color: "#627187",
-                fontSize: 11,
-                fontWeight: 800,
-                cursor: "pointer",
-              }}
-            >
-              {showRecoveryPassword ? "Hide" : "Show"}
-            </button>
-          </div>
-
-          <label
-            style={{
-              display: "block",
-              fontSize: 11,
-              fontWeight: 800,
-              color: "#627187",
-              textTransform: "uppercase",
-              marginBottom: 5,
-            }}
-          >
-            Confirm new password
-          </label>
-
-          <div style={{ position: "relative", marginBottom: 16 }}>
-            <input
-              type={showRecoveryPassword ? "text" : "password"}
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              autoComplete="new-password"
-              placeholder="Repeat your new password"
-              onKeyDown={(e) =>
-                e.key === "Enter" && saveRecoveryPassword()
-              }
-              style={{
-                width: "100%",
-                boxSizing: "border-box",
-                padding: "12px 62px 12px 13px",
-                borderRadius: 10,
-                border: "1.5px solid #dfe7ef",
-                background: "#f6f9fc",
-                fontSize: 13,
-              }}
-            />
-
-            <button
-              type="button"
-              onClick={() => setShowRecoveryPassword((v) => !v)}
-              aria-label={
-                showRecoveryPassword
-                  ? "Hide password"
-                  : "Show password"
-              }
-              aria-pressed={showRecoveryPassword}
-              style={{
-                position: "absolute",
-                right: 10,
-                top: "50%",
-                transform: "translateY(-50%)",
-                border: "none",
-                background: "transparent",
-                color: "#627187",
-                fontSize: 11,
-                fontWeight: 800,
-                cursor: "pointer",
-              }}
-            >
-              {showRecoveryPassword ? "Hide" : "Show"}
-            </button>
-          </div>
-
-          {recoveryError && (
-            <div
-              style={{
-                color: "#c62828",
-                fontSize: 12,
-                fontWeight: 700,
-                textAlign: "center",
-                marginBottom: 12,
-              }}
-            >
-              {recoveryError}
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={saveRecoveryPassword}
-            disabled={
-              savingRecovery ||
-              !newPassword ||
-              !confirmPassword
-            }
-            style={{
-              width: "100%",
-              padding: 14,
-              border: "none",
-              borderRadius: 11,
-              background: accent,
-              color: "#fff",
-              fontSize: 14,
-              fontWeight: 800,
-              cursor: "pointer",
-              opacity:
-                savingRecovery ||
-                !newPassword ||
-                !confirmPassword
-                  ? 0.55
-                  : 1,
-            }}
-          >
-            {savingRecovery ? "Updating..." : "Update password"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-

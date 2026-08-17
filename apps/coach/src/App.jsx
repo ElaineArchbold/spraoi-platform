@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabaseClient";
 import html2canvas from "html2canvas";
+import { openAdminModule, requestedScreenFromUrl, requestedTeamFromUrl, readModuleScreen, writeModuleScreen } from "../../../packages/ui/src/platformNavigation.js";
 
 /* ============================================================
    SPRAOI COACH — Desktop-first redesign
@@ -52,6 +53,8 @@ function mondayKeyForDate(value) {
 const ACTIVE_TEAM_KEY = "spraoi_active_team_id";
 const ACTIVE_CLUB_KEY = "spraoi_active_club_id";
 const ACTIVE_CONTEXT_EVENT = "spraoi-active-context";
+const ACTIVE_MODULE_KEY = "spraoi_active_module";
+const ACTIVE_SCREEN_KEY = "spraoi_active_screen";
 
 function saveActiveContext(team, club) {
   if (team?.id) {
@@ -82,6 +85,47 @@ function roleCapabilities(role) {
     canDeleteSharedDrills: ["club_admin", "super_admin", "admin"].includes(normalized),
     canManageTeamStaff: ["club_admin", "super_admin", "admin"].includes(normalized),
   };
+}
+
+
+function teamDisplayName(team, fallback = "Team") {
+  if (!team) return fallback;
+
+  const base = String(team.label || team.name || fallback).trim();
+  const gender = String(team.gender || "").toLowerCase();
+
+  const suffix =
+    gender === "girls"
+      ? "Girls"
+      : gender === "boys"
+        ? "Boys"
+        : "";
+
+  return suffix && !new RegExp(`\\b${suffix}$`, "i").test(base)
+    ? `${base} ${suffix}`
+    : base;
+}
+
+
+function SpraoiNavIcon({ name = "", size = 18 }) {
+  const key = String(name || "").toLowerCase();
+  const common = { width:size, height:size, viewBox:"0 0 24 24", fill:"none", stroke:"currentColor", strokeWidth:1.9, strokeLinecap:"round", strokeLinejoin:"round", "aria-hidden":true };
+  let shape;
+  if (key.includes("dashboard")) shape=<><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V20h13v-9.5"/><path d="M9.5 20v-6h5v6"/></>;
+  else if (key.includes("planner")||key.includes("schedule")||key.includes("event")) shape=<><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M7 3v4M17 3v4M3.5 9h17"/></>;
+  else if (key.includes("session")||key.includes("matchday")) shape=<><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m10 9 5 3-5 3V9Z"/></>;
+  else if (key.includes("drill")||key.includes("content")||key.includes("template")) shape=<><path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H20v17H7.5A2.5 2.5 0 0 0 5 21.5v-17Z"/><path d="M5 18.5A2.5 2.5 0 0 1 7.5 16H20"/></>;
+  else if (key.includes("team")||key.includes("player")||key.includes("participant")||key.includes("audience")||key.includes("member")) shape=<><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3.5 20c.4-4 2.3-6 5.5-6s5.1 2 5.5 6M14.5 14.5c3.4-.3 5.3 1.5 6 4.5"/></>;
+  else if (key.includes("parent")||key.includes("coach")) shape=<><circle cx="8" cy="8" r="3"/><path d="M2.8 20c.6-4 2.4-6 5.2-6s4.6 2 5.2 6"/><path d="M16 8h5M18.5 5.5v5"/></>;
+  else if (key.includes("preview")) shape=<><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.8"/></>;
+  else if (key.includes("leader")||key.includes("result")||key.includes("competition")||key.includes("reward")) shape=<><path d="M8 4h8v4a4 4 0 0 1-8 0V4Z"/><path d="M8 6H4v1a4 4 0 0 0 4 4M16 6h4v1a4 4 0 0 1-4 4M12 12v5M8 21h8M9 17h6"/></>;
+  else if (key.includes("engagement")||key.includes("report")) shape=<><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></>;
+  else if (key.includes("setting")||key.includes("setup")) shape=<><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.12 2.12-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V20.3h-3v-.08a1.7 1.7 0 0 0-1.03-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06-2.12-2.12.06-.06A1.7 1.7 0 0 0 5 15a1.7 1.7 0 0 0-1.56-1.03H3.3v-3h.14A1.7 1.7 0 0 0 5 9.94a1.7 1.7 0 0 0-.34-1.88L4.6 8l2.12-2.12.06.06A1.7 1.7 0 0 0 8.66 6.3a1.7 1.7 0 0 0 1.03-1.56V4.7h3v.04a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06L17.8 8l-.06.06a1.7 1.7 0 0 0-.34 1.88 1.7 1.7 0 0 0 1.56 1.03h.14v3h-.14A1.7 1.7 0 0 0 19.4 15Z"/></>;
+  else if (key.includes("permission")||key.includes("compliance")) shape=<><path d="M12 3 5 6v5c0 4.7 2.8 8 7 10 4.2-2 7-5.3 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></>;
+  else if (key.includes("food")) shape=<><path d="M7 3v8M4 3v5a3 3 0 0 0 6 0V3M7 11v10M16 3v18M16 3c3 2 4 6 4 9h-4"/></>;
+  else if (key.includes("compose")||key.includes("announcement")||key.includes("inbox")) shape=<><path d="M4 5h16v12H8l-4 4V5Z"/><path d="m7 9 5 3 5-3"/></>;
+  else shape=<><circle cx="12" cy="12" r="8"/><path d="M8 12h8"/></>;
+  return <svg {...common}>{shape}</svg>;
 }
 
 function getDrillIcons(activity) {
@@ -135,7 +179,6 @@ const MODULES = {
       { id: "academy-content", icon: "✦", label: "Weekly Content" },
       { id: "academy-players", icon: "●", label: "Players" },
       { id: "academy-parents", icon: "♧", label: "Parent Access" },
-      { id: "academy-preview", icon: "◉", label: "Child Preview" },
       { id: "academy-leaderboard", icon: "★", label: "Leaderboard" },
       { id: "academy-engagement", icon: "↗", label: "Engagement" },
       { id: "academy-settings", icon: "⚙", label: "Settings" },
@@ -209,7 +252,11 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
   const clubName = club?.name || "Club Spraoi";
 
   function openModule(key, module) {
-    setActiveModule(key);
+    if (key !== APP_MODULE) {
+      openAdminModule(key, module.nav[0].id);
+      return;
+    }
+    setActiveModule(APP_MODULE);
     onNav(module.nav[0].id);
   }
 
@@ -221,7 +268,7 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
           <img src={club?.logo_url || "/spraoi-club-icon.png"} alt={`${clubName} crest`} style={{ width: 52, height: 52, objectFit: "contain" }} />
         </div>
         <div style={{ flex: 1, width: "100%", display: "flex", flexDirection: "column", justifyContent: "center", gap: 7 }}>
-          {Object.entries(MODULES).map(([key, module]) => {
+          {Object.entries(MODULES).filter(([key]) => !["plus","connect"].includes(key)).map(([key, module]) => {
             const isActive = activeModule === key;
             const locked = !enabledModules.includes(key);
             const darkText = key === "connect";
@@ -255,10 +302,10 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
         <div style={{ margin: "11px 12px 4px" }}>
           {visibleTeams.length > 1 ? (
             <select value={selectedTeam?.id || ""} onChange={(e) => { const ag = ageGroups?.find((a) => a.id === e.target.value); if (ag) onSelectTeam(ag); }} style={{ width: "100%", padding: "9px 10px", borderRadius: 9, border: activeModule === "connect" ? "1px solid rgba(51,40,0,.2)" : "1px solid rgba(255,255,255,.2)", background: activeModule === "connect" ? "rgba(255,255,255,.5)" : "rgba(255,255,255,.14)", fontFamily: F.body, fontSize: 11, fontWeight: 700, color: activeModule === "connect" ? "#332800" : "#fff", cursor: "pointer" }}>
-              {visibleTeams.map((ag) => <option key={ag.id} value={ag.id} style={{ color: P.ink }}>{ag.label} {ag.gender === "girls" ? "Girls" : "Boys"}</option>)}
+              {visibleTeams.map((ag) => <option key={ag.id} value={ag.id} style={{ color: P.ink }}>{teamDisplayName(ag)}</option>)}
             </select>
           ) : selectedTeam ? (
-            <div style={{ padding: "9px 10px", borderRadius: 9, background: activeModule === "connect" ? "rgba(255,255,255,.5)" : "rgba(255,255,255,.14)", fontFamily: F.body, fontSize: 11, fontWeight: 700 }}>{selectedTeam.label} {selectedTeam.gender === "girls" ? "Girls" : "Boys"}</div>
+            <div style={{ padding: "9px 10px", borderRadius: 9, background: activeModule === "connect" ? "rgba(255,255,255,.5)" : "rgba(255,255,255,.14)", fontFamily: F.body, fontSize: 11, fontWeight: 700 }}>{teamDisplayName(selectedTeam)}</div>
           ) : null}
         </div>
 
@@ -268,7 +315,7 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
             const fg = activeModule === "connect" ? "#332800" : "#fff";
             return (
               <button key={item.id} onClick={() => onNav(item.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 11px", borderRadius: 10, border: "none", cursor: "pointer", width: "100%", background: isActive ? "#fff" : "transparent", textAlign: "left" }}>
-                <span style={{ fontSize: 15, color: isActive ? (activeModule === "connect" ? "#5b4600" : mod.color) : "#fff", opacity: 1 }}>{item.icon}</span>
+                <span style={{ fontSize: 15, color: isActive ? (activeModule === "connect" ? "#5b4600" : mod.color) : "#fff", opacity: 1 }}><SpraoiNavIcon name={item.id} size={16} /></span>
                 <span style={{ fontFamily: F.body, fontSize: 12, fontWeight: isActive ? 700 : 550, letterSpacing: "-.01em", color: isActive ? (activeModule === "connect" ? "#5b4600" : mod.color) : "#fff", opacity: 1 }}>{item.label}</span>
               </button>
             );
@@ -305,6 +352,58 @@ function MobileAccessibilityStyles() {
       .spraoi-touch-button { min-height: 42px !important; }
       .spraoi-shell input, .spraoi-shell select, .spraoi-shell textarea { font-size: 16px !important; }
       .spraoi-shell { overflow-x: hidden; }
+      .coach-dashboard-stats { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+      .coach-dashboard-main-grid { grid-template-columns: minmax(0, 1fr) !important; }
+      .coach-planner-layout {
+        flex-direction: column !important;
+        padding: 14px !important;
+        gap: 14px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+      }
+      .coach-planner-calendar-wrap,
+      .coach-planner-builder-wrap {
+        width: 100% !important;
+        min-width: 0 !important;
+      }
+      .coach-planner-builder {
+        position: static !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+      }
+      .coach-planner-calendar-card {
+        padding: 10px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+      }
+      .coach-planner-month-tabs button {
+        flex: 0 0 auto !important;
+      }
+      .coach-planner-day {
+        min-height: 46px !important;
+        padding: 3px !important;
+      }
+      .coach-planner-day-number {
+        font-size: 10px !important;
+      }
+      .coach-planner-session-chip {
+        display: flex !important;
+        align-items: center !important;
+        height: 7px !important;
+        min-height: 7px !important;
+        margin-top: 4px !important;
+        padding: 0 !important;
+        border-left-width: 0 !important;
+        border-radius: 4px !important;
+        background: ${P.p600} !important;
+      }
+      .coach-planner-session-title {
+        display: none !important;
+      }
+      .coach-planner-session-count {
+        display: grid !important;
+      }
     }
     @media (max-width: 520px) {
       .spraoi-page-header { padding: 12px !important; }
@@ -312,6 +411,13 @@ function MobileAccessibilityStyles() {
       .spraoi-page-header-icon { width: 44px !important; height: 44px !important; flex-basis: 44px !important; }
       .spraoi-page-header-icon img { width: 33px !important; height: 33px !important; }
       .spraoi-page-header-title { font-size: 19px !important; }
+      .coach-dashboard-stats { grid-template-columns: minmax(0, 1fr) !important; }
+      .coach-planner-layout { padding: 10px !important; gap: 10px !important; }
+      .coach-planner-calendar-card { padding: 8px !important; border-radius: 12px !important; }
+      .coach-planner-weekdays { gap: 1px !important; }
+      .coach-planner-days { gap: 1px !important; }
+      .coach-planner-day { min-height: 48px !important; padding: 3px !important; border-radius: 6px !important; }
+      .coach-planner-weekdays > div { font-size: 8px !important; }
     }
   `}</style>;
 }
@@ -381,6 +487,230 @@ function StatCard({ label, value, sub, color = P.p600, icon }) {
 /* ============================================================
    DASHBOARD SCREEN — matches Figma design
    ============================================================ */
+function CoachAttendanceCard({ selectedTeam }) {
+  const [sessions, setSessions] = useState([]);
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let live = true;
+
+    async function loadAttendance() {
+      if (!selectedTeam?.id) {
+        if (live) {
+          setSessions([]);
+          setRecords([]);
+          setLoading(false);
+        }
+        return;
+      }
+
+      setLoading(true);
+
+      const { data: sessionRows, error } =
+        await supabase
+          .from("club_attendance_sessions")
+          .select("id,session_date,title")
+          .eq("age_group_id", selectedTeam.id)
+          .order("session_date", { ascending: false })
+          .limit(8);
+
+      if (error) {
+        if (live) setLoading(false);
+        return;
+      }
+
+      const safeSessions = sessionRows || [];
+      let safeRecords = [];
+
+      if (safeSessions.length) {
+        const { data } = await supabase
+          .from("club_attendance_records")
+          .select("attendance_session_id,player_id,status")
+          .in(
+            "attendance_session_id",
+            safeSessions.map((session) => session.id)
+          );
+
+        safeRecords = data || [];
+      }
+
+      if (live) {
+        setSessions(safeSessions);
+        setRecords(safeRecords);
+        setLoading(false);
+      }
+    }
+
+    loadAttendance();
+
+    return () => {
+      live = false;
+    };
+  }, [selectedTeam?.id]);
+
+  const chart = [...sessions]
+    .reverse()
+    .map((session) => {
+      const sessionRecords = records.filter(
+        (record) =>
+          String(record.attendance_session_id) ===
+          String(session.id)
+      );
+
+      const counted = sessionRecords.filter((record) =>
+        ["present", "absent", "excused"].includes(
+          record.status
+        )
+      );
+
+      const present = sessionRecords.filter(
+        (record) => record.status === "present"
+      ).length;
+
+      return {
+        ...session,
+        present,
+        total: counted.length,
+        percent: counted.length
+          ? Math.round((present / counted.length) * 100)
+          : 0,
+      };
+    });
+
+  const present = records.filter(
+    (record) => record.status === "present"
+  ).length;
+
+  const absent = records.filter(
+    (record) => record.status === "absent"
+  ).length;
+
+  const excused = records.filter(
+    (record) => record.status === "excused"
+  ).length;
+
+  const total = present + absent + excused;
+
+  const overall = total
+    ? Math.round((present / total) * 100)
+    : 0;
+
+  return (
+    <div
+      style={{
+        background: P.white,
+        border: `1px solid ${P.line}`,
+        borderRadius: 14,
+        padding: 16,
+        marginTop: 16,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 12,
+          alignItems: "flex-start",
+          flexWrap: "wrap",
+        }}
+      >
+        <div>
+          <div
+            style={{
+              fontFamily: F.display,
+              fontSize: 16,
+              fontWeight: 900,
+              color: P.ink,
+            }}
+          >
+            Attendance
+          </div>
+
+          <div
+            style={{
+              fontFamily: F.body,
+              fontSize: 10,
+              color: P.muted,
+              marginTop: 3,
+            }}
+          >
+            {selectedTeam?.label || "Team"} · Managed in Spraoi Club
+          </div>
+        </div>
+
+        <div
+          style={{
+            fontFamily: F.display,
+            fontSize: 24,
+            fontWeight: 900,
+            color: P.p600,
+          }}
+        >
+          {loading ? "—" : `${overall}%`}
+        </div>
+      </div>
+
+      {!loading && chart.length > 0 && (
+        <>
+          <div
+            style={{
+              height: 92,
+              display: "flex",
+              alignItems: "flex-end",
+              gap: 7,
+              marginTop: 15,
+            }}
+          >
+            {chart.map((session) => (
+              <div
+                key={session.id}
+                title={`${session.session_date}: ${session.percent}%`}
+                style={{
+                  flex: 1,
+                  minWidth: 12,
+                  height: `${Math.max(8, session.percent)}%`,
+                  background: P.p600,
+                  borderRadius: "6px 6px 2px 2px",
+                  opacity: 0.82,
+                }}
+              />
+            ))}
+          </div>
+
+          <div
+            style={{
+              fontFamily: F.body,
+              fontSize: 10,
+              color: P.muted,
+              marginTop: 10,
+            }}
+          >
+            {present} present · {absent} absent ·{" "}
+            {chart.length} recent session
+            {chart.length === 1 ? "" : "s"}
+          </div>
+        </>
+      )}
+
+      {!loading && chart.length === 0 && (
+        <div
+          style={{
+            marginTop: 14,
+            background: P.soft,
+            borderRadius: 10,
+            padding: 13,
+            fontFamily: F.body,
+            fontSize: 10,
+            color: P.muted,
+          }}
+        >
+          No Club attendance has been imported for this team yet.
+        </div>
+      )}
+    </div>
+  );
+}
 function DashboardScreen({ club, ageGroups, planSessions, weeklyPlan, upcomingSessions, onNav, onOpenSession, allActivities, selectedTeam, favouriteIds = [], coaches = [] }) {
   const today = new Date().toLocaleDateString("en-IE", { weekday: "long", day: "numeric", month: "short", year: "numeric" });
   // Dashboard "Upcoming" means today/future only. The Sessions page still shows full history.
@@ -398,14 +728,10 @@ function DashboardScreen({ club, ageGroups, planSessions, weeklyPlan, upcomingSe
     })
     .sort((a, b) => String(a.session_date).localeCompare(String(b.session_date)));
   const favouriteDrills = (allActivities || []).filter((activity) => favouriteIds.includes(activity.id));
-  const recentDrills = Array.from(new Map((planSessions || [])
-    .slice()
-    .sort((a,b)=>String(b.session_date||"").localeCompare(String(a.session_date||"")))
-    .flatMap(sess => (sess.session_activities || []).map(sa => sa.activity).filter(Boolean))
-    .map(a => [a.id || a.title, a])).values()).slice(0, 4);
   const [panelPlayers, setPanelPlayers] = useState([]);
   const [coachLeave, setCoachLeave] = useState([]);
   const [showLeaveForm, setShowLeaveForm] = useState(false);
+  const [showCoachesPanel, setShowCoachesPanel] = useState(false);
   const [leaveDraft, setLeaveDraft] = useState({ coach_id: "", start_date: "", end_date: "", note: "" });
 
   useEffect(() => {
@@ -462,12 +788,87 @@ function DashboardScreen({ club, ageGroups, planSessions, weeklyPlan, upcomingSe
     setCoachLeave(prev => prev.filter(x => x.id !== id));
   }
 
+  function coachRosterLabel(coach) {
+    const raw =
+      coach?.roster_days ??
+      coach?.training_days ??
+      coach?.days ??
+      coach?.training_day ??
+      coach?.roster_day ??
+      "";
+
+    if (Array.isArray(raw)) {
+      return raw.length
+        ? raw.join(", ")
+        : "Roster not set";
+    }
+
+    if (typeof raw === "string") {
+      const cleaned = raw.trim();
+
+      if (!cleaned) {
+        return "Roster not set";
+      }
+
+      try {
+        const parsed = JSON.parse(cleaned);
+
+        if (Array.isArray(parsed)) {
+          return parsed.length
+            ? parsed.join(", ")
+            : "Roster not set";
+        }
+      } catch {
+        // Normal text value such as "Tuesdays"
+      }
+
+      return cleaned;
+    }
+
+    return "Roster not set";
+  }
   const panelGroups = [
     { key: "hurling-a", label: selectedTeam?.gender === "girls" ? "Camogie A" : "Hurling A", code: "hurling_panel", panel: "A" },
     { key: "hurling-b", label: selectedTeam?.gender === "girls" ? "Camogie B" : "Hurling B", code: "hurling_panel", panel: "B" },
     { key: "football-a", label: "Football A", code: "football_panel", panel: "A" },
     { key: "football-b", label: "Football B", code: "football_panel", panel: "B" },
   ];
+  const footballACount =
+    panelPlayers.filter(
+      (player) => player.football_panel === "A"
+    ).length;
+
+  const footballBCount =
+    panelPlayers.filter(
+      (player) => player.football_panel === "B"
+    ).length;
+
+  const hurlingACount =
+    panelPlayers.filter(
+      (player) => player.hurling_panel === "A"
+    ).length;
+
+  const hurlingBCount =
+    panelPlayers.filter(
+      (player) => player.hurling_panel === "B"
+    ).length;
+
+  const ungroupedFootball =
+    panelPlayers.filter(
+      (player) =>
+        !["A", "B"].includes(
+          String(player.football_panel || "")
+        )
+    ).length;
+
+  const ungroupedHurling =
+    panelPlayers.filter(
+      (player) =>
+        !["A", "B"].includes(
+          String(player.hurling_panel || "")
+        )
+    ).length;
+
 
   return (
     <>
@@ -490,28 +891,386 @@ function DashboardScreen({ club, ageGroups, planSessions, weeklyPlan, upcomingSe
       </TopBar>
       <div style={{ padding: "20px 24px" }}>
         {/* Stat cards row */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
-          <div onClick={() => onNav("coach-drills")} style={{ background: P.white, borderRadius: 14, padding: "16px 18px", border: `1px solid ${P.line}`, borderTop: `3px solid ${P.p600}`, boxShadow: Sh.card, cursor: "pointer" }}>
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
-              <span style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", letterSpacing: "0.08em" }}>Favourite Drills</span>
-              <img src="/spraoi-coach-icon.png" alt="" style={{ width: 24, height: 24, objectFit: "contain" }} />
+        <div
+          className="coach-dashboard-stats"
+          style={{
+            display: "grid",
+            gridTemplateColumns:
+              "repeat(4, minmax(0, 1fr))",
+            gap: 14,
+            marginBottom: 20,
+          }}
+        >
+          {/* Coaches */}
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label="Open coaches"
+            onClick={() => setShowCoachesPanel(true)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                setShowCoachesPanel(true);
+              }
+            }}
+            style={{
+              background: P.white,
+              borderRadius: 14,
+              padding: "16px 18px",
+              border: `1px solid ${P.line}`,
+              borderTop: `3px solid ${P.p600}`,
+              boxShadow: Sh.card,
+              minWidth: 0,
+              cursor: "pointer",
+            }}
+          >
+            <div
+              style={{
+                fontFamily: F.body,
+                fontSize: 11,
+                fontWeight: 700,
+                color: P.muted,
+                textTransform: "uppercase",
+                letterSpacing: ".08em",
+              }}
+            >
+              Coaches
             </div>
-            <div style={{ fontFamily: F.display, fontSize: 28, fontWeight: 900, color: P.ink, lineHeight: 1 }}>{favouriteDrills.length}</div>
-            <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 6 }}>{favouriteDrills.length ? favouriteDrills.slice(0,2).map((d)=>d.title).join(" · ") : "No favourites saved yet"}</div>
-          </div>
-          <div onClick={() => onNav("academy-dashboard")} style={{ background: P.white, borderRadius: 14, padding: "16px 18px", border: `1px solid ${P.line}`, borderTop: "3px solid #0277bd", boxShadow: Sh.card, cursor: "pointer" }}>
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
-              <span style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", letterSpacing: "0.08em" }}>Academy Sync</span>
-              <img src="/spraoi-academy-icon.png" alt="" style={{ width: 24, height: 24, objectFit: "contain" }} />
+
+            <div
+              style={{
+                fontFamily: F.display,
+                fontSize: 28,
+                fontWeight: 900,
+                color: P.ink,
+                marginTop: 7,
+              }}
+            >
+              {(coaches || []).length}
             </div>
-            <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 900, color: P.ink, lineHeight: 1 }}>Open Academy</div>
-            <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 6 }}>Review skills generated from this week's plan</div>
+
+            <div
+              style={{
+                display: "grid",
+                gap: 4,
+                marginTop: 8,
+              }}
+            >
+              {(coaches || [])
+                .slice(0, 4)
+                .map((coach) => {
+                  const rawRoster =
+                    coach?.roster_days ??
+                    coach?.training_days ??
+                    coach?.days ??
+                    coach?.training_day ??
+                    coach?.roster_day ??
+                    "";
+
+                  const rosterLabel =
+                    Array.isArray(rawRoster)
+                      ? rawRoster.join(", ")
+                      : String(rawRoster || "").trim();
+
+                  return (
+                    <div
+                      key={coach.id}
+                      style={{
+                        fontFamily: F.body,
+                        fontSize: 10,
+                        color: P.ink,
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
+                      <strong>{coach.name}</strong>
+                      {rosterLabel
+                        ? ` — ${rosterLabel}`
+                        : ""}
+                    </div>
+                  );
+                })}
+
+              {(coaches || []).length > 4 && (
+                <div
+                  style={{
+                    fontFamily: F.body,
+                    fontSize: 9,
+                    fontWeight: 800,
+                    color: P.p600,
+                  }}
+                >
+                  + {(coaches || []).length - 4} more
+                </div>
+              )}
+            </div>
           </div>
-          <StatCard label="Drills" value={String(allActivities?.length || 0)} sub={`${allActivities?.filter(a => a.sport === 'football').length || 0} football`} color={P.sky} icon="/football-icon.png" />
-          <StatCard label="Next Session" value={teamSessions?.[0]?.session_date ? new Date(`${teamSessions[0].session_date}T12:00:00`).getDate() : "—"} sub={teamSessions?.[0]?.session_date ? new Date(`${teamSessions[0].session_date}T12:00:00`).toLocaleDateString("en-IE", { weekday: "short", month: "short" }) : "None scheduled"} color={P.green} icon="/spraoi-coach-icon.png" />
+
+          {/* Favourite Drills */}
+          <div
+            onClick={() => onNav("coach-drills")}
+            style={{
+              background: P.white,
+              borderRadius: 14,
+              padding: "16px 18px",
+              border: `1px solid ${P.line}`,
+              borderTop: `3px solid ${P.p600}`,
+              boxShadow: Sh.card,
+              cursor: "pointer",
+              minWidth: 0,
+            }}
+          >
+            <div
+              style={{
+                fontFamily: F.body,
+                fontSize: 11,
+                fontWeight: 700,
+                color: P.muted,
+                textTransform: "uppercase",
+                letterSpacing: ".08em",
+              }}
+            >
+              Favourite Drills
+            </div>
+
+            <div
+              style={{
+                fontFamily: F.display,
+                fontSize: 28,
+                fontWeight: 900,
+                color: P.ink,
+                marginTop: 7,
+              }}
+            >
+              {favouriteDrills.length}
+            </div>
+
+            <div
+              style={{
+                fontFamily: F.body,
+                fontSize: 10,
+                color: P.muted,
+                marginTop: 8,
+              }}
+            >
+              {favouriteDrills.length
+                ? favouriteDrills
+                    .slice(0, 2)
+                    .map((drill) => drill.title)
+                    .join(" · ")
+                : "No favourites saved yet"}
+            </div>
+          </div>
+
+          {/* Team */}
+          <div
+            onClick={() =>
+              onNav("coach-players")
+            }
+            style={{
+              background: P.white,
+              borderRadius: 14,
+              padding: "16px 18px",
+              border: `1px solid ${P.line}`,
+              borderTop: `3px solid ${P.sky}`,
+              boxShadow: Sh.card,
+              cursor: "pointer",
+              minWidth: 0,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                gap: 8,
+                alignItems: "center",
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: F.body,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: P.muted,
+                  textTransform: "uppercase",
+                  letterSpacing: ".08em",
+                }}
+              >
+                Team
+              </span>
+
+              <span
+                style={{
+                  fontFamily: F.body,
+                  fontSize: 9,
+                  fontWeight: 900,
+                  color: P.p600,
+                }}
+              >
+                {panelPlayers.length} players
+              </span>
+            </div>
+
+            <div
+              style={{
+                fontFamily: F.display,
+                fontSize: 20,
+                fontWeight: 900,
+                color: P.ink,
+                marginTop: 7,
+              }}
+            >
+              {selectedTeam
+                ? teamDisplayName(selectedTeam)
+                : "No team selected"}
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gap: 6,
+                marginTop: 12,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: 8,
+                  fontFamily: F.body,
+                  fontSize: 10,
+                }}
+              >
+                <span style={{ color: P.muted }}>
+                  Football
+                </span>
+
+                <strong>
+                  A: {footballACount} · B: {footballBCount}
+                </strong>
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: 8,
+                  fontFamily: F.body,
+                  fontSize: 10,
+                }}
+              >
+                <span style={{ color: P.muted }}>
+                  {selectedTeam?.gender === "girls"
+                    ? "Camogie"
+                    : "Hurling"}
+                </span>
+
+                <strong>
+                  A: {hurlingACount} · B: {hurlingBCount}
+                </strong>
+              </div>
+
+              {(ungroupedFootball > 0 ||
+                ungroupedHurling > 0) && (
+                <div
+                  style={{
+                    fontFamily: F.body,
+                    fontSize: 9,
+                    color: P.orange,
+                    fontWeight: 800,
+                  }}
+                >
+                  {Math.max(
+                    ungroupedFootball,
+                    ungroupedHurling
+                  )} still need grouping
+                </div>
+              )}
+            </div>
+
+            <div
+              style={{
+                marginTop: 10,
+                fontFamily: F.body,
+                fontSize: 10,
+                fontWeight: 900,
+                color: P.p600,
+              }}
+            >
+              Manage A/B groups →
+            </div>
+          </div>
+
+          {/* Academy Preview */}
+          <div
+            onClick={() =>
+              openAdminModule(
+                "academy",
+                "academy-preview"
+              )
+            }
+            style={{
+              background: P.white,
+              borderRadius: 14,
+              padding: "16px 18px",
+              border: `1px solid ${P.line}`,
+              borderTop: "3px solid #0277bd",
+              boxShadow: Sh.card,
+              cursor: "pointer",
+              minWidth: 0,
+            }}
+          >
+            <div
+              style={{
+                fontFamily: F.body,
+                fontSize: 11,
+                fontWeight: 700,
+                color: P.muted,
+                textTransform: "uppercase",
+                letterSpacing: ".08em",
+              }}
+            >
+              Academy Preview
+            </div>
+
+            <img
+              src="/spraoi-academy-icon.png"
+              alt=""
+              style={{
+                width: 32,
+                height: 32,
+                objectFit: "contain",
+                marginTop: 12,
+              }}
+            />
+
+            <div
+              style={{
+                fontFamily: F.display,
+                fontSize: 19,
+                fontWeight: 900,
+                color: P.ink,
+                marginTop: 8,
+              }}
+            >
+              Open child view
+            </div>
+
+            <div
+              style={{
+                fontFamily: F.body,
+                fontSize: 10,
+                color: P.muted,
+                marginTop: 5,
+              }}
+            >
+              Preview this week's Academy content
+            </div>
+          </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
+        <div className="coach-dashboard-main-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: 20, marginBottom: 20 }}>
           {/* Upcoming Sessions */}
           <div style={{ background: P.white, borderRadius: 14, padding: 18, border: `1px solid ${P.line}`, boxShadow: Sh.card }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
@@ -558,56 +1317,273 @@ function DashboardScreen({ club, ageGroups, planSessions, weeklyPlan, upcomingSe
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
-          {/* Coaches */}
-          <div style={{ background: P.white, borderRadius: 14, padding: 18, border: `1px solid ${P.line}`, boxShadow: Sh.card }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 800, color: P.ink }}>Coaches</div>
-              <button onClick={() => setShowLeaveForm(true)} style={{ background: "none", border: "none", fontFamily: F.body, fontSize: 11, fontWeight: 800, color: P.p600, cursor: "pointer" }}>+ Holiday</button>
-            </div>
-            {(coaches || []).length === 0 ? <div style={{ fontFamily:F.body,fontSize:12,color:P.muted }}>No coaches assigned yet.</div> : (coaches || []).slice(0,5).map((coach,i)=>{
-              const leave = coachLeave.find(x => String(x.coach_id) === String(coach.id));
-              return <div key={coach.id} style={{display:"flex",alignItems:"center",gap:9,padding:"9px 0",borderTop:i?`1px solid ${P.line}`:"none"}}>
-                <div style={{width:30,height:30,borderRadius:"50%",background:`${P.p600}15`,display:"grid",placeItems:"center",fontFamily:F.display,fontSize:11,fontWeight:900,color:P.p600}}>{(coach.name||"?")[0]}</div>
-                <div style={{flex:1,minWidth:0}}><div style={{fontFamily:F.body,fontSize:12,fontWeight:800,color:P.ink}}>{coach.name}</div><div style={{fontFamily:F.body,fontSize:9,color:leave?P.orange:P.muted,marginTop:2}}>{leave ? `Away ${new Date(`${leave.start_date}T12:00:00`).toLocaleDateString("en-IE",{day:"numeric",month:"short"})}–${new Date(`${leave.end_date}T12:00:00`).toLocaleDateString("en-IE",{day:"numeric",month:"short"})}` : "Available"}</div></div>
-                {leave && <button title="Remove holiday" onClick={()=>removeCoachLeave(leave.id)} style={{border:0,background:"none",color:P.muted,cursor:"pointer",fontSize:16}}>×</button>}
-              </div>;
-            })}
-          </div>
-
-          {/* Recent Drills */}
-          <div style={{ background: P.white, borderRadius: 14, padding: 18, border: `1px solid ${P.line}`, boxShadow: Sh.card }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 800, color: P.ink }}>Recent Drills</div>
-              <button onClick={() => onNav("coach-drills")} style={{ background: "none", border: "none", fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.p600, cursor: "pointer" }}>View All</button>
-            </div>
-            {recentDrills.length === 0 ? <div style={{fontFamily:F.body,fontSize:12,color:P.muted}}>No drills used in this week's sessions yet.</div> : recentDrills.map((a, i) => (
-              <div key={a.id || a.title} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderTop: i > 0 ? `1px solid ${P.line}` : "none" }}>
-                {(() => { const drillIcon = getCategoryIcon(a); return <div style={{ width: 36, height: 36, borderRadius: 10, background: `${drillIcon.color}12`, display: "grid", placeItems: "center", flexShrink: 0 }}><img src={drillIcon.icon} alt="" style={{ width: 27, height: 27, objectFit: "contain" }} /></div>; })()}
-                <div style={{ flex: 1, minWidth:0 }}><div style={{ fontFamily: F.body, fontSize: 12, fontWeight: 700, color: P.ink, whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis" }}>{a.title}</div><div style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>{a.skill?.name || a.category || ""}</div></div>
-                <Btn label="Use" variant="ghost" style={{ height: 26, fontSize: 10, padding: "0 8px" }} onClick={() => onNav("coach-builder")} />
-              </div>
-            ))}
-          </div>
-
-          {/* Teams */}
-          <div style={{ background: P.white, borderRadius: 14, padding: 18, border: `1px solid ${P.line}`, boxShadow: Sh.card }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 800, color: P.ink }}>Teams</div>
-              <button onClick={() => onNav("coach-players")} style={{ background: "none", border: "none", fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.p600, cursor: "pointer" }}>Manage Players</button>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-              {panelGroups.map((group) => {
-                const members = panelPlayers.filter((p) => p[group.code] === group.panel);
-                return <details key={group.key} style={{ background: P.soft, borderRadius: 9, padding: "5px 9px" }}>
-                  <summary style={{ fontFamily:F.body,fontSize:11,fontWeight:900,color:P.ink,cursor:"pointer",padding:"5px 0" }}>{group.label} <span style={{color:P.muted}}>({members.length})</span></summary>
-                  <div style={{padding:"4px 0 6px",fontFamily:F.body,fontSize:10,color:P.muted}}>{members.length ? members.map(p=><div key={p.id} style={{padding:"3px 0"}}>{p.name}</div>) : "No players assigned yet."}</div>
-                </details>;
-              })}
-            </div>
-          </div>
+        <div style={{ marginBottom: 20 }}>
+          <CoachAttendanceCard
+            selectedTeam={selectedTeam}
+          />
         </div>
+        {showCoachesPanel && (
+          <div
+            onClick={() => setShowCoachesPanel(false)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              zIndex: 4999,
+              background: "rgba(15,23,42,.5)",
+              display: "grid",
+              placeItems: "center",
+              padding: 18,
+            }}
+          >
+            <div
+              onClick={(event) => event.stopPropagation()}
+              style={{
+                width: "min(560px,100%)",
+                maxHeight: "82vh",
+                overflowY: "auto",
+                background: P.white,
+                borderRadius: 18,
+                padding: 20,
+                boxShadow: "0 30px 80px rgba(15,23,42,.28)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  gap: 12,
+                }}
+              >
+                <div>
+                  <div
+                    style={{
+                      fontFamily: F.display,
+                      fontSize: 20,
+                      fontWeight: 900,
+                      color: P.ink,
+                    }}
+                  >
+                    Coaches
+                  </div>
 
+                  <div
+                    style={{
+                      fontFamily: F.body,
+                      fontSize: 10,
+                      color: P.muted,
+                      marginTop: 3,
+                    }}
+                  >
+                    {selectedTeam
+                      ? teamDisplayName(selectedTeam)
+                      : "Selected team"}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  aria-label="Close coaches"
+                  onClick={() => setShowCoachesPanel(false)}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    border: `1px solid ${P.line}`,
+                    background: P.white,
+                    color: P.ink,
+                    cursor: "pointer",
+                    fontSize: 18,
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gap: 8,
+                  marginTop: 16,
+                }}
+              >
+                {(coaches || []).length === 0 ? (
+                  <div
+                    style={{
+                      padding: 16,
+                      borderRadius: 11,
+                      background: P.soft,
+                      fontFamily: F.body,
+                      fontSize: 11,
+                      color: P.muted,
+                    }}
+                  >
+                    No coaches found for this club.
+                  </div>
+                ) : (
+                  (coaches || []).map((coach) => {
+                    const away = (coachLeave || []).filter(
+                      (leave) =>
+                        String(leave.coach_id) === String(coach.id)
+                    );
+
+                    return (
+                      <div
+                        key={coach.id}
+                        style={{
+                          border: `1px solid ${P.line}`,
+                          borderRadius: 12,
+                          padding: 12,
+                          background: P.white,
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 10,
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: 38,
+                              height: 38,
+                              borderRadius: "50%",
+                              background: P.p50,
+                              color: P.p600,
+                              display: "grid",
+                              placeItems: "center",
+                              fontFamily: F.display,
+                              fontSize: 14,
+                              fontWeight: 900,
+                              flexShrink: 0,
+                            }}
+                          >
+                            {String(coach.name || "C")
+                              .slice(0, 1)
+                              .toUpperCase()}
+                          </div>
+
+                          <div
+                            style={{
+                              flex: 1,
+                              minWidth: 0,
+                            }}
+                          >
+                            <div
+                              style={{
+                                fontFamily: F.body,
+                                fontSize: 12,
+                                fontWeight: 900,
+                                color: P.ink,
+                              }}
+                            >
+                              {coach.name || "Coach"}
+                            </div>
+
+                            {coach.email && (
+                              <div
+                                style={{
+                                  fontFamily: F.body,
+                                  fontSize: 10,
+                                  color: P.muted,
+                                  marginTop: 2,
+                                  overflowWrap: "anywhere",
+                                }}
+                              >
+                                {coach.email}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {away.length > 0 && (
+                          <div
+                            style={{
+                              display: "grid",
+                              gap: 5,
+                              marginTop: 10,
+                            }}
+                          >
+                            {away.map((leave) => (
+                              <div
+                                key={leave.id}
+                                style={{
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                  gap: 8,
+                                  alignItems: "center",
+                                  padding: "7px 9px",
+                                  borderRadius: 8,
+                                  background: "#fff7ed",
+                                  fontFamily: F.body,
+                                  fontSize: 9,
+                                  color: "#9a3412",
+                                }}
+                              >
+                                <span>
+                                  Away {leave.start_date}
+                                  {leave.end_date &&
+                                  leave.end_date !== leave.start_date
+                                    ? ` → ${leave.end_date}`
+                                    : ""}
+                                  {leave.note
+                                    ? ` · ${leave.note}`
+                                    : ""}
+                                </span>
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    removeCoachLeave(leave.id)
+                                  }
+                                  style={{
+                                    border: 0,
+                                    background: "transparent",
+                                    color: "#b91c1c",
+                                    cursor: "pointer",
+                                    fontWeight: 900,
+                                  }}
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: 8,
+                  marginTop: 16,
+                  flexWrap: "wrap",
+                }}
+              >
+                <Btn
+                  label="Close"
+                  variant="ghost"
+                  onClick={() => setShowCoachesPanel(false)}
+                />
+
+                <Btn
+                  label="+ Add coach holiday"
+                  variant="primary"
+                  onClick={() => {
+                    setShowCoachesPanel(false);
+                    setShowLeaveForm(true);
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
         {showLeaveForm && <div onClick={()=>setShowLeaveForm(false)} style={{position:"fixed",inset:0,zIndex:5000,background:"rgba(15,23,42,.5)",display:"grid",placeItems:"center",padding:18}}>
           <div onClick={e=>e.stopPropagation()} style={{width:"min(460px,100%)",background:P.white,borderRadius:18,padding:20,boxShadow:"0 30px 80px rgba(15,23,42,.28)"}}>
             <div style={{fontFamily:F.display,fontSize:20,fontWeight:900,color:P.ink}}>Add coach holiday</div>
@@ -721,41 +1697,50 @@ function PlannerScreen({ onNav, club, ageGroups, upcomingSessions, onOpenSession
       <TopBar title="Planner" sub={`${fullMonths[selectedMonth]} ${selectedYear}`}>
         <Btn label="+ New Session" variant="primary" onClick={() => { const d = new Date(); clickDate(d.getDate()); }} />
       </TopBar>
-      <div style={{ padding: "20px 24px", display: "flex", gap: 20 }}>
+      <div className="coach-planner-layout" style={{ padding: "20px 24px", display: "flex", gap: 20, minWidth: 0 }}>
         {/* Calendar */}
-        <div style={{ flex: 1 }}>
+        <div className="coach-planner-calendar-wrap" style={{ flex: 1, minWidth: 0 }}>
           {/* Month tabs */}
-          <div style={{ display: "flex", gap: 3, marginBottom: 16, overflowX: "auto" }}>
+          <div className="coach-planner-month-tabs" style={{ display: "flex", gap: 3, marginBottom: 16, overflowX: "auto", WebkitOverflowScrolling: "touch", paddingBottom: 2 }}>
             {months.map((m, i) => (
               <button key={m} onClick={() => setSelectedMonth(i)} style={{ padding: "6px 12px", borderRadius: 16, border: "none", cursor: "pointer", fontFamily: F.body, fontSize: 11, fontWeight: 700, background: selectedMonth === i ? P.p600 : "transparent", color: selectedMonth === i ? "#fff" : P.muted }}>{m}</button>
             ))}
           </div>
 
           {/* Calendar grid */}
-          <div style={{ background: P.white, borderRadius: 14, padding: 16, border: `1px solid ${P.line}`, boxShadow: Sh.card }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <div className="coach-planner-calendar-card" style={{ background: P.white, borderRadius: 14, padding: 16, border: `1px solid ${P.line}`, boxShadow: Sh.card, minWidth: 0 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, gap: 10 }}>
               <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink }}>{fullMonths[selectedMonth]} {selectedYear}</div>
               <div style={{ display: "flex", gap: 4 }}>
                 <button onClick={() => setSelectedMonth((m) => m > 0 ? m - 1 : 11)} style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${P.line}`, background: P.white, cursor: "pointer", fontSize: 12 }}>◀</button>
                 <button onClick={() => setSelectedMonth((m) => m < 11 ? m + 1 : 0)} style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${P.line}`, background: P.white, cursor: "pointer", fontSize: 12 }}>▶</button>
               </div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2, marginBottom: 4 }}>
+            <div className="coach-planner-legend" style={{ display:"flex", alignItems:"center", gap:6, marginBottom:10, fontFamily:F.body, fontSize:10, color:P.muted }}>
+              <span style={{ width:8, height:8, borderRadius:"50%", background:P.p600, display:"inline-block" }} />
+              Planned session — tap the date to open
+            </div>
+            <div className="coach-planner-weekdays" style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 2, marginBottom: 4 }}>
               {["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"].map((d) => (
                 <div key={d} style={{ textAlign: "center", fontFamily: F.body, fontSize: 9, fontWeight: 700, color: P.muted, padding: "4px 0" }}>{d}</div>
               ))}
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2 }}>
+            <div className="coach-planner-days" style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 2 }}>
               {calDays.map((day, i) => {
                 if (day === null) return <div key={`e-${i}`} />;
                 const sessions = sessionsByDate[day];
                 const todayBorder = isToday(day);
                 return (
-                  <div key={day} onClick={() => clickDate(day)} style={{ minHeight: 52, padding: 4, borderRadius: 6, border: todayBorder ? `2px solid ${P.p600}` : `1px solid ${P.line}`, background: todayBorder ? P.p50 : P.white, cursor: "pointer" }}>
-                    <div style={{ fontFamily: F.body, fontSize: 11, fontWeight: todayBorder ? 800 : 500, color: todayBorder ? P.p600 : P.ink }}>{day}</div>
+                  <div key={day} onClick={() => clickDate(day)} className={`coach-planner-day${sessions?.length ? " has-session" : ""}`} style={{ minHeight: 58, minWidth: 0, padding: 4, borderRadius: 7, border: sessions?.length ? `1.5px solid ${P.p300}` : (todayBorder ? `2px solid ${P.p600}` : `1px solid ${P.line}`), background: sessions?.length ? P.p50 : (todayBorder ? P.p50 : P.white), cursor: "pointer", overflow: "hidden", position:"relative" }}>
+                    <div className="coach-planner-day-number" style={{ fontFamily: F.body, fontSize: 11, fontWeight: todayBorder || sessions?.length ? 800 : 500, color: todayBorder ? P.p600 : P.ink }}>{day}</div>
+                    {sessions?.length > 0 && (
+                      <div className="coach-planner-session-count" style={{ position:"absolute", top:4, right:4, minWidth:16, height:16, padding:"0 4px", borderRadius:8, background:P.p600, color:"#fff", fontFamily:F.body, fontSize:8, fontWeight:900, display:"grid", placeItems:"center", boxSizing:"border-box" }}>
+                        {sessions.length}
+                      </div>
+                    )}
                     {sessions && sessions.map((s, si) => (
-                      <div key={si} style={{ background: P.p100, borderRadius: 3, padding: "1px 3px", marginTop: 2 }}>
-                        <div style={{ fontFamily: F.body, fontSize: 8, fontWeight: 700, color: P.p700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.plan?.hurling_skill?.name || "Session"}</div>
+                      <div key={si} className="coach-planner-session-chip" style={{ background: P.p100, borderRadius: 4, padding: "2px 4px", marginTop: 3, borderLeft:`3px solid ${P.p600}` }}>
+                        <div className="coach-planner-session-title" style={{ fontFamily: F.body, fontSize: 8, fontWeight: 800, color: P.p700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.plan?.hurling_skill?.name || "Training Session"}</div>
                       </div>
                     ))}
                   </div>
@@ -767,8 +1752,8 @@ function PlannerScreen({ onNav, club, ageGroups, upcomingSessions, onOpenSession
 
         {/* Right panel — session builder (when building) or empty */}
         {buildingDate && (
-          <div style={{ width: 300, flexShrink: 0 }}>
-            <div style={{ background: P.white, borderRadius: 14, padding: 16, border: `1px solid ${P.line}`, boxShadow: Sh.card, position: "sticky", top: 80 }}>
+          <div className="coach-planner-builder-wrap" style={{ width: 300, flexShrink: 0 }}>
+            <div className="coach-planner-builder" style={{ background: P.white, borderRadius: 14, padding: 16, border: `1px solid ${P.line}`, boxShadow: Sh.card, position: "sticky", top: 80 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                 <div>
                   <div style={{ fontFamily: F.display, fontSize: 14, fontWeight: 800, color: P.ink }}>New Session</div>
@@ -803,7 +1788,7 @@ function PlannerScreen({ onNav, club, ageGroups, upcomingSessions, onOpenSession
               )}
 
               {/* Search + add drills */}
-              <input type="text" placeholder="Search drills to add..." value={buildSearch} onChange={(e) => setBuildSearch(e.target.value)} style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 11, marginBottom: 8 }} />
+              <input type="text" placeholder="Search drills to add..." value={buildSearch} onChange={(e) => setBuildSearch(e.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 11, marginBottom: 8 }} />
               <div style={{ maxHeight: 300, overflowY: "auto" }}>
                 {filtered.slice(0, 20).map((a) => (
                   <div key={a.id} onClick={() => addDrillToBuild(a)} style={{ padding: "6px 0", borderBottom: `1px solid ${P.line}`, cursor: "pointer" }}>
@@ -1003,7 +1988,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
 
   return (
     <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
-      <TopBar title="Session Builder" sub={selectedTeam ? `${selectedTeam.label} ${selectedTeam.gender === "girls" ? "Girls" : "Boys"}` : "Select a team"}>
+      <TopBar title="Session Builder" sub={selectedTeam ? teamDisplayName(selectedTeam) : "Select a team"}>
         <Btn label="Share" variant="ghost" onClick={shareAsImage} />
         <Btn label="Save Session" variant="primary" onClick={saveSession} style={{ opacity: allDrills.length > 0 ? 1 : 0.5 }} />
       </TopBar>
@@ -1995,394 +2980,528 @@ function DrillCardBuilder({ diagramMap, allActivities, userRole, copyFrom, onBac
 }
 
 
-function PlayersScreen({ club, ageGroups, selectedTeam, userRole }) {
+function PlayersScreen({
+  club,
+  ageGroups = [],
+  selectedTeam,
+  userRole,
+}) {
   const [players, setPlayers] = useState([]);
-  const [csvPreview, setCsvPreview] = useState([]);
-  const [csvFileName, setCsvFileName] = useState("");
-  const [csvImporting, setCsvImporting] = useState(false);
-  const [csvError, setCsvError] = useState("");
-  const [loaded, setLoaded] = useState(false);
-  const [editingPlayer, setEditingPlayer] = useState(null);
-  const [editName, setEditName] = useState("");
-  const [editTeamId, setEditTeamId] = useState("");
-  const [editFootballPanel, setEditFootballPanel] = useState("");
-  const [editHurlingPanel, setEditHurlingPanel] = useState("");
-  const [savingPlayer, setSavingPlayer] = useState(false);
-  const [showAddPlayer, setShowAddPlayer] = useState(false);
-  const [newPlayerName, setNewPlayerName] = useState("");
-  const [newPlayerTeamId, setNewPlayerTeamId] = useState(selectedTeam?.id || "");
-  const [addingPlayer, setAddingPlayer] = useState(false);
-  const canManagePlayers = ["super_admin", "admin", "club_admin", "lead_coach"].includes(userRole?.role);
+  const [loading, setLoading] = useState(true);
+  const [savingKey, setSavingKey] = useState("");
+  const [message, setMessage] = useState("");
 
   async function loadPlayers() {
-    if (!club?.id) return;
-    setLoaded(false);
-    let query = supabase.from("journey_players").select("*, age_group:age_groups(label, gender)").eq("club_id", club.id).order("name");
-    const { data, error } = await query;
-    if (error) console.error("Could not load players", error);
-    setPlayers(data || []);
-    setLoaded(true);
-  }
-
-  useEffect(() => { loadPlayers(); }, [club?.id, selectedTeam?.id]);
-
-  function downloadPlayerTemplate() {
-    const headers = ["player_name", "team_label", "gender", "football_panel", "hurling_panel"];
-    const exampleTeam = ageGroups?.[0];
-    const rows = [
-      headers,
-      [
-        "Example Player",
-        exampleTeam?.label || "U12",
-        exampleTeam?.gender || "boys",
-        "A",
-        "B",
-      ],
-    ];
-    const esc = (value) => `"${String(value ?? "").replaceAll('"', '""')}"`;
-    const csv = rows.map((row) => row.map(esc).join(",")).join("\r\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "spraoi-player-import-template.csv";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  }
-
-  function parsePlayerCsvLine(line) {
-    const cells = [];
-    let current = "";
-    let quoted = false;
-
-    for (let i = 0; i < line.length; i += 1) {
-      const ch = line[i];
-      if (ch === '"') {
-        if (quoted && line[i + 1] === '"') {
-          current += '"';
-          i += 1;
-        } else {
-          quoted = !quoted;
-        }
-      } else if (ch === "," && !quoted) {
-        cells.push(current.trim());
-        current = "";
-      } else {
-        current += ch;
-      }
-    }
-    cells.push(current.trim());
-    return cells;
-  }
-
-  async function handleFile(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setCsvError("");
-    setCsvFileName(file.name);
-
-    const raw = await file.text();
-    const lines = raw.replace(/^\uFEFF/, "").split(/\r?\n/).filter((line) => line.trim());
-
-    if (lines.length < 2) {
-      setCsvPreview([]);
-      setCsvError("The CSV has no player rows.");
+    if (!club?.id) {
+      setPlayers([]);
+      setLoading(false);
       return;
     }
 
-    const headers = parsePlayerCsvLine(lines[0]).map((header) => header.trim().toLowerCase());
-    const required = ["player_name", "team_label"];
-    const missing = required.filter((header) => !headers.includes(header));
+    setLoading(true);
+    setMessage("");
 
-    if (missing.length) {
-      setCsvPreview([]);
-      setCsvError(`Missing required columns: ${missing.join(", ")}`);
-      return;
-    }
+    let query = supabase
+      .from("journey_players")
+      .select(
+        "id,name,age_group_id,football_panel,hurling_panel"
+      )
+      .eq("club_id", club.id)
+      .order("name");
 
-    const rows = lines.slice(1).map((line, index) => {
-      const values = parsePlayerCsvLine(line);
-      const row = Object.fromEntries(headers.map((header, i) => [header, values[i] ?? ""]));
-
-      const playerName = String(row.player_name || "").trim();
-      const teamLabel = String(row.team_label || "").trim();
-      const gender = String(row.gender || "").trim().toLowerCase();
-
-      const possibleTeams = (ageGroups || []).filter(
-        (team) => String(team.label || "").trim().toLowerCase() === teamLabel.toLowerCase()
+    if (selectedTeam?.id) {
+      query = query.eq(
+        "age_group_id",
+        selectedTeam.id
       );
+    }
 
-      const matchingTeam = gender
-        ? possibleTeams.find((team) => String(team.gender || "").trim().toLowerCase() === gender)
-        : possibleTeams.length === 1
-          ? possibleTeams[0]
-          : null;
-
-      const errors = [];
-      if (!playerName) errors.push("Player name required");
-      if (!teamLabel) errors.push("Team required");
-      if (!matchingTeam) {
-        if (possibleTeams.length > 1 && !gender) errors.push("Gender required because this team label exists more than once");
-        else errors.push("Team not found");
-      }
-
-      return {
-        rowNumber: index + 2,
-        playerName,
-        teamLabel,
-        gender,
-        team: matchingTeam || null,
-        footballPanel: String(row.football_panel || "").trim(),
-        hurlingPanel: String(row.hurling_panel || "").trim(),
-        errors,
-        valid: errors.length === 0,
-      };
-    });
-
-    setCsvPreview(rows);
-  }
-
-  async function importPlayers() {
-    if (!canManagePlayers || !club?.id) return;
-
-    const validRows = csvPreview.filter((row) => row.valid);
-    if (!validRows.length) return;
-
-    setCsvImporting(true);
-    setCsvError("");
-
-    const rows = validRows.map((row) => ({
-      parent_user_id: "00000000-0000-0000-0000-000000000000",
-      club_id: club.id,
-      age_group_id: row.team.id,
-      name: row.playerName,
-      football_panel: row.footballPanel || null,
-      hurling_panel: row.hurlingPanel || null,
-    }));
-
-    const { error } = await supabase.from("journey_players").insert(rows);
+    const { data, error } = await query;
 
     if (error) {
-      setCsvError("Could not import players: " + error.message);
-      setCsvImporting(false);
+      setMessage(error.message);
+      setPlayers([]);
+    } else {
+      setPlayers(data || []);
+    }
+
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    loadPlayers();
+  }, [club?.id, selectedTeam?.id]);
+
+  function teamDisplay(player) {
+    const team = ageGroups.find(
+      (item) =>
+        String(item.id) ===
+        String(player.age_group_id)
+    );
+
+    if (!team) return "—";
+
+    return teamDisplayName(team);
+  }
+
+  async function updatePanel(
+    player,
+    field,
+    value
+  ) {
+    const key = `${player.id}:${field}`;
+
+    setSavingKey(key);
+    setMessage("");
+
+    const { error } = await supabase
+      .from("journey_players")
+      .update({
+        [field]: value || null,
+      })
+      .eq("id", player.id);
+
+    setSavingKey("");
+
+    if (error) {
+      setMessage(error.message);
       return;
     }
 
-    setCsvPreview([]);
-    setCsvFileName("");
-    setCsvImporting(false);
-    await loadPlayers();
+    setPlayers((current) =>
+      current.map((item) =>
+        item.id === player.id
+          ? {
+              ...item,
+              [field]: value || null,
+            }
+          : item
+      )
+    );
   }
 
-  async function addPlayer() {
-    if (!canManagePlayers || !newPlayerName.trim() || !club?.id) return;
-    setAddingPlayer(true);
-    const { error } = await supabase.from("journey_players").insert({
-      parent_user_id: "00000000-0000-0000-0000-000000000000",
-      club_id: club.id,
-      age_group_id: newPlayerTeamId || selectedTeam?.id || null,
-      name: newPlayerName.trim(),
-    });
-    setAddingPlayer(false);
-    if (error) { alert("Could not add player: " + error.message); return; }
-    setNewPlayerName("");
-    setNewPlayerTeamId(selectedTeam?.id || "");
-    setShowAddPlayer(false);
-    await loadPlayers();
-  }
-
-  function startEdit(player) {
-    setEditingPlayer(player);
-    setEditName(player.name || "");
-    setEditTeamId(player.age_group_id || selectedTeam?.id || "");
-    setEditFootballPanel(player.football_panel || "");
-    setEditHurlingPanel(player.hurling_panel || "");
-  }
-
-  async function savePlayer() {
-    if (!canManagePlayers || !editingPlayer?.id || !editName.trim()) return;
-    setSavingPlayer(true);
-    const { error } = await supabase.from("journey_players").update({
-      name: editName.trim(),
-      age_group_id: editTeamId || null,
-      football_panel: editFootballPanel || null,
-      hurling_panel: editHurlingPanel || null,
-    }).eq("id", editingPlayer.id);
-    setSavingPlayer(false);
-    if (error) { alert("Could not update player: " + error.message); return; }
-    setEditingPlayer(null);
-    await loadPlayers();
-  }
-
-  async function deletePlayer(player) {
-    if (!canManagePlayers) return;
-    if (!window.confirm(`Remove ${player.name} from Academy/Coach players?`)) return;
-    const { error } = await supabase.from("journey_players").delete().eq("id", player.id);
-    if (error) { alert("Could not remove player: " + error.message); return; }
-    await loadPlayers();
-  }
-
-  const visiblePlayers = selectedTeam?.id ? players.filter((p) => String(p.age_group_id) === String(selectedTeam.id)) : players;
+  const sportTwoLabel =
+    String(selectedTeam?.gender || "").toLowerCase() === "girls"
+      ? "Camogie"
+      : "Hurling";
 
   return (
-    <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
-      <TopBar title="Players" sub={`${visiblePlayers.length} ${selectedTeam ? `in ${selectedTeam.label} ${selectedTeam.gender === "girls" ? "Girls" : "Boys"}` : "in squad"}`}>
-        {canManagePlayers && <Btn label="+ Add Player" variant="primary" onClick={() => { setNewPlayerTeamId(selectedTeam?.id || ""); setShowAddPlayer(true); }} />}
-      </TopBar>
-      <div style={{ padding: "20px 28px" }}>
-        {canManagePlayers && (
-          <div style={{ background: P.white, borderRadius: 14, padding: 18, border: `1px solid ${P.line}`, marginBottom: 16 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", flexWrap: "wrap", marginBottom: 13 }}>
-              <div style={{ flex: 1, minWidth: 220 }}>
-                <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 800, color: P.ink }}>Bulk Import Players</div>
-                <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 3 }}>
-                  Download the template, complete it in Excel or Google Sheets, upload the CSV, review errors, then confirm.
-                </div>
-              </div>
-              <Btn label="Download CSV Template" variant="ghost" onClick={downloadPlayerTemplate} />
-            </div>
+    <div
+      style={{
+        flex: 1,
+        overflow: "auto",
+        background: P.soft,
+      }}
+    >
+      <style>{`
+        .coach-player-page {
+          padding: 20px 28px;
+          max-width: 1120px;
+          margin: 0 auto;
+        }
 
-            <label style={{ display: "block", border: `1.5px dashed ${P.p600}66`, borderRadius: 12, padding: 17, textAlign: "center", cursor: "pointer", background: P.p50 }}>
-              <input type="file" accept=".csv,text/csv" onChange={handleFile} style={{ display: "none" }} />
-              <div style={{ fontFamily: F.body, fontSize: 11, fontWeight: 800, color: P.ink }}>Choose completed CSV</div>
-              <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted, marginTop: 3 }}>
-                Required: Player Name and Team. Gender is used when two teams share the same label.
-              </div>
-            </label>
+        .coach-player-header,
+        .coach-player-row {
+          display: grid;
+          grid-template-columns:
+            minmax(180px, 1.35fr)
+            minmax(110px, .7fr)
+            minmax(145px, .75fr)
+            minmax(145px, .75fr);
+          gap: 12px;
+          align-items: center;
+        }
 
-            {csvFileName && (
-              <div style={{ marginTop: 9, fontFamily: F.body, fontSize: 9, color: P.muted }}>Loaded: {csvFileName}</div>
-            )}
+        .coach-player-header {
+          padding: 10px 14px;
+          background: #f8fafc;
+          border-bottom: 1px solid #e2e8f0;
+        }
 
-            {csvError && (
-              <div style={{ marginTop: 10, padding: 9, borderRadius: 8, background: "#fff1f1", color: "#a61b1b", fontFamily: F.body, fontSize: 10 }}>
-                {csvError}
-              </div>
-            )}
+        .coach-player-row {
+          padding: 11px 14px;
+        }
+
+        .coach-player-mobile-label {
+          display: none;
+        }
+
+        .coach-player-field select {
+          width: 100%;
+          min-width: 0;
+          height: 36px;
+          box-sizing: border-box;
+        }
+
+        @media (max-width: 760px) {
+          .coach-player-page {
+            padding: 14px 12px 90px;
+          }
+
+          .coach-player-header {
+            display: none;
+          }
+
+          .coach-player-row {
+            display: block;
+            padding: 15px;
+            border-bottom: 8px solid #f5f7fa !important;
+          }
+
+          .coach-player-name {
+            margin-bottom: 8px;
+          }
+
+          .coach-player-source {
+            display: inline-flex;
+            width: auto;
+            padding: 4px 8px;
+            margin-bottom: 13px;
+            border-radius: 999px;
+            background: #f1f5f9;
+          }
+
+          .coach-player-mobile-panels {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            width: 100%;
+          }
+
+          .coach-player-field {
+            min-width: 0;
+          }
+
+          .coach-player-mobile-label {
+            display: block;
+            margin-bottom: 5px;
+            font-family: Inter, "Segoe UI", sans-serif;
+            font-size: 9px;
+            font-weight: 900;
+            line-height: 1.2;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: .05em;
+          }
+
+          .coach-player-field select {
+            display: block;
+            width: 100%;
+            height: 44px;
+            min-height: 44px;
+            padding: 0 10px;
+            font-size: 16px !important;
+            background: #fff;
+          }
+        }
+
+        @media (max-width: 390px) {
+          .coach-player-mobile-panels {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
+
+      <TopBar
+        title="Players & A/B Teams"
+        sub={`${players.length} · ${
+          selectedTeam
+            ? teamDisplayName(selectedTeam)
+            : "Selected team"
+        }`}
+      />
+
+      <div className="coach-player-page">
+
+        <div
+          style={{
+            background: P.white,
+            border: `1px solid ${P.line}`,
+            borderRadius: 14,
+            padding: 16,
+            marginBottom: 16,
+          }}
+        >
+          <div
+            style={{
+              fontFamily: F.display,
+              fontSize: 15,
+              fontWeight: 900,
+              color: P.ink,
+            }}
+          >
+            Club roster
+          </div>
+
+          <div
+            style={{
+              fontFamily: F.body,
+              fontSize: 10,
+              color: P.muted,
+              marginTop: 4,
+              lineHeight: 1.5,
+            }}
+          >
+            Players come from Spraoi Club. Coaches can
+            organise the same roster into Football and
+            {` ${sportTwoLabel}`} A/B groups here.
+          </div>
+
+          <button
+            type="button"
+            onClick={() =>
+              window.location.assign(
+                MODULE_URLS.club
+              )
+            }
+            style={{
+              marginTop: 11,
+              height: 34,
+              border: 0,
+              borderRadius: 9,
+              background: P.p600,
+              color: "#fff",
+              padding: "0 12px",
+              fontFamily: F.body,
+              fontSize: 10,
+              fontWeight: 900,
+              cursor: "pointer",
+            }}
+          >
+            Manage roster in Club
+          </button>
+        </div>
+
+        {message && (
+          <div
+            style={{
+              marginBottom: 12,
+              padding: 10,
+              borderRadius: 9,
+              background: "#fff7ed",
+              color: "#b45309",
+              fontFamily: F.body,
+              fontSize: 10,
+            }}
+          >
+            {message}
           </div>
         )}
 
-        {canManagePlayers && csvPreview.length > 0 && (
-          <div style={{ background: P.white, borderRadius: 12, padding: 16, border: `1px solid ${P.line}`, marginBottom: 16 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
-              <div>
-                <div style={{ fontFamily: F.display, fontSize: 14, fontWeight: 800, color: P.ink }}>Import Preview</div>
-                <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted, marginTop: 2 }}>
-                  {csvPreview.filter((row) => row.valid).length} ready · {csvPreview.filter((row) => !row.valid).length} need attention
-                </div>
+        <div
+          style={{
+            background: P.white,
+            border: `1px solid ${P.line}`,
+            borderRadius: 14,
+            overflow: "hidden",
+          }}
+        >
+          {!loading && players.length > 0 && (
+            <div className="coach-player-header">
+              <div
+                style={{
+                  fontFamily: F.body,
+                  fontSize: 9,
+                  fontWeight: 900,
+                  color: P.muted,
+                  textTransform: "uppercase",
+                }}
+              >
+                Player
               </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <Btn label="Cancel" variant="ghost" onClick={() => { setCsvPreview([]); setCsvFileName(""); setCsvError(""); }} />
-                <Btn
-                  label={csvImporting ? "Importing…" : `Import ${csvPreview.filter((row) => row.valid).length} Valid Rows`}
-                  variant="primary"
-                  onClick={importPlayers}
-                />
+
+              <div
+                style={{
+                  fontFamily: F.body,
+                  fontSize: 9,
+                  fontWeight: 900,
+                  color: P.muted,
+                  textTransform: "uppercase",
+                }}
+              >
+                Roster
+              </div>
+
+              <div
+                style={{
+                  fontFamily: F.body,
+                  fontSize: 9,
+                  fontWeight: 900,
+                  color: P.muted,
+                  textTransform: "uppercase",
+                }}
+              >
+                Football A/B
+              </div>
+
+              <div
+                style={{
+                  fontFamily: F.body,
+                  fontSize: 9,
+                  fontWeight: 900,
+                  color: P.muted,
+                  textTransform: "uppercase",
+                }}
+              >
+                {sportTwoLabel} A/B
               </div>
             </div>
+          )}
 
-            <div style={{ overflowX: "auto", border: `1px solid ${P.line}`, borderRadius: 10 }}>
-              <div style={{ minWidth: 720 }}>
-                {csvPreview.map((row) => (
+          {loading ? (
+            <div
+              style={{
+                padding: 24,
+                textAlign: "center",
+                fontFamily: F.body,
+                fontSize: 11,
+                color: P.muted,
+              }}
+            >
+              Loading players…
+            </div>
+          ) : players.length === 0 ? (
+            <div
+              style={{
+                padding: 24,
+                textAlign: "center",
+                fontFamily: F.body,
+                fontSize: 11,
+                color: P.muted,
+              }}
+            >
+              No Club players found for this team.
+            </div>
+          ) : (
+            players.map((player, index) => (
+              <div
+                key={player.id}
+                className="coach-player-row"
+                style={{
+                  borderBottom:
+                    index < players.length - 1
+                      ? `1px solid ${P.line}`
+                      : "none",
+                }}
+              >
+                <div className="coach-player-name">
                   <div
-                    key={row.rowNumber}
                     style={{
-                      display: "grid",
-                      gridTemplateColumns: "55px 1.2fr 1fr .7fr .8fr 1.5fr",
-                      gap: 8,
-                      alignItems: "center",
-                      padding: "8px 10px",
-                      borderTop: row.rowNumber === 2 ? "none" : `1px solid ${P.line}`,
-                      background: row.valid ? "#fff" : "#fff7f7",
+                      fontFamily: F.body,
+                      fontSize: 12,
+                      fontWeight: 900,
+                      color: P.ink,
                     }}
                   >
-                    <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted }}>Row {row.rowNumber}</div>
-                    <div style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, color: P.ink }}>{row.playerName || "—"}</div>
-                    <div style={{ fontFamily: F.body, fontSize: 9, color: P.ink }}>{row.teamLabel || "—"}</div>
-                    <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted }}>{row.gender || "—"}</div>
-                    <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted }}>
-                      F {row.footballPanel || "—"} · H {row.hurlingPanel || "—"}
-                    </div>
-                    <div style={{ fontFamily: F.body, fontSize: 8, fontWeight: 800, color: row.valid ? "#1f6b32" : "#a61b1b" }}>
-                      {row.valid ? "Ready" : row.errors.join(" · ")}
-                    </div>
+                    {player.name}
                   </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
 
-        <div style={{ background: P.white, borderRadius: 14, border: `1px solid ${P.line}`, overflow: "hidden" }}>
-          {visiblePlayers.map((p, i) => (
-            <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 16px", borderBottom: i < visiblePlayers.length - 1 ? `1px solid ${P.line}` : "none", flexWrap: "wrap" }}>
-              <div style={{ width: 30, height: 30, borderRadius: "50%", background: `${P.p600}18`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F.display, fontSize: 12, fontWeight: 800, color: P.p600 }}>{p.name?.[0] || "P"}</div>
-              <div style={{ flex: 1, minWidth: 180 }}>
-                <div style={{ fontFamily: F.body, fontSize: 13, fontWeight: 600, color: P.ink }}>{p.name}</div>
-                <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>{p.age_group?.label || "No team"} {p.age_group ? (p.age_group.gender === "girls" ? "Girls" : "Boys") : ""}</div>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 5 }}>
-                  <span style={{ fontFamily: F.body, fontSize: 9, fontWeight: 800, color: "#1d4ed8", background: "#dbeafe", borderRadius: 999, padding: "2px 7px" }}>Football {p.football_panel || "—"}</span>
-                  <span style={{ fontFamily: F.body, fontSize: 9, fontWeight: 800, color: "#b91c1c", background: "#fee2e2", borderRadius: 999, padding: "2px 7px" }}>{selectedTeam?.gender === "girls" ? "Camogie" : "Hurling"} {p.hurling_panel || "—"}</span>
+                  <div
+                    style={{
+                      fontFamily: F.body,
+                      fontSize: 9,
+                      color: P.muted,
+                      marginTop: 2,
+                    }}
+                  >
+                    {teamDisplay(player)}
+                  </div>
+                </div>
+
+                <div
+                  className="coach-player-source"
+                  style={{
+                    fontFamily: F.body,
+                    fontSize: 9,
+                    fontWeight: 800,
+                    color: P.muted,
+                  }}
+                >
+                  Club managed
+                </div>
+
+                <div className="coach-player-mobile-panels">
+                  <div className="coach-player-field">
+                    <div className="coach-player-mobile-label">
+                      Football A/B
+                    </div>
+
+                    <select
+                      aria-label={`Football panel for ${player.name}`}
+                      value={
+                        player.football_panel || ""
+                      }
+                      disabled={
+                        savingKey ===
+                        `${player.id}:football_panel`
+                      }
+                      onChange={(event) =>
+                        updatePanel(
+                          player,
+                          "football_panel",
+                          event.target.value
+                        )
+                      }
+                      style={{
+                        border: `1px solid ${P.line}`,
+                        borderRadius: 8,
+                        padding: "0 8px",
+                        background: "#fff",
+                        fontFamily: F.body,
+                        fontSize: 10,
+                      }}
+                    >
+                      <option value="">
+                        Unassigned
+                      </option>
+                      <option value="A">A Team</option>
+                      <option value="B">B Team</option>
+                    </select>
+                  </div>
+
+                  <div className="coach-player-field">
+                    <div className="coach-player-mobile-label">
+                      {sportTwoLabel} A/B
+                    </div>
+
+                    <select
+                      aria-label={`${sportTwoLabel} panel for ${player.name}`}
+                      value={
+                        player.hurling_panel || ""
+                      }
+                      disabled={
+                        savingKey ===
+                        `${player.id}:hurling_panel`
+                      }
+                      onChange={(event) =>
+                        updatePanel(
+                          player,
+                          "hurling_panel",
+                          event.target.value
+                        )
+                      }
+                      style={{
+                        border: `1px solid ${P.line}`,
+                        borderRadius: 8,
+                        padding: "0 8px",
+                        background: "#fff",
+                        fontFamily: F.body,
+                        fontSize: 10,
+                      }}
+                    >
+                      <option value="">
+                        Unassigned
+                      </option>
+                      <option value="A">A Team</option>
+                      <option value="B">B Team</option>
+                    </select>
+                  </div>
                 </div>
               </div>
-              {canManagePlayers && <div style={{ display: "flex", gap: 6 }}><Btn label="Edit" variant="secondary" style={{ height: 34, fontSize: 10 }} onClick={() => startEdit(p)} /><Btn label="Remove" variant="ghost" style={{ height: 34, fontSize: 10, color: P.coral }} onClick={() => deletePlayer(p)} /></div>}
-            </div>
-          ))}
-          {visiblePlayers.length === 0 && loaded && <div style={{ padding: 24, textAlign: "center", fontFamily: F.body, fontSize: 12, color: P.muted }}>No players found for this team.</div>}
+            ))
+          )}
         </div>
       </div>
-
-      {showAddPlayer && canManagePlayers && (
-        <div onClick={() => setShowAddPlayer(false)} style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(15,23,42,.45)", display: "grid", placeItems: "center", padding: 16 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "min(440px, calc(100vw - 32px))", background: P.white, borderRadius: 16, padding: 20, boxShadow: Sh.lift }}>
-            <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 900, color: P.ink, marginBottom: 14 }}>Add Player</div>
-            <label style={{ display: "block", fontFamily: F.body, fontSize: 11, fontWeight: 800, color: P.ink, marginBottom: 6 }}>Name</label>
-            <input autoFocus value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} placeholder="Player name" style={{ width: "100%", boxSizing: "border-box", padding: "10px 11px", borderRadius: 9, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 14, marginBottom: 14 }} />
-            <label style={{ display: "block", fontFamily: F.body, fontSize: 11, fontWeight: 800, color: P.ink, marginBottom: 6 }}>Team</label>
-            <select value={newPlayerTeamId} onChange={(e) => setNewPlayerTeamId(e.target.value)} style={{ width: "100%", boxSizing: "border-box", padding: "10px 11px", borderRadius: 9, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 14, marginBottom: 18 }}>
-              <option value="">No team</option>
-              {(ageGroups || []).map((ag) => <option key={ag.id} value={ag.id}>{ag.label} {ag.gender === "girls" ? "Girls" : "Boys"}</option>)}
-            </select>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-              <Btn label="Cancel" variant="ghost" onClick={() => setShowAddPlayer(false)} />
-              <Btn label={addingPlayer ? "Adding..." : "Add Player"} variant="primary" onClick={addPlayer} />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {editingPlayer && (
-        <div onClick={() => setEditingPlayer(null)} style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(15,23,42,.45)", display: "grid", placeItems: "center", padding: 16 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "min(440px, calc(100vw - 32px))", maxWidth: "100%", boxSizing: "border-box", background: P.white, borderRadius: 16, padding: 20, boxShadow: Sh.lift, overflow: "hidden" }}>
-            <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 900, color: P.ink, marginBottom: 14 }}>Edit Player</div>
-            <label style={{ display: "block", fontFamily: F.body, fontSize: 11, fontWeight: 800, color: P.ink, marginBottom: 6 }}>Name</label>
-            <input value={editName} onChange={(e) => setEditName(e.target.value)} style={{ width: "100%", minWidth: 0, boxSizing: "border-box", padding: "10px 11px", borderRadius: 9, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 16, marginBottom: 14 }} />
-            <label style={{ display: "block", fontFamily: F.body, fontSize: 11, fontWeight: 800, color: P.ink, marginBottom: 6 }}>Team</label>
-            <select value={editTeamId} onChange={(e) => setEditTeamId(e.target.value)} style={{ width: "100%", minWidth: 0, boxSizing: "border-box", padding: "10px 11px", borderRadius: 9, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 16, marginBottom: 14 }}>
-              <option value="">No team</option>
-              {(ageGroups || []).map((ag) => <option key={ag.id} value={ag.id}>{ag.label} {ag.gender === "girls" ? "Girls" : "Boys"}</option>)}
-            </select>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 10, marginBottom: 18 }}>
-              <label style={{ minWidth: 0 }}>
-                <span style={{ display: "block", fontFamily: F.body, fontSize: 11, fontWeight: 800, color: P.ink, marginBottom: 6 }}>Football panel</span>
-                <select value={editFootballPanel} onChange={(e) => setEditFootballPanel(e.target.value)} style={{ width: "100%", minWidth: 0, boxSizing: "border-box", padding: "10px 11px", borderRadius: 9, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 16 }}>
-                  <option value="">Unassigned</option><option value="A">A</option><option value="B">B</option>
-                </select>
-              </label>
-              <label style={{ minWidth: 0 }}>
-                <span style={{ display: "block", fontFamily: F.body, fontSize: 11, fontWeight: 800, color: P.ink, marginBottom: 6 }}>{selectedTeam?.gender === "girls" ? "Camogie" : "Hurling"} panel</span>
-                <select value={editHurlingPanel} onChange={(e) => setEditHurlingPanel(e.target.value)} style={{ width: "100%", minWidth: 0, boxSizing: "border-box", padding: "10px 11px", borderRadius: 9, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 16 }}>
-                  <option value="">Unassigned</option><option value="A">A</option><option value="B">B</option>
-                </select>
-              </label>
-            </div>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}><Btn label="Cancel" variant="ghost" onClick={() => setEditingPlayer(null)} /><Btn label={savingPlayer ? "Saving..." : "Save Player"} variant="primary" onClick={savePlayer} /></div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -2870,7 +3989,7 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
   const academyDark = "#075985";
   const academySoft = "#eef8ff";
   const teamName = selectedTeam
-    ? `${selectedTeam.label} ${selectedTeam.gender === "girls" ? "Girls" : "Boys"}`
+    ? teamDisplayName(selectedTeam)
     : "No team selected";
 
   const weeklyRecommendations = getAcademyWeeklyRecommendations(planSessions, skills, overrides, selectedTeam);
@@ -3193,7 +4312,7 @@ function AcademyWeeklyContent({ selectedTeam, weeklyPlan, planSessions, extras, 
     { key:"recovery", label:"Rest & Recovery", icon:"🌙", color:"#0f766e", test:x=>(x.type||x.activity_type)==="recovery" },
   ];
   return <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
-    <AcademyPageHeader title="Weekly Content" sub={`${selectedTeam?.label || "Selected team"} · Build, review and publish the child experience`} actions={<Btn label={published ? "Unpublish week" : "Review & publish"} variant="primary" icon={published ? "↓" : "↑"} onClick={requestPublish} style={{ background: published ? P.green : ACADEMY_BLUE }} />} />
+    <AcademyPageHeader title="Weekly Content" sub={`${selectedTeam ? teamDisplayName(selectedTeam) : "Selected team"} · Build, review and publish the child experience`} actions={<Btn label={published ? "Unpublish week" : "Review & publish"} variant="primary" icon={published ? "↓" : "↑"} onClick={requestPublish} style={{ background: published ? P.green : ACADEMY_BLUE }} />} />
     <div style={{ padding: 24, maxWidth: 1240, margin: "0 auto" }}>
       <AcademyCard style={{ marginBottom: 16, borderColor: "#b9e3f8" }}>
         <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><div><AcademyBadge>Weekly readiness</AcademyBadge><div style={{fontFamily:F.display,fontSize:18,fontWeight:900,color:P.ink,marginTop:8}}>{published?"This week is live":"Complete the checks before publishing"}</div></div><div style={{display:"flex",gap:7,flexWrap:"wrap"}}>{validation.map(v=><AcademyBadge key={v.label} color={v.ok?"#15803d":"#b45309"} bg={v.ok?"#dcfce7":"#fff7ed"}>{v.ok?"✓":"!"} {v.label}</AcademyBadge>)}</div></div>
@@ -3356,8 +4475,8 @@ function AcademyParents({ selectedTeam, parentRows, setParentRows }) {
         <AcademyCard>
           <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 16, alignItems: "center" }}>
             <div>
-              <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 900, color: P.ink }}>Optional parent CSV</div>
-              <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 4 }}>CSV columns: Parent Name, Parent Email, Child Name.</div>
+              <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 900, color: P.ink }}>Parent access is managed in Spraoi Club</div>
+              <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 4 }}>Players and linked parents come from the Club team record.</div>
             </div>
             <label style={{ height: 38, padding: "0 14px", borderRadius: 10, background: ACADEMY_BLUE, color: "#fff", display: "flex", alignItems: "center", fontFamily: F.body, fontSize: 11, fontWeight: 900, cursor: "pointer" }}>
               Upload CSV<input type="file" accept=".csv,text/csv" style={{ display: "none" }} onChange={(e) => e.target.files?.[0] && parseFile(e.target.files[0])} />
@@ -3388,8 +4507,8 @@ function AcademySettings({ published, onNav }) {
 
 function AcademySectionScreen({ screen, onNav, club, selectedTeam, weeklyPlan, planSessions, extras, skills, overrides, onSetOverride, onAddExtra, onUpdateExtra, onRemoveExtra, onMoveExtra, published, onPublish, parentRows, setParentRows }) {
   if (screen === "academy-content") return <AcademyWeeklyContent selectedTeam={selectedTeam} weeklyPlan={weeklyPlan} planSessions={planSessions} extras={extras} skills={skills} overrides={overrides} onSetOverride={onSetOverride} onAddExtra={onAddExtra} onUpdateExtra={onUpdateExtra} onRemoveExtra={onRemoveExtra} onMoveExtra={onMoveExtra} published={published} onPublish={onPublish}/>;
-  if (screen === "academy-players") return <AcademyPlayers selectedTeam={selectedTeam} club={club}/>;
-  if (screen === "academy-parents") return <AcademyParents selectedTeam={selectedTeam} parentRows={parentRows} setParentRows={setParentRows}/>;
+  if (screen === "academy-players") return <AccessDeniedScreen module={MODULES.academy} club={club} />;
+  if (screen === "academy-parents") return <AccessDeniedScreen module={MODULES.academy} club={club} />;
   if (screen === "academy-preview") return <AcademyPreview planSessions={planSessions} extras={extras} skills={skills} overrides={overrides} published={published} selectedTeam={selectedTeam}/>;
   if (screen === "academy-engagement") return <AcademyEngagement/>;
   if (screen === "academy-leaderboard") return <AcademyLeaderboard extras={extras}/>;
@@ -3465,37 +4584,51 @@ function AccessDeniedScreen({ module, club }) {
 /* ============================================================
    MOBILE BOTTOM NAV — shows modules
    ============================================================ */
-function MobileHeader({ activeModule, setActiveModule, onNav, enabledModules, club, selectedTeam }) {
+function MobileHeader({ activeModule, setActiveModule, onNav, enabledModules, club, selectedTeam, ageGroups = [], myTeams = [], onSelectTeam, onShowProfile }) {
   const [open, setOpen] = useState(false);
   const mod = MODULES[activeModule];
   const clubName = club?.name || "Club Spraoi";
+  const mobileTeams = myTeams?.length ? ageGroups.filter((ag) => myTeams.includes(ag.id)) : ageGroups;
   function openModule(key, module) {
-    setActiveModule(key);
-    onNav(enabledModules.includes(key) ? module.nav[0].id : `access-denied-${key}`);
+    if (!enabledModules.includes(key)) {
+      onNav(`access-denied-${key}`);
+      setOpen(false);
+      return;
+    }
+    if (key !== APP_MODULE) {
+      openAdminModule(key, module.nav[0].id);
+      return;
+    }
+    setActiveModule(APP_MODULE);
+    onNav(module.nav[0].id);
     setOpen(false);
   }
   return (
     <>
       <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 62, zIndex: 200, padding: "0 12px", background: mod.color, color: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: `0 5px 18px ${mod.color}35` }}>
-        <button onClick={() => setOpen(true)} style={{ border: "none", background: "rgba(255,255,255,.16)", width: 42, height: 42, borderRadius: 12, display: "grid", placeItems: "center", cursor: "pointer" }}>
-          <img src={mod.icon} alt={mod.label} style={{ width: 31, height: 31, objectFit: "contain" }} />
+        <button onClick={() => setOpen(true)} style={{ border: "1px solid rgba(15,23,42,.08)", background: "#fff", width: 42, height: 42, borderRadius: 12, display: "grid", placeItems: "center", padding: 0, boxSizing: "border-box", cursor: "pointer", boxShadow: "0 4px 12px rgba(15,23,42,.14)" }}>
+          <img src={club?.logo_url || "/spraoi-club-icon.png"} alt={`${clubName} crest`} style={{ width: 36, height: 36, objectFit: "contain", display: "block", margin: "0 auto" }} />
         </button>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900 }}>{mod.label}</div>
-          <div style={{ fontFamily: F.body, fontSize: 9, opacity: .78 }}>{selectedTeam ? `${selectedTeam.label} ${selectedTeam.gender === "girls" ? "Girls" : "Boys"}` : clubName}</div>
+        <div style={{ minWidth:0, flex:1, padding:"0 10px", display:"flex", alignItems:"center", justifyContent:"center" }}>
+          {mobileTeams.length > 1 ? (
+            <select aria-label="Current team" value={selectedTeam?.id || ""} onChange={(e)=>{ const ag=ageGroups.find(a=>String(a.id)===String(e.target.value)); if(ag&&onSelectTeam) onSelectTeam(ag); }} style={{ maxWidth:220, width:"100%", border:"1px solid rgba(255,255,255,.42)", background:"rgba(255,255,255,.18)", color:"#fff", borderRadius:10, padding:"8px 10px", fontFamily:F.body, fontSize:11, fontWeight:900 }}>
+              {!selectedTeam && <option value="" style={{color:P.ink}}>Select team</option>}
+              {mobileTeams.map(ag=><option key={ag.id} value={ag.id} style={{color:P.ink}}>{teamDisplayName(ag)}</option>)}
+            </select>
+          ) : <div style={{fontFamily:F.body,fontSize:11,fontWeight:900}}>{selectedTeam ? teamDisplayName(selectedTeam) : clubName}</div>}
         </div>
-        <div style={{ width: 42, height: 42, borderRadius: 12, background: "rgba(255,255,255,.14)", display: "grid", placeItems: "center", fontFamily: F.display, fontWeight: 900 }}>{clubName[0]}</div>
+        <button onClick={onShowProfile} aria-label="Open profile" style={{ width:42,height:42,borderRadius:12,border:"1px solid rgba(255,255,255,.2)",background:"rgba(255,255,255,.14)",color:"#fff",display:"grid",placeItems:"center",fontFamily:F.display,fontWeight:900,cursor:"pointer" }}>{clubName[0]}</button>
       </div>
       {open && (
         <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(5,18,34,.62)", padding: 16, display: "flex", alignItems: "flex-start", justifyContent: "center" }}>
           <div onClick={(e) => e.stopPropagation()} style={{ marginTop: 58, width: "100%", maxWidth: 430, background: P.white, borderRadius: 20, padding: 16, boxShadow: Sh.lift }}>
             <div style={{ fontFamily: F.display, fontWeight: 900, color: P.ink, fontSize: 18, marginBottom: 12 }}>Switch module</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
-              {Object.entries(MODULES).map(([key, m]) => {
+              {Object.entries(MODULES).filter(([key]) => !["plus","connect"].includes(key)).map(([key, m]) => {
                 const unlocked = enabledModules.includes(key);
                 return (
                   <button key={key} onClick={() => openModule(key, m)} style={{ position: "relative", border: `1px solid ${activeModule === key ? m.color : P.line}`, background: activeModule === key ? `${m.color}0d` : P.white, borderRadius: 14, padding: 13, display: "flex", alignItems: "center", gap: 10, textAlign: "left", cursor: "pointer" }}>
-                    <img src={m.icon} alt="" style={{ width: 38, height: 38, objectFit: "contain", opacity: unlocked ? 1 : .5, filter: unlocked ? "none" : "grayscale(1)" }} />
+                    <span style={{ width: 46, height: 46, borderRadius: 13, background: "#fff", border: "1px solid rgba(15,23,42,.08)", display: "grid", placeItems: "center", padding: 0, boxSizing: "border-box", flexShrink: 0, boxShadow: "0 3px 10px rgba(15,23,42,.08)" }}><img src={m.icon} alt="" style={{ width: 34, height: 34, objectFit: "contain", display: "block", margin: "0 auto", opacity: unlocked ? 1 : .5, filter: unlocked ? "none" : "grayscale(1)" }} /></span>
                     <div>
                       <div style={{ fontFamily: F.display, fontWeight: 900, color: P.ink, fontSize: 13 }}>{m.label}</div>
                       <div style={{ fontFamily: F.body, color: unlocked ? P.muted : m.color, fontSize: 9 }}>{unlocked ? "Open module" : "Access required"}</div>
@@ -3514,21 +4647,187 @@ function MobileHeader({ activeModule, setActiveModule, onNav, enabledModules, cl
 
 function MobileNav({ activeModule, screen, onNav, enabledModules }) {
   const module = MODULES[activeModule];
-  const hasAccess = true;
-  const items = module.nav.slice(0, 5);
-  if (!hasAccess) return null;
+  const [showMore, setShowMore] = useState(false);
+
+  const items = [
+    { id: "coach-dashboard", label: "Dashboard" },
+    { id: "coach-planner", label: "Planner" },
+    { id: "coach-sessions", label: "Sessions" },
+    { id: "coach-drills", label: "Drills" },
+  ];
+
+  const moreItems = [
+    { id: "coach-players", label: "Players" },
+    
+  ];
+
+  const moreActive = moreItems.some((item) => item.id === screen);
+
   return (
-    <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#fff", borderTop: `1px solid ${P.line}`, display: "flex", padding: "6px 4px calc(env(safe-area-inset-bottom, 0px) + 5px)", zIndex: 200, boxShadow: "0 -7px 24px rgba(15,35,60,.08)" }}>
-      {items.map((item) => {
-        const isActive = screen === item.id || (item.id === "coach-sessions" && screen === "coach-builder");
-        return (
-          <button key={item.id} onClick={() => onNav(item.id)} style={{ flex: 1, minWidth: 0, background: "none", border: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: 2, cursor: "pointer", color: isActive ? module.color : P.muted, padding: "3px 1px" }}>
-            <span style={{ width: 28, height: 24, borderRadius: 8, display: "grid", placeItems: "center", background: isActive ? `${module.color}12` : "transparent", fontSize: 14, fontWeight: 900 }}>{item.icon}</span>
-            <span style={{ fontSize: 8, lineHeight: 1.1, fontWeight: isActive ? 900 : 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>{item.label.replace("Weekly ", "").replace("Parent ", "")}</span>
-          </button>
-        );
-      })}
-    </div>
+    <>
+      {showMore && (
+        <>
+          <div
+            onClick={() => setShowMore(false)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(15,35,60,.28)",
+              zIndex: 198
+            }}
+          />
+
+          <div
+            style={{
+              position: "fixed",
+              left: 12,
+              right: 12,
+              bottom: "calc(72px + env(safe-area-inset-bottom, 0px))",
+              zIndex: 199,
+              background: "#fff",
+              borderRadius: 18,
+              border: `1px solid ${P.line}`,
+              boxShadow: "0 18px 50px rgba(15,35,60,.20)",
+              padding: 10
+            }}
+          >
+            <div style={{
+              fontFamily: F.display,
+              fontSize: 14,
+              fontWeight: 900,
+              color: P.ink,
+              padding: "7px 8px 10px"
+            }}>
+              More Coach tools
+            </div>
+
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(2,minmax(0,1fr))",
+              gap: 8
+            }}>
+              {moreItems.map((item) => {
+                const isActive = screen === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setShowMore(false);
+                      onNav(item.id);
+                    }}
+                    style={{
+                      border: `1px solid ${isActive ? module.color : P.line}`,
+                      background: isActive ? `${module.color}0d` : "#fff",
+                      borderRadius: 12,
+                      padding: 12,
+                      color: isActive ? module.color : P.ink,
+                      fontFamily: F.body,
+                      fontSize: 11,
+                      fontWeight: 800,
+                      cursor: "pointer"
+                    }}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
+
+      <div style={{
+        position: "fixed",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        background: "#fff",
+        borderTop: `1px solid ${P.line}`,
+        display: "flex",
+        padding: "6px 4px calc(env(safe-area-inset-bottom, 0px) + 5px)",
+        zIndex: 200,
+        boxShadow: "0 -7px 24px rgba(15,35,60,.08)"
+      }}>
+        {items.map((item) => {
+          const isActive = screen === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => onNav(item.id)}
+              style={{
+                flex: 1,
+                minWidth: 0,
+                background: "none",
+                border: "none",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 2,
+                cursor: "pointer",
+                color: isActive ? module.color : P.muted,
+                padding: "3px 1px"
+              }}
+            >
+              <span style={{
+                width: 28,
+                height: 24,
+                borderRadius: 8,
+                display: "grid",
+                placeItems: "center",
+                background: isActive ? `${module.color}12` : "transparent"
+              }}>
+                <SpraoiNavIcon name={item.id} size={16} />
+              </span>
+
+              <span style={{
+                fontSize: 8,
+                lineHeight: 1.1,
+                fontWeight: isActive ? 900 : 600,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                maxWidth: "100%"
+              }}>
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
+
+        <button
+          onClick={() => setShowMore((value) => !value)}
+          aria-label="More Coach sections"
+          style={{
+            flex: 1,
+            minWidth: 0,
+            background: "none",
+            border: "none",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 2,
+            cursor: "pointer",
+            color: moreActive || showMore ? module.color : P.muted,
+            padding: "3px 1px"
+          }}
+        >
+          <span style={{
+            width: 28,
+            height: 24,
+            borderRadius: 8,
+            display: "grid",
+            placeItems: "center",
+            background: moreActive || showMore ? `${module.color}12` : "transparent",
+            fontWeight: 900
+          }}>
+            •••
+          </span>
+          <span style={{fontSize:8,fontWeight:moreActive ? 900 : 600}}>
+            More
+          </span>
+        </button>
+      </div>
+    </>
   );
 }
 
@@ -3559,13 +4858,287 @@ export function CoachModule({
         effectiveCanEdit
           ? <SessionBuilderScreen club={club} ageGroups={ageGroups} skills={skills} allActivities={allActivities} coaches={coaches} diagramMap={diagramMap} selectedTeam={selectedTeam} onNav={onNav} editingSession={editingSession} onClearEdit={() => setEditingSession?.(null)} />
           : <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
-              <TopBar title="Session Builder" sub={selectedTeam?.label || "No team selected"} />
+              <TopBar title="Session Builder" sub={selectedTeam ? teamDisplayName(selectedTeam) : "No team selected"} />
               <CoachReadOnlyNotice title="Editing unavailable" message="Your Coach / Mentor role is read-only. Ask a Club Admin to assign Lead Coach access if you need to create or amend sessions." />
             </div>
       )}
       {screen === "coach-drills" && <DrillsScreen allActivities={allActivities} diagramMap={diagramMap} favouriteIds={favouriteIds} onToggleFavourite={toggleFavourite} userRole={userRole} />}
       {screen === "coach-players" && <PlayersScreen club={club} ageGroups={ageGroups} selectedTeam={selectedTeam} userRole={userRole} />}
     </>
+  );
+}
+
+
+function SpraoiPasswordRecovery({
+  accent = "#0277bd",
+  lightBackground = false,
+  logo = "/spraoi-logo-white.png",
+  onDone,
+}) {
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showRecoveryPassword, setShowRecoveryPassword] = useState(false);
+  const [savingRecovery, setSavingRecovery] = useState(false);
+  const [recoveryError, setRecoveryError] = useState("");
+
+  async function saveRecoveryPassword() {
+    setRecoveryError("");
+
+    if (newPassword.length < 8) {
+      setRecoveryError("Your password must be at least 8 characters.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setRecoveryError("The passwords do not match.");
+      return;
+    }
+
+    setSavingRecovery(true);
+
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (error) {
+      setRecoveryError(error.message);
+      setSavingRecovery(false);
+      return;
+    }
+
+    await supabase.auth.signOut();
+
+    window.history.replaceState(
+      {},
+      document.title,
+      window.location.pathname
+    );
+
+    if (onDone) onDone();
+
+    alert(
+      "Password updated successfully. Please sign in with your new password."
+    );
+  }
+
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        background: lightBackground ? "#f0f7fc" : "#0b2545",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16,
+        fontFamily: "Inter, Segoe UI, sans-serif",
+      }}
+    >
+      <div style={{ width: "100%", maxWidth: 400 }}>
+        <div style={{ textAlign: "center", marginBottom: 22 }}>
+          <img
+            src={logo}
+            alt="Spraoi Sports"
+            style={{
+              width: 170,
+              maxWidth: "70%",
+              height: "auto",
+              objectFit: "contain",
+            }}
+          />
+        </div>
+
+        <div
+          style={{
+            background: "#fff",
+            borderRadius: 18,
+            padding: 28,
+            boxShadow: "0 10px 30px rgba(0,0,0,.12)",
+          }}
+        >
+          <div
+            style={{
+              fontSize: 21,
+              fontWeight: 900,
+              color: "#13243b",
+              marginBottom: 6,
+            }}
+          >
+            Choose a new password
+          </div>
+
+          <div
+            style={{
+              fontSize: 12,
+              lineHeight: 1.5,
+              color: "#627187",
+              marginBottom: 20,
+            }}
+          >
+            Enter a new password for your Spraoi Sports account.
+          </div>
+
+          <label
+            style={{
+              display: "block",
+              fontSize: 11,
+              fontWeight: 800,
+              color: "#627187",
+              textTransform: "uppercase",
+              marginBottom: 5,
+            }}
+          >
+            New password
+          </label>
+
+          <div style={{ position: "relative", marginBottom: 14 }}>
+            <input
+              type={showRecoveryPassword ? "text" : "password"}
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              autoComplete="new-password"
+              placeholder="At least 8 characters"
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                padding: "12px 62px 12px 13px",
+                borderRadius: 10,
+                border: "1.5px solid #dfe7ef",
+                background: "#f6f9fc",
+                fontSize: 13,
+              }}
+            />
+
+            <button
+              type="button"
+              onClick={() => setShowRecoveryPassword((v) => !v)}
+              aria-label={
+                showRecoveryPassword
+                  ? "Hide password"
+                  : "Show password"
+              }
+              aria-pressed={showRecoveryPassword}
+              style={{
+                position: "absolute",
+                right: 10,
+                top: "50%",
+                transform: "translateY(-50%)",
+                border: "none",
+                background: "transparent",
+                color: "#627187",
+                fontSize: 11,
+                fontWeight: 800,
+                cursor: "pointer",
+              }}
+            >
+              {showRecoveryPassword ? "Hide" : "Show"}
+            </button>
+          </div>
+
+          <label
+            style={{
+              display: "block",
+              fontSize: 11,
+              fontWeight: 800,
+              color: "#627187",
+              textTransform: "uppercase",
+              marginBottom: 5,
+            }}
+          >
+            Confirm new password
+          </label>
+
+          <div style={{ position: "relative", marginBottom: 16 }}>
+            <input
+              type={showRecoveryPassword ? "text" : "password"}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              autoComplete="new-password"
+              placeholder="Repeat your new password"
+              onKeyDown={(e) =>
+                e.key === "Enter" && saveRecoveryPassword()
+              }
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                padding: "12px 62px 12px 13px",
+                borderRadius: 10,
+                border: "1.5px solid #dfe7ef",
+                background: "#f6f9fc",
+                fontSize: 13,
+              }}
+            />
+
+            <button
+              type="button"
+              onClick={() => setShowRecoveryPassword((v) => !v)}
+              aria-label={
+                showRecoveryPassword
+                  ? "Hide password"
+                  : "Show password"
+              }
+              aria-pressed={showRecoveryPassword}
+              style={{
+                position: "absolute",
+                right: 10,
+                top: "50%",
+                transform: "translateY(-50%)",
+                border: "none",
+                background: "transparent",
+                color: "#627187",
+                fontSize: 11,
+                fontWeight: 800,
+                cursor: "pointer",
+              }}
+            >
+              {showRecoveryPassword ? "Hide" : "Show"}
+            </button>
+          </div>
+
+          {recoveryError && (
+            <div
+              style={{
+                color: "#c62828",
+                fontSize: 12,
+                fontWeight: 700,
+                textAlign: "center",
+                marginBottom: 12,
+              }}
+            >
+              {recoveryError}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={saveRecoveryPassword}
+            disabled={
+              savingRecovery ||
+              !newPassword ||
+              !confirmPassword
+            }
+            style={{
+              width: "100%",
+              padding: 14,
+              border: "none",
+              borderRadius: 11,
+              background: accent,
+              color: "#fff",
+              fontSize: 14,
+              fontWeight: 800,
+              cursor: "pointer",
+              opacity:
+                savingRecovery ||
+                !newPassword ||
+                !confirmPassword
+                  ? 0.55
+                  : 1,
+            }}
+          >
+            {savingRecovery ? "Updating..." : "Update password"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -3588,14 +5161,32 @@ export default function App() {
   const [enabledModules, setEnabledModules] = useState([]);
 
   // App state
-  const [screen, setScreen] = useState("coach-dashboard");
-  const [activeModule, setActiveModule] = useState("coach");
+  const [screen, setScreen] = useState(() => {
+    const requested = requestedScreenFromUrl(null);
+    if (requested && String(requested).startsWith(`${APP_MODULE}-`)) {
+      return requested;
+    }
+    return readModuleScreen(
+      APP_MODULE,
+      MODULES[APP_MODULE]?.nav?.[0]?.id || "coach-dashboard"
+    );
+  });
+  const [activeModule, setActiveModule] = useState(APP_MODULE);
 
   useEffect(() => {
-    const prefix = String(screen || "").split("-")[0];
-    if (MODULES[prefix] && prefix !== activeModule) {
-      setActiveModule(prefix);
+    if (activeModule !== APP_MODULE) {
+      setActiveModule(APP_MODULE);
     }
+    if (!String(screen || "").startsWith(`${APP_MODULE}-`)) {
+      setScreen(
+        readModuleScreen(
+          APP_MODULE,
+          MODULES[APP_MODULE]?.nav?.[0]?.id || "coach-dashboard"
+        )
+      );
+      return;
+    }
+    writeModuleScreen(APP_MODULE, screen);
   }, [screen, activeModule]);
   const [club, setClub] = useState(null);
   const [ageGroups, setAgeGroups] = useState([]);
@@ -3639,6 +5230,7 @@ export default function App() {
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
+
       if (event === "PASSWORD_RECOVERY") {
         setRecoveryMode(true);
         setAuthLoading(false);
@@ -3769,7 +5361,7 @@ export default function App() {
 
       const capabilities = roleCapabilities(effectiveRole);
       setUserRole({ ...(roleData || {}), role: effectiveRole, club_id: effectiveClubId, capabilities });
-      setMyTeams(capabilities.isClubAdmin ? [] : assignedTeamIds);
+      setMyTeams([...new Set(assignedTeamIds)]);
     } catch (error) {
       console.error("Unable to initialise platform access:", error);
       // Never lock Elaine out of a module because an older RBAC table differs.
@@ -3781,6 +5373,122 @@ export default function App() {
       loadUpcoming();
     } finally {
       setAuthLoading(false);
+    }
+  }
+
+
+  async function currentCoachId() {
+    if (!session?.user?.id || !club?.id) return null;
+    const { data: byUser } = await supabase
+      .from("coaches")
+      .select("id")
+      .eq("club_id", club.id)
+      .eq("user_id", session.user.id)
+      .maybeSingle();
+    if (byUser?.id) return byUser.id;
+
+    const userEmail = String(session.user.email || "").trim();
+    if (!userEmail) return null;
+    const { data: byEmail } = await supabase
+      .from("coaches")
+      .select("id")
+      .eq("club_id", club.id)
+      .ilike("email", userEmail)
+      .maybeSingle();
+    return byEmail?.id || null;
+  }
+
+  async function addProfileTeam(ageGroupId) {
+    if (!ageGroupId || !session?.user?.id || !club?.id) return;
+    const coachId = await currentCoachId();
+
+    // Do not rely on ON CONFLICT constraints that may not exist in older databases.
+    // First make sure the legacy assignment exists.
+    const { data: existingAssignments, error: assignmentLookupError } = await supabase
+      .from("coach_assignments")
+      .select("age_group_id")
+      .eq("user_id", session.user.id)
+      .eq("age_group_id", ageGroupId)
+      .limit(1);
+
+    if (!assignmentLookupError && !(existingAssignments || []).length) {
+      const { error: assignmentInsertError } = await supabase
+        .from("coach_assignments")
+        .insert({
+          user_id: session.user.id,
+          club_id: club.id,
+          age_group_id: ageGroupId,
+        });
+      if (assignmentInsertError) console.warn("Could not save coach assignment:", assignmentInsertError.message);
+    }
+
+    // Current team_staff source. Select first, then update/insert so this works
+    // even where the database does not have a unique(age_group_id, coach_id) constraint.
+    if (coachId) {
+      const role = permissions.isClubAdmin ? "club_admin" : (permissions.isLeadCoach ? "lead_coach" : "coach_mentor");
+      const { data: existingStaff, error: staffLookupError } = await supabase
+        .from("team_staff")
+        .select("id")
+        .eq("age_group_id", ageGroupId)
+        .eq("coach_id", coachId)
+        .limit(1);
+
+      if (staffLookupError) {
+        console.warn("Could not check team_staff assignment:", staffLookupError.message);
+      } else if ((existingStaff || []).length) {
+        const { error: staffUpdateError } = await supabase
+          .from("team_staff")
+          .update({
+            club_id: club.id,
+            user_id: session.user.id,
+            role,
+            status: "active",
+          })
+          .eq("id", existingStaff[0].id);
+        if (staffUpdateError) console.warn("Could not update team_staff assignment:", staffUpdateError.message);
+      } else {
+        const { error: staffInsertError } = await supabase
+          .from("team_staff")
+          .insert({
+            club_id: club.id,
+            age_group_id: ageGroupId,
+            coach_id: coachId,
+            user_id: session.user.id,
+            role,
+            status: "active",
+          });
+        if (staffInsertError) console.warn("Could not save team_staff assignment:", staffInsertError.message);
+      }
+    }
+
+    setMyTeams((current) => [...new Set([...(current || []), ageGroupId])]);
+  }
+
+  async function removeProfileTeam(ageGroupId) {
+    if (!ageGroupId || !session?.user?.id) return;
+
+    await supabase
+      .from("coach_assignments")
+      .delete()
+      .eq("user_id", session.user.id)
+      .eq("age_group_id", ageGroupId);
+
+    const coachId = await currentCoachId();
+    let staffDelete = supabase
+      .from("team_staff")
+      .delete()
+      .eq("age_group_id", ageGroupId);
+    if (coachId) staffDelete = staffDelete.eq("coach_id", coachId);
+    else staffDelete = staffDelete.eq("user_id", session.user.id);
+    const { error } = await staffDelete;
+    if (error) console.warn("Could not remove team_staff assignment:", error.message);
+
+    setMyTeams((current) => (current || []).filter((id) => String(id) !== String(ageGroupId)));
+    if (String(selectedTeam?.id || "") === String(ageGroupId)) {
+      const nextId = (myTeams || []).find((id) => String(id) !== String(ageGroupId));
+      const nextTeam = ageGroups.find((team) => String(team.id) === String(nextId));
+      setSelectedTeam(nextTeam || null);
+      saveActiveContext(nextTeam || null, club);
     }
   }
 
@@ -3820,10 +5528,11 @@ export default function App() {
   // Restore and synchronise the one active team shared by every Spraoi module.
   useEffect(() => {
     if (!ageGroups.length) return;
-    const savedId = localStorage.getItem(ACTIVE_TEAM_KEY) || localStorage.getItem("spraoi_team_id");
+    const savedId = requestedTeamFromUrl(null) || localStorage.getItem(ACTIVE_TEAM_KEY) || localStorage.getItem("spraoi_team_id");
     const found = ageGroups.find((ag) => String(ag.id) === String(savedId));
     if (found && String(found.id) !== String(selectedTeam?.id || "")) {
       setSelectedTeam(found);
+      saveActiveContext(found, club);
     } else if (!found && selectedTeam && !ageGroups.some((ag) => String(ag.id) === String(selectedTeam.id))) {
       setSelectedTeam(null);
     }
@@ -4125,12 +5834,12 @@ export default function App() {
         <div style={{ maxWidth: 380, width: "100%" }}>
           <div style={{ textAlign: "center", marginBottom: 28 }}>
             <img src="/spraoi-logo-white.png" alt="Spraoi Sports" style={{ width: 180, height: "auto", marginBottom: 10 }} />
-            <div style={{ fontFamily: F.body, fontSize: 12, color: "rgba(255,255,255,.5)", marginTop: 4 }}>Coach Platform</div>
+            <div style={{ fontFamily: F.body, fontSize: 12, color: "rgba(255,255,255,.5)", marginTop: 4 }}>Coach</div>
           </div>
           <div style={{ background: P.white, borderRadius: 18, padding: 28, boxShadow: Sh.lift }}>
             <div style={{ fontFamily: F.display, fontSize: 17, fontWeight: 800, color: P.ink, marginBottom: 16 }}>Sign In</div>
             <label style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>Email</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="coach@email.com" style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 13, marginTop: 4, marginBottom: 12, background: P.soft }} />
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="coach@email.com" style={{ width: "100%", boxSizing: "border-box", padding: "12px 14px", borderRadius: 10, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 13, marginTop: 4, marginBottom: 12, background: P.soft }} />
             <label style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", letterSpacing: "0.06em" }}>Password</label>
             <div style={{ position: "relative", width: "100%", marginTop: 4, marginBottom: 16 }}>
               <input
@@ -4302,8 +6011,7 @@ export default function App() {
                   <div key={label} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                     {boys && (
                       <button onClick={async () => {
-                        await supabase.from("coach_assignments").insert({ user_id: session.user.id, club_id: club.id, age_group_id: boys.id });
-                        setMyTeams((t) => [...(t === "all" ? [] : t), boys.id]);
+                        await addProfileTeam(boys.id);
                         selectTeam(boys);
                       }} style={{ flex: 1, padding: "14px 10px", borderRadius: 12, border: `1.5px solid ${P.line}`, background: P.soft, cursor: "pointer", textAlign: "center" }}>
                         <div style={{ fontFamily: F.display, fontWeight: 800, fontSize: 18, color: P.p600 }}>{label}</div>
@@ -4312,8 +6020,7 @@ export default function App() {
                     )}
                     {girls && (
                       <button onClick={async () => {
-                        await supabase.from("coach_assignments").insert({ user_id: session.user.id, club_id: club.id, age_group_id: girls.id });
-                        setMyTeams((t) => [...(t === "all" ? [] : t), girls.id]);
+                        await addProfileTeam(girls.id);
                         selectTeam(girls);
                       }} style={{ flex: 1, padding: "14px 10px", borderRadius: 12, border: `1.5px solid #d81b6033`, background: "#fef0f5", cursor: "pointer", textAlign: "center" }}>
                         <div style={{ fontFamily: F.display, fontWeight: 800, fontSize: 18, color: "#d81b60" }}>{label}</div>
@@ -4364,7 +6071,7 @@ export default function App() {
   return (
     <div className="spraoi-shell" style={{ display: "flex", minHeight: "100vh", width: "100%", fontFamily: F.body, paddingTop: showMobile ? 62 : 0, paddingBottom: showMobile ? 68 : 0, boxSizing: "border-box" }}>
       <MobileAccessibilityStyles />
-      {showMobile && <MobileHeader activeModule={activeModule} setActiveModule={setActiveModule} onNav={setScreen} enabledModules={enabledModules} club={club} selectedTeam={selectedTeam} />}
+      {showMobile && <MobileHeader activeModule={activeModule} setActiveModule={setActiveModule} onNav={setScreen} enabledModules={enabledModules} club={club} selectedTeam={selectedTeam} ageGroups={ageGroups} myTeams={myTeams} onSelectTeam={selectTeam} onShowProfile={()=>setShowProfile(true)} />}
 
       {/* Sidebar — desktop only */}
       {!showMobile && <Sidebar activeModule={activeModule} setActiveModule={setActiveModule} activeScreen={screen} onNav={setScreen} club={club} selectedTeam={selectedTeam} onSelectTeam={selectTeam} enabledModules={enabledModules} onLogout={logout} ageGroups={ageGroups} myTeams={myTeams} onShowProfile={() => setShowProfile(true)} />}
@@ -4436,29 +6143,26 @@ export default function App() {
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
                   {ageGroups.filter((ag) => myTeams.includes(ag.id)).map((ag) => (
                     <div key={ag.id} style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 10px", borderRadius: 8, background: P.soft, border: `1px solid ${P.line}` }}>
-                      <span style={{ fontFamily: F.body, fontSize: 11, fontWeight: 600, color: P.ink }}>{ag.label} {ag.gender === "girls" ? "Girls" : "Boys"}</span>
-                      <button onClick={async () => {
-                        await supabase.from("coach_assignments").delete().eq("user_id", session.user.id).eq("age_group_id", ag.id);
-                        setMyTeams((t) => t.filter((id) => id !== ag.id));
-                        if (selectedTeam?.id === ag.id) setSelectedTeam(null);
-                      }} style={{ background: "none", border: "none", color: P.coral, cursor: "pointer", fontSize: 12, padding: 0 }}>×</button>
+                      <span style={{ fontFamily: F.body, fontSize: 11, fontWeight: 600, color: P.ink }}>{teamDisplayName(ag)}</span>
+                      {permissions.canManageTeamStaff && <button onClick={async () => {
+                        await removeProfileTeam(ag.id);
+                      }} title="Remove team" style={{ background: "none", border: "none", color: P.coral, cursor: "pointer", fontSize: 12, padding: 0 }}>×</button>}
                     </div>
                   ))}
                   {myTeams.length === 0 && <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted }}>No teams selected yet</div>}
                 </div>
-                {/* Add more teams */}
-                <select onChange={async (e) => {
+                {/* Add more teams — only users with team-management permission */}
+                {permissions.canManageTeamStaff && <select onChange={async (e) => {
                   const agId = e.target.value;
                   if (!agId || myTeams.includes(agId)) return;
-                  await supabase.from("coach_assignments").insert({ user_id: session.user.id, club_id: club.id, age_group_id: agId });
-                  setMyTeams((t) => [...t, agId]);
+                  await addProfileTeam(agId);
                   e.target.value = "";
                 }} style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 12, color: P.muted }}>
                   <option value="">+ Add another team...</option>
                   {ageGroups.filter((ag) => !myTeams.includes(ag.id)).sort((a, b) => parseInt(a.label.replace("U", "")) - parseInt(b.label.replace("U", ""))).map((ag) => (
-                    <option key={ag.id} value={ag.id}>{ag.label} {ag.gender === "girls" ? "Girls" : "Boys"}</option>
+                    <option key={ag.id} value={ag.id}>{teamDisplayName(ag)}</option>
                   ))}
-                </select>
+                </select>}
               </div>
 
               {/* Logout */}
@@ -4617,277 +6321,3 @@ export default function App() {
     </div>
   );
 }
-
-function SpraoiPasswordRecovery({
-  accent = "#0277bd",
-  lightBackground = false,
-  logo = "/spraoi-logo-white.png",
-  onDone,
-}) {
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showRecoveryPassword, setShowRecoveryPassword] = useState(false);
-  const [savingRecovery, setSavingRecovery] = useState(false);
-  const [recoveryError, setRecoveryError] = useState("");
-
-  async function saveRecoveryPassword() {
-    setRecoveryError("");
-
-    if (newPassword.length < 8) {
-      setRecoveryError("Your password must be at least 8 characters.");
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setRecoveryError("The passwords do not match.");
-      return;
-    }
-
-    setSavingRecovery(true);
-
-    const { error } = await supabase.auth.updateUser({
-      password: newPassword,
-    });
-
-    if (error) {
-      setRecoveryError(error.message);
-      setSavingRecovery(false);
-      return;
-    }
-
-    await supabase.auth.signOut();
-
-    window.history.replaceState(
-      {},
-      document.title,
-      window.location.pathname
-    );
-
-    if (onDone) onDone();
-
-    alert(
-      "Password updated successfully. Please sign in with your new password."
-    );
-  }
-
-  return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: lightBackground ? "#f0f7fc" : "#0b2545",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 16,
-        fontFamily: "Inter, Segoe UI, sans-serif",
-      }}
-    >
-      <div style={{ width: "100%", maxWidth: 400 }}>
-        <div style={{ textAlign: "center", marginBottom: 22 }}>
-          <img
-            src={logo}
-            alt="Spraoi Sports"
-            style={{
-              width: 170,
-              maxWidth: "70%",
-              height: "auto",
-              objectFit: "contain",
-            }}
-          />
-        </div>
-
-        <div
-          style={{
-            background: "#fff",
-            borderRadius: 18,
-            padding: 28,
-            boxShadow: "0 10px 30px rgba(0,0,0,.12)",
-          }}
-        >
-          <div
-            style={{
-              fontSize: 21,
-              fontWeight: 900,
-              color: "#13243b",
-              marginBottom: 6,
-            }}
-          >
-            Choose a new password
-          </div>
-
-          <div
-            style={{
-              fontSize: 12,
-              lineHeight: 1.5,
-              color: "#627187",
-              marginBottom: 20,
-            }}
-          >
-            Enter a new password for your Spraoi Sports account.
-          </div>
-
-          <label
-            style={{
-              display: "block",
-              fontSize: 11,
-              fontWeight: 800,
-              color: "#627187",
-              textTransform: "uppercase",
-              marginBottom: 5,
-            }}
-          >
-            New password
-          </label>
-
-          <div style={{ position: "relative", marginBottom: 14 }}>
-            <input
-              type={showRecoveryPassword ? "text" : "password"}
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              autoComplete="new-password"
-              placeholder="At least 8 characters"
-              style={{
-                width: "100%",
-                boxSizing: "border-box",
-                padding: "12px 62px 12px 13px",
-                borderRadius: 10,
-                border: "1.5px solid #dfe7ef",
-                background: "#f6f9fc",
-                fontSize: 13,
-              }}
-            />
-
-            <button
-              type="button"
-              onClick={() => setShowRecoveryPassword((v) => !v)}
-              aria-label={
-                showRecoveryPassword
-                  ? "Hide password"
-                  : "Show password"
-              }
-              aria-pressed={showRecoveryPassword}
-              style={{
-                position: "absolute",
-                right: 10,
-                top: "50%",
-                transform: "translateY(-50%)",
-                border: "none",
-                background: "transparent",
-                color: "#627187",
-                fontSize: 11,
-                fontWeight: 800,
-                cursor: "pointer",
-              }}
-            >
-              {showRecoveryPassword ? "Hide" : "Show"}
-            </button>
-          </div>
-
-          <label
-            style={{
-              display: "block",
-              fontSize: 11,
-              fontWeight: 800,
-              color: "#627187",
-              textTransform: "uppercase",
-              marginBottom: 5,
-            }}
-          >
-            Confirm new password
-          </label>
-
-          <div style={{ position: "relative", marginBottom: 16 }}>
-            <input
-              type={showRecoveryPassword ? "text" : "password"}
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              autoComplete="new-password"
-              placeholder="Repeat your new password"
-              onKeyDown={(e) =>
-                e.key === "Enter" && saveRecoveryPassword()
-              }
-              style={{
-                width: "100%",
-                boxSizing: "border-box",
-                padding: "12px 62px 12px 13px",
-                borderRadius: 10,
-                border: "1.5px solid #dfe7ef",
-                background: "#f6f9fc",
-                fontSize: 13,
-              }}
-            />
-
-            <button
-              type="button"
-              onClick={() => setShowRecoveryPassword((v) => !v)}
-              aria-label={
-                showRecoveryPassword
-                  ? "Hide password"
-                  : "Show password"
-              }
-              aria-pressed={showRecoveryPassword}
-              style={{
-                position: "absolute",
-                right: 10,
-                top: "50%",
-                transform: "translateY(-50%)",
-                border: "none",
-                background: "transparent",
-                color: "#627187",
-                fontSize: 11,
-                fontWeight: 800,
-                cursor: "pointer",
-              }}
-            >
-              {showRecoveryPassword ? "Hide" : "Show"}
-            </button>
-          </div>
-
-          {recoveryError && (
-            <div
-              style={{
-                color: "#c62828",
-                fontSize: 12,
-                fontWeight: 700,
-                textAlign: "center",
-                marginBottom: 12,
-              }}
-            >
-              {recoveryError}
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={saveRecoveryPassword}
-            disabled={
-              savingRecovery ||
-              !newPassword ||
-              !confirmPassword
-            }
-            style={{
-              width: "100%",
-              padding: 14,
-              border: "none",
-              borderRadius: 11,
-              background: accent,
-              color: "#fff",
-              fontSize: 14,
-              fontWeight: 800,
-              cursor: "pointer",
-              opacity:
-                savingRecovery ||
-                !newPassword ||
-                !confirmPassword
-                  ? 0.55
-                  : 1,
-            }}
-          >
-            {savingRecovery ? "Updating..." : "Update password"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
