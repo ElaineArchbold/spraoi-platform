@@ -2152,7 +2152,7 @@ function ClubDashboardScreen({ club, ageGroups, coaches, selectedTeam, onNav }) 
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12, marginBottom: 18 }}>
         <StatCard label="Teams" value={String(ageGroups?.length || 0)} sub="Persistent club teams" color={CLUB_RED} icon="◆" />
-        <StatCard label="Coaches" value={String(coaches?.length || 0)} sub="Club staff records" color={CLUB_RED_DARK} icon="â—" />
+        <StatCard label="Coaches" value={String(coaches?.length || 0)} sub="Club staff records" color={CLUB_RED_DARK} icon={"\uD83D\uDC65"} />
         <StatCard label="Active Team" value={selectedTeam ? teamDisplayName(selectedTeam) : "—"} sub="Shared across modules" color="#e57373" icon="↔" />
         <StatCard label="Access Model" value="4 roles" sub="Super Admin, Admin, Lead Coach, Coach/Mentor" color="#ef5350" icon="◇" />
       </div>
@@ -7857,7 +7857,7 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap:"wrap", justifyContent:"flex-end" }}>
                         <span style={{ padding: "5px 8px", borderRadius: 999, background: selected ? "#dcfce7" : "#fff7ed", color: selected ? "#15803d" : "#c2410c", fontFamily: F.body, fontSize: 9, fontWeight: 800 }}>{isPreviewSelected ? "Selected" : "Suggested"}</span>
                         <div className="academy-match-actions" style={{display:"flex",gap:6,flexWrap:"wrap"}}><button onClick={()=>setPreviewIndexes((current)=>({...current,[rec.code]:Math.max(0,previewIndex-1)}))} disabled={previewIndex===0} style={{height:30,borderRadius:8,border:`1px solid ${P.line}`,background:"#fff",color:previewIndex===0?P.muted:academyBlue,padding:"0 10px",fontFamily:F.body,fontSize:9,fontWeight:900,cursor:previewIndex===0?"default":"pointer"}}>Previous</button><button onClick={()=>setPreviewIndexes((current)=>({...current,[rec.code]:Math.min(options.length-1,previewIndex+1)}))} disabled={previewIndex>=options.length-1} style={{height:30,borderRadius:8,border:`1px solid ${P.line}`,background:"#fff",color:previewIndex>=options.length-1?P.muted:academyBlue,padding:"0 10px",fontFamily:F.body,fontSize:9,fontWeight:900,cursor:previewIndex>=options.length-1?"default":"pointer"}}>Next suggestion</button>{previewSkill?.id && !isPreviewSelected && <button onClick={() => onSetOverride?.(rec.code, previewSkill.id)} style={{height:30,borderRadius:8,border:0,background:academyBlue,color:"#fff",padding:"0 10px",fontFamily:F.body,fontSize:9,fontWeight:900,cursor:"pointer"}}>Use this video</button>}<span style={{alignSelf:"center",fontFamily:F.body,fontSize:9,color:P.muted}}>Suggestion {options.length?previewIndex+1:0} of {options.length}</span></div>
-                        <button onClick={() => onNav("academy-content")} aria-label={`Review ${rec.label}`} style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${P.line}`, background: P.white, color: P.muted, cursor: "pointer" }}>â€º</button>
+                        <button onClick={() => onNav("academy-content")} aria-label={`Review ${rec.label}`} style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${P.line}`, background: P.white, color: P.muted, cursor: "pointer" }}>{"\u203A"}</button>
                       </div>
                     </div>
                   })}
@@ -10326,12 +10326,6 @@ export default function App() {
     </div>
   );
 }
-
-
-
-
-
-
 
 
 
