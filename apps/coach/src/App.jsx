@@ -171,7 +171,6 @@ const MODULES = {
       { id: "coach-sessions", icon: "▶", label: "Sessions" },
       { id: "coach-drills", icon: "◇", label: "Drills" },
       { id: "coach-players", icon: "●", label: "Players" },
-      { id: "coach-calendar", icon: "▣", label: "Calendar" },
     ]
   },
   academy: {
