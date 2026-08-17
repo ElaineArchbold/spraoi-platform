@@ -321,7 +321,7 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId }) 
       const {data:staff}=await supabase.from("team_staff").select("user_id,coach:coaches(email,name)").eq("club_id",club.id).eq("age_group_id",a.age_group_id).eq("role","lead_coach").eq("status","active");
       const team=ageGroups.find(t=>t.id===a.age_group_id);
       const allocationMessage=`${teamName(team)} training is confirmed for ${new Date(a.starts_at).toLocaleString("en-IE",{weekday:"short",hour:"2-digit",minute:"2-digit"})} at ${a.facility?.name||"the allocated venue"}.`;
-      const notes=(staff||[]).filter(x=>x.user_id).map(x=>({club_id:club.id,user_id:x.user_id,age_group_id:a.age_group_id,event_id:event?.id||null,type:"pitch_allocation_published",title:"Pitch allocation confirmed",message:allocationMessage,priority:"important",action_url:"/coach/?screen=coach-calendar"}));
+      const notes=(staff||[]).filter(x=>x.user_id).map(x=>({club_id:club.id,user_id:x.user_id,age_group_id:a.age_group_id,event_id:event?.id||null,type:"pitch_allocation_published",title:"Pitch allocation confirmed",message:allocationMessage,priority:"important",action_url:"/coach/?screen=coach-planner"}));
       if(notes.length) await supabase.from("notifications").insert(notes);
 
     }
@@ -394,7 +394,7 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId }) 
               "",
               ...summaryLines,
             ].join("\n"),
-            actionUrl: `${window.location.origin}/coach/?screen=coach-calendar`,
+            actionUrl: `${window.location.origin}/coach/?screen=coach-planner`,
           },
         }
       );
@@ -2080,5 +2080,6 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId }) 
     </div>
   );
 }
+
 
 

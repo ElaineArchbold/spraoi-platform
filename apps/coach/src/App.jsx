@@ -1277,7 +1277,7 @@ function DashboardScreen({ club, ageGroups, planSessions, weeklyPlan, upcomingSe
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
               <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 800, color: P.ink }}>Upcoming Sessions</div>
               <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                <button onClick={() => onNav("coach-planner")} style={{ background: "none", border: "none", fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, cursor: "pointer" }}>Calendar</button>
+                <button onClick={() => onNav("coach-planner")} style={{ background: "none", border: "none", fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, cursor: "pointer" }}>Planner</button>
                 <button onClick={() => onNav("coach-sessions")} style={{ background: "none", border: "none", fontFamily: F.body, fontSize: 11, fontWeight: 800, color: P.p600, cursor: "pointer" }}>View all →</button>
               </div>
             </div>
