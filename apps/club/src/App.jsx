@@ -2120,7 +2120,7 @@ function ClubDashboardScreen({ club, ageGroups, coaches, selectedTeam, onNav }) 
   return (
     <ClubPage
       title="Club Dashboard"
-      sub={`${club?.name || "Club Spraoi"} \u00B7 Operating centre`}
+      sub={`${club?.name || "Club Spraoi"} - Operating centre`}
       actions={<Btn label="Manage Teams" onClick={() => onNav("club-teams")} style={{ background: CLUB_RED }} />}
     >
       <div style={{
@@ -2151,10 +2151,10 @@ function ClubDashboardScreen({ club, ageGroups, coaches, selectedTeam, onNav }) 
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12, marginBottom: 18 }}>
-        <StatCard label="Teams" value={String(ageGroups?.length || 0)} sub="Persistent club teams" color={CLUB_RED} icon="◆" />
-        <StatCard label="Coaches" value={String(coaches?.length || 0)} sub="Club staff records" color={CLUB_RED_DARK} icon={"\uD83D\uDC65"} />
-        <StatCard label="Active Team" value={selectedTeam ? teamDisplayName(selectedTeam) : "—"} sub="Shared across modules" color="#e57373" icon="↔" />
-        <StatCard label="Access Model" value="4 roles" sub="Super Admin, Admin, Lead Coach, Coach/Mentor" color="#ef5350" icon="◇" />
+        <StatCard label="Teams" value={String(ageGroups?.length || 0)} sub="Persistent club teams" color={CLUB_RED} icon="T" />
+        <StatCard label="Coaches" value={String(coaches?.length || 0)} sub="Club staff records" color={CLUB_RED_DARK} icon="C" />
+        <StatCard label="Active Team" value={selectedTeam ? teamDisplayName(selectedTeam) : "-"} sub="Shared across modules" color="#e57373" icon="A" />
+        <StatCard label="Access Model" value="4 roles" sub="Super Admin, Admin, Lead Coach, Coach/Mentor" color="#ef5350" icon="4" />
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 14 }}>
@@ -2172,7 +2172,7 @@ function ClubDashboardScreen({ club, ageGroups, coaches, selectedTeam, onNav }) 
               background: "transparent", display: "flex", justifyContent: "space-between",
               cursor: "pointer", fontFamily: F.body, fontSize: 12, fontWeight: 700, color: P.ink,
             }}>
-              <span>{label}</span><span style={{ color: CLUB_RED }}>{"\u203A"}</span>
+              <span>{label}</span><span style={{ color: CLUB_RED }}>{">"}</span>
             </button>
           ))}
         </ClubCard>
