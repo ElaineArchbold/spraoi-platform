@@ -6035,6 +6035,66 @@ function ClubComplianceScreen({ club, coaches, userRole }) {
   );
 }
 
+
+const TEAM_PERMISSION_OPTIONS = [
+  ["schedule.view", "View schedule"],
+  ["players.view", "View players"],
+  ["sessions.create", "Create sessions"],
+  ["sessions.edit", "Edit sessions"],
+  ["attendance.mark", "Mark attendance"],
+  ["attendance.view_totals", "View attendance totals"],
+  ["availability.view_team", "View team availability"],
+  ["availability.manage_team", "Manage team availability"],
+  ["events.create", "Create events"],
+  ["events.edit", "Edit events"],
+  ["messages.send", "Send messages"],
+  ["announcements.send", "Send announcements"],
+  ["reminders.send", "Send reminders"],
+  ["subgroups.manage", "Manage sub-groups"],
+  ["members.manage", "Manage team members"],
+  ["coach_content.manage", "Manage Coach content"],
+  ["academy.publish", "Publish Academy content"],
+  ["team_permissions.manage", "Manage team permissions"],
+  ["club.pitch_allocations.view", "View Club pitch allocations"],
+  ["club.contacts.view", "View key Club contacts"],
+];
+
+const SYSTEM_TEAM_ROLE_PRESETS = [
+  {
+    key: "lead_coach",
+    label: "Lead Coach",
+    description: "Full Coach, Academy and Connect control for the assigned team, including team permissions.",
+    permissions: TEAM_PERMISSION_OPTIONS.map(([key]) => key),
+  },
+  {
+    key: "team_admin",
+    label: "Team Admin",
+    description: "Team logistics and Connect administration without automatic coaching-content control.",
+    permissions: ["schedule.view","players.view","attendance.mark","attendance.view_totals","availability.view_team","availability.manage_team","events.create","events.edit","messages.send","announcements.send","reminders.send","subgroups.manage","members.manage"],
+  },
+  {
+    key: "coach",
+    label: "Coach",
+    description: "Assigned coaching functions. Extra Connect permissions can be added per person/team.",
+    permissions: ["schedule.view","players.view","sessions.create","sessions.edit","coach_content.manage","messages.send"],
+  },
+  {
+    key: "mentor",
+    label: "Mentor",
+    description: "Read-only team access by default.",
+    permissions: ["schedule.view"],
+  },
+];
+
+function roleKeyFromLabel(label = "") {
+  return String(label)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 48);
+}
+
 function ClubPermissionsScreen({ club, userRole, ageGroups = [] }) {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -6042,8 +6102,17 @@ function ClubPermissionsScreen({ club, userRole, ageGroups = [] }) {
   const [editRole, setEditRole] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [teamAssignments, setTeamAssignments] = useState([]);
+  const [customRoles, setCustomRoles] = useState([]);
+  const [roleEditorOpen, setRoleEditorOpen] = useState(false);
+  const [roleDraft, setRoleDraft] = useState({ label: "", description: "", permissions: [] });
+  const [roleSaving, setRoleSaving] = useState(false);
+  const [assignmentEditorOpen, setAssignmentEditorOpen] = useState(false);
+  const [assignmentDraft, setAssignmentDraft] = useState({ email: "", teamKey: "", teamLabel: "", roles: [] });
+  const [assignmentSaving, setAssignmentSaving] = useState(false);
 
   const isSuperAdmin = userRole?.role === "super_admin";
+  const canManageRoles = ["super_admin", "admin"].includes(userRole?.role);
   const roles = ["super_admin", "admin", "lead_coach", "coach_mentor"];
 
   const permMatrix = {
@@ -6059,14 +6128,22 @@ function ClubPermissionsScreen({ club, userRole, ageGroups = [] }) {
     setLoading(true);
     setError("");
 
-    const [{ data, error: loadError }, { data: staffData, error: staffError }] = await Promise.all([
+    const [{ data, error: loadError }, { data: staffData, error: staffError }, { data: roleData, error: roleError }] = await Promise.all([
       supabase.from("user_roles").select("*").order("user_email").order("squad_key"),
       club?.id
         ? supabase
             .from("team_staff")
-            .select("id, role, status, age_group_id, coach:coaches(id,email,user_id), team:age_groups(id,label,gender)")
+            .select("id, role, roles, permission_overrides, status, age_group_id, coach:coaches(id,email,user_id), team:age_groups(id,label,gender)")
             .eq("club_id", club.id)
             .eq("status", "active")
+        : Promise.resolve({ data: [], error: null }),
+      club?.id
+        ? supabase
+            .from("team_role_definitions")
+            .select("id, role_key, label, description, permissions, is_active")
+            .eq("club_id", club.id)
+            .eq("is_active", true)
+            .order("label")
         : Promise.resolve({ data: [], error: null }),
     ]);
 
@@ -6084,6 +6161,13 @@ function ClubPermissionsScreen({ club, userRole, ageGroups = [] }) {
       setTeamAssignments(staffData || []);
     }
 
+    if (roleError) {
+      console.warn("Unable to load custom team roles:", roleError.message);
+      setCustomRoles([]);
+    } else {
+      setCustomRoles(roleData || []);
+    }
+
     setLoading(false);
   }
 
@@ -6093,6 +6177,140 @@ function ClubPermissionsScreen({ club, userRole, ageGroups = [] }) {
     return (teamAssignments || []).filter((row) =>
       String(row.coach?.email || "").trim().toLowerCase() === email
     );
+  }
+
+
+  const availableTeamRoles = [
+    ...SYSTEM_TEAM_ROLE_PRESETS.map((role) => ({ key: role.key, label: role.label, description: role.description })),
+    ...customRoles.map((role) => ({ key: role.role_key, label: role.label, description: role.description || "Custom team role" })),
+  ];
+
+  const assignmentGroups = (() => {
+    const groups = new Map();
+    (users || []).forEach((row) => {
+      const email = String(row.user_email || "").trim().toLowerCase();
+      const teamKey = String(row.squad_key || row.squad || "").trim();
+      const role = String(row.role || "").trim();
+      if (!email || !teamKey || !role || teamKey.toLowerCase() === "all") return;
+      const key = `${email}::${teamKey.toLowerCase()}`;
+      if (!groups.has(key)) groups.set(key, { email, teamKey, teamLabel: row.squad || teamKey, roles: [], rows: [] });
+      const group = groups.get(key);
+      if (!group.roles.includes(role)) group.roles.push(role);
+      group.rows.push(row);
+    });
+    return [...groups.values()].sort((a, b) => a.email.localeCompare(b.email) || a.teamLabel.localeCompare(b.teamLabel));
+  })();
+
+  function openAssignmentEditor(group = null) {
+    setError("");
+    if (group) {
+      setAssignmentDraft({ email: group.email, teamKey: group.teamKey, teamLabel: group.teamLabel, roles: [...group.roles] });
+    } else {
+      const firstTeam = ageGroups?.[0];
+      setAssignmentDraft({ email: "", teamKey: firstTeam?.label || "", teamLabel: firstTeam?.label || "", roles: [] });
+    }
+    setAssignmentEditorOpen(true);
+  }
+
+  function toggleAssignmentRole(roleKey) {
+    setAssignmentDraft((current) => ({
+      ...current,
+      roles: current.roles.includes(roleKey)
+        ? current.roles.filter((item) => item !== roleKey)
+        : [...current.roles, roleKey],
+    }));
+  }
+
+  async function saveTeamRoleAssignments() {
+    if (!canManageRoles || assignmentSaving) return;
+    const email = String(assignmentDraft.email || "").trim().toLowerCase();
+    const teamKey = String(assignmentDraft.teamKey || "").trim();
+    const selectedTeam = (ageGroups || []).find((team) => String(team.label) === teamKey);
+    const teamLabel = selectedTeam?.label || assignmentDraft.teamLabel || teamKey;
+    const wantedRoles = [...new Set(assignmentDraft.roles.filter(Boolean))];
+
+    if (!email || !email.includes("@")) { setError("Enter a valid user email address."); return; }
+    if (!teamKey) { setError("Choose a team."); return; }
+    if (!wantedRoles.length) { setError("Select at least one team role."); return; }
+
+    setAssignmentSaving(true);
+    setError("");
+
+    const existingRows = (users || []).filter((row) =>
+      String(row.user_email || "").trim().toLowerCase() === email &&
+      String(row.squad_key || row.squad || "").trim().toLowerCase() === teamKey.toLowerCase()
+    );
+    const existingRoles = new Set(existingRows.map((row) => String(row.role || "").trim()).filter(Boolean));
+    const rowsToDelete = existingRows.filter((row) => !wantedRoles.includes(String(row.role || "").trim()));
+    const rolesToInsert = wantedRoles.filter((role) => !existingRoles.has(role));
+
+    try {
+      for (const row of rowsToDelete) {
+        const { error: deleteError } = await supabase.from("user_roles").delete().eq("id", row.id);
+        if (deleteError) throw deleteError;
+      }
+      if (rolesToInsert.length) {
+        const { error: insertError } = await supabase.from("user_roles").insert(
+          rolesToInsert.map((role) => ({ user_email: email, squad: teamLabel, squad_key: teamKey, role }))
+        );
+        if (insertError) throw insertError;
+      }
+      setAssignmentEditorOpen(false);
+      await loadUsers();
+    } catch (assignmentError) {
+      setError(assignmentError?.message || "Unable to save team role assignments.");
+    } finally {
+      setAssignmentSaving(false);
+    }
+  }
+
+  async function removeAssignmentGroup(group) {
+    if (!canManageRoles || !group?.rows?.length) return;
+    const confirmed = window.confirm(`Remove all ${group.teamLabel} team roles for ${group.email}?`);
+    if (!confirmed) return;
+    setError("");
+    for (const row of group.rows) {
+      const { error: deleteError } = await supabase.from("user_roles").delete().eq("id", row.id);
+      if (deleteError) { setError(deleteError.message); return; }
+    }
+    await loadUsers();
+  }
+
+  function toggleRolePermission(permission) {
+    setRoleDraft((current) => ({
+      ...current,
+      permissions: current.permissions.includes(permission)
+        ? current.permissions.filter((item) => item !== permission)
+        : [...current.permissions, permission],
+    }));
+  }
+
+  async function saveCustomRole() {
+    if (!club?.id || !canManageRoles || roleSaving) return;
+    const label = roleDraft.label.trim();
+    const roleKey = roleKeyFromLabel(label);
+    if (!label || !roleKey) {
+      setError("Give the additional role a name.");
+      return;
+    }
+    setRoleSaving(true);
+    setError("");
+    const { error: roleError } = await supabase.from("team_role_definitions").insert({
+      club_id: club.id,
+      role_key: roleKey,
+      label,
+      description: roleDraft.description.trim() || null,
+      permissions: roleDraft.permissions,
+      is_active: true,
+    });
+    if (roleError) {
+      setError(roleError.message);
+    } else {
+      setRoleDraft({ label: "", description: "", permissions: [] });
+      setRoleEditorOpen(false);
+      await loadUsers();
+    }
+    setRoleSaving(false);
   }
 
   async function saveUserRole() {
@@ -6126,24 +6344,91 @@ function ClubPermissionsScreen({ club, userRole, ageGroups = [] }) {
         </div>
 
         <div style={{ background: P.white, borderRadius: 14, padding: 18, border: `1px solid ${P.line}`, boxShadow: Sh.card, marginBottom: 20 }}>
-          <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 800, color: P.ink, marginBottom: 5 }}>Access Matrix</div>
-          <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginBottom: 14 }}>Coach/Mentor is read-only. Lead Coach can create and edit coaching content. Admin and Super Admin have full administrative access.</div>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", marginBottom: 14 }}>
+            <div>
+              <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 800, color: P.ink, marginBottom: 5 }}>Team Roles & Permissions</div>
+              <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, maxWidth: 760 }}>
+                Roles are permission presets. A person can hold more than one role on the same team, and person/team overrides can be added afterwards. Parent is a child/household relationship, not a team-staff role.
+              </div>
+            </div>
+            {canManageRoles && <Btn label="Add Role" variant="primary" onClick={() => setRoleEditorOpen(true)} />}
+          </div>
+
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: F.body, fontSize: 11 }}>
-              <thead><tr style={{ borderBottom: `2px solid ${P.line}` }}>
-                <th style={{ textAlign: "left", padding: "8px 10px", fontSize: 9, color: P.muted }}>Permission</th>
-                {roles.map((r) => <th key={r} style={{ textAlign: "center", padding: "8px 10px", fontSize: 10, color: P.ink }}>{displayRoleLabel(r)}</th>)}
-              </tr></thead>
+            <table style={{ width: "100%", minWidth: 980, borderCollapse: "collapse", fontFamily: F.body, fontSize: 10 }}>
+              <thead>
+                <tr style={{ borderBottom: `2px solid ${P.line}` }}>
+                  <th style={{ textAlign: "left", padding: "8px 10px", fontSize: 9, color: P.muted, position: "sticky", left: 0, background: P.white, zIndex: 1 }}>Permission</th>
+                  {[...SYSTEM_TEAM_ROLE_PRESETS, ...customRoles.map((role) => ({ key: role.role_key, label: role.label, description: role.description, permissions: role.permissions || [], custom: true }))].map((role) => (
+                    <th key={role.key} title={role.description || ""} style={{ textAlign: "center", padding: "8px 10px", fontSize: 10, color: P.ink, minWidth: 120 }}>
+                      {role.label}
+                      {role.custom && <div style={{ fontSize: 8, marginTop: 2, color: CLUB_RED, fontWeight: 800 }}>CUSTOM</div>}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
               <tbody>
-                {permKeys.map((key) => <tr key={key} style={{ borderBottom: `1px solid ${P.line}` }}>
-                  <td style={{ padding: "8px 10px", fontWeight: 700, color: P.ink, textTransform: "capitalize" }}>{key}</td>
-                  {roles.map((r) => <td key={r} style={{ textAlign: "center", padding: "7px 8px" }}>
-                    <span style={{ display: "inline-block", padding: "3px 8px", borderRadius: 5, background: P.soft, color: P.ink, fontWeight: 700, fontSize: 9 }}>{permMatrix[r]?.[key] || "none"}</span>
-                  </td>)}
-                </tr>)}
+                {TEAM_PERMISSION_OPTIONS.map(([permission, label]) => (
+                  <tr key={permission} style={{ borderBottom: `1px solid ${P.line}` }}>
+                    <td style={{ padding: "8px 10px", fontWeight: 700, color: P.ink, position: "sticky", left: 0, background: P.white, zIndex: 1 }}>
+                      <div>{label}</div>
+                      <div style={{ fontSize: 8, color: P.muted, fontWeight: 600 }}>{permission}</div>
+                    </td>
+                    {[...SYSTEM_TEAM_ROLE_PRESETS, ...customRoles.map((role) => ({ key: role.role_key, permissions: role.permissions || [] }))].map((role) => {
+                      const allowed = (role.permissions || []).includes(permission);
+                      return (
+                        <td key={`${role.key}-${permission}`} style={{ textAlign: "center", padding: "7px 8px" }}>
+                          <span aria-label={allowed ? "Allowed" : "Not allowed"} style={{ display: "inline-grid", placeItems: "center", width: 24, height: 24, borderRadius: 7, background: allowed ? "#ecfdf3" : P.soft, color: allowed ? "#16803a" : "#9aa7b6", fontWeight: 900 }}>
+                            {allowed ? "✓" : "—"}
+                          </span>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
+          <div style={{ marginTop: 12, padding: "10px 12px", borderRadius: 9, background: CLUB_SOFT, fontFamily: F.body, fontSize: 9, color: P.ink }}>
+            Effective team access = all assigned role presets combined + explicit person/team overrides. Backend RLS still needs to enforce the same capabilities before this is treated as the final security boundary.
+          </div>
+        </div>
+
+        <div style={{ background: P.white, borderRadius: 14, padding: 18, border: `1px solid ${P.line}`, boxShadow: Sh.card, marginBottom: 20 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
+            <div>
+              <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 800, color: P.ink }}>Team Staff Assignments</div>
+              <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 4, maxWidth: 760 }}>
+                Assign one person to a team with one or more roles. Each selected role is stored as its own user_roles row, so roles combine rather than replacing one another. Parent/child relationships are managed separately.
+              </div>
+            </div>
+            {canManageRoles && <Btn label="Assign Roles" variant="primary" onClick={() => openAssignmentEditor()} />}
+          </div>
+
+          {assignmentGroups.length === 0 ? (
+            <div style={{ padding: "18px 14px", borderRadius: 10, background: P.soft, fontFamily: F.body, fontSize: 10, color: P.muted }}>No team-scoped staff role assignments yet.</div>
+          ) : assignmentGroups.map((group) => (
+            <div key={`${group.email}-${group.teamKey}`} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 4px", borderTop: `1px solid ${P.line}` }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <span style={{ fontFamily: F.body, fontSize: 12, fontWeight: 800, color: P.ink }}>{group.email}</span>
+                  <span style={{ padding: "3px 7px", borderRadius: 999, background: CLUB_SOFT, color: CLUB_RED, fontFamily: F.body, fontSize: 9, fontWeight: 800 }}>{group.teamLabel}</span>
+                </div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 6 }}>
+                  {group.roles.map((roleKey) => {
+                    const role = availableTeamRoles.find((item) => item.key === roleKey);
+                    return <span key={roleKey} style={{ padding: "3px 7px", borderRadius: 999, background: P.soft, border: `1px solid ${P.line}`, fontFamily: F.body, fontSize: 9, color: P.ink, fontWeight: 800 }}>{role?.label || displayRoleLabel(roleKey)}</span>;
+                  })}
+                </div>
+              </div>
+              {canManageRoles && (
+                <div style={{ display: "flex", gap: 6 }}>
+                  <Btn label="Edit" variant="ghost" onClick={() => openAssignmentEditor(group)} />
+                  <Btn label="Remove" variant="ghost" onClick={() => removeAssignmentGroup(group)} />
+                </div>
+              )}
+            </div>
+          ))}
         </div>
 
         <div style={{ background: P.white, borderRadius: 14, padding: 18, border: `1px solid ${P.line}`, boxShadow: Sh.card }}>
@@ -6178,6 +6463,79 @@ function ClubPermissionsScreen({ club, userRole, ageGroups = [] }) {
             </div>)
           }
         </div>
+
+        {assignmentEditorOpen && canManageRoles && (
+          <div onClick={() => setAssignmentEditorOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 10020, background: "rgba(0,0,0,.5)", display: "grid", placeItems: "center", padding: 16 }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ width: "min(620px, calc(100vw - 32px))", maxHeight: "calc(100vh - 48px)", overflow: "auto", background: P.white, borderRadius: 16, padding: 24, boxShadow: Sh.lift }}>
+              <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 800, color: P.ink }}>Assign Team Roles</div>
+              <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 4, marginBottom: 16 }}>Choose the person and team, then tick every role they should hold for that team.</div>
+              <label style={{ display: "block", fontFamily: F.body, fontSize: 9, fontWeight: 800, color: P.ink, marginBottom: 12 }}>User email
+                <input type="email" value={assignmentDraft.email} onChange={(e) => setAssignmentDraft((current) => ({ ...current, email: e.target.value }))} placeholder="name@example.com" style={{ width: "100%", marginTop: 5, padding: "10px 11px", borderRadius: 8, border: `1px solid ${P.line}`, fontFamily: F.body }} />
+              </label>
+              <label style={{ display: "block", fontFamily: F.body, fontSize: 9, fontWeight: 800, color: P.ink, marginBottom: 14 }}>Team
+                <select value={assignmentDraft.teamKey} onChange={(e) => { const team = (ageGroups || []).find((item) => String(item.label) === e.target.value); setAssignmentDraft((current) => ({ ...current, teamKey: e.target.value, teamLabel: team?.label || e.target.value })); }} style={{ width: "100%", marginTop: 5, padding: "10px 11px", borderRadius: 8, border: `1px solid ${P.line}`, fontFamily: F.body }}>
+                  <option value="">Select team…</option>
+                  {(ageGroups || []).map((team) => <option key={team.id || team.label} value={team.label}>{teamDisplayName(team, team.label)}</option>)}
+                </select>
+              </label>
+              <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 800, color: P.muted, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 8 }}>Roles</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 8 }}>
+                {availableTeamRoles.map((role) => {
+                  const checked = assignmentDraft.roles.includes(role.key);
+                  return (
+                    <label key={role.key} style={{ display: "flex", gap: 9, alignItems: "flex-start", padding: "10px", borderRadius: 9, border: `1px solid ${checked ? "#f0a6a6" : P.line}`, background: checked ? CLUB_SOFT : P.white, cursor: "pointer" }}>
+                      <input type="checkbox" checked={checked} onChange={() => toggleAssignmentRole(role.key)} style={{ marginTop: 2 }} />
+                      <span>
+                        <span style={{ display: "block", fontFamily: F.body, fontSize: 10, fontWeight: 800, color: P.ink }}>{role.label}</span>
+                        <span style={{ display: "block", fontFamily: F.body, fontSize: 8, color: P.muted, marginTop: 2 }}>{role.description || "Team role"}</span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+              <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
+                <Btn label={assignmentSaving ? "Saving..." : "Save Assignments"} variant="primary" onClick={saveTeamRoleAssignments} />
+                <Btn label="Cancel" variant="ghost" onClick={() => setAssignmentEditorOpen(false)} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {roleEditorOpen && canManageRoles && (
+          <div onClick={() => setRoleEditorOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(0,0,0,.5)", display: "grid", placeItems: "center", padding: 16 }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ width: "min(760px, calc(100vw - 32px))", maxHeight: "calc(100vh - 48px)", overflow: "auto", background: P.white, borderRadius: 16, padding: 24, boxShadow: Sh.lift }}>
+              <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 800, color: P.ink }}>Add Team Role</div>
+              <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 4, marginBottom: 16 }}>Create an additional role such as Lead Mentor, Fixtures Coordinator or Communications Lead, then choose exactly what it can do.</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1.3fr", gap: 12, marginBottom: 16 }} className="club-role-editor-grid">
+                <label style={{ fontFamily: F.body, fontSize: 9, fontWeight: 800, color: P.ink }}>Role name
+                  <input value={roleDraft.label} onChange={(e) => setRoleDraft((current) => ({ ...current, label: e.target.value }))} placeholder="e.g. Lead Mentor" style={{ width: "100%", marginTop: 5, padding: "10px 11px", borderRadius: 8, border: `1px solid ${P.line}`, fontFamily: F.body }} />
+                </label>
+                <label style={{ fontFamily: F.body, fontSize: 9, fontWeight: 800, color: P.ink }}>Description
+                  <input value={roleDraft.description} onChange={(e) => setRoleDraft((current) => ({ ...current, description: e.target.value }))} placeholder="What is this role responsible for?" style={{ width: "100%", marginTop: 5, padding: "10px 11px", borderRadius: 8, border: `1px solid ${P.line}`, fontFamily: F.body }} />
+                </label>
+              </div>
+              <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 800, color: P.muted, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 8 }}>Permissions</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 8 }} className="club-role-permissions-grid">
+                {TEAM_PERMISSION_OPTIONS.map(([permission, label]) => {
+                  const checked = roleDraft.permissions.includes(permission);
+                  return (
+                    <label key={permission} style={{ display: "flex", gap: 9, alignItems: "flex-start", padding: "9px 10px", borderRadius: 9, border: `1px solid ${checked ? "#f0a6a6" : P.line}`, background: checked ? CLUB_SOFT : P.white, cursor: "pointer" }}>
+                      <input type="checkbox" checked={checked} onChange={() => toggleRolePermission(permission)} style={{ marginTop: 2 }} />
+                      <span>
+                        <span style={{ display: "block", fontFamily: F.body, fontSize: 10, fontWeight: 800, color: P.ink }}>{label}</span>
+                        <span style={{ display: "block", fontFamily: F.body, fontSize: 8, color: P.muted, marginTop: 2 }}>{permission}</span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+              <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
+                <Btn label={roleSaving ? "Saving..." : "Create Role"} variant="primary" onClick={saveCustomRole} />
+                <Btn label="Cancel" variant="ghost" onClick={() => setRoleEditorOpen(false)} />
+              </div>
+            </div>
+          </div>
+        )}
 
         {editingUser && isSuperAdmin && (
           <div onClick={() => setEditingUser(null)} style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,.5)", display: "grid", placeItems: "center", padding: 16 }}>

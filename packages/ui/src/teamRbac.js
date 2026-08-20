@@ -91,10 +91,11 @@ export function normaliseTeamRoles(staff = {}) {
   return staff.role ? [staff.role] : [];
 }
 
-export function effectiveTeamPermissions(staff = {}) {
+export function effectiveTeamPermissions(staff = {}, customRolePresets = {}) {
   const permissions = new Set();
   for (const role of normaliseTeamRoles(staff)) {
-    for (const permission of ROLE_PERMISSION_PRESETS[role] || []) permissions.add(permission);
+    const preset = ROLE_PERMISSION_PRESETS[role] || customRolePresets[role] || [];
+    for (const permission of preset) permissions.add(permission);
   }
 
   const overrides = staff.permission_overrides || {};
@@ -105,6 +106,6 @@ export function effectiveTeamPermissions(staff = {}) {
   return permissions;
 }
 
-export function hasTeamPermission(staff, permission) {
-  return effectiveTeamPermissions(staff).has(permission);
+export function hasTeamPermission(staff, permission, customRolePresets = {}) {
+  return effectiveTeamPermissions(staff, customRolePresets).has(permission);
 }
