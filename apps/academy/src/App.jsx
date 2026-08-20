@@ -3,6 +3,8 @@ import { supabase } from "./supabaseClient";
 import html2canvas from "html2canvas";
 import { openAdminModule, requestedScreenFromUrl, requestedTeamFromUrl, readModuleScreen, writeModuleScreen } from "../../../packages/ui/src/platformNavigation.js";
 
+import "../../../packages/ui/src/adminShell.css";
+import "../../../packages/ui/src/dashboardLayout.css";
 /* ============================================================
    SPRAOI COACH — Desktop-first redesign
    Navy sidebar, purple accents, responsive
@@ -10,14 +12,14 @@ import { openAdminModule, requestedScreenFromUrl, requestedTeamFromUrl, readModu
 
 // Design tokens (from Figma design system)
 const P = {
-  p900: "#4a0072", p800: "#6a1b9a", p700: "#7b1fa2", p600: "#8e24aa",
+  p900: "#4a0072", p800: "#6a1b9a", p700: "#7b1fa2", p600: "#7C3AED",
   p500: "#9c27b0", p400: "#ab47bc", p300: "#ce93d8", p200: "#e1bee7", p100: "#f3e5f5", p50: "#faf5fc",
   navy: "#0b2545", ink: "#13243b", muted: "#627187", line: "#dfe7ef",
   soft: "#f6f9fc", cream: "#fffaf2", white: "#ffffff",
   green: "#43a047", orange: "#fb8c00", coral: "#e64a19", sky: "#29b6f6", yellow: "#fbc02d",
 };
 const F = {
-  display: "'Nunito', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+  display: "'Manrope', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
   body: "'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
 };
 
@@ -28,7 +30,7 @@ function useSpraoiFonts() {
     const link = document.createElement("link");
     link.id = id;
     link.rel = "stylesheet";
-    link.href = "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Nunito:wght@600;700;800;900&display=swap";
+    link.href = "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@500;600;700;800&display=swap";
     document.head.appendChild(link);
   }, []);
 }
@@ -109,6 +111,30 @@ function teamDisplayName(team, fallback = "Team") {
 
 function SpraoiNavIcon({ name = "", size = 18 }) {
   const key = String(name || "").toLowerCase();
+  const secondary = (() => {
+    if (key.startsWith("academy")) {
+      if (key.includes("dashboard")) return "/icons/academy/home.png";
+      if (key.includes("content")) return "/icons/academy/mission.png";
+      if (key.includes("player")) return "/icons/academy/child-profile.png";
+      if (key.includes("parent")) return "/icons/academy/parent-lock.png";
+      if (key.includes("leader")) return "/icons/academy/leaderboard.png";
+      if (key.includes("engagement")) return "/icons/academy/progress.png";
+      if (key.includes("setting")) return "/icons/global/settings.png";
+    }
+    if (key.startsWith("cup")) {
+      if (key.includes("dashboard")) return "/icons/cup/dashboard.png";
+      if (key.includes("team")) return "/icons/cup/teams.png";
+      if (key.includes("event") || key.includes("matchday")) return "/icons/cup/matchday.png";
+      if (key.includes("standing")) return "/icons/cup/standings.png";
+      if (key.includes("food")) return "/icons/cup/food.png";
+      if (key.includes("announcement")) return "/icons/cup/announcements.png";
+      if (key.includes("participant")) return "/icons/cup/participant-view.png";
+      if (key.includes("setting")) return "/icons/cup/settings.png";
+    }
+    return null;
+  })();
+  if (secondary) return <img src={secondary} alt="" aria-hidden="true" style={{width:size,height:size,objectFit:"contain"}} />;
+
   const common = { width:size, height:size, viewBox:"0 0 24 24", fill:"none", stroke:"currentColor", strokeWidth:1.9, strokeLinecap:"round", strokeLinejoin:"round", "aria-hidden":true };
   let shape;
   if (key.includes("dashboard")) shape=<><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V20h13v-9.5"/><path d="M9.5 20v-6h5v6"/></>;
@@ -124,6 +150,7 @@ function SpraoiNavIcon({ name = "", size = 18 }) {
   else if (key.includes("permission")||key.includes("compliance")) shape=<><path d="M12 3 5 6v5c0 4.7 2.8 8 7 10 4.2-2 7-5.3 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></>;
   else if (key.includes("food")) shape=<><path d="M7 3v8M4 3v5a3 3 0 0 0 6 0V3M7 11v10M16 3v18M16 3c3 2 4 6 4 9h-4"/></>;
   else if (key.includes("compose")||key.includes("announcement")||key.includes("inbox")) shape=<><path d="M4 5h16v12H8l-4 4V5Z"/><path d="m7 9 5 3 5-3"/></>;
+  else if (key.includes("more")) shape=<><circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none"/></>;
   else shape=<><circle cx="12" cy="12" r="8"/><path d="M8 12h8"/></>;
   return <svg {...common}>{shape}</svg>;
 }
@@ -143,7 +170,7 @@ function getDrillIcons(activity) {
   if (cat.includes("speed") || cat.includes("agility") || cat.includes("abc") || cat.includes("running") || title.includes("speed") || title.includes("agility") || title.includes("sprint"))
     catIcon = { icon: "/speed-mechanics-icon.png", bg: "linear-gradient(135deg, #fbc02d 0%, #f57f17 100%)", label: "Speed & Agility", color: "#f57f17" };
   else if (cat.includes("warm") || cat.includes("cool") || cat.includes("stretch") || cat.includes("recovery") || cat.includes("rest") || title.includes("warm up") || title.includes("cooldown"))
-    catIcon = { icon: "/rest-and-recovery-icon.png", bg: "linear-gradient(135deg, #ab47bc 0%, #6a1b9a 100%)", label: "Warm Up & Recovery", color: "#8e24aa" };
+    catIcon = { icon: "/rest-and-recovery-icon.png", bg: "linear-gradient(135deg, #ab47bc 0%, #6a1b9a 100%)", label: "Warm Up & Recovery", color: "#7C3AED" };
 
   return { sportIcon, catIcon };
 }
@@ -163,9 +190,119 @@ const MODULE_URLS = {
   club: null,
 };
 
+
+function secondaryNavAsset(moduleKey, id) {
+  const maps = {
+    coach: {
+      "coach-dashboard": "/icons/coach/dashboard.svg",
+      "coach-planner": "/icons/global/calendar.png",
+      "coach-sessions": "/icons/connect/scheduled.png",
+      "coach-drills": "/icons/academy/mission.png",
+      "coach-players": "/icons/global/profile.png",
+    },
+    academy: {
+      "academy-dashboard": "/icons/academy/dashboard.svg",
+      "academy-content": "/icons/academy/weekly-content.svg",
+      "academy-players": "/icons/academy/child-profile.svg",
+      "academy-parents": "/icons/academy/parents.svg",
+      "academy-preview": "/icons/academy/child-app-access.svg",
+      "academy-leaderboard": "/icons/academy/leaderboard.svg",
+      "academy-engagement": "/icons/academy/engagement.svg",
+      "academy-approvals": "/icons/academy/approvals.svg",
+      "academy-settings": "/icons/global/settings.png",
+    },
+    connect: {
+      "dashboard": "/icons/connect/home.png",
+      "events": "/icons/connect/events.png",
+      "messages": "/icons/connect/messages.png",
+      "groups": "/icons/connect/groups.png",
+      "responses": "/icons/connect/availability.png",
+      "settings": "/icons/connect/settings.png",
+      "connect-dashboard": "/icons/connect/home.png",
+      "connect-compose": "/icons/connect/send.png",
+      "connect-audiences": "/icons/connect/groups.png",
+      "connect-inbox": "/icons/connect/messages.png",
+      "connect-responses": "/icons/connect/availability.png",
+      "connect-templates": "/icons/connect/announcement.png",
+      "connect-settings": "/icons/connect/settings.png",
+    },
+    cup: {
+      "cup-dashboard": "/icons/cup/dashboard.png",
+      "cup-events": "/icons/cup/matchday.png",
+      "cup-checklist": "/icons/cup/completed.png",
+      "cup-teams": "/icons/cup/teams.png",
+      "cup-competition": "/icons/cup/competition-bracket.png",
+      "cup-matchday": "/icons/cup/matchday.png",
+      "cup-content": "/icons/cup/announcements.png",
+      "cup-food": "/icons/cup/food.png",
+      "cup-schedule": "/icons/cup/fixtures.png",
+      "cup-results": "/icons/cup/results.png",
+      "cup-standings": "/icons/cup/standings.png",
+      "cup-announcements": "/icons/cup/announcements.png",
+      "cup-participant-view": "/icons/cup/participant-view.png",
+      "cup-settings": "/icons/cup/settings.png",
+    },
+    club: {
+      "club-dashboard": "/icons/cup/dashboard.png",
+      "club-setup": "/icons/global/settings.png",
+      "club-teams": "/icons/cup/teams.png",
+      "club-members": "/icons/connect/people-parents.png",
+      "club-coaches": "/icons/connect/people-parents.png",
+      "club-permissions": "/icons/global/lock.png",
+      "club-scheduling": "/icons/connect/pitch-location.png",
+      "club-facilities": "/icons/connect/pitch-location.png",
+      "club-branding": "/icons/global/edit.png",
+      "club-integrations": "/icons/global/external-link.png",
+      "club-reports": "/icons/academy/progress.png",
+      "club-settings": "/icons/global/settings.png",
+    },
+  };
+  return maps[moduleKey]?.[id] || "/icons/global/chevron.png";
+}
+
+
+function academyIconAsset(name) {
+  const map = {
+    dashboard: "/icons/academy/dashboard.svg",
+    weeklyContent: "/icons/academy/weekly-content.svg",
+    childProfile: "/icons/academy/child-profile.svg",
+    childAppAccess: "/icons/academy/child-app-access.svg",
+    completion: "/icons/academy/completion.svg",
+    engagement: "/icons/academy/engagement.svg",
+    leaderboard: "/icons/academy/leaderboard.svg",
+    approvals: "/icons/academy/approvals.svg",
+    parents: "/icons/academy/parents.svg",
+    challenge: "/icons/academy/challenge.svg",
+    badge: "/icons/academy/badge.svg",
+    streak: "/icons/academy/streak.svg",
+    fitness: "/icons/academy/fitness.svg",
+    football: "/icons/academy/football.svg",
+    hurling: "/icons/academy/hurling.svg",
+    recovery: "/icons/academy/recovery.svg",
+    xp: "/icons/academy/xp.svg",
+    lock: "/icons/academy/lock.svg",
+  };
+  return map[name] || "/icons/academy/child-profile.svg";
+}
+
+function AcademyUiIcon({ name, size = 20, className = "" }) {
+  return <img src={academyIconAsset(name)} alt="" aria-hidden="true" className={className} style={{ width: size, height: size, objectFit: "contain" }} />;
+}
+
+function SecondarySidebarIcon({ moduleKey, id }) {
+  return (
+    <img
+      className="spraoi-secondary-nav-icon"
+      src={secondaryNavAsset(moduleKey, id)}
+      alt=""
+      aria-hidden="true"
+    />
+  );
+}
+
 const MODULES = {
   coach: {
-    label: "Coach", color: "#8e24aa", icon: "/spraoi-coach-icon.png", tagline: "Plan and deliver better coaching.", nav: [
+    label: "Coach", color: "#7C3AED", icon: "/spraoi-coach-icon.png", tagline: "Plan and deliver better coaching.", nav: [
       { id: "coach-dashboard", icon: "⌂", label: "Dashboard" },
       { id: "coach-planner", icon: "◫", label: "Planner" },
       { id: "coach-sessions", icon: "▶", label: "Sessions" },
@@ -174,7 +311,7 @@ const MODULES = {
     ]
   },
   academy: {
-    label: "Academy", color: "#0277bd", icon: "/spraoi-academy-icon.png", tagline: "Turn weekly coaching into child-friendly practice.", nav: [
+    label: "Academy", color: "#2563EB", icon: "/spraoi-academy-icon.png", tagline: "Turn weekly coaching into child-friendly practice.", nav: [
       { id: "academy-dashboard", icon: "⌂", label: "Dashboard" },
       { id: "academy-content", icon: "✦", label: "Weekly Content" },
       { id: "academy-leaderboard", icon: "★", label: "Leaderboard" },
@@ -184,7 +321,7 @@ const MODULES = {
     ],
   },
   cup: {
-    label: "Cup", color: "#e65100", icon: "/spraoi-cup-icon.png", tagline: "Set up and run blitzes and tournaments.", nav: [
+    label: "Cup", color: "#D89A00", icon: "/spraoi-cup-icon.png", tagline: "Set up and run blitzes and tournaments.", nav: [
       { id: "cup-dashboard", icon: "⌂", label: "Dashboard" },
       { id: "cup-events", icon: "◆", label: "Events" },
       { id: "cup-teams", icon: "●", label: "Teams" },
@@ -207,7 +344,7 @@ const MODULES = {
     ]
   },
   connect: {
-    label: "Connect", color: "#f4b400", icon: "/spraoi-connect-icon.png", tagline: "Send messages, links and collect responses.", nav: [
+    label: "Connect", color: "#F97316", icon: "/spraoi-connect-icon.png", tagline: "Send messages, links and collect responses.", nav: [
       { id: "connect-dashboard", icon: "⌂", label: "Dashboard" },
       { id: "connect-compose", icon: "✎", label: "Compose" },
       { id: "connect-audiences", icon: "●", label: "Audiences" },
@@ -218,7 +355,7 @@ const MODULES = {
     ]
   },
   club: {
-    label: "Club", color: "#d32f2f", icon: "/spraoi-club-icon.png", tagline: "The operating centre for your club.", nav: [
+    label: "Club", color: "#DC2626", icon: "/spraoi-club-icon.png", tagline: "The operating centre for your club.", nav: [
       { id: "club-dashboard", icon: "⌂", label: "Dashboard" },
       { id: "club-teams", icon: "◆", label: "Teams" },
       { id: "club-members", icon: "●", label: "Members" },
@@ -260,20 +397,65 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
   }
 
   return (
-    <div style={{ width: 306, minHeight: "100vh", display: "flex", flexShrink: 0, position: "sticky", top: 0, alignSelf: "flex-start", height: "100vh", zIndex: 30 }}>
+    <div className="spraoi-desktop-shell-nav" style={{ width: 306, minHeight: "100vh", display: "flex", flexShrink: 0, position: "sticky", top: 0, alignSelf: "flex-start", height: "100vh", zIndex: 30 }}>
       {/* Fixed global module rail: all modules are always reachable without scrolling */}
-      <aside style={{ width: 78, background: "#10243e", display: "flex", flexDirection: "column", alignItems: "center", padding: "12px 8px", gap: 8, borderRight: "1px solid rgba(255,255,255,.08)" }}>
+      <aside className="spraoi-global-rail" style={{ width: 78, background: "#10243e", display: "flex", flexDirection: "column", alignItems: "center", padding: "12px 8px", gap: 8, borderRight: "1px solid rgba(255,255,255,.08)" }}>
         <div title={clubName} style={{ width: 60, height: 60, borderRadius: 17, background: "#fff", display: "grid", placeItems: "center", overflow: "hidden", boxShadow: "0 5px 16px rgba(0,0,0,.20)", border: "1px solid rgba(255,255,255,.55)", marginBottom: 5 }}>
           <img src={club?.logo_url || "/spraoi-club-icon.png"} alt={`${clubName} crest`} style={{ width: 52, height: 52, objectFit: "contain" }} />
         </div>
+        <div style={{
+          width: "100%",
+          display: "flex",
+          justifyContent: "center",
+          marginBottom: 5
+        }}>
+          <div className="spraoi-team-selector-label">Team</div>
+          <select
+            aria-label="Active team"
+            title={selectedTeam ? teamDisplayName(selectedTeam) : "Select team"}
+            value={selectedTeam?.id || ""}
+            onChange={(e) => {
+              const ag = visibleTeams.find(
+                (team) => String(team.id) === String(e.target.value)
+              );
+              if (ag) onSelectTeam(ag);
+            }}
+            style={{
+              width: 62,
+              height: 34,
+              borderRadius: 10,
+              border: "1px solid rgba(255,255,255,.28)",
+              background: "#fff",
+              color: "#10243e",
+              fontFamily: F.body,
+              fontSize: 12,
+              fontWeight: 800,
+              padding: "0 4px",
+              cursor: "pointer"
+            }}
+          >
+            {visibleTeams.map((ag) => (
+              <option
+                key={ag.id}
+                value={ag.id}
+                style={{ color: "#10243e", background: "#fff" }}
+              >
+                {String(teamDisplayName(ag) || "")
+                  .replace(/\s*Boys$/i, "B")
+                  .replace(/\s*Girls$/i, "G")
+                  .replace(/\s+/g, "")}
+              </option>
+            ))}
+          </select>
+        </div>
         <div style={{ flex: 1, width: "100%", display: "flex", flexDirection: "column", justifyContent: "center", gap: 7 }}>
-          {Object.entries(MODULES).filter(([key]) => !["plus","connect"].includes(key)).map(([key, module]) => {
+          {["coach","academy","connect","cup","club"].filter((key) => MODULES[key]).map((key) => { const module = MODULES[key];
             const isActive = activeModule === key;
             const locked = !enabledModules.includes(key);
             const darkText = key === "connect";
             return (
-              <button key={key} title={`${module.label}${locked ? " — contact your administrator" : ""}`} onClick={() => openModule(key, module)} style={{ width: "100%", minHeight: 62, border: "none", borderRadius: 14, cursor: "pointer", background: isActive ? module.color : "transparent", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, position: "relative", boxShadow: isActive ? "0 8px 22px rgba(0,0,0,.24)" : "none" }}>
-                <span style={{ width: 38, height: 38, borderRadius: 12, background: "#fff", border: "1px solid rgba(15,23,42,.08)", display: "grid", placeItems: "center", boxShadow: isActive ? "0 6px 16px rgba(0,0,0,.18)" : "0 3px 10px rgba(0,0,0,.10)" }}><img src={module.icon} alt="" style={{ width: 28, height: 28, objectFit: "contain", filter: locked ? "grayscale(1) opacity(.55)" : "none" }} /></span>
+              <button className="spraoi-module-switcher-button" data-active={isActive} key={key} title={`${module.label}${locked ? " — contact your administrator" : ""}`} onClick={() => openModule(key, module)} style={{ width: "100%", minHeight: 62, border: "none", borderRadius: 14, cursor: "pointer", background: isActive ? module.color : "transparent", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, position: "relative", boxShadow: isActive ? "0 8px 22px rgba(0,0,0,.24)" : "none" }}>
+                <span style={{ width: 46, height: 46, borderRadius: 14, background: "#fff", border: "1px solid rgba(15,23,42,.08)", display: "grid", placeItems: "center", boxShadow: isActive ? "0 6px 16px rgba(0,0,0,.18)" : "0 3px 10px rgba(0,0,0,.10)" }}><img src={module.icon} alt="" style={{ width: 40, height: 40, objectFit: "contain", filter: locked ? "grayscale(1) opacity(.55)" : "none" }} /></span>
                 <span style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, letterSpacing: "-.01em", color: isActive ? (darkText ? "#332800" : "#fff") : "rgba(255,255,255,.7)" }}>{module.label}</span>
                 {locked && <span style={{ position: "absolute", top: 5, right: 5, fontSize: 9, color: "rgba(255,255,255,.8)" }}>🔒</span>}
               </button>
@@ -285,27 +467,17 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
       </aside>
 
       {/* Fixed navigation for the active module */}
-      <aside style={{ width: 228, background: `linear-gradient(180deg, ${mod.color} 0%, ${mod.color}ee 58%, #10243e 100%)`, display: "flex", flexDirection: "column", minHeight: "100vh", transition: "background .22s ease", color: activeModule === "connect" ? "#332800" : "#fff" }}>
-        <div style={{ padding: "18px 16px 14px", borderBottom: activeModule === "connect" ? "1px solid rgba(51,40,0,.18)" : "1px solid rgba(255,255,255,.16)" }}>
+      <aside className="spraoi-module-sidebar" data-module={activeModule} style={{ width: 228, background: `linear-gradient(180deg, ${mod.color} 0%, ${mod.color}ee 58%, #10243e 100%)`, display: "flex", flexDirection: "column", minHeight: "100vh", transition: "background .22s ease", color: activeModule === "connect" ? "#332800" : "#fff" }}>
+        <div className="spraoi-module-title-block" style={{ height: 118, minHeight: 118, boxSizing: "border-box", padding: "18px 16px", borderBottom: activeModule === "connect" ? "1px solid rgba(51,40,0,.18)" : `1px solid ${mod.color}33` }}>
           <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
             <div style={{ width: 54, height: 54, borderRadius: 16, background: "#fff", display: "grid", placeItems: "center", border: "1px solid rgba(15,23,42,.10)", boxShadow: "0 7px 18px rgba(0,0,0,.16)", overflow: "hidden", flexShrink: 0 }}>
-              <img src={mod.icon} alt={`${mod.label} module`} style={{ width: 38, height: 38, objectFit: "contain" }} />
+              <img src="/spraoi-logo.png" alt="Spraoi Sports" style={{ width: 42, height: 42, objectFit: "contain" }} />
             </div>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontFamily: F.display, fontSize: 21, fontWeight: 900, letterSpacing: "-.02em", color: activeModule === "connect" ? "#332800" : "#fff", lineHeight: 1.05 }}>{mod.label}</div>
+              <div style={{ fontFamily: F.display, fontSize: 21, fontWeight: 800, letterSpacing: "-.02em", color: activeModule === "connect" ? "#332800" : "#fff", lineHeight: 1.05 }}>{mod.label}</div>
               <div style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, color: activeModule === "connect" ? "#5b4600" : "#fff", marginTop: 5 }}>{clubName}</div>
             </div>
           </div>
-        </div>
-
-        <div style={{ margin: "11px 12px 4px" }}>
-          {visibleTeams.length > 1 ? (
-            <select value={selectedTeam?.id || ""} onChange={(e) => { const ag = ageGroups?.find((a) => a.id === e.target.value); if (ag) onSelectTeam(ag); }} style={{ width: "100%", padding: "9px 10px", borderRadius: 9, border: activeModule === "connect" ? "1px solid rgba(51,40,0,.2)" : "1px solid rgba(255,255,255,.2)", background: activeModule === "connect" ? "rgba(255,255,255,.5)" : "rgba(255,255,255,.14)", fontFamily: F.body, fontSize: 11, fontWeight: 700, color: activeModule === "connect" ? "#332800" : "#fff", cursor: "pointer" }}>
-              {visibleTeams.map((ag) => <option key={ag.id} value={ag.id} style={{ color: P.ink }}>{teamDisplayName(ag)}</option>)}
-            </select>
-          ) : selectedTeam ? (
-            <div style={{ padding: "9px 10px", borderRadius: 9, background: activeModule === "connect" ? "rgba(255,255,255,.5)" : "rgba(255,255,255,.14)", fontFamily: F.body, fontSize: 11, fontWeight: 700 }}>{teamDisplayName(selectedTeam)}</div>
-          ) : null}
         </div>
 
         <nav style={{ flex: 1, padding: "9px 10px", display: "flex", flexDirection: "column", gap: 3, overflowY: "auto" }}>
@@ -313,8 +485,8 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
             const isActive = activeScreen === item.id || (item.id === "coach-sessions" && activeScreen === "coach-builder");
             const fg = activeModule === "connect" ? "#332800" : "#fff";
             return (
-              <button key={item.id} onClick={() => onNav(item.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 11px", borderRadius: 10, border: "none", cursor: "pointer", width: "100%", background: isActive ? "#fff" : "transparent", textAlign: "left" }}>
-                <span style={{ fontSize: 15, color: isActive ? (activeModule === "connect" ? "#5b4600" : mod.color) : "#fff", opacity: 1 }}><SpraoiNavIcon name={item.id} size={16} /></span>
+              <button className="spraoi-module-nav-button" data-active={isActive} key={item.id} onClick={() => onNav(item.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 11px", borderRadius: 10, border: "none", cursor: "pointer", width: "100%", background: isActive ? "#fff" : "transparent", textAlign: "left" }}>
+                <span className="spraoi-secondary-nav-icon-wrap"><SecondarySidebarIcon moduleKey={activeModule} id={item.id} /></span>
                 <span style={{ fontFamily: F.body, fontSize: 12, fontWeight: isActive ? 700 : 550, letterSpacing: "-.01em", color: isActive ? (activeModule === "connect" ? "#5b4600" : mod.color) : "#fff", opacity: 1 }}>{item.label}</span>
               </button>
             );
@@ -366,9 +538,9 @@ function MobileAccessibilityStyles() {
   `}</style>;
 }
 
-function TopBar({ title, sub, children }) {
+function TopBar({ title, sub, children, moduleKey = null }) {
   const lower = `${title || ""} ${sub || ""}`.toLowerCase();
-  let key = "coach";
+  let key = moduleKey || "coach";
   if (lower.includes("academy")) key = "academy";
   else if (lower.includes("cup") || lower.includes("tournament") || lower.includes("fixture")) key = "cup";
   else if (lower.includes("connect") || lower.includes("message") || lower.includes("audience") || lower.includes("inbox")) key = "connect";
@@ -378,18 +550,18 @@ function TopBar({ title, sub, children }) {
   const isConnect = key === "connect";
   const isAcademy = key === "academy";
   const background = isAcademy
-    ? "linear-gradient(135deg, #eef8ff 0%, #d8f0ff 52%, #c8e9fb 100%)"
+    ? "linear-gradient(135deg, #f8fbff 0%, #edf5ff 48%, #dcecff 100%)"
     : isConnect
       ? "linear-gradient(135deg, #fff8d6 0%, #fbcf45 100%)"
       : `linear-gradient(135deg, ${module.color}16 0%, ${module.color}32 100%)`;
   return (
-    <div className="spraoi-page-header" style={{ padding: "20px 28px", background, borderBottom: `1px solid ${module.color}28`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, minHeight: 92 }}>
+    <div className="spraoi-page-header" style={{ height: 118, minHeight: 118, boxSizing: "border-box", padding: "20px 28px", background, borderBottom: `1px solid ${module.color}28`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
       <div className="spraoi-page-header-main" style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
         <div className="spraoi-page-header-icon" style={{ width: 64, height: 64, borderRadius: 20, display: "grid", placeItems: "center", background: "#fff", border: "1px solid rgba(15,23,42,.08)", boxShadow: "0 10px 26px rgba(16,36,62,.12)", flexShrink: 0 }}>
           <img src={module.icon} alt="" style={{ width: 48, height: 48, objectFit: "contain" }} />
         </div>
         <div style={{ minWidth: 0 }}>
-          <div className="spraoi-page-header-title" style={{ fontFamily: F.display, fontSize: 24, fontWeight: 900, color: isConnect ? "#332800" : P.ink, lineHeight: 1.1 }}>{title}</div>
+          <div className="spraoi-page-header-title" style={{ fontFamily: F.display, fontSize: 21, fontWeight: 700, color: isConnect ? "#332800" : P.ink, lineHeight: 1.1 }}>{title}</div>
           {sub && <div className="spraoi-page-header-sub" style={{ fontFamily: F.body, fontSize: 12, color: isConnect ? "rgba(51,40,0,.72)" : P.muted, marginTop: 6 }}>{sub}</div>}
         </div>
       </div>
@@ -400,14 +572,19 @@ function TopBar({ title, sub, children }) {
 
 function Btn({ label, variant = "primary", icon, onClick, style }) {
   const styles = {
-    primary: { background: P.p600, color: P.white, border: "none", boxShadow: "0 4px 14px rgba(142,36,170,.25)" },
-    secondary: { background: P.p50, color: P.p600, border: `1.5px solid ${P.p200}` },
-    ghost: { background: "transparent", color: P.ink, border: `1.5px solid ${P.line}` },
+    primary: { background: "#2563EB", color: P.white, border: "1px solid #2563EB", boxShadow: "0 5px 14px rgba(16,36,62,.12)" },
+    secondary: { background: P.white, color: P.ink, border: `1px solid ${P.line}`, boxShadow: "0 2px 8px rgba(16,36,62,.05)" },
+    ghost: { background: P.white, color: P.ink, border: `1px solid ${P.line}`, boxShadow: "none" },
   };
   return (
-    <button className="spraoi-touch-button" onClick={onClick} style={{ height: 36, padding: "0 16px", borderRadius: 10, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6, fontFamily: F.body, fontSize: 12, fontWeight: 700, ...styles[variant], ...style }}>
-      {icon && <span>{icon}</span>}
-      {label}
+    <button
+      className="spraoi-touch-button spraoi-action-button"
+      data-variant={variant}
+      onClick={onClick}
+      style={{ ...styles[variant], ...style }}
+    >
+      {icon && <span className="spraoi-action-icon">{icon}</span>}
+      <span>{label}</span>
     </button>
   );
 }
@@ -417,12 +594,12 @@ function Btn({ label, variant = "primary", icon, onClick, style }) {
    ============================================================ */
 function StatCard({ label, value, sub, color = P.p600, icon }) {
   return (
-    <div style={{ background: P.white, borderRadius: 14, padding: "16px 18px", border: `1px solid ${P.line}`, borderTop: `3px solid ${color}`, boxShadow: Sh.card }}>
+    <div className="spraoi-stat-card" style={{ background: P.white, borderRadius: 14, padding: "16px 18px", border: `1px solid ${P.line}`, borderTop: `3px solid ${color}`, boxShadow: Sh.card }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
         <span style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</span>
-        {icon && <span style={{ fontSize: 16 }}>{icon}</span>}
+        {icon && (typeof icon === "string" && icon.startsWith("/") ? <span className="spraoi-card-icon-chip" style={{ "--card-accent": color }}><img className="spraoi-card-icon" src={icon} alt="" aria-hidden="true" /></span> : <span className="spraoi-card-icon-fallback" style={{ "--card-accent": color }}>{icon}</span>)}
       </div>
-      <div style={{ fontFamily: F.display, fontSize: 28, fontWeight: 900, color: P.ink, letterSpacing: "-0.04em", lineHeight: 1 }}>{value}</div>
+      <div style={{ fontFamily: F.display, fontSize: 28, fontWeight: 800, color: P.ink, letterSpacing: "-0.04em", lineHeight: 1 }}>{value}</div>
       {sub && <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 6 }}>{sub}</div>}
     </div>
   );
@@ -452,18 +629,18 @@ function DashboardScreen({ club, ageGroups, planSessions, weeklyPlan, upcomingSe
       `}
 </style>
       <TopBar title="Dashboard" sub={today}>
-        <Btn label="+ New Session" variant="primary" onClick={() => onNav("coach-builder")} />
+        <Btn label="New Session" variant="primary" onClick={() => onNav("coach-builder")} />
       </TopBar>
       <div style={{ padding: "20px 24px" }}>
         {/* Stat cards row */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
           <StatCard label="Favourite Drills" value="★" sub="Your saved drills" color={P.p600} icon="❤️" />
-          <div onClick={() => onNav("academy-dashboard")} style={{ background: P.white, borderRadius: 14, padding: "16px 18px", border: `1px solid ${P.line}`, borderTop: "3px solid #0277bd", boxShadow: Sh.card, cursor: "pointer" }}>
+          <div onClick={() => onNav("academy-dashboard")} style={{ background: P.white, borderRadius: 14, padding: "16px 18px", border: `1px solid ${P.line}`, borderTop: "3px solid #2563EB", boxShadow: Sh.card, cursor: "pointer" }}>
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
               <span style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", letterSpacing: "0.08em" }}>Academy Sync</span>
               <span style={{ fontSize: 16 }}>🎓</span>
             </div>
-            <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 900, color: P.ink, lineHeight: 1 }}>Open Academy</div>
+            <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 800, color: P.ink, lineHeight: 1 }}>Open Academy</div>
             <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 6 }}>Review skills generated from this week's plan</div>
           </div>
           <StatCard label="Drills" value={String(allActivities?.length || 0)} sub={`${allActivities?.filter(a => a.sport === 'football').length || 0} football`} color={P.sky} icon="📖" />
@@ -484,7 +661,7 @@ function DashboardScreen({ club, ageGroups, planSessions, weeklyPlan, upcomingSe
                 <div key={sess.id || i} onClick={() => onOpenSession(sess)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderTop: i > 0 ? `1px solid ${P.line}` : "none", cursor: "pointer" }}>
                   <div style={{ width: 40, textAlign: "center", background: P.soft, borderRadius: 8, padding: "6px 0" }}>
                     <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 700, color: P.muted, textTransform: "uppercase" }}>{sess.session_date ? new Date(sess.session_date).toLocaleDateString("en-IE", { weekday: "short" }) : ""}</div>
-                    <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink }}>{sess.session_date ? new Date(sess.session_date).getDate() : "?"}</div>
+                    <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink }}>{sess.session_date ? new Date(sess.session_date).getDate() : "?"}</div>
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontFamily: F.body, fontSize: 13, fontWeight: 700, color: P.ink }}>{sess.plan?.hurling_skill?.name || "Training Session"}</div>
@@ -656,7 +833,7 @@ function PlannerScreen({ onNav, club, ageGroups, upcomingSessions, onOpenSession
   return (
     <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
       <TopBar title="Planner" sub={`${fullMonths[selectedMonth]} ${selectedYear}`}>
-        <Btn label="+ New Session" variant="primary" onClick={() => { const d = new Date(); clickDate(d.getDate()); }} />
+        <Btn label="New Session" variant="primary" onClick={() => { const d = new Date(); clickDate(d.getDate()); }} />
       </TopBar>
       <div style={{ padding: "20px 24px", display: "flex", gap: 20 }}>
         {/* Calendar */}
@@ -671,7 +848,7 @@ function PlannerScreen({ onNav, club, ageGroups, upcomingSessions, onOpenSession
           {/* Calendar grid */}
           <div style={{ background: P.white, borderRadius: 14, padding: 16, border: `1px solid ${P.line}`, boxShadow: Sh.card }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink }}>{fullMonths[selectedMonth]} {selectedYear}</div>
+              <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink }}>{fullMonths[selectedMonth]} {selectedYear}</div>
               <div style={{ display: "flex", gap: 4 }}>
                 <button onClick={() => setSelectedMonth((m) => m > 0 ? m - 1 : 11)} style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${P.line}`, background: P.white, cursor: "pointer", fontSize: 12 }}>◀</button>
                 <button onClick={() => setSelectedMonth((m) => m < 11 ? m + 1 : 0)} style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${P.line}`, background: P.white, cursor: "pointer", fontSize: 12 }}>▶</button>
@@ -719,7 +896,7 @@ function PlannerScreen({ onNav, club, ageGroups, upcomingSessions, onOpenSession
                 <div style={{ marginBottom: 12 }}>
                   {buildDrills.map((d, i) => (
                     <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 0", borderBottom: `1px solid ${P.line}` }}>
-                      <span style={{ fontFamily: F.display, fontSize: 11, fontWeight: 900, color: P.p600, width: 16 }}>{i + 1}</span>
+                      <span style={{ fontFamily: F.display, fontSize: 11, fontWeight: 800, color: P.p600, width: 16 }}>{i + 1}</span>
                       <span style={{ fontFamily: F.body, fontSize: 11, fontWeight: 600, color: P.ink, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.title}</span>
                       {coaches.length > 0 && (
                         <select value={d.coachId || ""} onChange={(e) => setBuildDrills((ds) => ds.map((dd, ii) => ii === i ? { ...dd, coachId: e.target.value } : dd))} style={{ width: 60, fontSize: 9, padding: 2, borderRadius: 4, border: `1px solid ${P.line}` }}>
@@ -987,7 +1164,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
                   ) : (
                     sec.drills.map((d, di) => (
                       <div key={di} style={{ background: P.white, borderRadius: 10, padding: "10px 12px", border: `1px solid ${P.line}`, marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ fontFamily: F.display, fontSize: 12, fontWeight: 900, color: sectionColors[sec.type], width: 18 }}>{di + 1}</span>
+                        <span style={{ fontFamily: F.display, fontSize: 12, fontWeight: 800, color: sectionColors[sec.type], width: 18 }}>{di + 1}</span>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontFamily: F.body, fontSize: 12, fontWeight: 700, color: P.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.title}</div>
                         </div>
@@ -1090,7 +1267,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
         <div style={{ position: "fixed", inset: 0, background: "rgba(11,37,69,.45)", zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={() => setShowTimeModal(false)}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: "min(440px, 100%)", background: P.white, borderRadius: 18, padding: 22, boxShadow: "0 24px 70px rgba(11,37,69,.25)", border: `1px solid ${P.line}` }}>
             <div style={{ width: 48, height: 48, borderRadius: 14, background: "#fff3e0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: 14 }}>⏱</div>
-            <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 900, color: P.ink, marginBottom: 6 }}>Session is {totalTime - 60} minutes over</div>
+            <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 800, color: P.ink, marginBottom: 6 }}>Session is {totalTime - 60} minutes over</div>
             <div style={{ fontFamily: F.body, fontSize: 12, lineHeight: 1.6, color: P.muted, marginBottom: 18 }}>This plan totals <strong style={{ color: P.ink }}>{totalTime} minutes</strong>. Review the warm-up, section and drill times to bring it closer to the recommended 60-minute session.</div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
               <Btn label="Review times" variant="ghost" onClick={() => setShowTimeModal(false)} />
@@ -1156,7 +1333,7 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
       <TopBar title="Drills Library" sub={`${mergedActivities.length} activities${customDrills.length > 0 ? ` (${customDrills.length} custom)` : ""}`}>
         <div style={{ display: "flex", gap: 6 }}>
           <button onClick={() => { setMode("library"); setBuilderDrill(null); }} style={{ padding: "6px 14px", borderRadius: 8, border: `1.5px solid ${mode === "library" ? P.p600 : P.line}`, background: mode === "library" ? P.p50 : P.white, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: mode === "library" ? P.p600 : P.muted, cursor: "pointer" }}>Library</button>
-          {userRole?.role === "super_admin" && <button onClick={() => setMode("builder")} style={{ padding: "6px 14px", borderRadius: 8, border: `1.5px solid ${mode === "builder" ? P.p600 : P.line}`, background: mode === "builder" ? P.p50 : P.white, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: mode === "builder" ? P.p600 : P.muted, cursor: "pointer" }}>+ Create Drill</button>}
+          {userRole?.role === "super_admin" && <button onClick={() => setMode("builder")} style={{ padding: "6px 14px", borderRadius: 8, border: `1.5px solid ${mode === "builder" ? P.p600 : P.line}`, background: mode === "builder" ? P.p50 : P.white, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: mode === "builder" ? P.p600 : P.muted, cursor: "pointer" }}>Create Drill</button>}
         </div>
       </TopBar>
 
@@ -1262,7 +1439,7 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
                 ) : (
                   <div style={{ width: "100%", height: 120, background: sportIcon.bg, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden", marginBottom: 14 }}>
                     <img src={sportIcon.icon} alt="" style={{ width: 48, height: 48, objectFit: "contain", filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.3))" }} />
-                    {catIcon && <img src={catIcon.icon} alt="" style={{ position: "absolute", bottom: 10, right: 12, width: 28, height: 28, objectFit: "contain", opacity: 0.7 }} />}
+                    {catIcon && <img src={catIcon.icon} alt="" style={{ position: "absolute", bottom: 10, right: 12, width: 40, height: 40, objectFit: "contain", opacity: 0.7 }} />}
                     <div style={{ position: "absolute", top: 8, left: 8, display: "flex", gap: 4 }}>
                       <span style={{ background: "rgba(0,0,0,0.4)", borderRadius: 6, padding: "3px 8px", fontFamily: F.body, fontSize: 9, fontWeight: 700, color: "#fff", textTransform: "uppercase" }}>{selectedDrill.sport}</span>
                       {catIcon && <span style={{ background: "rgba(0,0,0,0.4)", borderRadius: 6, padding: "3px 8px", fontFamily: F.body, fontSize: 9, fontWeight: 700, color: "#fff", textTransform: "uppercase" }}>{catIcon.label.split(" ")[0]}</span>}
@@ -1272,7 +1449,7 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
                 );
               })()}
               {selectedDrill.equipment && <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginBottom: 10, padding: "6px 10px", background: P.soft, borderRadius: 6, display: "flex", alignItems: "center", gap: 6 }}><span style={{ fontWeight: 700, color: P.ink }}>Equipment:</span> {selectedDrill.equipment}</div>}
-              <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 900, color: P.ink, marginBottom: 4 }}>{selectedDrill.title}</div>
+              <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 800, color: P.ink, marginBottom: 4 }}>{selectedDrill.title}</div>
               <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginBottom: 12 }}>{selectedDrill.skill?.name || ""} · {selectedDrill.sport} · {selectedDrill.duration_mins || "?"}min · {selectedDrill.difficulty}</div>
               {selectedDrill.description && <div style={{ fontFamily: F.body, fontSize: 13, color: P.ink, lineHeight: 1.5, marginBottom: 14 }}>{selectedDrill.description}</div>}
               {selectedDrill.coaching_points && <div style={{ marginBottom: 14 }}><div style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.p600, textTransform: "uppercase", marginBottom: 6 }}>Coaching Points</div><div style={{ fontFamily: F.body, fontSize: 12, color: P.ink, lineHeight: 1.6, background: P.soft, borderRadius: 10, padding: 14 }}>{selectedDrill.coaching_points.split("•").filter(Boolean).map((pt, i) => <div key={i} style={{ display: "flex", gap: 6, marginBottom: 4 }}><span style={{ color: P.p600, fontWeight: 700 }}>•</span><span>{pt.trim()}</span></div>)}</div></div>}
@@ -1438,7 +1615,7 @@ function DiagramCreator({ onSave, onClose, initialElements, backgroundImage }) {
   ];
   const playerColors = [
     { color: "#073B74", label: "Navy" },
-    { color: "#8e24aa", label: "Purple" },
+    { color: "#7C3AED", label: "Purple" },
     { color: "#c51417", label: "Red" },
     { color: "#43a047", label: "Green" },
     { color: "#f57f17", label: "Gold" },
@@ -1833,7 +2010,7 @@ function DrillCardBuilder({ diagramMap, allActivities, userRole, copyFrom, onBac
               {/* Card content */}
               <div style={{ padding: "12px 14px" }}>
                 {equipment && <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginBottom: 8, padding: "5px 8px", background: P.soft, borderRadius: 5, display: "flex", alignItems: "center", gap: 4 }}><span style={{ fontWeight: 700, color: P.ink }}>Equipment:</span> {equipment}</div>}
-                <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 900, color: title ? P.ink : P.muted, lineHeight: 1.2, marginBottom: 4 }}>{title || "Drill Title"}</div>
+                <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 800, color: title ? P.ink : P.muted, lineHeight: 1.2, marginBottom: 4 }}>{title || "Drill Title"}</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
                   <span style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>{category ? category.replace(/_/g, " ") : "category"}</span>
                   <span style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>·</span>
@@ -2029,7 +2206,7 @@ function PlayersScreen({ club, ageGroups = [], selectedTeam }) {
             style={{
               fontFamily: F.display,
               fontSize: 14,
-              fontWeight: 900,
+              fontWeight: 800,
               color: P.ink,
             }}
           >
@@ -2066,7 +2243,7 @@ function PlayersScreen({ club, ageGroups = [], selectedTeam }) {
               color: "#fff",
               fontFamily: F.body,
               fontSize: 10,
-              fontWeight: 900,
+              fontWeight: 800,
               cursor: "pointer",
             }}
           >
@@ -2145,7 +2322,7 @@ function PlayersScreen({ club, ageGroups = [], selectedTeam }) {
                     style={{
                       fontFamily: F.body,
                       fontSize: 12,
-                      fontWeight: 900,
+                      fontWeight: 800,
                       color: P.ink,
                     }}
                   >
@@ -2216,7 +2393,7 @@ function SessionsListScreen({ club, selectedTeam, onOpenSession, onNav, onEditSe
   return (
     <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
       <TopBar title="Sessions" sub={`${sessions.length} saved sessions`}>
-        <Btn label="+ New Session" variant="primary" onClick={() => onNav("coach-builder")} />
+        <Btn label="New Session" variant="primary" onClick={() => onNav("coach-builder")} />
       </TopBar>
       <div style={{ padding: "20px 24px" }}>
         {sessions.length === 0 && loaded && (
@@ -2229,7 +2406,7 @@ function SessionsListScreen({ club, selectedTeam, onOpenSession, onNav, onEditSe
           <div key={sess.id} onClick={() => onOpenSession(sess)} style={{ background: P.white, borderRadius: 12, padding: "14px 18px", border: `1px solid ${P.line}`, marginBottom: 8, display: "flex", alignItems: "center", gap: 14, cursor: "pointer", boxShadow: Sh.card }}>
             <div style={{ width: 44, textAlign: "center", background: P.soft, borderRadius: 8, padding: "6px 0", flexShrink: 0 }}>
               <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 700, color: P.muted, textTransform: "uppercase" }}>{sess.session_date ? new Date(sess.session_date).toLocaleDateString("en-IE", { weekday: "short" }) : ""}</div>
-              <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink }}>{sess.session_date ? new Date(sess.session_date).getDate() : "?"}</div>
+              <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink }}>{sess.session_date ? new Date(sess.session_date).getDate() : "?"}</div>
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontFamily: F.body, fontSize: 13, fontWeight: 700, color: P.ink }}>{sess.plan?.hurling_skill?.name || "Training Session"}</div>
@@ -2360,7 +2537,7 @@ function ClubPermissionsScreen({ club, userRole }) {
           ) : (
             <div>
               {users.map((u) => {
-                const roleColor = u.role === "super_admin" ? P.p600 : u.role === "club_admin" ? "#d32f2f" : u.role === "coach" ? P.green : P.sky;
+                const roleColor = u.role === "super_admin" ? P.p600 : u.role === "club_admin" ? "#DC2626" : u.role === "coach" ? P.green : P.sky;
                 return (
                   <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderBottom: `1px solid ${P.line}`, cursor: isSuperAdmin ? "pointer" : "default" }} onClick={() => startEdit(u)}>
                     <div style={{ width: 32, height: 32, borderRadius: "50%", background: roleColor + "20", display: "flex", alignItems: "center", justifyContent: "center", color: roleColor, fontFamily: F.display, fontSize: 12, fontWeight: 800 }}>
@@ -2673,7 +2850,7 @@ const previewPill = {
   color: "#fff",
   fontFamily: F.body,
   fontSize: 8,
-  fontWeight: 900,
+  fontWeight: 800,
   backdropFilter: "blur(8px)",
 };
 
@@ -2727,7 +2904,7 @@ function AcademyPhonePreview({ weeklyPlan = null, planSessions = [], extras = []
         <div style={{ width:34, height:34, borderRadius:10, background:`${color}12`, display:"grid", placeItems:"center" }}>
           <img src={icon} alt="" style={{ width:24, height:24, objectFit:"contain" }} />
         </div>
-        <div style={{ fontFamily:F.display, fontSize:12, fontWeight:900, color, textTransform:"uppercase", letterSpacing:".04em" }}>{title}</div>
+        <div style={{ fontFamily:F.display, fontSize:12, fontWeight:800, color, textTransform:"uppercase", letterSpacing:".04em" }}>{title}</div>
       </div>
       {children}
     </div>
@@ -2742,8 +2919,8 @@ function AcademyPhonePreview({ weeklyPlan = null, planSessions = [], extras = []
         <div style={{ display:"flex", alignItems:"center", gap:9, padding:"11px 12px 8px" }}>
           <div style={{ width:34, height:34, borderRadius:10, background:`${color}12`, display:"grid", placeItems:"center" }}><img src={icon} alt="" style={{width:23,height:23,objectFit:"contain"}}/></div>
           <div style={{ minWidth:0 }}>
-            <div style={{ fontFamily:F.display, fontSize:10, fontWeight:900, color, textTransform:"uppercase" }}>{item.label}</div>
-            <div style={{ fontFamily:F.display, fontSize:14, fontWeight:900, color:P.ink, marginTop:1 }}>{skill?.name || `Choose ${item.label} video`}</div>
+            <div style={{ fontFamily:F.display, fontSize:10, fontWeight:800, color, textTransform:"uppercase" }}>{item.label}</div>
+            <div style={{ fontFamily:F.display, fontSize:14, fontWeight:800, color:P.ink, marginTop:1 }}>{skill?.name || `Choose ${item.label} video`}</div>
           </div>
         </div>
         {skill?.video_url ? (
@@ -2758,7 +2935,7 @@ function AcademyPhonePreview({ weeklyPlan = null, planSessions = [], extras = []
             Practise this skill for 20 minutes. Focus on good technique and control.
             <div style={{ display:"flex", justifyContent:"space-between", marginTop:6, fontWeight:800 }}><span>20 min practice</span><span style={{color:"#b45309"}}>+10 XP</span></div>
           </div>
-          <div style={{ marginTop:7, padding:"9px 10px", borderRadius:9, textAlign:"center", background:color, color:"#fff", fontFamily:F.display, fontSize:10, fontWeight:900 }}>I Practised for 20 Minutes!</div>
+          <div style={{ marginTop:7, padding:"9px 10px", borderRadius:9, textAlign:"center", background:color, color:"#fff", fontFamily:F.display, fontSize:10, fontWeight:800 }}>I Practised for 20 Minutes!</div>
         </div>
       </div>
     );
@@ -2768,10 +2945,10 @@ function AcademyPhonePreview({ weeklyPlan = null, planSessions = [], extras = []
     <div key={item.id} style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 10px", borderRadius:11, background:`${color}08`, border:`1px solid ${color}22`, marginBottom:7 }}>
       <div style={{ width:18, height:18, borderRadius:"50%", border:`2px solid ${color}`, flexShrink:0 }} />
       <div style={{ flex:1, minWidth:0 }}>
-        <div style={{ fontFamily:F.display, fontSize:10, fontWeight:900, color:P.ink }}>{item.title}</div>
+        <div style={{ fontFamily:F.display, fontSize:10, fontWeight:800, color:P.ink }}>{item.title}</div>
         {(item.description || item.instruction || item.target) && <div style={{ fontFamily:F.body, fontSize:8, color:P.muted, marginTop:2 }}>{item.description || item.instruction || item.target}</div>}
       </div>
-      <div style={{ fontFamily:F.display, fontSize:9, fontWeight:900, color:"#b45309" }}>+{item.xp_reward || item.xp || 5} XP</div>
+      <div style={{ fontFamily:F.display, fontSize:9, fontWeight:800, color:"#b45309" }}>+{item.xp_reward || item.xp || 5} XP</div>
     </div>
   ));
 
@@ -2783,7 +2960,7 @@ function AcademyPhonePreview({ weeklyPlan = null, planSessions = [], extras = []
       <div style={{ padding:"11px 12px 7px", display:"flex", alignItems:"center", justifyContent:"space-between", gap:8 }}>
         <div style={{ display:"flex", alignItems:"center", gap:7 }}>
           <img src="/spraoi-academy-icon.png" alt="" style={{width:27,height:27,objectFit:"contain"}}/>
-          <div style={{fontFamily:F.display,fontSize:13,fontWeight:900,color:"#039be5",textTransform:"uppercase"}}>Spraoi Academy</div>
+          <div style={{fontFamily:F.display,fontSize:13,fontWeight:800,color:"#039be5",textTransform:"uppercase"}}>Spraoi Academy</div>
         </div>
         <div style={{ padding:"5px 8px", borderRadius:999, background:"#fff3e0", fontFamily:F.body, fontSize:7, fontWeight:800, color:"#9a5a00" }}>🔥 0 week streak</div>
       </div>
@@ -2792,10 +2969,10 @@ function AcademyPhonePreview({ weeklyPlan = null, planSessions = [], extras = []
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <div style={{ width:38,height:38,borderRadius:"50%",background:"rgba(255,255,255,.18)",display:"grid",placeItems:"center",fontFamily:F.display,fontSize:16,fontWeight:800 }}>A</div>
           <div style={{flex:1}}>
-            <div style={{fontFamily:F.display,fontSize:12,fontWeight:900}}>Academy Player</div>
+            <div style={{fontFamily:F.display,fontSize:12,fontWeight:800}}>Academy Player</div>
             <div style={{fontFamily:F.body,fontSize:8,fontWeight:700,opacity:.9}}>Level 1</div>
           </div>
-          <div style={{textAlign:"right"}}><div style={{fontFamily:F.display,fontSize:16,fontWeight:900,color:"#ffd54f"}}>0</div><div style={{fontSize:7}}>XP</div></div>
+          <div style={{textAlign:"right"}}><div style={{fontFamily:F.display,fontSize:16,fontWeight:800,color:"#ffd54f"}}>0</div><div style={{fontSize:7}}>XP</div></div>
         </div>
         <div style={{fontFamily:F.body,fontSize:7,fontWeight:800,marginTop:8,display:"flex",justifyContent:"space-between"}}><span>Level 1</span><span>0/100 to Level 2</span></div>
         <div style={{height:6,borderRadius:99,background:"rgba(255,255,255,.2)",marginTop:4}} />
@@ -2806,8 +2983,8 @@ function AcademyPhonePreview({ weeklyPlan = null, planSessions = [], extras = []
           <div style={{display:"flex",alignItems:"center",gap:10}}>
             <img src="/spraoi-academy-icon.png" alt="" style={{width:38,height:38,objectFit:"contain"}}/>
             <div>
-              <div style={{fontFamily:F.body,fontSize:7,fontWeight:900,textTransform:"uppercase",letterSpacing:".1em",color:P.muted}}>This week in Academy</div>
-              <div style={{fontFamily:F.display,fontSize:17,fontWeight:900,color:"#039be5",marginTop:1}}>{weekLabel}</div>
+              <div style={{fontFamily:F.body,fontSize:7,fontWeight:800,textTransform:"uppercase",letterSpacing:".1em",color:P.muted}}>This week in Academy</div>
+              <div style={{fontFamily:F.display,fontSize:17,fontWeight:800,color:"#039be5",marginTop:1}}>{weekLabel}</div>
               <div style={{fontFamily:F.body,fontSize:8,color:P.muted,fontStyle:"italic",marginTop:4}}>“Progress comes from showing up, practising and helping your teammates.”</div>
             </div>
           </div>
@@ -2820,8 +2997,8 @@ function AcademyPhonePreview({ weeklyPlan = null, planSessions = [], extras = []
         {journeyItems.length > 0 && (
           <div style={{ background:"#fff", border:"1.5px solid #039be522", borderRadius:20, padding:"12px 11px", marginBottom:12, boxShadow:"0 6px 18px rgba(15,23,42,.05)" }}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-              <div><div style={{fontFamily:F.body,fontSize:7,fontWeight:900,textTransform:"uppercase",letterSpacing:".1em",color:P.muted}}>Your weekly journey</div><div style={{fontFamily:F.display,fontSize:14,fontWeight:900,color:P.ink}}>Keep moving forward</div></div>
-              <div style={{width:42,height:42,borderRadius:"50%",background:"#039be512",border:"3px solid #039be522",display:"grid",placeItems:"center",fontFamily:F.display,fontSize:10,fontWeight:900,color:"#039be5"}}>0%</div>
+              <div><div style={{fontFamily:F.body,fontSize:7,fontWeight:800,textTransform:"uppercase",letterSpacing:".1em",color:P.muted}}>Your weekly journey</div><div style={{fontFamily:F.display,fontSize:14,fontWeight:800,color:P.ink}}>Keep moving forward</div></div>
+              <div style={{width:42,height:42,borderRadius:"50%",background:"#039be512",border:"3px solid #039be522",display:"grid",placeItems:"center",fontFamily:F.display,fontSize:10,fontWeight:800,color:"#039be5"}}>0%</div>
             </div>
             <div style={{height:7,borderRadius:99,background:"#eef3f6",marginBottom:10}} />
             {journeyItems.map((item,index)=>(
@@ -2833,8 +3010,8 @@ function AcademyPhonePreview({ weeklyPlan = null, planSessions = [], extras = []
                   </div>
                 </div>
                 <div style={{alignSelf:"start",padding:"7px 9px",borderRadius:10,border:`1px solid ${index===0?item.color+"55":"#d9e5ed"}`,background:index===0?item.color+"0D":"#fff"}}>
-                  <div style={{fontFamily:F.body,fontSize:7,fontWeight:900,textTransform:"uppercase",color:item.color}}>{index===0?"Up next":item.section}</div>
-                  <div style={{fontFamily:F.display,fontSize:10,fontWeight:900,color:P.ink,marginTop:1}}>{item.title}</div>
+                  <div style={{fontFamily:F.body,fontSize:7,fontWeight:800,textTransform:"uppercase",color:item.color}}>{index===0?"Up next":item.section}</div>
+                  <div style={{fontFamily:F.display,fontSize:10,fontWeight:800,color:P.ink,marginTop:1}}>{item.title}</div>
                 </div>
               </div>
             ))}
@@ -2856,7 +3033,7 @@ function AcademyPhonePreview({ weeklyPlan = null, planSessions = [], extras = []
           </>
         )}
 
-        <div style={{marginTop:3,padding:9,borderRadius:11,background:published?"#dcfce7":"#fff7ed",color:published?"#15803d":"#b45309",fontFamily:F.body,fontSize:8,fontWeight:900,textAlign:"center"}}>{published?"✓ Published to children":"Preview mode · not published"}</div>
+        <div style={{marginTop:3,padding:9,borderRadius:11,background:published?"#dcfce7":"#fff7ed",color:published?"#15803d":"#b45309",fontFamily:F.body,fontSize:8,fontWeight:800,textAlign:"center"}}>{published?"✓ Published to children":"Preview mode · not published"}</div>
       </div>
     </div>
   );
@@ -3056,7 +3233,7 @@ function AcademyDashboardParents({
             style={{
               fontFamily: F.display,
               fontSize: 16,
-              fontWeight: 900,
+              fontWeight: 800,
               color: P.ink,
             }}
           >
@@ -3088,7 +3265,7 @@ function AcademyDashboardParents({
             color: ACADEMY_BLUE,
             fontFamily: F.body,
             fontSize: 10,
-            fontWeight: 900,
+            fontWeight: 800,
             cursor: "pointer",
             whiteSpace: "nowrap",
           }}
@@ -3165,7 +3342,7 @@ function AcademyDashboardParents({
                       style={{
                         fontFamily: F.body,
                         fontSize: 11,
-                        fontWeight: 900,
+                        fontWeight: 800,
                         color: P.ink,
                       }}
                     >
@@ -3200,7 +3377,7 @@ function AcademyDashboardParents({
                       borderRadius: 999,
                       fontFamily: F.body,
                       fontSize: 8,
-                      fontWeight: 900,
+                      fontWeight: 800,
                       textTransform: "uppercase",
                       ...statusStyle,
                     }}
@@ -3226,7 +3403,7 @@ function AcademyDashboardParents({
                 color: ACADEMY_BLUE,
                 fontFamily: F.body,
                 fontSize: 10,
-                fontWeight: 900,
+                fontWeight: 800,
                 cursor: "pointer",
               }}
             >
@@ -3240,7 +3417,7 @@ function AcademyDashboardParents({
 }
 
 function AcademyDashboardScreen({ club, selectedTeam, weeklyPlan, planSessions, extras = [], skills = [], overrides = {}, published = false, onSetOverride, onNav }) {
-  const academyBlue = "#0277bd";
+  const academyBlue = "#2563EB";
   const academyDark = "#075985";
   const academySoft = "#eef8ff";
   const teamName = selectedTeam
@@ -3630,11 +3807,11 @@ function AcademyDashboardScreen({ club, selectedTeam, weeklyPlan, planSessions, 
       <div style={{ position: "absolute", inset: "0 auto 0 0", width: 3, background: accent }} />
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
         <div>
-          <div style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted }}>{label}</div>
-          <div style={{ fontFamily: F.display, fontSize: 27, lineHeight: 1.15, fontWeight: 900, color: P.ink, marginTop: 8 }}>{value}</div>
+          <div className="spraoi-admin-metric-label" style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted }}>{label}</div>
+          <div className="spraoi-admin-metric-value" style={{ fontFamily: F.display, fontSize: 27, lineHeight: 1.15, fontWeight: 800, color: P.ink, marginTop: 8 }}>{value}</div>
         </div>
-        <div style={{ width: 34, height: 34, borderRadius: 10, background: `${accent}12`, color: accent, display: "grid", placeItems: "center", fontSize: 15, fontWeight: 900 }}>
-          {icon}
+        <div className="spraoi-card-icon-chip" style={{ "--card-accent": accent }}>
+          {typeof icon === "string" && icon.startsWith("/") ? <img className="spraoi-card-icon" src={icon} alt="" aria-hidden="true" /> : <span className="spraoi-card-icon-fallback" style={{ "--card-accent": accent }}>{icon}</span>}
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 9, minHeight: 16 }}>
@@ -3647,8 +3824,9 @@ function AcademyDashboardScreen({ club, selectedTeam, weeklyPlan, planSessions, 
   return (
     <div style={{ flex: 1, minWidth: 0, overflow: "auto", background: "#f7f9fc" }}>
       <TopBar
-        title="Academy Dashboard"
+        title="Dashboard"
         sub={`${teamName} ${weekLabel}`}
+        moduleKey="academy"
       >
         <Btn
           label="Manage Weekly Content"
@@ -3665,32 +3843,6 @@ function AcademyDashboardScreen({ club, selectedTeam, weeklyPlan, planSessions, 
       </TopBar>
 
       <div style={{ padding: "22px 24px 32px", maxWidth: 1500, width: "100%", boxSizing: "border-box", margin: "0 auto" }}>
-        <section style={{
-          background: "linear-gradient(115deg, #e9f7ff 0%, #d9f0ff 54%, #c8eaff 100%)",
-          borderRadius: 18, padding: "22px 24px", color: academyDark, marginBottom: 18,
-          boxShadow: "0 14px 32px rgba(7,89,133,.16)", position: "relative", overflow: "hidden"
-        }}>
-          <div style={{ position: "absolute", width: 240, height: 240, borderRadius: "50%", background: "rgba(2,119,189,.06)", right: -65, top: -110 }} />
-          <div style={{ position: "absolute", width: 130, height: 130, borderRadius: "50%", border: "1px solid rgba(2,119,189,.12)", right: 155, bottom: -80 }} />
-          <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
-            <div style={{ maxWidth: 680 }}>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "5px 9px", borderRadius: 999, background: "rgba(255,255,255,.75)", fontFamily: F.body, fontSize: 10, fontWeight: 800, letterSpacing: ".04em", textTransform: "uppercase" }}>
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: hasPlan ? "#86efac" : "#fbbf24" }} />
-                {hasPlan ? "Coach plan connected" : "Action required"}
-              </div>
-              <h2 style={{ fontFamily: F.display, fontSize: 25, lineHeight: 1.15, fontWeight: 900, letterSpacing: "-.025em", margin: "13px 0 7px" }}>
-                {hasSkills ? `${weeklyRecommendations.length} primary ${weeklyRecommendations.length === 1 ? "skill is" : "skills are"} ready for Academy` : "Prepare this week’s Academy experience"}
-              </h2>
-              <p style={{ fontFamily: F.body, fontSize: 12, lineHeight: 1.6, color: "#4c7187", margin: 0 }}>
-                {hasSkills
-                  ? "Review the child-friendly practices generated from the Coach plan, make any edits, then publish them to parents and players."
-                  : "Academy imports the selected team’s saved Coach plan automatically. Add bonus activities here when the weekly foundations are ready."}
-              </p>
-            </div>
-            
-          </div>
-        </section>
-
         {showParentInvitePrompt && (
           <section
             style={{
@@ -3716,7 +3868,7 @@ function AcademyDashboardScreen({ club, selectedTeam, weeklyPlan, planSessions, 
                   style={{
                     fontFamily: F.display,
                     fontSize: 18,
-                    fontWeight: 900,
+                    fontWeight: 800,
                     color: P.ink,
                   }}
                 >
@@ -3763,7 +3915,7 @@ function AcademyDashboardScreen({ club, selectedTeam, weeklyPlan, planSessions, 
                     padding: "0 14px",
                     fontFamily: F.body,
                     fontSize: 10,
-                    fontWeight: 900,
+                    fontWeight: 800,
                     cursor: "pointer",
                   }}
                 >
@@ -3784,7 +3936,7 @@ function AcademyDashboardScreen({ club, selectedTeam, weeklyPlan, planSessions, 
                     padding: "0 14px",
                     fontFamily: F.body,
                     fontSize: 10,
-                    fontWeight: 900,
+                    fontWeight: 800,
                     cursor: "pointer",
                   }}
                 >
@@ -3813,18 +3965,36 @@ function AcademyDashboardScreen({ club, selectedTeam, weeklyPlan, planSessions, 
           </section>
         )}
         <div className="academy-dashboard-metrics" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 12, marginBottom: 18 }}>
-          <MetricCard label="Academy players" value={dashboardStats.loading ? "…" : String(dashboardStats.players)} detail="in this team" accent={academyBlue} icon="P" onClick={() => onNav("academy-engagement")} />
-          <MetricCard label="Child app access" value={dashboardStats.loading ? "…" : String(dashboardStats.childAccess)} detail={`of ${dashboardStats.players} players`} trend={{ label: `${dashboardStats.childAccessPercent}% with access`, color: "#0369a1", bg: "#e0f2fe" }} accent="#0ea5e9" icon="↗" onClick={() => onNav("academy-parents")} />
-          <MetricCard label="Active this week" value={dashboardStats.loading ? "…" : String(dashboardStats.activeThisWeek)} detail={`of ${dashboardStats.players} players`} accent={P.green} icon="✓" onClick={() => onNav("academy-engagement")} />
-          <MetricCard label="Completion rate" value={dashboardStats.loading ? "…" : `${dashboardStats.completionRate}%`} detail={`${dashboardStats.completions} approved activities`} accent={P.orange} icon="◒" onClick={() => onNav("academy-engagement")} />
+          <MetricCard label="Academy players" value={dashboardStats.loading ? "…" : String(dashboardStats.players)} detail="in this team" accent={academyBlue} icon="/icons/academy/child-profile.svg" onClick={() => onNav("academy-engagement")} />
+          <MetricCard label="Child app access" value={dashboardStats.loading ? "…" : String(dashboardStats.childAccess)} detail={`of ${dashboardStats.players} players`} trend={{ label: `${dashboardStats.childAccessPercent}% with access`, color: "#0369a1", bg: "#e0f2fe" }} accent="#0ea5e9" icon="/icons/academy/child-app-access.svg" onClick={() => onNav("academy-parents")} />
+          <MetricCard label="Active this week" value={dashboardStats.loading ? "…" : String(dashboardStats.activeThisWeek)} detail={`of ${dashboardStats.players} players`} accent={P.green} icon="/icons/academy/completion.svg" onClick={() => onNav("academy-engagement")} />
+          <MetricCard label="Completion rate" value={dashboardStats.loading ? "…" : `${dashboardStats.completionRate}%`} detail={`${dashboardStats.completions} approved activities`} accent={P.orange} icon="/icons/academy/engagement.svg" onClick={() => onNav("academy-engagement")} />
         </div>
 
+
+        <section className="spraoi-dashboard-analytics academy-dashboard-analytics">
+          <div className="spraoi-dashboard-section-head">
+            <div><div className="spraoi-dashboard-section-title">Engagement overview</div><div className="spraoi-dashboard-section-sub">High-level Academy activity for the selected team.</div></div>
+            <button className="spraoi-download-button" type="button" onClick={() => {
+              const rows = [["Metric","Value"],["Academy players",dashboardStats.players],["Child app access",dashboardStats.childAccess],["Child app access %",dashboardStats.childAccessPercent],["Active this week",dashboardStats.activeThisWeek],["Completion rate %",dashboardStats.completionRate],["Completions",dashboardStats.completions],["Active streaks",dashboardStats.activeStreaks],["Active parents",dashboardStats.parentActive]];
+              const csv = rows.map(r => r.map(v => `"${String(v ?? "").replaceAll('"','""')}"`).join(",")).join("\n");
+              const blob = new Blob([csv], {type:"text/csv;charset=utf-8"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=`academy-dashboard-${teamName.replace(/\s+/g,"-").toLowerCase()}.csv`; a.click(); URL.revokeObjectURL(url);
+            }}>Download</button>
+          </div>
+          <div className="spraoi-dashboard-chart-grid">
+            <div className="spraoi-chart-card"><div className="spraoi-chart-card-title">Child engagement</div><div className="spraoi-bar-chart">
+              {[["With access",dashboardStats.childAccessPercent,academyBlue],["Active this week",dashboardStats.players?Math.round((dashboardStats.activeThisWeek/dashboardStats.players)*100):0,"#16A34A"],["Completion",dashboardStats.completionRate,"#F59E0B"]].map(([label,value,color]) => <div className="spraoi-bar-row" key={label}><div className="spraoi-bar-label"><span>{label}</span><strong>{value}%</strong></div><div className="spraoi-bar-track"><div className="spraoi-bar-fill" style={{width:`${Math.max(0,Math.min(100,Number(value)||0))}%`,background:color}} /></div></div>)}
+            </div></div>
+            <div className="spraoi-chart-card"><div className="spraoi-chart-card-title">Parent access</div><div className="spraoi-donut-wrap"><div className="spraoi-donut" style={{background:`conic-gradient(${academyBlue} 0 ${dashboardStats.parentAccessPercent}%, #E8EEF6 ${dashboardStats.parentAccessPercent}% 100%)`}}><div className="spraoi-donut-centre"><strong>{dashboardStats.parentAccessPercent}%</strong><span>active</span></div></div><div className="spraoi-chart-legend"><div><span className="spraoi-legend-dot" style={{background:academyBlue}} />Active parents <strong>{dashboardStats.parentActive}</strong></div><div><span className="spraoi-legend-dot" style={{background:"#CBD5E1"}} />Pending / inactive <strong>{Math.max(0,dashboardStats.parentTotal-dashboardStats.parentActive)}</strong></div></div></div></div>
+            <div className="spraoi-chart-card"><div className="spraoi-chart-card-title">This week</div><div className="spraoi-mini-kpis"><div><img src="/icons/academy/completion.svg" alt=""/><span>Approved activities</span><strong>{dashboardStats.completions}</strong></div><div><img src="/icons/academy/streak.svg" alt=""/><span>Active streaks</span><strong>{dashboardStats.activeStreaks}</strong></div><div><img src="/icons/academy/weekly-content.svg" alt=""/><span>Coach sessions connected</span><strong>{sessionCount}</strong></div></div></div>
+          </div>
+        </section>
         <div className="academy-dashboard-main-grid" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.65fr) minmax(300px, .85fr)", gap: 18, alignItems: "start" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 18, minWidth: 0 }}>
             <section style={{ background: P.white, borderRadius: 16, border: `1px solid ${P.line}`, boxShadow: Sh.card, overflow: "hidden" }}>
               <div style={{ padding: "17px 18px", borderBottom: `1px solid ${P.line}`, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
                 <div>
-                  <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink }}>Suggested Weekly Videos</div>
+                  <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink }}>Suggested Weekly Videos</div>
                   <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 2 }}>One Football and one Hurling/Camogie video can be chosen from {sessionCount} connected Coach {sessionCount === 1 ? "session" : "sessions"}</div>
                 </div>
                 <button onClick={() => onNav("academy-content")} style={{ border: "none", background: "transparent", color: academyBlue, fontFamily: F.body, fontSize: 11, fontWeight: 800, cursor: "pointer" }}>View all →</button>
@@ -3849,7 +4019,7 @@ function AcademyDashboardScreen({ club, selectedTeam, weeklyPlan, planSessions, 
                         <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
                           <div style={{ width: 36, height: 36, flex: "0 0 auto", borderRadius: 10, background: bg, display: "grid", placeItems: "center", fontSize: 18 }}>{rec.code === "football" ? "⚽" : "🏑"}</div>
                           <div style={{ minWidth: 0 }}>
-                            <div style={{ fontFamily: F.body, fontSize: 9, lineHeight: 1, fontWeight: 900, color, textTransform: "uppercase", letterSpacing: ".06em" }}>{rec.label}</div>
+                            <div style={{ fontFamily: F.body, fontSize: 9, lineHeight: 1, fontWeight: 800, color, textTransform: "uppercase", letterSpacing: ".06em" }}>{rec.label}</div>
                             <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted, marginTop: 4 }}>Based on {rec.sourceDrills.length} Coach drill{rec.sourceDrills.length === 1 ? "" : "s"}</div>
                           </div>
                         </div>
@@ -3867,12 +4037,12 @@ function AcademyDashboardScreen({ club, selectedTeam, weeklyPlan, planSessions, 
                       </div>
 
                       <div style={{ textAlign: "center", marginTop: 10 }}>
-                        <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink }}>{previewSkill?.name || "No video match"}</div>
+                        <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink }}>{previewSkill?.name || "No video match"}</div>
                         <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted, marginTop: 3 }}>Suggestion {options.length ? previewIndex + 1 : 0} of {options.length}</div>
                         {hasDifferentSelection && <div style={{ fontFamily: F.body, fontSize: 9, color: "#b45309", marginTop: 4 }}>A different video is currently selected for this week.</div>}
                       </div>
 
-                      <button disabled={!previewSkill?.id || isPreviewSelected} onClick={() => previewSkill?.id && onSetOverride?.(rec.code, previewSkill.id)} style={{ width: "100%", minHeight: 38, borderRadius: 10, border: 0, background: isPreviewSelected ? "#dcfce7" : academyBlue, color: isPreviewSelected ? "#15803d" : "#fff", marginTop: 11, padding: "8px 12px", fontFamily: F.body, fontSize: 10, fontWeight: 900, cursor: !previewSkill?.id || isPreviewSelected ? "default" : "pointer" }}>{isPreviewSelected ? "✓ Selected for this week" : "Use this video"}</button>
+                      <button disabled={!previewSkill?.id || isPreviewSelected} onClick={() => previewSkill?.id && onSetOverride?.(rec.code, previewSkill.id)} style={{ width: "100%", minHeight: 38, borderRadius: 10, border: 0, background: isPreviewSelected ? "#dcfce7" : academyBlue, color: isPreviewSelected ? "#15803d" : "#fff", marginTop: 11, padding: "8px 12px", fontFamily: F.body, fontSize: 10, fontWeight: 800, cursor: !previewSkill?.id || isPreviewSelected ? "default" : "pointer" }}>{isPreviewSelected ? "✓ Selected for this week" : "Use this video"}</button>
                     </div>;
                   })}
                 </div>
@@ -3888,7 +4058,7 @@ function AcademyDashboardScreen({ club, selectedTeam, weeklyPlan, planSessions, 
             <section style={{ background: P.white, borderRadius: 16, border: `1px solid ${P.line}`, boxShadow: Sh.card, padding: 18 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 14, marginBottom: 18 }}>
                 <div>
-                  <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink }}>Weekly engagement</div>
+                  <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink }}>Weekly engagement</div>
                   <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 2 }}>Player activity over the last seven days</div>
                 </div>
                 <button onClick={() => onNav("academy-engagement")} style={{ border: "none", background: "transparent", color: academyBlue, fontFamily: F.body, fontSize: 11, fontWeight: 800, cursor: "pointer" }}>Open engagement →</button>
@@ -3902,7 +4072,7 @@ function AcademyDashboardScreen({ club, selectedTeam, weeklyPlan, planSessions, 
                 }}
               >
                 <div style={{ background: P.soft, borderRadius: 12, padding: 14 }}>
-                  <div style={{ fontFamily: F.display, fontSize: 22, fontWeight: 900, color: P.ink }}>
+                  <div style={{ fontFamily: F.display, fontSize: 22, fontWeight: 800, color: P.ink }}>
                     {dashboardStats.completions}
                   </div>
                   <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 4 }}>
@@ -3911,7 +4081,7 @@ function AcademyDashboardScreen({ club, selectedTeam, weeklyPlan, planSessions, 
                 </div>
 
                 <div style={{ background: P.soft, borderRadius: 12, padding: 14 }}>
-                  <div style={{ fontFamily: F.display, fontSize: 22, fontWeight: 900, color: P.ink }}>
+                  <div style={{ fontFamily: F.display, fontSize: 22, fontWeight: 800, color: P.ink }}>
                     {dashboardStats.activeThisWeek}
                   </div>
                   <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 4 }}>
@@ -3920,7 +4090,7 @@ function AcademyDashboardScreen({ club, selectedTeam, weeklyPlan, planSessions, 
                 </div>
 
                 <div style={{ background: P.soft, borderRadius: 12, padding: 14 }}>
-                  <div style={{ fontFamily: F.display, fontSize: 22, fontWeight: 900, color: P.ink }}>
+                  <div style={{ fontFamily: F.display, fontSize: 22, fontWeight: 800, color: P.ink }}>
                     {dashboardStats.activeStreaks}
                   </div>
                   <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 4 }}>
@@ -3935,17 +4105,17 @@ function AcademyDashboardScreen({ club, selectedTeam, weeklyPlan, planSessions, 
             <section style={{ background: P.white, borderRadius: 16, border: `1px solid ${P.line}`, boxShadow: Sh.card, padding: 18 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
-                  <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink }}>Publish readiness</div>
+                  <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink }}>Publish readiness</div>
                   <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 2 }}>{completedSetupSteps} of {setupSteps.length} steps complete</div>
                 </div>
                 <div style={{ width: 46, height: 46, borderRadius: "50%", background: `conic-gradient(${academyBlue} ${setupProgress * 3.6}deg, #e8edf3 0deg)`, display: "grid", placeItems: "center" }}>
-                  <div style={{ width: 36, height: 36, borderRadius: "50%", background: P.white, display: "grid", placeItems: "center", fontFamily: F.body, fontSize: 10, fontWeight: 900, color: academyDark }}>{setupProgress}%</div>
+                  <div style={{ width: 36, height: 36, borderRadius: "50%", background: P.white, display: "grid", placeItems: "center", fontFamily: F.body, fontSize: 10, fontWeight: 800, color: academyDark }}>{setupProgress}%</div>
                 </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 11, marginTop: 18 }}>
                 {setupSteps.map((step, index) => (
                   <div key={step.label} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <div style={{ width: 20, height: 20, flexShrink: 0, borderRadius: "50%", display: "grid", placeItems: "center", background: step.complete ? "#dcfce7" : "#f1f5f9", color: step.complete ? "#15803d" : "#94a3b8", fontFamily: F.body, fontSize: 10, fontWeight: 900 }}>{step.complete ? "✓" : index + 1}</div>
+                    <div style={{ width: 20, height: 20, flexShrink: 0, borderRadius: "50%", display: "grid", placeItems: "center", background: step.complete ? "#dcfce7" : "#f1f5f9", color: step.complete ? "#15803d" : "#94a3b8", fontFamily: F.body, fontSize: 10, fontWeight: 800 }}>{step.complete ? "✓" : index + 1}</div>
                     <div style={{ fontFamily: F.body, fontSize: 11, fontWeight: step.complete ? 600 : 700, color: step.complete ? P.muted : P.ink, textDecoration: step.complete ? "line-through" : "none" }}>{step.label}</div>
                   </div>
                 ))}
@@ -3956,10 +4126,10 @@ function AcademyDashboardScreen({ club, selectedTeam, weeklyPlan, planSessions, 
             <section style={{ background: P.white, borderRadius: 16, border: `1px solid ${P.line}`, boxShadow: Sh.card, padding: 18 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
                 <div>
-                  <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink }}>Parent access</div>
+                  <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink }}>Parent access</div>
                   <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 2 }}>{dashboardStats.parentPending > 0 ? `${dashboardStats.parentPending} invitation${dashboardStats.parentPending === 1 ? "" : "s"} pending` : `${Math.max(0, dashboardStats.parentTotal - dashboardStats.parentActive)} parent${Math.max(0, dashboardStats.parentTotal - dashboardStats.parentActive) === 1 ? "" : "s"} not active yet`}</div>
                 </div>
-                <div style={{ width: 36, height: 36, borderRadius: 11, background: "#ecfeff", color: "#0891b2", display: "grid", placeItems: "center", fontWeight: 900 }}>@</div>
+                <div style={{ width: 36, height: 36, borderRadius: 11, background: "#ecfeff", color: "#0891b2", display: "grid", placeItems: "center", fontWeight: 800 }}>@</div>
               </div>
               <div style={{ marginTop: 15, height: 7, borderRadius: 999, background: "#e8edf3", overflow: "hidden" }}><div style={{ width: `${dashboardStats.parentAccessPercent}%`, height: "100%", borderRadius: 999, background: "linear-gradient(90deg, #0284c7, #22d3ee)" }} /></div>
               <div style={{ display: "flex", justifyContent: "space-between", marginTop: 7 }}>
@@ -3970,7 +4140,7 @@ function AcademyDashboardScreen({ club, selectedTeam, weeklyPlan, planSessions, 
             </section>
 
             <section style={{ background: academySoft, borderRadius: 16, border: "1px solid #cfeeff", padding: 16 }}>
-              <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:12 }}><div><div style={{ fontFamily:F.display,fontSize:16,fontWeight:900,color:academyDark }}>Live child preview</div><div style={{fontFamily:F.body,fontSize:10,color:"#477084",marginTop:2}}>Only sections with content are shown.</div></div><button onClick={()=>onNav("academy-preview")} style={{border:0,background:"transparent",color:academyBlue,fontFamily:F.body,fontSize:10,fontWeight:900,cursor:"pointer"}}>Open full →</button></div>
+              <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:12 }}><div><div style={{ fontFamily:F.display,fontSize:16,fontWeight:800,color:academyDark }}>Live child preview</div><div style={{fontFamily:F.body,fontSize:10,color:"#477084",marginTop:2}}>Only sections with content are shown.</div></div><button onClick={()=>onNav("academy-preview")} style={{border:0,background:"transparent",color:academyBlue,fontFamily:F.body,fontSize:10,fontWeight:800,cursor:"pointer"}}>Open full →</button></div>
               <div style={{display:"grid",placeItems:"center"}}><AcademyPhonePreview weeklyPlan={weeklyPlan} planSessions={planSessions} extras={extras} skills={skills} overrides={overrides} published={published} compact selectedTeam={selectedTeam} /></div>
             </section>
           </div>
@@ -3980,7 +4150,7 @@ function AcademyDashboardScreen({ club, selectedTeam, weeklyPlan, planSessions, 
   );
 }
 
-const ACADEMY_BLUE = "#0277bd";
+const ACADEMY_BLUE = "#2563EB";
 const ACADEMY_DARK = "#075985";
 const ACADEMY_SOFT = "#eef8ff";
 const ACADEMY_TEMPLATES = [
@@ -4003,31 +4173,31 @@ function getAcademyWeekRange(weeklyPlan) {
 
 function AcademyPageHeader({ title, sub, actions }) {
   return (
-    <div className="spraoi-page-header" style={{ background: "linear-gradient(135deg,#f8fcff 0%,#e9f6ff 100%)", borderBottom: "1px solid #cfeeff", padding: "18px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18, flexWrap: "wrap" }}>
+    <div className="spraoi-page-header" style={{ height: 118, minHeight: 118, boxSizing: "border-box", background: "linear-gradient(135deg,#f8fcff 0%,#e9f6ff 100%)", borderBottom: "1px solid #cfeeff", padding: "20px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18, flexWrap: "wrap" }}>
       <div className="spraoi-page-header-main" style={{ display: "flex", alignItems: "center", gap: 13, minWidth: 0 }}>
         <div className="spraoi-page-header-icon" style={{ width: 64, height: 64, borderRadius: 20, background: "#fff", border: "1px solid rgba(15,23,42,.08)", display: "grid", placeItems: "center", boxShadow: "0 10px 26px rgba(2,119,189,.12)", flexShrink: 0 }}><img src="/spraoi-academy-icon.png" alt="Academy" style={{ width: 48, height: 48, objectFit: "contain" }} /></div>
-        <div style={{ minWidth: 0 }}><div className="spraoi-page-header-title" style={{ fontFamily: F.display, fontSize: 23, fontWeight: 900, color: ACADEMY_DARK }}>{title}</div><div className="spraoi-page-header-sub" style={{ fontFamily: F.body, fontSize: 12, color: "#4c7187", marginTop: 2 }}>{sub}</div></div>
+        <div style={{ minWidth: 0 }}><div className="spraoi-page-header-title" style={{ fontFamily: F.display, fontSize: 21, fontWeight: 700, color: ACADEMY_DARK }}>{title}</div><div className="spraoi-page-header-sub" style={{ fontFamily: F.body, fontSize: 12, color: "#4c7187", marginTop: 2 }}>{sub}</div></div>
       </div>
       <div className="spraoi-page-header-actions" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{actions}</div>
     </div>
   );
 }
 
-function AcademyCard({ children, style }) { return <div style={{ background: P.white, border: `1px solid ${P.line}`, borderRadius: 16, padding: 18, boxShadow: Sh.card, ...style }}>{children}</div>; }
+function AcademyCard({ children, style, className = "" }) { return <div className={className} style={{ background: P.white, border: `1px solid ${P.line}`, borderRadius: 16, padding: 18, boxShadow: Sh.card, ...style }}>{children}</div>; }
 function AcademyMetricCard({ label, value, detail, accent = ACADEMY_BLUE, icon }) {
-  return <AcademyCard style={{ position: "relative", overflow: "hidden", minWidth: 0 }}>
+  return <AcademyCard className="spraoi-admin-metric-card" style={{ "--card-accent": accent, position: "relative", overflow: "hidden", minWidth: 0 }}>
     <div style={{ position: "absolute", inset: "0 auto 0 0", width: 3, background: accent }} />
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted }}>{label}</div>
-        <div style={{ fontFamily: F.display, fontSize: 27, lineHeight: 1.15, fontWeight: 900, color: P.ink, marginTop: 8 }}>{value}</div>
+        <div className="spraoi-admin-metric-label" style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted }}>{label}</div>
+        <div className="spraoi-admin-metric-value" style={{ fontFamily: F.display, fontSize: 27, lineHeight: 1.15, fontWeight: 800, color: P.ink, marginTop: 8 }}>{value}</div>
       </div>
-      <div style={{ width: 34, height: 34, borderRadius: 10, background: `${accent}12`, color: accent, display: "grid", placeItems: "center", fontSize: 15, fontWeight: 900, flexShrink: 0 }}>{icon}</div>
+      <div style={{ width: 34, height: 34, borderRadius: 10, background: `${accent}12`, color: accent, display: "grid", placeItems: "center", fontSize: 15, fontWeight: 800, flexShrink: 0 }}>{icon}</div>
     </div>
-    <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 9 }}>{detail}</div>
+    <div className="spraoi-admin-metric-copy" style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 9 }}>{detail}</div>
   </AcademyCard>;
 }
-function AcademyBadge({ children, color = ACADEMY_BLUE, bg = ACADEMY_SOFT }) { return <span style={{ display: "inline-flex", alignItems: "center", padding: "5px 8px", borderRadius: 999, background: bg, color, fontFamily: F.body, fontSize: 9, fontWeight: 900, letterSpacing: ".04em", textTransform: "uppercase" }}>{children}</span>; }
+function AcademyBadge({ children, color = ACADEMY_BLUE, bg = ACADEMY_SOFT }) { return <span style={{ display: "inline-flex", alignItems: "center", padding: "5px 8px", borderRadius: 999, background: bg, color, fontFamily: F.body, fontSize: 9, fontWeight: 800, letterSpacing: ".04em", textTransform: "uppercase" }}>{children}</span>; }
 
 function getFoundationActivities(planSessions) {
   const rows = [];
@@ -4081,7 +4251,7 @@ function AcademyWeeklyContent({ selectedTeam, weeklyPlan, planSessions, extras, 
   const groups = [
     { key:"steps", label:"Step Goals", icon:"👟", color:"#0f9f6e", test:x=>(x.type||x.activity_type)==="steps" },
     { key:"exercise", label:"Exercises", icon:"💪", color:"#7c3aed", test:x=>(x.type||x.activity_type)==="exercise" },
-    { key:"run", label:"Run Activity", icon:"🏃", color:"#e65100", test:x=>(x.type||x.activity_type)==="run" },
+    { key:"run", label:"Run Activity", icon:"🏃", color:"#D89A00", test:x=>(x.type||x.activity_type)==="run" },
     { key:"skill", label:"Extra Skill Practice", icon:"🎯", color:"#2563eb", test:x=>(x.type||x.activity_type)==="skill" },
     { key:"club", label:"Bonus & Club Activities", icon:"✨", color:"#d97706", test:x=>(x.type||x.activity_type)==="club" },
     { key:"recovery", label:"Rest & Recovery", icon:"🌙", color:"#0f766e", test:x=>(x.type||x.activity_type)==="recovery" },
@@ -4090,29 +4260,29 @@ function AcademyWeeklyContent({ selectedTeam, weeklyPlan, planSessions, extras, 
     <AcademyPageHeader title="Weekly Content" sub={`${selectedTeam?.label || "Selected team"} · ${getAcademyWeekRange(weeklyPlan)} · Build, review and publish the child experience`} actions={<Btn label={published ? "Unpublish week" : "Review & publish"} variant="primary" icon={published ? "↓" : "↑"} onClick={requestPublish} style={{ background: published ? P.green : ACADEMY_BLUE }} />} />
     <div style={{ padding: 24, maxWidth: 1240, margin: "0 auto" }}>
       <AcademyCard style={{ marginBottom: 16, borderColor: "#b9e3f8" }}>
-        <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><div><AcademyBadge>Weekly readiness</AcademyBadge><div style={{fontFamily:F.display,fontSize:18,fontWeight:900,color:P.ink,marginTop:8}}>{published?"This week is live":"Complete the checks before publishing"}</div></div><div style={{display:"flex",gap:7,flexWrap:"wrap"}}>{validation.map(v=><AcademyBadge key={v.label} color={v.ok?"#15803d":"#b45309"} bg={v.ok?"#dcfce7":"#fff7ed"}>{v.ok?"✓":"!"} {v.label}</AcademyBadge>)}</div></div>
+        <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><div><AcademyBadge>Weekly readiness</AcademyBadge><div style={{fontFamily:F.display,fontSize:18,fontWeight:800,color:P.ink,marginTop:8}}>{published?"This week is live":"Complete the checks before publishing"}</div></div><div style={{display:"flex",gap:7,flexWrap:"wrap"}}>{validation.map(v=><AcademyBadge key={v.label} color={v.ok?"#15803d":"#b45309"} bg={v.ok?"#dcfce7":"#fff7ed"}>{v.ok?"✓":"!"} {v.label}</AcademyBadge>)}</div></div>
       </AcademyCard>
       <AcademyCard style={{ marginBottom: 16, borderColor: "#b9e3f8" }}>
-        <div><AcademyBadge>Suggested weekly videos</AcademyBadge><div style={{fontFamily:F.display,fontSize:18,fontWeight:900,color:P.ink,marginTop:8}}>One video per code</div><div style={{fontFamily:F.body,fontSize:11,color:P.muted,marginTop:4}}>Browse suggestions, then explicitly select the Football and {selectedTeam?.gender === "girls" ? "Camogie" : "Hurling"} videos for this week.</div></div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:14,marginTop:16}}>{recommendations.map(rec=>{const options=rec.alternatives?.length?rec.alternatives:(rec.matchedSkill?[rec.matchedSkill]:[]);const idx=Math.min(previewIndexes[rec.code]??Math.max(0,options.findIndex(x=>x.id===rec.matchedSkill?.id)),Math.max(0,options.length-1));const skill=options[idx]||rec.matchedSkill;const selected=overrides?.[rec.code]===skill?.id;return <div key={rec.code} style={{border:`1px solid ${selected?"#86efac":"#bae6fd"}`,borderRadius:16,padding:15,background:"#fff"}}><div style={{display:"flex",justifyContent:"space-between",gap:8}}><AcademyBadge color={rec.code==="football"?"#1d4ed8":"#b91c1c"} bg={rec.code==="football"?"#dbeafe":"#fee2e2"}>{rec.label}</AcademyBadge><AcademyBadge color={selected?"#15803d":"#0369a1"} bg={selected?"#dcfce7":"#e0f2fe"}>{selected?"Selected":"Suggestion"}</AcademyBadge></div><div style={{fontFamily:F.display,fontSize:18,fontWeight:900,color:P.ink,marginTop:10}}>{skill?.name||"No match available"}</div>{skill?.video_url&&<div style={{borderRadius:11,overflow:"hidden",background:"#071827",marginTop:10}}><iframe title={skill.name} src={skill.video_url.replace("watch?v=","embed/").split("&")[0]} style={{width:"100%",height:180,border:0,display:"block"}} allowFullScreen /></div>}<div className="academy-match-actions" style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:7,marginTop:10}}><button disabled={idx===0} onClick={()=>setPreviewIndexes(p=>({...p,[rec.code]:Math.max(0,idx-1)}))} style={smallAction(idx===0)}>Previous</button><button disabled={idx>=options.length-1} onClick={()=>setPreviewIndexes(p=>({...p,[rec.code]:Math.min(options.length-1,idx+1)}))} style={smallAction(idx>=options.length-1)}>Next suggestion</button><button disabled={!skill?.id||selected} onClick={()=>skill?.id&&onSetOverride?.(rec.code,skill.id)} style={{...smallAction(false),background:selected?"#dcfce7":ACADEMY_BLUE,color:selected?"#15803d":"#fff",border:0}}>{selected?"Selected":"Use this video"}</button></div><div style={{fontFamily:F.body,fontSize:9,color:P.muted,marginTop:7}}>Suggestion {options.length?idx+1:0} of {options.length} · {rec.sourceDrills.length ? `based on ${rec.sourceDrills.length} Coach activities` : "manual Academy selection"}</div></div>})}</div>
+        <div><AcademyBadge>Suggested weekly videos</AcademyBadge><div style={{fontFamily:F.display,fontSize:18,fontWeight:800,color:P.ink,marginTop:8}}>One video per code</div><div style={{fontFamily:F.body,fontSize:11,color:P.muted,marginTop:4}}>Browse suggestions, then explicitly select the Football and {selectedTeam?.gender === "girls" ? "Camogie" : "Hurling"} videos for this week.</div></div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:14,marginTop:16}}>{recommendations.map(rec=>{const options=rec.alternatives?.length?rec.alternatives:(rec.matchedSkill?[rec.matchedSkill]:[]);const idx=Math.min(previewIndexes[rec.code]??Math.max(0,options.findIndex(x=>x.id===rec.matchedSkill?.id)),Math.max(0,options.length-1));const skill=options[idx]||rec.matchedSkill;const selected=overrides?.[rec.code]===skill?.id;return <div key={rec.code} style={{border:`1px solid ${selected?"#86efac":"#bae6fd"}`,borderRadius:16,padding:15,background:"#fff"}}><div style={{display:"flex",justifyContent:"space-between",gap:8}}><AcademyBadge color={rec.code==="football"?"#1d4ed8":"#b91c1c"} bg={rec.code==="football"?"#dbeafe":"#fee2e2"}>{rec.label}</AcademyBadge><AcademyBadge color={selected?"#15803d":"#0369a1"} bg={selected?"#dcfce7":"#e0f2fe"}>{selected?"Selected":"Suggestion"}</AcademyBadge></div><div style={{fontFamily:F.display,fontSize:18,fontWeight:800,color:P.ink,marginTop:10}}>{skill?.name||"No match available"}</div>{skill?.video_url&&<div style={{borderRadius:11,overflow:"hidden",background:"#071827",marginTop:10}}><iframe title={skill.name} src={skill.video_url.replace("watch?v=","embed/").split("&")[0]} style={{width:"100%",height:180,border:0,display:"block"}} allowFullScreen /></div>}<div className="academy-match-actions" style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:7,marginTop:10}}><button disabled={idx===0} onClick={()=>setPreviewIndexes(p=>({...p,[rec.code]:Math.max(0,idx-1)}))} style={smallAction(idx===0)}>Previous</button><button disabled={idx>=options.length-1} onClick={()=>setPreviewIndexes(p=>({...p,[rec.code]:Math.min(options.length-1,idx+1)}))} style={smallAction(idx>=options.length-1)}>Next suggestion</button><button disabled={!skill?.id||selected} onClick={()=>skill?.id&&onSetOverride?.(rec.code,skill.id)} style={{...smallAction(false),background:selected?"#dcfce7":ACADEMY_BLUE,color:selected?"#15803d":"#fff",border:0}}>{selected?"Selected":"Use this video"}</button></div><div style={{fontFamily:F.body,fontSize:9,color:P.muted,marginTop:7}}>Suggestion {options.length?idx+1:0} of {options.length} · {rec.sourceDrills.length ? `based on ${rec.sourceDrills.length} Coach activities` : "manual Academy selection"}</div></div>})}</div>
       </AcademyCard>
       <div className="academy-content-grid" style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(320px,1fr))", gap:16, alignItems:"start" }}>
         <AcademyCard>
-          <div style={{fontFamily:F.display,fontSize:18,fontWeight:900,color:P.ink}}>{editingId?"Edit activity":"Add an activity"}</div><div style={{fontFamily:F.body,fontSize:11,color:P.muted,marginTop:4}}>Add multiple items to a section; they will appear together on one child card.</div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(125px,1fr))",gap:8,marginTop:13}}>{ACADEMY_TEMPLATES.map(t=><button key={t.title} onClick={()=>applyTemplate(t)} style={{border:`1px solid ${P.line}`,borderRadius:12,background:P.white,padding:10,cursor:"pointer",textAlign:"left"}}><div style={{fontSize:20}}>{t.icon}</div><div style={{fontFamily:F.body,fontSize:10,fontWeight:900,color:P.ink,marginTop:4}}>{t.title}</div><div style={{fontFamily:F.body,fontSize:9,color:ACADEMY_BLUE}}>{t.xp} XP</div></button>)}</div>
+          <div style={{fontFamily:F.display,fontSize:18,fontWeight:800,color:P.ink}}>{editingId?"Edit activity":"Add an activity"}</div><div style={{fontFamily:F.body,fontSize:11,color:P.muted,marginTop:4}}>Add multiple items to a section; they will appear together on one child card.</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(125px,1fr))",gap:8,marginTop:13}}>{ACADEMY_TEMPLATES.map(t=><button key={t.title} onClick={()=>applyTemplate(t)} style={{border:`1px solid ${P.line}`,borderRadius:12,background:P.white,padding:10,cursor:"pointer",textAlign:"left"}}><div style={{fontSize:20}}>{t.icon}</div><div style={{fontFamily:F.body,fontSize:10,fontWeight:800,color:P.ink,marginTop:4}}>{t.title}</div><div style={{fontFamily:F.body,fontSize:9,color:ACADEMY_BLUE}}>{t.xp} XP</div></button>)}</div>
           <div className="academy-form-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:10,marginTop:15}}><label style={{gridColumn:"1/-1"}}><span style={labelStyle}>Activity name</span><input value={draft.title} onChange={e=>setDraft({...draft,title:e.target.value})} style={inputStyle}/></label><label style={{gridColumn:"1/-1"}}><span style={labelStyle}>Child instructions</span><textarea value={draft.instruction} onChange={e=>setDraft({...draft,instruction:e.target.value})} style={{...inputStyle,minHeight:72,paddingTop:9}}/></label><label><span style={labelStyle}>Target</span><input value={draft.target} onChange={e=>setDraft({...draft,target:e.target.value})} style={inputStyle}/></label><label><span style={labelStyle}>XP</span><input type="number" min="0" value={draft.xp} onChange={e=>setDraft({...draft,xp:Number(e.target.value)})} style={inputStyle}/></label><label><span style={labelStyle}>Section</span><select value={draft.type} onChange={e=>setDraft({...draft,type:e.target.value})} style={inputStyle}><option value="steps">Step Goals</option><option value="exercise">Exercises</option><option value="run">Run Activity</option><option value="skill">Extra Skill Practice</option><option value="club">Bonus & Club Activity</option><option value="recovery">Rest & Recovery</option></select></label><label style={{display:"flex",alignItems:"center",gap:8,marginTop:22,fontFamily:F.body,fontSize:11}}><input type="checkbox" checked={draft.required} onChange={e=>setDraft({...draft,required:e.target.checked})}/> Required</label><label><span style={labelStyle}>Verification</span><select value={draft.verification_type||"self"} onChange={e=>setDraft({...draft,verification_type:e.target.value})} style={inputStyle}><option value="self">Player verified</option><option value="coach">Coach verified</option></select></label></div>
-          <div style={{display:"flex",gap:8,marginTop:13}}><button onClick={saveDraft} style={{height:38,border:0,borderRadius:10,background:ACADEMY_BLUE,color:"#fff",padding:"0 15px",fontFamily:F.body,fontSize:11,fontWeight:900,cursor:"pointer"}}>{editingId?"Save changes":"＋ Add to week"}</button>{editingId&&<button onClick={resetDraft} style={{height:38,border:`1px solid ${P.line}`,borderRadius:10,background:"#fff",padding:"0 15px",fontFamily:F.body,fontSize:11,fontWeight:900,cursor:"pointer"}}>Cancel</button>}</div>
+          <div style={{display:"flex",gap:8,marginTop:13}}><button onClick={saveDraft} style={{height:38,border:0,borderRadius:10,background:ACADEMY_BLUE,color:"#fff",padding:"0 15px",fontFamily:F.body,fontSize:11,fontWeight:800,cursor:"pointer"}}>{editingId?"Save changes":"＋ Add to week"}</button>{editingId&&<button onClick={resetDraft} style={{height:38,border:`1px solid ${P.line}`,borderRadius:10,background:"#fff",padding:"0 15px",fontFamily:F.body,fontSize:11,fontWeight:800,cursor:"pointer"}}>Cancel</button>}</div>
         </AcademyCard>
-        <div style={{display:"grid",gap:12}}>{groups.map(group=>{const items=extras.filter(group.test);if(!items.length)return null;return <AcademyCard key={group.key} style={{borderTop:`4px solid ${group.color}`}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{fontFamily:F.display,fontSize:16,fontWeight:900,color:P.ink}}>{group.icon} {group.label}</div><AcademyBadge>{items.length}</AcademyBadge></div><div style={{display:"grid",gap:8,marginTop:10}}>{items.map((x,i)=><div key={x.id} style={{border:`1px solid ${P.line}`,borderRadius:11,padding:11,background:"#fff"}}><div style={{display:"flex",justifyContent:"space-between",gap:8}}><div><div style={{fontFamily:F.body,fontSize:11,fontWeight:900,color:P.ink}}>{x.title}</div><div style={{fontFamily:F.body,fontSize:9,color:P.muted,marginTop:2}}>{x.target||x.instruction||x.description}</div></div><div style={{display:"flex",gap:3}}><button title="Move up" disabled={i===0} onClick={()=>onMoveExtra?.(x.id,-1,group.test)} style={iconAction(i===0)}>↑</button><button title="Move down" disabled={i===items.length-1} onClick={()=>onMoveExtra?.(x.id,1,group.test)} style={iconAction(i===items.length-1)}>↓</button><button title="Edit" onClick={()=>beginEdit(x)} style={iconAction(false)}>✎</button><button title="Remove" onClick={()=>onRemoveExtra(x.id)} style={{...iconAction(false),color:"#dc2626"}}>×</button></div></div><div style={{display:"flex",gap:6,marginTop:7}}><AcademyBadge color="#b45309" bg="#fff7ed">{x.xp||x.xp_reward||0} XP</AcademyBadge>{x.required&&<AcademyBadge color="#b91c1c" bg="#fef2f2">Required</AcademyBadge>}<AcademyBadge color={(x.verification_type||"self")==="coach"?"#0369a1":P.muted} bg={(x.verification_type||"self")==="coach"?"#e0f2fe":P.soft}>{(x.verification_type||"self")==="coach"?"Coach verified":"Player verified"}</AcademyBadge></div></div>)}</div></AcademyCard>})}</div>
+        <div style={{display:"grid",gap:12}}>{groups.map(group=>{const items=extras.filter(group.test);if(!items.length)return null;return <AcademyCard key={group.key} style={{borderTop:`4px solid ${group.color}`}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{fontFamily:F.display,fontSize:16,fontWeight:800,color:P.ink}}>{group.icon} {group.label}</div><AcademyBadge>{items.length}</AcademyBadge></div><div style={{display:"grid",gap:8,marginTop:10}}>{items.map((x,i)=><div key={x.id} style={{border:`1px solid ${P.line}`,borderRadius:11,padding:11,background:"#fff"}}><div style={{display:"flex",justifyContent:"space-between",gap:8}}><div><div style={{fontFamily:F.body,fontSize:11,fontWeight:800,color:P.ink}}>{x.title}</div><div style={{fontFamily:F.body,fontSize:9,color:P.muted,marginTop:2}}>{x.target||x.instruction||x.description}</div></div><div style={{display:"flex",gap:3}}><button title="Move up" disabled={i===0} onClick={()=>onMoveExtra?.(x.id,-1,group.test)} style={iconAction(i===0)}>↑</button><button title="Move down" disabled={i===items.length-1} onClick={()=>onMoveExtra?.(x.id,1,group.test)} style={iconAction(i===items.length-1)}>↓</button><button title="Edit" onClick={()=>beginEdit(x)} style={iconAction(false)}>✎</button><button title="Remove" onClick={()=>onRemoveExtra(x.id)} style={{...iconAction(false),color:"#dc2626"}}>×</button></div></div><div style={{display:"flex",gap:6,marginTop:7}}><AcademyBadge color="#b45309" bg="#fff7ed">{x.xp||x.xp_reward||0} XP</AcademyBadge>{x.required&&<AcademyBadge color="#b91c1c" bg="#fef2f2">Required</AcademyBadge>}<AcademyBadge color={(x.verification_type||"self")==="coach"?"#0369a1":P.muted} bg={(x.verification_type||"self")==="coach"?"#e0f2fe":P.soft}>{(x.verification_type||"self")==="coach"?"Coach verified":"Player verified"}</AcademyBadge></div></div>)}</div></AcademyCard>})}</div>
       </div>
     </div>
-    {publishReview&&<div style={{position:"fixed",inset:0,zIndex:5000,background:"rgba(15,23,42,.55)",display:"grid",placeItems:"center",padding:18}}><div style={{width:"min(520px,100%)",background:"#fff",borderRadius:20,padding:22,boxShadow:"0 30px 80px rgba(15,23,42,.3)"}}><div style={{fontFamily:F.display,fontSize:22,fontWeight:900,color:P.ink}}>Review before publishing</div><div style={{fontFamily:F.body,fontSize:11,color:P.muted,marginTop:5}}>Only published content is visible in the child app for {selectedTeam?.label||"this team"}.</div><div style={{display:"grid",gap:8,marginTop:16}}>{validation.map(v=><div key={v.label} style={{display:"flex",justifyContent:"space-between",padding:10,borderRadius:10,background:v.ok?"#f0fdf4":"#fff7ed",fontFamily:F.body,fontSize:11,fontWeight:800,color:v.ok?"#15803d":"#b45309"}}><span>{v.label}</span><span>{v.ok?"Ready":"Needs attention"}</span></div>)}</div><div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:18,flexWrap:"wrap"}}><button onClick={()=>setPublishReview(false)} style={modalButton(false)}>Keep editing</button><button disabled={!canPublish} onClick={()=>{if(canPublish){onPublish?.();setPublishReview(false)}}} style={{...modalButton(true),opacity:canPublish?1:.45,cursor:canPublish?"pointer":"default"}}>Publish to children</button></div></div></div>}
+    {publishReview&&<div style={{position:"fixed",inset:0,zIndex:5000,background:"rgba(15,23,42,.55)",display:"grid",placeItems:"center",padding:18}}><div style={{width:"min(520px,100%)",background:"#fff",borderRadius:20,padding:22,boxShadow:"0 30px 80px rgba(15,23,42,.3)"}}><div style={{fontFamily:F.display,fontSize:22,fontWeight:800,color:P.ink}}>Review before publishing</div><div style={{fontFamily:F.body,fontSize:11,color:P.muted,marginTop:5}}>Only published content is visible in the child app for {selectedTeam?.label||"this team"}.</div><div style={{display:"grid",gap:8,marginTop:16}}>{validation.map(v=><div key={v.label} style={{display:"flex",justifyContent:"space-between",padding:10,borderRadius:10,background:v.ok?"#f0fdf4":"#fff7ed",fontFamily:F.body,fontSize:11,fontWeight:800,color:v.ok?"#15803d":"#b45309"}}><span>{v.label}</span><span>{v.ok?"Ready":"Needs attention"}</span></div>)}</div><div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:18,flexWrap:"wrap"}}><button onClick={()=>setPublishReview(false)} style={modalButton(false)}>Keep editing</button><button disabled={!canPublish} onClick={()=>{if(canPublish){onPublish?.();setPublishReview(false)}}} style={{...modalButton(true),opacity:canPublish?1:.45,cursor:canPublish?"pointer":"default"}}>Publish to children</button></div></div></div>}
   </div>;
 }
-const smallAction=(disabled)=>({height:36,border:`1px solid ${P.line}`,borderRadius:9,background:"#fff",color:disabled?P.muted:ACADEMY_BLUE,fontFamily:F.body,fontSize:9,fontWeight:900,cursor:disabled?"default":"pointer"});
-const iconAction=(disabled)=>({width:28,height:28,border:`1px solid ${P.line}`,borderRadius:7,background:"#fff",color:disabled?"#cbd5e1":P.ink,cursor:disabled?"default":"pointer",fontWeight:900});
-const modalButton=(primary)=>({height:38,border:primary?0:`1px solid ${P.line}`,borderRadius:10,background:primary?ACADEMY_BLUE:"#fff",color:primary?"#fff":P.ink,padding:"0 15px",fontFamily:F.body,fontSize:11,fontWeight:900,cursor:"pointer"});
-const labelStyle={display:"block",fontFamily:F.body,fontSize:9,fontWeight:900,color:P.muted,textTransform:"uppercase",letterSpacing:".07em",marginBottom:5};
+const smallAction=(disabled)=>({height:36,border:`1px solid ${P.line}`,borderRadius:9,background:"#fff",color:disabled?P.muted:ACADEMY_BLUE,fontFamily:F.body,fontSize:9,fontWeight:800,cursor:disabled?"default":"pointer"});
+const iconAction=(disabled)=>({width:28,height:28,border:`1px solid ${P.line}`,borderRadius:7,background:"#fff",color:disabled?"#cbd5e1":P.ink,cursor:disabled?"default":"pointer",fontWeight:800});
+const modalButton=(primary)=>({height:38,border:primary?0:`1px solid ${P.line}`,borderRadius:10,background:primary?ACADEMY_BLUE:"#fff",color:primary?"#fff":P.ink,padding:"0 15px",fontFamily:F.body,fontSize:11,fontWeight:800,cursor:"pointer"});
+const labelStyle={display:"block",fontFamily:F.body,fontSize:9,fontWeight:800,color:P.muted,textTransform:"uppercase",letterSpacing:".07em",marginBottom:5};
 const inputStyle={width:"100%",height:38,border:`1px solid ${P.line}`,borderRadius:9,padding:"0 10px",boxSizing:"border-box",fontFamily:F.body,fontSize:11,color:P.ink,background:P.white,outline:"none"};
 
 function AcademyPlayers({ club, selectedTeam }) {
@@ -4227,7 +4397,7 @@ function AcademyPlayers({ club, selectedTeam }) {
                     style={{
                       fontFamily: F.body,
                       fontSize: 12,
-                      fontWeight: 900,
+                      fontWeight: 800,
                       color: P.ink,
                     }}
                   >
@@ -4603,7 +4773,7 @@ function AcademyParents({ club, selectedTeam }) {
                     padding: "0 11px",
                     fontFamily: F.body,
                     fontSize: 10,
-                    fontWeight: 900,
+                    fontWeight: 800,
                     cursor: "pointer",
                   }}
                 >
@@ -4642,7 +4812,7 @@ function AcademyParents({ club, selectedTeam }) {
                   style={{
                     fontFamily: F.display,
                     fontSize: 15,
-                    fontWeight: 900,
+                    fontWeight: 800,
                     color: P.ink,
                   }}
                 >
@@ -4681,7 +4851,7 @@ function AcademyParents({ club, selectedTeam }) {
                   padding: "0 13px",
                   fontFamily: F.body,
                   fontSize: 10,
-                  fontWeight: 900,
+                  fontWeight: 800,
                   cursor: sending
                     ? "default"
                     : "pointer",
@@ -4710,7 +4880,7 @@ function AcademyParents({ club, selectedTeam }) {
                   style={{
                     fontFamily: F.display,
                     fontSize: 15,
-                    fontWeight: 900,
+                    fontWeight: 800,
                     color: P.ink,
                   }}
                 >
@@ -4742,7 +4912,7 @@ function AcademyParents({ club, selectedTeam }) {
                   padding: "0 13px",
                   fontFamily: F.body,
                   fontSize: 10,
-                  fontWeight: 900,
+                  fontWeight: 800,
                   cursor: "pointer",
                 }}
               >
@@ -4804,7 +4974,7 @@ function AcademyParents({ club, selectedTeam }) {
                       style={{
                         fontFamily: F.body,
                         fontSize: 12,
-                        fontWeight: 900,
+                        fontWeight: 800,
                         color: P.ink,
                       }}
                     >
@@ -4914,7 +5084,7 @@ function AcademyLeaderboard({ selectedTeam }) {
     load();
     return () => { live = false; };
   }, [selectedTeam?.id]);
-  return <div style={{flex:1,overflow:"auto",background:P.soft}}><AcademyPageHeader title="Leaderboard" sub={`${selectedTeam?.label || "Team"} · Academy XP`} /><div style={{padding:24,maxWidth:900,margin:"0 auto"}}><AcademyCard>{loading?<div style={{fontFamily:F.body,fontSize:12,color:P.muted}}>Loading leaderboard…</div>:players.length===0?<div style={{fontFamily:F.body,fontSize:12,color:P.muted}}>No Academy player activity yet for this team.</div>:players.map((p,i)=><div key={p.id} style={{display:"grid",gridTemplateColumns:"44px 1fr auto",gap:12,alignItems:"center",padding:"12px 4px",borderTop:i?`1px solid ${P.line}`:"none"}}><div style={{width:34,height:34,borderRadius:12,display:"grid",placeItems:"center",background:i<3?"#e0f2fe":P.soft,fontFamily:F.display,fontWeight:900,color:ACADEMY_BLUE}}>{i+1}</div><div><div style={{fontFamily:F.body,fontSize:12,fontWeight:900,color:P.ink}}>{p.name}</div><div style={{fontFamily:F.body,fontSize:10,color:P.muted,marginTop:2}}>{p.last_active?`Last active ${new Date(p.last_active).toLocaleDateString("en-IE",{day:"numeric",month:"short"})}`:"No activity yet"}</div></div><div style={{fontFamily:F.display,fontSize:18,fontWeight:900,color:ACADEMY_BLUE}}>{Number(p.xp_total||0)} XP</div></div>)}</AcademyCard></div></div>;
+  return <div style={{flex:1,overflow:"auto",background:P.soft}}><AcademyPageHeader title="Leaderboard" sub={`${selectedTeam?.label || "Team"} · Academy XP`} /><div style={{padding:24,maxWidth:900,margin:"0 auto"}}><AcademyCard>{loading?<div style={{fontFamily:F.body,fontSize:12,color:P.muted}}>Loading leaderboard…</div>:players.length===0?<div style={{fontFamily:F.body,fontSize:12,color:P.muted}}>No Academy player activity yet for this team.</div>:players.map((p,i)=><div key={p.id} style={{display:"grid",gridTemplateColumns:"44px 1fr auto",gap:12,alignItems:"center",padding:"12px 4px",borderTop:i?`1px solid ${P.line}`:"none"}}><div style={{width:34,height:34,borderRadius:12,display:"grid",placeItems:"center",background:i<3?"#e0f2fe":P.soft,fontFamily:F.display,fontWeight:800,color:ACADEMY_BLUE}}>{i+1}</div><div><div style={{fontFamily:F.body,fontSize:12,fontWeight:800,color:P.ink}}>{p.name}</div><div style={{fontFamily:F.body,fontSize:10,color:P.muted,marginTop:2}}>{p.last_active?`Last active ${new Date(p.last_active).toLocaleDateString("en-IE",{day:"numeric",month:"short"})}`:"No activity yet"}</div></div><div style={{fontFamily:F.display,fontSize:18,fontWeight:800,color:ACADEMY_BLUE}}>{Number(p.xp_total||0)} XP</div></div>)}</AcademyCard></div></div>;
 }
 
 function AcademyEngagement({ selectedTeam }) {
@@ -5044,23 +5214,23 @@ function AcademyApprovals({ selectedTeam, weeklyPlan }) {
     <AcademyPageHeader title="Approvals" sub={`${selectedTeam?.label || "Team"} · ${pendingTotal} awaiting coach verification`} />
     <div style={{padding:24,maxWidth:1050,margin:"0 auto"}}>
       {errorText && <AcademyCard style={{marginBottom:12,borderColor:"#fecaca",color:"#991b1b"}}>{errorText}</AcademyCard>}
-      {loading ? <AcademyCard><div style={{fontFamily:F.body,fontSize:12,color:P.muted}}>Loading approvals…</div></AcademyCard> : activities.length===0 ? <AcademyCard><div style={{fontFamily:F.display,fontSize:18,fontWeight:900,color:P.ink}}>No coach-verified activities yet</div><div style={{fontFamily:F.body,fontSize:11,color:P.muted,marginTop:4}}>In Weekly Content, add Friday Night Hurling (or another activity) and choose Coach verified.</div></AcademyCard> : activities.map(activity => {
+      {loading ? <AcademyCard><div style={{fontFamily:F.body,fontSize:12,color:P.muted}}>Loading approvals…</div></AcademyCard> : activities.length===0 ? <AcademyCard><div style={{fontFamily:F.display,fontSize:18,fontWeight:800,color:P.ink}}>No coach-verified activities yet</div><div style={{fontFamily:F.body,fontSize:11,color:P.muted,marginTop:4}}>In Weekly Content, add Friday Night Hurling (or another activity) and choose Coach verified.</div></AcademyCard> : activities.map(activity => {
         const activityClaims = claims.filter(c => c.exercise_id === activity.id);
         const pending = activityClaims.filter(c => c.status === "pending").length;
         const approved = activityClaims.filter(c => c.status === "approved").length;
         return <AcademyCard key={activity.id} style={{marginBottom:14,borderTop:"4px solid #0288d1"}}>
           <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"flex-start",flexWrap:"wrap",marginBottom:12}}>
-            <div><AcademyBadge color="#0369a1" bg="#e0f2fe">Coach verified</AcademyBadge><div style={{fontFamily:F.display,fontSize:20,fontWeight:900,color:P.ink,marginTop:6}}>{activity.title}</div><div style={{fontFamily:F.body,fontSize:10,color:P.muted,marginTop:3}}>Weekly Academy activity · +{activity.xp_reward || 15} XP</div></div>
-            <div style={{display:"flex",gap:7,alignItems:"center",flexWrap:"wrap"}}><AcademyBadge color="#b45309" bg="#fff7ed">{pending} pending</AcademyBadge><AcademyBadge color="#15803d" bg="#dcfce7">{approved} approved</AcademyBadge>{pending>0 && <button onClick={()=>approveAllPending(activity)} style={{height:34,border:0,borderRadius:9,background:ACADEMY_BLUE,color:"#fff",padding:"0 12px",fontFamily:F.body,fontSize:10,fontWeight:900,cursor:"pointer"}}>Approve all claims</button>}</div>
+            <div><AcademyBadge color="#0369a1" bg="#e0f2fe">Coach verified</AcademyBadge><div style={{fontFamily:F.display,fontSize:20,fontWeight:800,color:P.ink,marginTop:6}}>{activity.title}</div><div style={{fontFamily:F.body,fontSize:10,color:P.muted,marginTop:3}}>Weekly Academy activity · +{activity.xp_reward || 15} XP</div></div>
+            <div style={{display:"flex",gap:7,alignItems:"center",flexWrap:"wrap"}}><AcademyBadge color="#b45309" bg="#fff7ed">{pending} pending</AcademyBadge><AcademyBadge color="#15803d" bg="#dcfce7">{approved} approved</AcademyBadge>{pending>0 && <button onClick={()=>approveAllPending(activity)} style={{height:34,border:0,borderRadius:9,background:ACADEMY_BLUE,color:"#fff",padding:"0 12px",fontFamily:F.body,fontSize:10,fontWeight:800,cursor:"pointer"}}>Approve all claims</button>}</div>
           </div>
           <div style={{borderTop:`1px solid ${P.line}`}}>{players.map(player => {
             const claim = activityClaims.find(c => c.player_id === player.id);
             const status = claim?.status || "unclaimed";
             const key = `${activity.id}:${player.id}`;
             return <div key={player.id} style={{display:"grid",gridTemplateColumns:"minmax(150px,1fr) auto auto",gap:10,alignItems:"center",padding:"10px 2px",borderBottom:`1px solid ${P.line}`}}>
-              <div><div style={{fontFamily:F.body,fontSize:11,fontWeight:900,color:P.ink}}>{player.name}</div><div style={{fontFamily:F.body,fontSize:9,color:P.muted,marginTop:2}}>{status==="pending"?"Player says they attended":status==="approved"?"Attendance verified":"No claim yet"}</div></div>
+              <div><div style={{fontFamily:F.body,fontSize:11,fontWeight:800,color:P.ink}}>{player.name}</div><div style={{fontFamily:F.body,fontSize:9,color:P.muted,marginTop:2}}>{status==="pending"?"Player says they attended":status==="approved"?"Attendance verified":"No claim yet"}</div></div>
               <AcademyBadge color={status==="approved"?"#15803d":status==="pending"?"#b45309":P.muted} bg={status==="approved"?"#dcfce7":status==="pending"?"#fff7ed":P.soft}>{status==="approved"?"✓ Approved":status==="pending"?"⏳ Pending":"Not claimed"}</AcademyBadge>
-              {status!=="approved" ? <button disabled={busyKey===key} onClick={()=>approve(activity,player)} style={{height:32,border:0,borderRadius:8,background:status==="pending"?ACADEMY_BLUE:"#e0f2fe",color:status==="pending"?"#fff":"#0369a1",padding:"0 10px",fontFamily:F.body,fontSize:9,fontWeight:900,cursor:"pointer"}}>{busyKey===key?"Saving…":status==="pending"?"Approve":"Mark attended"}</button> : <div style={{display:"flex",alignItems:"center",gap:7,justifyContent:"flex-end",flexWrap:"wrap"}}><div style={{fontFamily:F.body,fontSize:9,fontWeight:800,color:"#15803d"}}>+{activity.xp_reward || 15} XP</div><button disabled={busyKey===key} onClick={()=>unapprove(activity,player)} style={{height:30,border:"1px solid #fecaca",borderRadius:8,background:"#fff",color:"#b91c1c",padding:"0 9px",fontFamily:F.body,fontSize:9,fontWeight:900,cursor:busyKey===key?"default":"pointer",opacity:busyKey===key?.55:1}}>{busyKey===key?"Saving…":"Unapprove"}</button></div>}
+              {status!=="approved" ? <button disabled={busyKey===key} onClick={()=>approve(activity,player)} style={{height:32,border:0,borderRadius:8,background:status==="pending"?ACADEMY_BLUE:"#e0f2fe",color:status==="pending"?"#fff":"#0369a1",padding:"0 10px",fontFamily:F.body,fontSize:9,fontWeight:800,cursor:"pointer"}}>{busyKey===key?"Saving…":status==="pending"?"Approve":"Mark attended"}</button> : <div style={{display:"flex",alignItems:"center",gap:7,justifyContent:"flex-end",flexWrap:"wrap"}}><div style={{fontFamily:F.body,fontSize:9,fontWeight:800,color:"#15803d"}}>+{activity.xp_reward || 15} XP</div><button disabled={busyKey===key} onClick={()=>unapprove(activity,player)} style={{height:30,border:"1px solid #fecaca",borderRadius:8,background:"#fff",color:"#b91c1c",padding:"0 9px",fontFamily:F.body,fontSize:9,fontWeight:800,cursor:busyKey===key?"default":"pointer",opacity:busyKey===key?.55:1}}>{busyKey===key?"Saving…":"Unapprove"}</button></div>}
             </div>;
           })}</div>
         </AcademyCard>;
@@ -5076,7 +5246,7 @@ function AcademySettings({ published, onNav }) {
     { title: "Coach Approvals", desc: "Verify attendance and coach-approved Academy activities.", label: "Open", action: () => onNav?.("academy-approvals") },
     { title: "Teams", desc: "Create and amend teams in Spraoi Club. Academy uses those teams rather than maintaining a separate team list.", label: "Open Spraoi Club", action: () => window.location.assign(MODULE_URLS.club) },
   ];
-  return <div style={{ flex: 1, overflow: "auto", background: P.soft }}><AcademyPageHeader title="Settings" sub="Academy setup and shortcuts" /><div style={{ padding: 24, maxWidth: 900, margin: "0 auto", display: "grid", gap: 12 }}>{items.map((item) => <AcademyCard key={item.title}><div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", flexWrap: "wrap" }}><div style={{ flex: 1, minWidth: 220 }}><div style={{ fontFamily: F.body, fontSize: 12, fontWeight: 900, color: P.ink }}>{item.title}</div><div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 3 }}>{item.desc}</div></div><button onClick={item.action} style={{ height: 34, border: 0, borderRadius: 9, background: ACADEMY_BLUE, color: "#fff", padding: "0 12px", fontFamily: F.body, fontSize: 10, fontWeight: 900, cursor: "pointer" }}>{item.label}</button></div></AcademyCard>)}</div></div>;
+  return <div style={{ flex: 1, overflow: "auto", background: P.soft }}><AcademyPageHeader title="Settings" sub="Academy setup and shortcuts" /><div style={{ padding: 24, maxWidth: 900, margin: "0 auto", display: "grid", gap: 12 }}>{items.map((item) => <AcademyCard key={item.title}><div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", flexWrap: "wrap" }}><div style={{ flex: 1, minWidth: 220 }}><div style={{ fontFamily: F.body, fontSize: 12, fontWeight: 800, color: P.ink }}>{item.title}</div><div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 3 }}>{item.desc}</div></div><button onClick={item.action} style={{ height: 34, border: 0, borderRadius: 9, background: ACADEMY_BLUE, color: "#fff", padding: "0 12px", fontFamily: F.body, fontSize: 10, fontWeight: 800, cursor: "pointer" }}>{item.label}</button></div></AcademyCard>)}</div></div>;
 }
 
 function AcademySectionScreen({ screen, onNav, club, selectedTeam, weeklyPlan, planSessions, extras, skills, overrides, onSetOverride, onAddExtra, onUpdateExtra, onRemoveExtra, onMoveExtra, published, onPublish, parentRows, setParentRows }) {
@@ -5101,7 +5271,7 @@ function ModulePlaceholder({ module, screen, club }) {
       <div style={{ minHeight: "calc(100vh - 60px)", display: "grid", placeItems: "center", padding: 28 }}>
         <div style={{ maxWidth: 520, textAlign: "center", background: P.white, border: `1px solid ${P.line}`, borderRadius: 22, padding: 34, boxShadow: Sh.lift }}>
           <img src="/spraoi-connect-icon.png" alt="Spraoi Connect" style={{ width: 104, height: 104, objectFit: "contain", marginBottom: 16 }} />
-          <div style={{ fontFamily: F.display, fontSize: 30, fontWeight: 900, color: "#8a6500" }}>Coming Soon</div>
+          <div style={{ fontFamily: F.display, fontSize: 30, fontWeight: 800, color: "#8a6500" }}>Coming Soon</div>
           <div style={{ fontFamily: F.body, fontSize: 13, lineHeight: 1.6, color: P.muted, marginTop: 8 }}>Spraoi Connect is the next module after Academy. Messaging, announcements and responses will be added here.</div>
         </div>
       </div>
@@ -5113,8 +5283,8 @@ function ModulePlaceholder({ module, screen, club }) {
       <div style={{ padding: "28px", maxWidth: 1180, margin: "0 auto" }}>
         <div style={{ borderRadius: 22, padding: "28px 30px", background: `linear-gradient(135deg, ${module.color} 0%, ${module.color}c9 100%)`, color: module.id === "connect" ? "#332800" : "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24, boxShadow: `0 18px 40px ${module.color}30`, marginBottom: 22 }}>
           <div style={{ maxWidth: 650 }}>
-            <div style={{ fontFamily: F.body, fontSize: 10, fontWeight: 900, letterSpacing: ".14em", textTransform: "uppercase", opacity: .72, marginBottom: 8 }}>{module.label} module</div>
-            <div style={{ fontFamily: F.display, fontSize: 30, fontWeight: 900, lineHeight: 1.05, marginBottom: 8 }}>{screenLabel}</div>
+            <div style={{ fontFamily: F.body, fontSize: 10, fontWeight: 800, letterSpacing: ".14em", textTransform: "uppercase", opacity: .72, marginBottom: 8 }}>{module.label} module</div>
+            <div style={{ fontFamily: F.display, fontSize: 30, fontWeight: 800, lineHeight: 1.05, marginBottom: 8 }}>{screenLabel}</div>
             <div style={{ fontFamily: F.body, fontSize: 14, lineHeight: 1.55, opacity: .88 }}>{module.tagline}</div>
           </div>
           <div style={{ width: 120, height: 120, borderRadius: 30, background: "#fff", border: "1px solid rgba(15,23,42,.08)", display: "grid", placeItems: "center", flexShrink: 0, boxShadow: "0 16px 34px rgba(15,23,42,.16)" }}>
@@ -5124,8 +5294,8 @@ function ModulePlaceholder({ module, screen, club }) {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
           {module.nav.slice(0, 4).map((item, index) => (
             <div key={item.id} style={{ background: P.white, border: `1px solid ${P.line}`, borderRadius: 16, padding: 18, boxShadow: Sh.card }}>
-              <div style={{ width: 38, height: 38, borderRadius: 11, display: "grid", placeItems: "center", background: `${module.color}12`, color: module.color, fontSize: 18, fontWeight: 900, marginBottom: 13 }}>{item.icon}</div>
-              <div style={{ fontFamily: F.display, fontWeight: 900, fontSize: 15, color: P.ink }}>{item.label}</div>
+              <div style={{ width: 38, height: 38, borderRadius: 11, display: "grid", placeItems: "center", background: `${module.color}12`, color: module.color, fontSize: 18, fontWeight: 800, marginBottom: 13 }}>{item.icon}</div>
+              <div style={{ fontFamily: F.display, fontWeight: 800, fontSize: 15, color: P.ink }}>{item.label}</div>
               <div style={{ fontFamily: F.body, color: P.muted, fontSize: 11, lineHeight: 1.5, marginTop: 5 }}>{index === 0 ? "Your overview and priority actions will live here." : "This connected workspace is ready for the next build phase."}</div>
             </div>
           ))}
@@ -5146,7 +5316,7 @@ function AccessDeniedScreen({ module, club }) {
             <img src={module.icon} alt="" style={{ width: 70, height: 70, objectFit: "contain", filter: "grayscale(.3)" }} />
             <span style={{ position: "absolute", right: -3, bottom: -3, width: 30, height: 30, borderRadius: "50%", background: P.navy, color: "#fff", display: "grid", placeItems: "center", fontSize: 13 }}>🔒</span>
           </div>
-          <h2 style={{ fontFamily: F.display, fontSize: 24, fontWeight: 900, color: P.ink, margin: "0 0 8px" }}>{module.label} access required</h2>
+          <h2 style={{ fontFamily: F.display, fontSize: 24, fontWeight: 800, color: P.ink, margin: "0 0 8px" }}>{module.label} access required</h2>
           <p style={{ fontFamily: F.body, color: P.muted, fontSize: 13, lineHeight: 1.65, margin: "0 auto 18px", maxWidth: 420 }}>You can see every Spraoi module so the platform always feels consistent, but your current role does not include access to {module.label}. Please contact your Club Spraoi administrator.</p>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "9px 13px", borderRadius: 10, background: `${module.color}0e`, color: module.color, fontFamily: F.body, fontSize: 11, fontWeight: 800 }}>Administrator approval needed</div>
         </div>
@@ -5163,6 +5333,8 @@ function MobileHeader({ activeModule, setActiveModule, onNav, enabledModules, cl
   const mod = MODULES[activeModule];
   const clubName = club?.name || "Club Spraoi";
   const mobileTeams = myTeams?.length ? ageGroups.filter((ag) => myTeams.includes(ag.id)) : ageGroups;
+  const initial = clubName[0];
+
   function openModule(key, module) {
     if (!enabledModules.includes(key)) {
       onNav(`access-denied-${key}`);
@@ -5177,34 +5349,59 @@ function MobileHeader({ activeModule, setActiveModule, onNav, enabledModules, cl
     onNav(module.nav[0].id);
     setOpen(false);
   }
+
   return (
     <>
-      <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 62, zIndex: 200, padding: "0 12px", background: mod.color, color: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: `0 5px 18px ${mod.color}35` }}>
-        <button onClick={() => setOpen(true)} style={{ border: "1px solid rgba(15,23,42,.08)", background: "#fff", width: 42, height: 42, borderRadius: 12, display: "grid", placeItems: "center", padding: 0, boxSizing: "border-box", cursor: "pointer", boxShadow: "0 4px 12px rgba(15,23,42,.14)" }}>
-          <img src={club?.logo_url || "/spraoi-club-icon.png"} alt={`${clubName} crest`} style={{ width: 36, height: 36, objectFit: "contain", display: "block", margin: "0 auto" }} />
-        </button>
-        <div style={{ minWidth:0, flex:1, padding:"0 10px", display:"flex", alignItems:"center", justifyContent:"center" }}>
-          {mobileTeams.length > 1 ? (
-            <select aria-label="Current team" value={selectedTeam?.id || ""} onChange={(e)=>{ const ag=ageGroups.find(a=>String(a.id)===String(e.target.value)); if(ag&&onSelectTeam) onSelectTeam(ag); }} style={{ maxWidth:220, width:"100%", border:"1px solid rgba(255,255,255,.42)", background:"rgba(255,255,255,.18)", color:"#fff", borderRadius:10, padding:"8px 10px", fontFamily:F.body, fontSize:11, fontWeight:900 }}>
-              {!selectedTeam && <option value="" style={{color:P.ink}}>Select team</option>}
-              {mobileTeams.map(ag=><option key={ag.id} value={ag.id} style={{color:P.ink}}>{teamDisplayName(ag)}</option>)}
-            </select>
-          ) : <div style={{fontFamily:F.body,fontSize:11,fontWeight:900}}>{selectedTeam ? teamDisplayName(selectedTeam) : clubName}</div>}
+      <div className="spraoi-mobile-app-header" data-module={activeModule}>
+        <div className="spraoi-mobile-app-header-row">
+          <button onClick={() => setOpen(true)} className="spraoi-mobile-club-button" aria-label="Switch module">
+            <img src={club?.logo_url || "/spraoi-club-icon.png"} alt={`${clubName} crest`} />
+          </button>
+
+          <div className="spraoi-mobile-module-name">{mod.label}</div>
+
+          <button onClick={onShowProfile} aria-label="Open profile" className="spraoi-mobile-profile-button">
+            {initial}
+          </button>
         </div>
-        <button onClick={onShowProfile} aria-label="Open profile" style={{ width:42,height:42,borderRadius:12,border:"1px solid rgba(255,255,255,.2)",background:"rgba(255,255,255,.14)",color:"#fff",display:"grid",placeItems:"center",fontFamily:F.display,fontWeight:900,cursor:"pointer" }}>{clubName[0]}</button>
+
+        <div className="spraoi-mobile-team-row">
+          {mobileTeams.length > 1 ? (
+            <select
+              aria-label="Current team"
+              value={selectedTeam?.id || ""}
+              onChange={(e) => {
+                const ag = ageGroups.find((a) => String(a.id) === String(e.target.value));
+                if (ag && onSelectTeam) onSelectTeam(ag);
+              }}
+              className="spraoi-mobile-team-select"
+            >
+              {!selectedTeam && <option value="">Select team</option>}
+              {mobileTeams.map((ag) => <option key={ag.id} value={ag.id}>{teamDisplayName(ag)}</option>)}
+            </select>
+          ) : (
+            <div className="spraoi-mobile-team-single">
+              {selectedTeam ? teamDisplayName(selectedTeam) : "Select team"}
+            </div>
+          )}
+        </div>
       </div>
+
       {open && (
         <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(5,18,34,.62)", padding: 16, display: "flex", alignItems: "flex-start", justifyContent: "center" }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ marginTop: 58, width: "100%", maxWidth: 430, background: P.white, borderRadius: 20, padding: 16, boxShadow: Sh.lift }}>
-            <div style={{ fontFamily: F.display, fontWeight: 900, color: P.ink, fontSize: 18, marginBottom: 12 }}>Switch module</div>
+          <div onClick={(e) => e.stopPropagation()} style={{ marginTop: 82, width: "100%", maxWidth: 430, background: P.white, borderRadius: 20, padding: 16, boxShadow: Sh.lift }}>
+            <div style={{ fontFamily: F.display, fontWeight: 700, color: P.ink, fontSize: 18, marginBottom: 12 }}>Switch module</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
-              {Object.entries(MODULES).filter(([key]) => !["plus","connect"].includes(key)).map(([key, m]) => {
+              {["coach","academy","connect","cup","club"].filter((key) => MODULES[key]).map((key) => {
+                const m = MODULES[key];
                 const unlocked = enabledModules.includes(key);
                 return (
                   <button key={key} onClick={() => openModule(key, m)} style={{ position: "relative", border: `1px solid ${activeModule === key ? m.color : P.line}`, background: activeModule === key ? `${m.color}0d` : P.white, borderRadius: 14, padding: 13, display: "flex", alignItems: "center", gap: 10, textAlign: "left", cursor: "pointer" }}>
-                    <span style={{ width: 46, height: 46, borderRadius: 13, background: "#fff", border: "1px solid rgba(15,23,42,.08)", display: "grid", placeItems: "center", padding: 0, boxSizing: "border-box", flexShrink: 0, boxShadow: "0 3px 10px rgba(15,23,42,.08)" }}><img src={m.icon} alt="" style={{ width: 34, height: 34, objectFit: "contain", display: "block", margin: "0 auto", opacity: unlocked ? 1 : .5, filter: unlocked ? "none" : "grayscale(1)" }} /></span>
+                    <span style={{ width: 46, height: 46, borderRadius: 13, background: "#fff", border: "1px solid rgba(15,23,42,.08)", display: "grid", placeItems: "center", padding: 0, boxSizing: "border-box", flexShrink: 0, boxShadow: "0 3px 10px rgba(15,23,42,.08)" }}>
+                      <img src={m.icon} alt="" style={{ width: 34, height: 34, objectFit: "contain", display: "block", opacity: unlocked ? 1 : .5, filter: unlocked ? "none" : "grayscale(1)" }} />
+                    </span>
                     <div>
-                      <div style={{ fontFamily: F.display, fontWeight: 900, color: P.ink, fontSize: 13 }}>{m.label}</div>
+                      <div style={{ fontFamily: F.display, fontWeight: 700, color: P.ink, fontSize: 13 }}>{m.label}</div>
                       <div style={{ fontFamily: F.body, color: unlocked ? P.muted : m.color, fontSize: 9 }}>{unlocked ? "Open module" : "Access required"}</div>
                     </div>
                     {!unlocked && <span style={{ position: "absolute", top: 8, right: 8, fontSize: 10 }}>🔒</span>}
@@ -5225,15 +5422,15 @@ function MobileNav({ activeModule, screen, onNav, enabledModules }) {
 
   const items = [
     { id: "academy-dashboard", label: "Dashboard" },
-    { id: "academy-content", label: "Content" },
+    { id: "academy-content", label: "Weekly Content" },
     { id: "academy-leaderboard", label: "Leaderboard" },
-    { id: "academy-engagement", label: "Engagement" },
+    { id: "academy-engagement", label: "Engagement" }
   ];
 
   const moreItems = [
     { id: "academy-parents", label: "Parents" },
     { id: "academy-approvals", label: "Approvals" },
-    
+    { id: "academy-settings", label: "Settings" }
   ];
 
   const moreActive = moreItems.some((item) => item.id === screen);
@@ -5242,65 +5439,19 @@ function MobileNav({ activeModule, screen, onNav, enabledModules }) {
     <>
       {showMore && (
         <>
-          <div
-            onClick={() => setShowMore(false)}
-            style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(15,35,60,.28)",
-              zIndex: 198
-            }}
-          />
-
-          <div
-            style={{
-              position: "fixed",
-              left: 12,
-              right: 12,
-              bottom: "calc(72px + env(safe-area-inset-bottom, 0px))",
-              zIndex: 199,
-              background: "#fff",
-              borderRadius: 18,
-              border: `1px solid ${P.line}`,
-              boxShadow: "0 18px 50px rgba(15,35,60,.20)",
-              padding: 10
-            }}
-          >
-            <div style={{
-              fontFamily: F.display,
-              fontSize: 14,
-              fontWeight: 900,
-              color: P.ink,
-              padding: "7px 8px 10px"
-            }}>
-              More Academy tools
-            </div>
-
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(2,minmax(0,1fr))",
-              gap: 8
-            }}>
+          <div onClick={() => setShowMore(false)} style={{ position: "fixed", inset: 0, background: "rgba(15,35,60,.28)", zIndex: 198 }} />
+          <div className="spraoi-mobile-more-sheet">
+            <div className="spraoi-mobile-more-title">More {module.label} tools</div>
+            <div className="spraoi-mobile-more-grid">
               {moreItems.map((item) => {
                 const isActive = screen === item.id;
                 return (
                   <button
                     key={item.id}
-                    onClick={() => {
-                      setShowMore(false);
-                      onNav(item.id);
-                    }}
-                    style={{
-                      border: `1px solid ${isActive ? module.color : P.line}`,
-                      background: isActive ? `${module.color}0d` : "#fff",
-                      borderRadius: 12,
-                      padding: 12,
-                      color: isActive ? module.color : P.ink,
-                      fontFamily: F.body,
-                      fontSize: 11,
-                      fontWeight: 800,
-                      cursor: "pointer"
-                    }}
+                    onClick={() => { setShowMore(false); onNav(item.id); }}
+                    className="spraoi-mobile-more-button"
+                    data-active={isActive}
+                    style={{ "--module-color": module.color }}
                   >
                     {item.label}
                   </button>
@@ -5311,95 +5462,36 @@ function MobileNav({ activeModule, screen, onNav, enabledModules }) {
         </>
       )}
 
-      <div style={{
-        position: "fixed",
-        bottom: 0,
-        left: 0,
-        right: 0,
-        background: "#fff",
-        borderTop: `1px solid ${P.line}`,
-        display: "flex",
-        padding: "6px 4px calc(env(safe-area-inset-bottom, 0px) + 5px)",
-        zIndex: 200,
-        boxShadow: "0 -7px 24px rgba(15,35,60,.08)"
-      }}>
+      <div className="spraoi-mobile-bottom-nav" style={{ "--module-color": module.color }}>
         {items.map((item) => {
           const isActive = screen === item.id;
           return (
             <button
               key={item.id}
+              aria-label={item.label}
+              title={item.label}
               onClick={() => onNav(item.id)}
-              style={{
-                flex: 1,
-                minWidth: 0,
-                background: "none",
-                border: "none",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 2,
-                cursor: "pointer",
-                color: isActive ? module.color : P.muted,
-                padding: "3px 1px"
-              }}
+              className="spraoi-mobile-bottom-nav-button"
+              data-active={isActive}
             >
-              <span style={{
-                width: 28,
-                height: 24,
-                borderRadius: 8,
-                display: "grid",
-                placeItems: "center",
-                background: isActive ? `${module.color}12` : "transparent"
-              }}>
-                <SpraoiNavIcon name={item.id} size={16} />
+              <span className="spraoi-mobile-bottom-nav-chip">
+                <img src={secondaryNavAsset(activeModule, item.id)} alt="" aria-hidden="true" className="spraoi-mobile-bottom-nav-icon" />
               </span>
-
-              <span style={{
-                fontSize: 8,
-                lineHeight: 1.1,
-                fontWeight: isActive ? 900 : 600,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                maxWidth: "100%"
-              }}>
-                {item.label}
-              </span>
+              <span className="spraoi-mobile-bottom-nav-label">{item.label}</span>
             </button>
           );
         })}
 
         <button
           onClick={() => setShowMore((value) => !value)}
-          aria-label="More Academy sections"
-          style={{
-            flex: 1,
-            minWidth: 0,
-            background: "none",
-            border: "none",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 2,
-            cursor: "pointer",
-            color: moreActive || showMore ? module.color : P.muted,
-            padding: "3px 1px"
-          }}
+          aria-label="More sections"
+          className="spraoi-mobile-bottom-nav-button"
+          data-active={moreActive || showMore}
         >
-          <span style={{
-            width: 28,
-            height: 24,
-            borderRadius: 8,
-            display: "grid",
-            placeItems: "center",
-            background: moreActive || showMore ? `${module.color}12` : "transparent",
-            fontWeight: 900
-          }}>
-            •••
+          <span className="spraoi-mobile-bottom-nav-chip">
+            <img src="/icons/global/more.png" alt="" aria-hidden="true" className="spraoi-mobile-bottom-nav-icon" />
           </span>
-          <span style={{fontSize:8,fontWeight:moreActive ? 900 : 600}}>
-            More
-          </span>
+          <span className="spraoi-mobile-bottom-nav-label">More</span>
         </button>
       </div>
     </>
@@ -5463,7 +5555,7 @@ export function AcademyModule({
 
 
 function SpraoiPasswordRecovery({
-  accent = "#0277bd",
+  accent = "#2563EB",
   lightBackground = false,
   logo = "/spraoi-logo-white.png",
   onDone,
@@ -5551,7 +5643,7 @@ function SpraoiPasswordRecovery({
           <div
             style={{
               fontSize: 21,
-              fontWeight: 900,
+              fontWeight: 800,
               color: "#13243b",
               marginBottom: 6,
             }}
@@ -6374,7 +6466,7 @@ export default function App() {
         <div style={{ maxWidth: 580, margin: "0 auto", padding: "20px 16px" }}>
           <div style={{ background: `linear-gradient(135deg, ${P.p700}, ${P.p900})`, borderRadius: 14, padding: 20, color: "#fff", marginBottom: 16 }}>
             <div style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, textTransform: "uppercase", opacity: 0.6 }}>Training Session</div>
-            <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 900, marginTop: 4 }}>{sharedSession.hurling_skill?.name || "Session Plan"}</div>
+            <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 800, marginTop: 4 }}>{sharedSession.hurling_skill?.name || "Session Plan"}</div>
             {sess?.session_date && <div style={{ fontFamily: F.body, fontSize: 12, opacity: 0.8, marginTop: 4 }}>{new Date(sess.session_date + "T12:00:00").toLocaleDateString("en-IE", { weekday: "long", day: "numeric", month: "short", year: "numeric" })}</div>}
             <div style={{ fontFamily: F.body, fontSize: 11, opacity: 0.7, marginTop: 2 }}>{sess?.total_duration_mins || "?"}min · {activities.length} drills</div>
           </div>
@@ -6394,7 +6486,7 @@ export default function App() {
             return (
               <div key={sa.id} style={{ background: P.white, borderRadius: 12, border: `1px solid ${P.line}`, padding: 14, marginBottom: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                  <span style={{ fontFamily: F.display, fontSize: 14, fontWeight: 900, color: P.p600 }}>{i + 1}</span>
+                  <span style={{ fontFamily: F.display, fontSize: 14, fontWeight: 800, color: P.p600 }}>{i + 1}</span>
                   <div style={{ width: 28, height: 28, borderRadius: 7, background: sportIcon.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, position: "relative" }}>
                     <img src={sportIcon.icon} alt="" style={{ width: 16, height: 16, objectFit: "contain", filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.2))" }} />
                     {catIcon && <img src={catIcon.icon} alt="" style={{ position: "absolute", bottom: -2, right: -2, width: 10, height: 10, objectFit: "contain", background: "#fff", borderRadius: 2, padding: 1 }} />}
@@ -6420,7 +6512,7 @@ export default function App() {
   if (recoveryMode && session) {
     return (
       <SpraoiPasswordRecovery
-        accent={MODULES[APP_MODULE]?.color || "#0277bd"}
+        accent={MODULES[APP_MODULE]?.color || "#2563EB"}
         onDone={() => setRecoveryMode(false)}
       />
     );
@@ -6502,7 +6594,7 @@ export default function App() {
                   fontFamily: F.body,
                   fontSize: 11,
                   fontWeight: 800,
-                  color: MODULES[APP_MODULE]?.color || "#0277bd",
+                  color: MODULES[APP_MODULE]?.color || "#2563EB",
                   cursor: "pointer",
                 }}
               >
@@ -6544,7 +6636,7 @@ export default function App() {
                       border: "none",
                       borderRadius: 9,
                       background:
-                        MODULES[APP_MODULE]?.color || "#0277bd",
+                        MODULES[APP_MODULE]?.color || "#2563EB",
                       color: "#fff",
                       fontFamily: F.body,
                       fontSize: 11,
@@ -6667,7 +6759,7 @@ export default function App() {
   const showMobile = isMobile;
 
   return (
-    <div className="spraoi-shell" style={{ display: "flex", minHeight: "100vh", width: "100%", fontFamily: F.body, paddingTop: showMobile ? 62 : 0, paddingBottom: showMobile ? 68 : 0, boxSizing: "border-box" }}>
+    <div className="spraoi-shell" style={{ display: "flex", minHeight: "100vh", width: "100%", fontFamily: F.body, paddingTop: showMobile ? 116 : 0, paddingBottom: showMobile ? 78 : 0, boxSizing: "border-box" }}>
       <MobileAccessibilityStyles />
       {showMobile && <MobileHeader activeModule={activeModule} setActiveModule={setActiveModule} onNav={setScreen} enabledModules={enabledModules} club={club} selectedTeam={selectedTeam} ageGroups={ageGroups} myTeams={myTeams} onSelectTeam={selectTeam} onShowProfile={()=>setShowProfile(true)} />}
 
@@ -6721,13 +6813,13 @@ export default function App() {
         <div onClick={() => setShowProfile(false)} style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: P.white, borderRadius: 18, maxWidth: 420, width: "100%", maxHeight: "80vh", overflowY: "auto", boxShadow: Sh.lift }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", borderBottom: `1px solid ${P.line}` }}>
-              <div style={{ fontFamily: F.display, fontSize: 17, fontWeight: 900, color: P.ink }}>Profile</div>
+              <div style={{ fontFamily: F.display, fontSize: 17, fontWeight: 800, color: P.ink }}>Profile</div>
               <button onClick={() => setShowProfile(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: P.muted }}>×</button>
             </div>
             <div style={{ padding: 20 }}>
               {/* User info */}
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-                <div style={{ width: 48, height: 48, borderRadius: "50%", background: `${P.p600}20`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F.display, fontSize: 18, fontWeight: 900, color: P.p600 }}>
+                <div style={{ width: 48, height: 48, borderRadius: "50%", background: `${P.p600}20`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F.display, fontSize: 18, fontWeight: 800, color: P.p600 }}>
                   {session?.user?.email?.[0]?.toUpperCase() || "C"}
                 </div>
                 <div>
@@ -6757,7 +6849,7 @@ export default function App() {
                   await addProfileTeam(agId);
                   e.target.value = "";
                 }} style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 12, color: P.muted }}>
-                  <option value="">+ Add another team...</option>
+                  <option value="">Add another team...</option>
                   {ageGroups.filter((ag) => !myTeams.includes(ag.id)).sort((a, b) => parseInt(a.label.replace("U", "")) - parseInt(b.label.replace("U", ""))).map((ag) => (
                     <option key={ag.id} value={ag.id}>{teamDisplayName(ag)}</option>
                   ))}
@@ -6778,7 +6870,7 @@ export default function App() {
         <div onClick={() => setShareUrl(null)} style={{ position: "fixed", inset: 0, zIndex: 99999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: P.white, borderRadius: 16, maxWidth: 400, width: "100%", padding: 24, boxShadow: Sh.lift, textAlign: "center" }}>
             <div style={{ fontSize: 32, marginBottom: 10 }}>🔗</div>
-            <div style={{ fontFamily: F.display, fontSize: 17, fontWeight: 900, color: P.ink, marginBottom: 6 }}>Link Copied!</div>
+            <div style={{ fontFamily: F.display, fontSize: 17, fontWeight: 800, color: P.ink, marginBottom: 6 }}>Link Copied!</div>
             <div style={{ fontFamily: F.body, fontSize: 12, color: P.muted, marginBottom: 14 }}>Share this link with your coaches. They can view the full session without an account.</div>
             <div style={{ background: P.soft, borderRadius: 8, padding: "10px 12px", marginBottom: 16, wordBreak: "break-all", fontFamily: F.body, fontSize: 11, color: P.ink, textAlign: "left" }}>{shareUrl}</div>
             <div style={{ display: "flex", gap: 8 }}>
@@ -6797,7 +6889,7 @@ export default function App() {
             {/* Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", borderBottom: `1px solid ${P.line}`, position: "sticky", top: 0, background: P.white, borderRadius: "18px 18px 0 0", zIndex: 1 }}>
               <div>
-                <div style={{ fontFamily: F.display, fontSize: 17, fontWeight: 900, color: P.ink }}>Session Details</div>
+                <div style={{ fontFamily: F.display, fontSize: 17, fontWeight: 800, color: P.ink }}>Session Details</div>
                 <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted }}>
                   {sessionDetail.session_date ? new Date(sessionDetail.session_date).toLocaleDateString("en-IE", { weekday: "long", day: "numeric", month: "short" }) : ""}
                   {sessionDetail.plan?.hurling_skill?.name ? ` · ${sessionDetail.plan.hurling_skill.matchedSkill?.name || "Needs review"}` : ""}
@@ -6819,7 +6911,7 @@ export default function App() {
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
                 <img src="/spraoi-logo-white.png" alt="" style={{ width: 80, height: "auto", display: "none" }} />
                 <div>
-                  <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink }}>
+                  <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink }}>
                     {sessionDetail.session_date ? new Date(sessionDetail.session_date + "T12:00:00").toLocaleDateString("en-IE", { weekday: "long", day: "numeric", month: "short", year: "numeric" }) : "Training Session"}
                   </div>
                   <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted }}>{selectedTeam?.label} {selectedTeam?.gender === "girls" ? "Girls" : "Boys"} · {sessionDetail.total_duration_mins}min · {sessionDetail.session_activities?.length || 0} drills</div>
@@ -6858,7 +6950,7 @@ export default function App() {
                     return (
                       <div key={sa.id} style={{ padding: "12px 0", borderBottom: `1px solid ${P.line}` }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                          <span style={{ fontFamily: F.display, fontSize: 14, fontWeight: 900, color: P.p600, width: 22 }}>{i + 1}</span>
+                          <span style={{ fontFamily: F.display, fontSize: 14, fontWeight: 800, color: P.p600, width: 22 }}>{i + 1}</span>
                           <div style={{ flex: 1 }}>
                             <div style={{ fontFamily: F.body, fontSize: 13, fontWeight: 700, color: P.ink }}>{act.title}</div>
                             <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>{act.skill?.name || ""} · {act.duration_mins || "?"}min</div>
@@ -6892,7 +6984,7 @@ export default function App() {
                     return (
                       <div key={sa.id} style={{ borderRadius: 10, overflow: "hidden", border: `1.5px solid ${P.line}` }}>
                         <div style={{ background: P.p600, padding: "6px 10px", display: "flex", alignItems: "center", gap: 6 }}>
-                          <span style={{ fontFamily: F.display, fontSize: 12, fontWeight: 900, color: "#fff" }}>{i + 1}</span>
+                          <span style={{ fontFamily: F.display, fontSize: 12, fontWeight: 800, color: "#fff" }}>{i + 1}</span>
                           <span style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, color: "#fff", opacity: 0.9 }}>{sa.activity?.title?.substring(0, 20)}</span>
                         </div>
                         {sa.coach && <div style={{ background: P.p50, padding: "3px 10px", fontFamily: F.body, fontSize: 10, fontWeight: 700, color: P.p600 }}>{sa.coach.name}</div>}

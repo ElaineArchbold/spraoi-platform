@@ -1,7 +1,29 @@
-
 :root {
-  --spraoi-navy:#0B1F3A; --spraoi-surface:#F7F9FC; --spraoi-text:#172033;
-  --module-coach:#7C3AED; --module-journey:#38BDF8; --module-challenge:#22C55E;
-  --module-blitz:#F97316; --module-connect:#FACC15; --module-club:#EF4444;
-  --radius-card:16px; --shadow-card:0 8px 24px rgba(11,31,58,.08);
+  --spraoi-navy: #10243E;
+  --spraoi-ink: #11213A;
+  --spraoi-muted: #68778D;
+  --spraoi-surface: #F7F9FC;
+  --spraoi-surface-soft: #FBFCFE;
+  --spraoi-white: #FFFFFF;
+  --spraoi-line: #E5EAF1;
+
+  --module-coach: #7C3AED;
+  --module-coach-soft: #F3EEFF;
+  --module-academy: #2563EB;
+  --module-academy-soft: #EEF5FF;
+  --module-connect: #F97316;
+  --module-connect-soft: #FFF3E9;
+  --module-cup: #D89A00;
+  --module-cup-soft: #FFF8E5;
+  --module-club: #DC2626;
+  --module-club-soft: #FFF0F0;
+
+  --radius-sm: 9px;
+  --radius-md: 12px;
+  --radius-card: 16px;
+  --radius-xl: 22px;
+
+  --shadow-card: 0 6px 22px rgba(16,36,62,.07);
+  --shadow-card-hover: 0 12px 30px rgba(16,36,62,.10);
+  --shadow-float: 0 16px 40px rgba(16,36,62,.12);
 }

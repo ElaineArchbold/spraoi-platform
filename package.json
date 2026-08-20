@@ -4,7 +4,13 @@
   "version": "0.1.0",
   "packageManager": "npm@10.8.2",
   "workspaces": [
-    "apps/*",
+    "apps/admin",
+    "apps/coach",
+    "apps/academy",
+    "apps/connect",
+    "apps/cup",
+    "apps/club",
+    "apps/academy-child",
     "packages/*"
   ],
   "scripts": {
@@ -17,8 +23,10 @@
     "dev:admin": "npm --workspace apps/admin run dev",
     "dev:academy-child": "npm --workspace apps/academy-child run dev",
     "dev:cup": "npm --workspace apps/cup run dev",
-    "dev:plus": "npm --workspace apps/plus run dev",
-    "build:admin": "npm --workspace apps/admin run build"
+    "build:admin": "npm --workspace apps/admin run build",
+    "dev:academy": "npm --workspace apps/academy run dev",
+    "dev:connect": "npm --workspace apps/connect run dev",
+    "build:academy-child": "npm --workspace apps/academy-child run build"
   },
   "devDependencies": {
     "turbo": "^2.5.5",

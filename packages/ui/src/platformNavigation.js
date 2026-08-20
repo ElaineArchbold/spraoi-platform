@@ -17,6 +17,17 @@ const PROD_MODULE_PATHS = {
   cup: "/cup/",
   coach: "/coach/",
   admin: "/",
+  connect: "/connect/",
+};
+
+const MODULE_LABELS = {
+  club: "Club",
+  coach: "Coach",
+  academy: "Academy",
+  cup: "Cup",
+  connect: "Connect",
+  plus: "Plus",
+  admin: "Admin",
 };
 
 const DEFAULT_SCREENS = {
@@ -37,6 +48,27 @@ function isLocalDevelopment() {
     window.location.hostname === "localhost" ||
     window.location.hostname === "127.0.0.1"
   );
+}
+
+
+function showModuleTransition(moduleId) {
+  if (typeof document === "undefined") return;
+  const existing = document.getElementById("spraoi-module-transition");
+  if (existing) existing.remove();
+
+  const key = String(moduleId || "").toLowerCase();
+  const overlay = document.createElement("div");
+  overlay.id = "spraoi-module-transition";
+  overlay.setAttribute("aria-live", "polite");
+  overlay.style.cssText = [
+    "position:fixed", "inset:0", "z-index:2147483647",
+    "display:grid", "place-items:center", "background:#f7f9fc",
+    "font-family:Inter,Segoe UI,system-ui,sans-serif",
+    "color:#10243e", "opacity:0", "transition:opacity .12s ease"
+  ].join(";");
+  overlay.innerHTML = `<div style="display:grid;place-items:center;gap:12px"><div style="width:48px;height:48px;border-radius:16px;background:#fff;box-shadow:0 8px 28px rgba(16,36,62,.12);display:grid;place-items:center;font-weight:900;font-size:20px">S</div><div style="font-size:13px;font-weight:800">Opening Spraoi ${MODULE_LABELS[key] || "Sports"}…</div></div>`;
+  document.body.appendChild(overlay);
+  requestAnimationFrame(() => { overlay.style.opacity = "1"; });
 }
 
 export function moduleScreenKey(moduleId) {
@@ -143,5 +175,52 @@ export function openAdminModule(moduleId, screen = null) {
     writeModuleScreen(key, targetScreen);
   }
 
-  window.location.assign(target.toString());
+  // When the real shared Admin shell is active, switch React modules in-place.
+  if (window.__SPRAOI_ADMIN_SHELL__) {
+    window.dispatchEvent(new CustomEvent("spraoi:switch-module", {
+      detail: {
+        moduleId: key,
+        screen: targetScreen,
+        team: activeTeamId || null,
+      },
+    }));
+    return;
+  }
+
+  // When running inside the shared Admin shell, ask the parent shell
+  // to switch module instead of navigating this iframe/browser away.
+  if (window.parent && window.parent !== window) {
+    window.parent.postMessage(
+      {
+        type: "SPRAOI_SWITCH_MODULE",
+        moduleId: key,
+        screen: targetScreen,
+        team: activeTeamId || null,
+      },
+      "*"
+    );
+    return;
+  }
+
+  // If a module is opened directly during development, enter it through
+  // the Admin host so subsequent module changes remain inside one shell.
+  if (isLocalDevelopment() && key !== "admin") {
+    const shell = new URL(DEV_MODULE_URLS.admin);
+
+    shell.searchParams.set("module", key);
+
+    if (targetScreen) {
+      shell.searchParams.set("screen", targetScreen);
+    }
+
+    if (activeTeamId) {
+      shell.searchParams.set("team", activeTeamId);
+    }
+
+    window.location.replace(shell.toString());
+    return;
+  }
+
+  showModuleTransition(key);
+  window.location.replace(target.toString());
 }

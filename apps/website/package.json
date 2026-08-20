@@ -1,0 +1,9 @@
+{
+  "name": "spraoi-sports-landing-page",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Spraoi Sports platform website",
+  "dependencies": {
+    "resend": "^6.0.0"
+  }
+}

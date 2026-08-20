@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "./supabaseClient";
 import { LEGAL_POLICIES, LEGAL_POLICY_VERSION } from "../../../packages/ui/src/legalPolicies.js";
-import { CheckCircle, Circle, Trophy, Flame, Target, Zap, Home, Award, BookOpen, LogOut, Plus, ChevronDown, ChevronUp, User } from "lucide-react";
+import { CheckCircle, Circle, Trophy, Flame, Target, Zap, Home, Award, BookOpen, LogOut, Plus, ChevronDown, ChevronUp, User, Bell, CalendarDays} from "lucide-react";
+import ParentUpdates, { ImportantNotificationModal, useParentNotifications } from "./ParentUpdates";
 import { registerSW } from "virtual:pwa-register";
 
 registerSW({
@@ -43,8 +44,8 @@ const C = {
   successBg: "#f0fdf4",
 };
 
-const BRAND_LOGO = "/spraoi-academy-icon.png";
-const APP_ICON = "/spraoi-academy-icon.png";
+const BRAND_LOGO = "/spraoi-logo.png";
+const APP_ICON = "/spraoi-logo.png";
 
 // Icon-only Academy sections. Mascots intentionally removed.
 const SECTIONS = {
@@ -643,6 +644,10 @@ export default function App() {
   const [badges, setBadges] = useState([]);
   const [earnedBadges, setEarnedBadges] = useState([]);
   const [screen, setScreen] = useState("home");
+  const [parentModeUnlocked, setParentModeUnlocked] = useState(false);
+  const [parentPin, setParentPin] = useState("");
+  const [showParentGate, setShowParentGate] = useState(false);
+  const parentNotifications = useParentNotifications(session?.user?.id);
   const [showXpPop, setShowXpPop] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [availablePlayers, setAvailablePlayers] = useState([]);
@@ -1129,7 +1134,7 @@ export default function App() {
               onError={(event) => { event.currentTarget.src = APP_ICON; }}
               style={{ width: 190, maxWidth: "75%", height: "auto", objectFit: "contain", marginBottom: 12 }}
             />
-            <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 900, fontSize: 25, color: C.primary, textTransform: "uppercase" }}>Academy</div>
+            <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 900, fontSize: 25, color: C.primary, textTransform: "uppercase" }}>Spraoi</div>
             <p style={{ fontSize: 13, color: C.textSecondary, margin: "6px 0 0" }}>Play. Learn. Grow.</p>
           </div>
           {/* Auth card */}
@@ -1572,6 +1577,61 @@ export default function App() {
   if (!selectedPlayer && isAdminUrl) {
     if (screen !== "coach") setScreen("coach");
   }
+
+  const openParentMode = () => {
+    setParentPin("");
+    setShowParentGate(true);
+  };
+
+  const confirmParentMode = () => {
+    if (/^\d{4}$/.test(parentPin)) {
+      setParentModeUnlocked(true);
+      setShowParentGate(false);
+      setScreen("parent-home");
+    }
+  };
+
+  function renderCalendarPlaceholder() {
+    return (
+      <div style={{ paddingBottom: 20 }}>
+        <div style={{ background:"#fff", border:`1px solid ${C.border}`, borderRadius:18, padding:18, boxShadow:"0 5px 18px rgba(15,23,42,.06)" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+            <img src="/icons/academy/weekly-content.svg" alt="" style={{ width:34, height:34 }} />
+            <div>
+              <div style={{ fontFamily:"'League Spartan',sans-serif", fontSize:20, fontWeight:900, color:C.text }}>Calendar</div>
+              <div style={{ fontSize:12, color:C.textSecondary, marginTop:3 }}>Training, matches and club events for this child will appear here.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderParentHome() {
+    return (
+      <div style={{ paddingBottom:20 }}>
+        <div style={{ background:"linear-gradient(135deg,#10243E,#1D4ED8)", color:"#fff", borderRadius:20, padding:18, marginBottom:14 }}>
+          <div style={{ fontSize:10, textTransform:"uppercase", letterSpacing:".12em", fontWeight:900, opacity:.8 }}>Parent mode</div>
+          <div style={{ fontFamily:"'League Spartan',sans-serif", fontSize:24, fontWeight:900, marginTop:4 }}>{selectedPlayer?.name || "Your child"}</div>
+          <div style={{ fontSize:12, opacity:.82, marginTop:4 }}>Calendar, messages, availability and Academy progress.</div>
+        </div>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+          {[
+            ["Calendar","/icons/academy/weekly-content.svg","calendar"],
+            ["Messages","/icons/academy/parents.svg","updates"],
+            ["Academy progress","/icons/academy/completion.svg","progress"],
+            ["Child profile","/icons/academy/child-profile.svg","profile"],
+          ].map(([label,icon,target]) => (
+            <button key={label} onClick={()=>setScreen(target)} style={{ minHeight:112, textAlign:"left", border:`1px solid ${C.border}`, borderRadius:16, background:"#fff", padding:14, cursor:"pointer" }}>
+              <img src={icon} alt="" style={{ width:30, height:30, marginBottom:14 }} />
+              <div style={{ fontFamily:"'League Spartan',sans-serif", fontWeight:900, fontSize:16, color:C.text }}>{label}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   function renderWeeklyPractice() {
     // Swap hurling/camogie for girls based on age group sport
     const isGirlsGroup = selectedPlayer?.age_group_id && ageGroups.find((ag) => ag.id === selectedPlayer.age_group_id)?.gender === "girls";
@@ -1620,14 +1680,30 @@ export default function App() {
       document.getElementById(step.id)?.scrollIntoView({ behavior:"smooth", block:"center" });
     };
     return (<>
+      <div style={{ background:"linear-gradient(135deg,#2563EB,#7C3AED)", borderRadius:20, padding:18, marginBottom:14, color:"#fff", boxShadow:"0 10px 24px rgba(37,99,235,.22)" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:14 }}>
+          <div style={{ width:48, height:48, borderRadius:14, background:"rgba(255,255,255,.16)", display:"grid", placeItems:"center" }}>
+            <img src="/icons/academy/challenge.svg" alt="" style={{ width:30, height:30 }} />
+          </div>
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:10, textTransform:"uppercase", letterSpacing:".12em", fontWeight:900, opacity:.82 }}>Today's mission</div>
+            <div style={{ fontFamily:"'League Spartan',sans-serif", fontSize:22, fontWeight:900, marginTop:3 }}>{nextJourneyStep?.label || "You're all caught up!"}</div>
+            <div style={{ fontSize:11, opacity:.84, marginTop:3 }}>{nextJourneyStep ? `${nextJourneyStep.section} · keep your streak going` : "Great work — check back for the next challenge."}</div>
+          </div>
+        </div>
+        {nextJourneyStep && !nextJourneyStep.pending && (
+          <button onClick={()=>goToJourneyStep(nextJourneyStep)} style={{ marginTop:14, width:"100%", height:42, border:0, borderRadius:12, background:"#fff", color:"#1D4ED8", fontWeight:900, cursor:"pointer" }}>Start mission</button>
+        )}
+      </div>
+
       {/* Academy weekly intro */}
       <div style={{ background: C.surface, border: `1.5px solid ${C.border}`, borderRadius: 18, padding: "16px", marginBottom: 16, boxShadow: "0 5px 18px rgba(15,23,42,0.07)" }}>
         <div style={{ display:"flex",alignItems:"center",gap:12 }}>
           <div style={{ width:52,height:52,borderRadius:15,background:C.primary+"12",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
-            <img src={APP_ICON} alt="Spraoi Academy" style={{ width: 42, height: 42, objectFit: "contain" }} />
+            <img src={APP_ICON} alt="Spraoi" style={{ width: 42, height: 42, objectFit: "contain" }} />
           </div>
           <div style={{ flex:1,minWidth:0 }}>
-            <div style={{ fontSize:10,fontWeight:800,letterSpacing:1.1,textTransform:"uppercase",color:C.textSecondary,marginBottom:2 }}>This week in Academy</div>
+            <div style={{ fontSize:10,fontWeight:800,letterSpacing:1.1,textTransform:"uppercase",color:C.textSecondary,marginBottom:2 }}>This week in Spraoi</div>
             <div style={{ fontFamily:"'League Spartan', sans-serif",fontWeight:900,fontSize:26,lineHeight:1.02,color:C.primary,letterSpacing:"-.02em" }}>{weekCommencingLabel(weekOffset)}</div>
             <div style={{ fontSize:11,color:C.textSecondary,lineHeight:1.45,marginTop:6,fontStyle:"italic" }}>“{academyQuoteFor(selectedPlayer, weeklyPlan)}”</div>
           </div>
@@ -1850,7 +1926,7 @@ export default function App() {
       {/* Empty state */}
       {!weeklyPlan && weekSkills.length === 0 && fitnessExercises.length === 0 && events.length === 0 && (
         <div style={{ background: C.surface, borderRadius: 16, padding: 28, textAlign: "center", border: `1px solid ${C.border}` }}>
-          <img src={APP_ICON} alt="Spraoi Academy" style={{ width: 72, height: 72, objectFit: "contain", marginBottom: 10 }} />
+          <img src={APP_ICON} alt="Spraoi" style={{ width: 72, height: 72, objectFit: "contain", marginBottom: 10 }} />
           <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 16, color: C.text, textTransform: "uppercase" }}>Nothing Set Yet</div>
           <p style={{ fontSize: 12, color: C.textSecondary, margin: "6px 0 0" }}>Your coach hasn't set anything for this week yet. Check back soon!</p>
         </div>
@@ -1859,7 +1935,7 @@ export default function App() {
       {/* All done */}
       {totalRequiredTasks > 0 && completedRequiredTasks === totalRequiredTasks && (
         <div style={{ background: C.primary, borderRadius: 16, padding: 20, textAlign: "center", color: "#fff", marginTop: 12, boxShadow: "0 8px 24px rgba(26,92,45,0.3)" }}>
-          <img src={APP_ICON} alt="Spraoi Academy" style={{ width: 62, height: 62, objectFit: "contain", marginBottom: 8 }} />
+          <img src={APP_ICON} alt="Spraoi" style={{ width: 62, height: 62, objectFit: "contain", marginBottom: 8 }} />
           <Trophy size={28} style={{ marginBottom: 6 }} />
           <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 900, fontSize: 18, textTransform: "uppercase" }}>Week Complete! 🎉</div>
           <p style={{ margin: "6px 0 0", fontSize: 12, opacity: 0.9 }}>Amazing work, {selectedPlayer.name}! You completed {completedRequiredTasks} activities this week.</p>
@@ -1883,7 +1959,7 @@ export default function App() {
       <div style={{ background: `linear-gradient(135deg, ${C.primary}, #2f7d4b)`, color: "#fff", borderRadius: 20, padding: 18, marginBottom: 14, boxShadow: "0 8px 22px rgba(26,92,45,.22)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
           <div>
-            <div style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".08em", opacity: .78 }}>My Academy</div>
+            <div style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".08em", opacity: .78 }}>My Spraoi</div>
             <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 900, fontSize: 24, marginTop: 3 }}>Level {level}</div>
             <div style={{ fontSize: 11, opacity: .82 }}>{xpTotal} XP earned</div>
           </div>
@@ -1995,7 +2071,7 @@ export default function App() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0 10px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <img src={APP_ICON} alt="Spraoi Sports" style={{ width: 28, height: 28, objectFit: "contain" }} />
-            <span style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 900, fontSize: 16, color: C.primary }}>SPRAOI ACADEMY</span>
+            <span style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 900, fontSize: 16, color: C.primary }}>SPRAOI</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#fff3e0", borderRadius: 20, padding: "5px 12px" }}>
             <Flame size={14} color="#f97316" fill="#f97316" />
@@ -2040,6 +2116,8 @@ export default function App() {
 
         {/* Content */}
         {screen === "home" && selectedPlayer && renderWeeklyPractice()}
+        {screen === "calendar" && selectedPlayer && renderCalendarPlaceholder()}
+        {screen === "parent-home" && selectedPlayer && renderParentHome()}
         {screen === "progress" && selectedPlayer && renderProgress()}
         {screen === "learn" && (
           <div>
@@ -2079,6 +2157,10 @@ export default function App() {
               );
             })}
           </div>
+        )}
+
+        {screen === "updates" && (
+          <ParentUpdates userId={session?.user?.id} players={players} selectedPlayer={selectedPlayer} />
         )}
 
         {/* Profile */}
@@ -2163,15 +2245,52 @@ export default function App() {
         )}
       </div>
 
-      {/* Bottom nav */}
-      <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, background: "#fff", borderTop: `1px solid ${C.border}`, display: "flex", justifyContent: "center", alignItems: "center", padding: "8px 0 12px", zIndex: 900, boxShadow: "0 -4px 20px rgba(0,0,0,0.08)" }}>
-        <div style={{ display: "flex", justifyContent: "space-around", alignItems: "center", width: "100%", maxWidth: 500 }}>
-        {[{ key: "home", icon: Home, label: "Home", color: C.primary }, { key: "progress", icon: Award, label: "Me", color: C.gold }, { key: "learn", icon: BookOpen, label: "Learn", color: SECTIONS.skills.color }, { key: "profile", icon: User, label: "Profile", color: C.primary }].map((item) => {
-          const active = screen === item.key;
-          return (<button key={item.key} onClick={() => setScreen(item.key)} style={{ flex: 1, border: 0, background: active ? item.color : "transparent", color: active ? "#fff" : C.textSecondary, display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 8px", borderRadius: 12, cursor: "pointer", gap: 2, boxShadow: active ? `0 3px 10px ${item.color}33` : "none", transition: "all .15s" }}><item.icon size={18} /><span style={{ fontSize: 9, fontWeight: active ? 800 : 500 }}>{item.label}</span></button>);
-        })}
+      {showParentGate && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(15,23,42,.56)", zIndex:200, display:"grid", placeItems:"center", padding:20 }}>
+          <div style={{ width:"100%", maxWidth:340, background:"#fff", borderRadius:20, padding:20, boxShadow:"0 24px 70px rgba(15,23,42,.28)" }}>
+            <div style={{ fontFamily:"'League Spartan',sans-serif", fontSize:22, fontWeight:900, color:C.text }}>Parent mode</div>
+            <div style={{ fontSize:12, color:C.textSecondary, lineHeight:1.5, marginTop:6 }}>Enter your 4-digit parent PIN to open messages, calendar and parent controls on this device.</div>
+            <input value={parentPin} onChange={(e)=>setParentPin(e.target.value.replace(/\D/g,"").slice(0,4))} inputMode="numeric" maxLength={4} autoFocus placeholder="••••" style={{ width:"100%", boxSizing:"border-box", marginTop:16, height:52, border:`1.5px solid ${C.border}`, borderRadius:14, textAlign:"center", fontSize:26, letterSpacing:10, fontWeight:900 }} />
+            <div style={{ display:"flex", gap:8, marginTop:12 }}>
+              <button onClick={()=>setShowParentGate(false)} style={{ flex:1, height:42, border:`1px solid ${C.border}`, borderRadius:12, background:"#fff", fontWeight:800 }}>Cancel</button>
+              <button onClick={confirmParentMode} disabled={parentPin.length!==4} style={{ flex:1, height:42, border:0, borderRadius:12, background:parentPin.length===4?"#2563EB":"#CBD5E1", color:"#fff", fontWeight:900 }}>Open</button>
+            </div>
+            <div style={{ fontSize:9, color:C.textSecondary, marginTop:10, lineHeight:1.4 }}>This PIN is a child-safety UX gate on this device; account permissions remain enforced by the signed-in parent account.</div>
+          </div>
         </div>
-      </div>
+      )}
+
+      <ImportantNotificationModal
+        notification={parentNotifications.important}
+        onClose={() => parentNotifications.important && parentNotifications.markModalShown(parentNotifications.important)}
+        onView={() => { if (parentNotifications.important) parentNotifications.markModalShown(parentNotifications.important); setScreen("updates"); }}
+      />
+
+      {/* Bottom nav */}
+      {!isAdminUrl && (
+        <div style={{ position:"fixed", left:"50%", transform:"translateX(-50%)", bottom:0, width:"100%", maxWidth:460, background:"#fff", borderTop:`1px solid ${C.border}`, padding:"7px 8px calc(7px + env(safe-area-inset-bottom))", display:"flex", gap:4, zIndex:50, boxShadow:"0 -8px 24px rgba(15,23,42,.08)" }}>
+          {[
+            { key:"home", label:"Home", icon:Home },
+            { key:"calendar", label:"Calendar", icon:CalendarDays },
+            { key:"updates", label:"Messages", icon:Bell },
+            { key:"learn", label:"Academy", icon:BookOpen },
+            { key:"more", label:"More", icon:User },
+          ].map((item) => {
+            const target = item.key === "more" ? (parentModeUnlocked ? "parent-home" : "profile") : item.key;
+            const active = screen === target || (item.key === "more" && screen === "parent-home");
+            const Icon = item.icon;
+            return (
+              <button key={item.key} onClick={() => {
+                if (item.key === "more" && !parentModeUnlocked) { openParentMode(); return; }
+                setScreen(target);
+              }} style={{ flex:1, minWidth:0, border:0, borderRadius:12, background:active ? "#EEF5FF" : "transparent", color:active ? "#2563EB" : C.textSecondary, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:3, padding:"6px 2px", cursor:"pointer" }}>
+                <Icon size={22} strokeWidth={active ? 2.5 : 2} />
+                <span style={{ fontSize:9, fontWeight:800 }}>{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

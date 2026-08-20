@@ -8,22 +8,22 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       injectRegister: "auto",
-      includeAssets: ["spraoi-academy-icon.png"],
+      includeAssets: ["favicon.png", "apple-touch-icon.png", "favicon-192.png", "favicon-512.png"],
       manifest: {
-        name: "Spraoi Academy",
-        short_name: "Academy",
-        description: "Weekly skills, practice activities, progress and rewards for young players.",
-        theme_color: "#0EA5E9",
-        background_color: "#F0F9FF",
+        name: "Spraoi",
+        short_name: "Spraoi",
+        description: "Your club, calendar, messages, Academy missions, progress and rewards in one place.",
+        theme_color: "#2563EB",
+        background_color: "#F8FAFC",
         display: "standalone",
         orientation: "portrait",
         start_url: "/",
         scope: "/",
         icons: [
-          { src: "/spraoi-academy-icon.png", sizes: "192x192", type: "image/png", purpose: "any" },
-          { src: "/spraoi-academy-icon.png", sizes: "512x512", type: "image/png", purpose: "any" },
-          { src: "/spraoi-academy-icon.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
-        ],
+          { src: "/favicon-192.png?v=spraoi-20260817", sizes: "192x192", type: "image/png", purpose: "any" },
+          { src: "/favicon-512.png?v=spraoi-20260817", sizes: "512x512", type: "image/png", purpose: "any" },
+          { src: "/favicon-512.png?v=spraoi-20260817", sizes: "512x512", type: "image/png", purpose: "maskable" },
+        ]
       },
       workbox: {
         navigateFallback: "/index.html",

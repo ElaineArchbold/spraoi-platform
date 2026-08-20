@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabaseClient";
 
 const RED = "#d32f2f";
@@ -38,7 +38,7 @@ const card = { background:"#fff", border:`1px solid ${LINE}`, borderRadius:16, p
 const input = { height:38, borderRadius:9, border:`1px solid ${LINE}`, padding:"0 10px", fontSize:11, color:INK, background:"#fff" };
 const btn = (primary=false) => ({ height:38, borderRadius:9, border: primary ? "none" : `1px solid ${LINE}`, padding:"0 13px", fontSize:11, fontWeight:800, cursor:"pointer", background:primary?RED:"#fff", color:primary?"#fff":INK });
 
-export default function ClubScheduling({ club, ageGroups = [], currentUserId }) {
+export default function ClubScheduling({ club, ageGroups = [], currentUserId, hideHeader = false }) {
   const [tab,setTab] = useState("weekly");
   const [plannerView,setPlannerView] = useState("week");
   const [facilities,setFacilities] = useState([]);
@@ -65,12 +65,28 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId }) 
 
   useEffect(()=>{ if(club?.id) loadAll(); },[club?.id,weekStart]);
   async function loadAll(){
-    const [f,s,a] = await Promise.all([
-      supabase.from("facilities").select("*").eq("club_id",club.id).order("name"),
-      supabase.from("recurring_training_slots").select("*").eq("club_id",club.id).eq("active",true).order("weekday").order("start_time"),
-      supabase.from("weekly_training_allocations").select("*,facility:facilities(name)").eq("club_id",club.id).eq("week_start",weekStart).order("starts_at")
-    ]);
-    setFacilities(f.data||[]); setSlots(s.data||[]); setAllocations(a.data||[]);
+    if (!club?.id) return;
+    try {
+      const [f,s,a] = await Promise.all([
+        supabase.from("facilities").select("*").eq("club_id",club.id).order("name"),
+        supabase.from("recurring_training_slots").select("*").eq("club_id",club.id).eq("active",true).order("weekday").order("start_time"),
+        supabase.from("weekly_training_allocations").select("*,facility:facilities(name)").eq("club_id",club.id).eq("week_start",weekStart).order("starts_at")
+      ]);
+
+      setFacilities(f?.data || []);
+      setSlots(s?.data || []);
+      setAllocations(a?.data || []);
+
+      const errors = [f?.error, s?.error, a?.error].filter(Boolean);
+      if (errors.length) {
+        setMessage(`Facilities loaded, but some scheduling data is unavailable: ${errors[0].message}`);
+      }
+    } catch (error) {
+      setFacilities([]);
+      setSlots([]);
+      setAllocations([]);
+      setMessage(`Facilities could not load scheduling data: ${error?.message || "Unknown error"}`);
+    }
   }
   async function seedFacilities(){
     if(!club?.id) return; setBusy(true); setMessage("");
@@ -458,7 +474,7 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId }) 
 
   const sectionTitle = {
     fontSize: 16,
-    fontWeight: 900,
+    fontWeight: 800,
     color: INK,
     margin: 0,
   };
@@ -498,6 +514,29 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId }) 
         }
       `}</style>
 
+      {!hideHeader && (
+      <div
+        style={{
+          marginBottom: 18,
+          padding: "18px 20px",
+          borderRadius: 18,
+          background: "linear-gradient(135deg, #fffafa 0%, #fff0f0 52%, #fbdcdc 100%)",
+          border: "1px solid #f3caca",
+          display: "flex",
+          alignItems: "center",
+          gap: 14
+        }}
+      >
+        <div style={{ width: 50, height: 50, borderRadius: 15, background: "#fff", display: "grid", placeItems: "center", border: "1px solid #f0d2d2", boxShadow: "0 8px 22px rgba(211,47,47,.08)" }}>
+          <img src="/icons/club/facilities.svg" alt="" aria-hidden="true" style={{ width: 34, height: 34, objectFit: "contain" }} />
+        </div>
+        <div>
+          <div style={{ fontFamily: "Manrope, Segoe UI, sans-serif", fontSize: 22, fontWeight: 750, color: INK, letterSpacing: "-.025em" }}>Facilities & Slots</div>
+          <div style={{ fontFamily: "Inter, Segoe UI, sans-serif", fontSize: 11, color: MUTED, marginTop: 3 }}>Manage facilities, recurring training slots and weekly pitch allocations.</div>
+        </div>
+      </div>
+      )}
+
       {/* Tabs */}
       <div
         style={{
@@ -533,7 +572,7 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId }) 
                   ? RED
                   : INK,
               fontSize: 10,
-              fontWeight: 900,
+              fontWeight: 800,
               cursor: "pointer",
             }}
           >
@@ -559,7 +598,7 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId }) 
               fontSize: 9,
               color: MUTED,
               textTransform: "uppercase",
-              fontWeight: 900,
+              fontWeight: 800,
             }}
           >
             Active facilities
@@ -568,7 +607,7 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId }) 
           <div
             style={{
               fontSize: 25,
-              fontWeight: 900,
+              fontWeight: 800,
               color: INK,
               marginTop: 5,
             }}
@@ -587,7 +626,7 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId }) 
               fontSize: 9,
               color: MUTED,
               textTransform: "uppercase",
-              fontWeight: 900,
+              fontWeight: 800,
             }}
           >
             Recurring slots
@@ -596,7 +635,7 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId }) 
           <div
             style={{
               fontSize: 25,
-              fontWeight: 900,
+              fontWeight: 800,
               color: INK,
               marginTop: 5,
             }}
@@ -615,7 +654,7 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId }) 
               fontSize: 9,
               color: MUTED,
               textTransform: "uppercase",
-              fontWeight: 900,
+              fontWeight: 800,
             }}
           >
             Draft this week
@@ -624,7 +663,7 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId }) 
           <div
             style={{
               fontSize: 25,
-              fontWeight: 900,
+              fontWeight: 800,
               color: INK,
               marginTop: 5,
             }}
@@ -643,7 +682,7 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId }) 
               fontSize: 9,
               color: MUTED,
               textTransform: "uppercase",
-              fontWeight: 900,
+              fontWeight: 800,
             }}
           >
             Published
@@ -652,7 +691,7 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId }) 
           <div
             style={{
               fontSize: 25,
-              fontWeight: 900,
+              fontWeight: 800,
               color: "#15803d",
               marginTop: 5,
             }}
@@ -1847,7 +1886,7 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId }) 
                       <div
                         style={{
                           fontSize: 12,
-                          fontWeight: 900,
+                          fontWeight: 800,
                           color: INK,
                         }}
                       >
@@ -1879,7 +1918,7 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId }) 
                         background: SOFT,
                         color: INK,
                         fontSize: 9,
-                        fontWeight: 900,
+                        fontWeight: 800,
                       }}
                     >
                       {slot.facility?.name ||
@@ -1975,7 +2014,7 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId }) 
                 <div
                   style={{
                     fontSize: 12,
-                    fontWeight: 900,
+                    fontWeight: 800,
                     color: INK,
                   }}
                 >
@@ -2012,7 +2051,7 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId }) 
                     <div
                       style={{
                         fontSize: 12,
-                        fontWeight: 900,
+                        fontWeight: 800,
                         color: INK,
                       }}
                     >
@@ -2051,7 +2090,7 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId }) 
                           ? "#15803d"
                           : MUTED,
                         fontSize: 9,
-                        fontWeight: 900,
+                        fontWeight: 800,
                       }}
                     >
                       {facility.active

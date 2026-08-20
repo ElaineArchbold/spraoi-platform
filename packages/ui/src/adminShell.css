@@ -1,0 +1,1589 @@
+
+:root {
+  --spraoi-font-display: "Sora", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --spraoi-font-body: "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+
+  --spraoi-module-rail-width: 80px;
+  --spraoi-module-sidebar-width: 226px;
+  --spraoi-sidebar-width: 306px;
+
+  --spraoi-header-height: 92px;
+  --spraoi-page-max-width: 1220px;
+  --spraoi-page-padding-x: 28px;
+  --spraoi-page-padding-y: 20px;
+
+  --spraoi-card-radius: 16px;
+  --spraoi-card-border: #E5EAF1;
+  --spraoi-card-shadow:
+    0 6px 22px rgba(16,36,62,.07),
+    0 1px 2px rgba(16,36,62,.03);
+
+  --spraoi-ink: #11213A;
+  --spraoi-muted: #68778D;
+}
+
+html {
+  scrollbar-gutter: stable;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+
+body,
+button,
+input,
+select,
+textarea {
+  font-family: var(--spraoi-font-body) !important;
+}
+
+h1,
+h2,
+h3,
+h4,
+.spraoi-page-header-title,
+.spraoi-display-font {
+  font-family: var(--spraoi-font-display) !important;
+}
+
+.spraoi-page-header,
+.connect-topbar {
+  box-sizing: border-box;
+  min-height: var(--spraoi-header-height) !important;
+  padding: 20px 28px !important;
+}
+
+.spraoi-page-header-title {
+  font-size: 24px !important;
+  font-weight: 800 !important;
+  line-height: 1.1 !important;
+  letter-spacing: -.02em !important;
+}
+
+.spraoi-page-header-sub {
+  font-family: var(--spraoi-font-body) !important;
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+}
+
+select option {
+  background: #fff !important;
+  color: #10243e !important;
+  font-family: var(--spraoi-font-body) !important;
+  font-weight: 700;
+}
+
+.connect-shell {
+  font-family: var(--spraoi-font-body) !important;
+}
+
+.connect-desktop-sidebar {
+  width: var(--spraoi-sidebar-width) !important;
+}
+
+@media (max-width: 760px) {
+  .spraoi-page-header,
+  .connect-topbar {
+    padding: 12px !important;
+    min-height: auto !important;
+  }
+
+  .spraoi-page-header-title {
+    font-size: 19px !important;
+  }
+
+  .spraoi-page-header-sub {
+    font-size: 11px !important;
+  }
+}
+
+
+/* 2026 SaaS refresh foundation */
+body {
+  background: #F7F9FC;
+  color: var(--spraoi-ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.spraoi-page-header,
+.connect-topbar {
+  background: rgba(255,255,255,.92) !important;
+  border-bottom: 1px solid #E5EAF1 !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(14px);
+}
+
+.spraoi-page-header-title {
+  color: #11213A !important;
+  font-weight: 800 !important;
+}
+
+.spraoi-page-header-sub {
+  color: #68778D !important;
+}
+
+.spraoi-card,
+.spraoi-dashboard-card {
+  border-color: #E5EAF1 !important;
+  border-radius: 16px !important;
+  box-shadow: var(--spraoi-card-shadow) !important;
+}
+
+button,
+select,
+input,
+textarea {
+  transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease, transform .16s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37,99,235,.10);
+}
+
+
+/* === SPRAOI SAAS SHELL V2 === */
+:root {
+  --spraoi-font-display: "Manrope", "Segoe UI", system-ui, sans-serif;
+  --spraoi-font-body: "Inter", "Segoe UI", system-ui, sans-serif;
+  --spraoi-bg: #F7F9FC;
+  --spraoi-panel: #FFFFFF;
+  --spraoi-ink: #10213A;
+  --spraoi-muted: #718096;
+  --spraoi-line: #E7ECF3;
+}
+
+html, body, #root { background: var(--spraoi-bg) !important; }
+body { font-family: var(--spraoi-font-body) !important; }
+
+.spraoi-desktop-shell-nav {
+  width: 306px !important;
+  background: #fff !important;
+  border-right: 1px solid var(--spraoi-line) !important;
+  box-shadow: 8px 0 28px rgba(16,36,62,.025) !important;
+}
+
+.spraoi-global-rail {
+  width: 82px !important;
+  background: #fff !important;
+  border-right: 1px solid var(--spraoi-line) !important;
+  padding: 14px 9px !important;
+  gap: 9px !important;
+}
+
+.spraoi-global-rail > div:first-child {
+  width: 58px !important;
+  height: 58px !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  margin-bottom: 10px !important;
+}
+.spraoi-global-rail > div:first-child img { width: 56px !important; height: 56px !important; }
+.spraoi-global-rail > img[alt="Spraoi Sports"] { display: none !important; }
+
+.spraoi-module-switcher-button {
+  min-height: 64px !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  border-radius: 15px !important;
+  box-shadow: none !important;
+}
+.spraoi-module-switcher-button:hover {
+  background: #F7F9FC !important;
+  border-color: var(--spraoi-line) !important;
+}
+.spraoi-module-switcher-button[data-active="true"] {
+  background: #F1F4F9 !important;
+  border-color: #DDE4EE !important;
+  box-shadow: 0 6px 16px rgba(16,36,62,.06) !important;
+}
+.spraoi-module-switcher-button > span:first-of-type {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+.spraoi-module-switcher-button > span:last-of-type {
+  color: #65758B !important;
+  font-family: var(--spraoi-font-body) !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+}
+.spraoi-module-switcher-button[data-active="true"] > span:last-of-type {
+  color: var(--spraoi-ink) !important;
+}
+
+.spraoi-global-rail > button[title*="Profile"] {
+  color: var(--spraoi-ink) !important;
+  background: #F4F6FA !important;
+  border: 1px solid #DDE4EE !important;
+  box-shadow: none !important;
+}
+
+.spraoi-module-sidebar {
+  width: 224px !important;
+  background: #fff !important;
+  color: var(--spraoi-ink) !important;
+  border-right: 0 !important;
+  box-shadow: none !important;
+}
+.spraoi-module-sidebar > div:first-child {
+  padding: 20px 16px 16px !important;
+  border-bottom: 1px solid var(--spraoi-line) !important;
+  background: #fff !important;
+}
+.spraoi-module-sidebar > div:first-child * { color: var(--spraoi-ink) !important; }
+.spraoi-module-sidebar > div:first-child > div > div:first-child {
+  box-shadow: 0 5px 16px rgba(16,36,62,.08) !important;
+}
+.spraoi-module-sidebar select {
+  background: #F8FAFD !important;
+  color: var(--spraoi-ink) !important;
+  border: 1px solid #DDE4EE !important;
+}
+.spraoi-module-sidebar nav { padding: 12px 10px !important; gap: 4px !important; }
+.spraoi-module-nav-button {
+  min-height: 42px !important;
+  border: 1px solid transparent !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+}
+.spraoi-module-nav-button[data-active="false"] { background: transparent !important; }
+.spraoi-module-nav-button[data-active="false"] span { color: #5F6F85 !important; }
+.spraoi-module-nav-button[data-active="true"] {
+  background: #F4F7FB !important;
+  border-color: #E2E8F0 !important;
+}
+.spraoi-module-nav-button img { filter: none !important; }
+
+.spraoi-page-header,
+.connect-topbar {
+  min-height: 88px !important;
+  padding: 20px 28px !important;
+  background: #fff !important;
+  border-bottom: 1px solid var(--spraoi-line) !important;
+  box-shadow: none !important;
+}
+.spraoi-page-header-icon {
+  width: 54px !important;
+  height: 54px !important;
+  border-radius: 15px !important;
+  border: 1px solid #E3E9F1 !important;
+  box-shadow: 0 5px 18px rgba(16,36,62,.07) !important;
+}
+.spraoi-page-header-icon img { width: 42px !important; height: 42px !important; }
+.spraoi-page-header-title {
+  font-family: var(--spraoi-font-display) !important;
+  font-size: 25px !important;
+  font-weight: 700 !important;
+  letter-spacing: -.035em !important;
+  color: var(--spraoi-ink) !important;
+}
+.spraoi-page-header-sub { color: var(--spraoi-muted) !important; }
+
+.spraoi-stat-card {
+  border: 1px solid var(--spraoi-line) !important;
+  border-top: 1px solid var(--spraoi-line) !important;
+  border-radius: 15px !important;
+  box-shadow: 0 5px 18px rgba(16,36,62,.055) !important;
+  background: #fff !important;
+}
+
+.spraoi-dashboard-card,
+.spraoi-card {
+  background: #fff !important;
+  border: 1px solid var(--spraoi-line) !important;
+  border-radius: 15px !important;
+  box-shadow: 0 5px 18px rgba(16,36,62,.055) !important;
+}
+
+main, .spraoi-page, .connect-main { background: var(--spraoi-bg) !important; }
+
+@media (max-width: 900px) {
+  .spraoi-desktop-shell-nav { display: none !important; }
+}
+
+
+/* === SPRAOI SAAS SHELL V3 — brand + icon consistency === */
+
+.spraoi-global-rail > div:first-child {
+  width: 58px !important;
+  height: 58px !important;
+  padding: 3px !important;
+  background: #fff !important;
+  border: 1px solid #E4EAF2 !important;
+  border-radius: 17px !important;
+  box-shadow: 0 5px 16px rgba(16,36,62,.07) !important;
+  box-sizing: border-box !important;
+}
+.spraoi-global-rail > div:first-child img {
+  width: 50px !important;
+  height: 50px !important;
+  object-fit: contain !important;
+}
+
+.spraoi-module-switcher-button > span:first-of-type {
+  width: 48px !important;
+  height: 48px !important;
+  display: grid !important;
+  place-items: center !important;
+}
+.spraoi-module-switcher-button > span:first-of-type img {
+  width: 44px !important;
+  height: 44px !important;
+  object-fit: contain !important;
+}
+
+.spraoi-module-sidebar > div:first-child > div > div:first-child {
+  width: 48px !important;
+  height: 48px !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.spraoi-module-sidebar > div:first-child > div > div:first-child img {
+  width: 44px !important;
+  height: 44px !important;
+  object-fit: contain !important;
+}
+
+.spraoi-module-sidebar > div:first-child {
+  min-height: 82px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+.spraoi-module-sidebar > div:first-child > div {
+  width: 100%;
+}
+
+.spraoi-module-sidebar nav {
+  padding-top: 14px !important;
+}
+
+.spraoi-module-nav-button {
+  min-height: 48px !important;
+  gap: 10px !important;
+  padding: 7px 10px !important;
+}
+
+.spraoi-secondary-nav-icon-wrap {
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  display: grid !important;
+  place-items: center !important;
+}
+
+.spraoi-secondary-nav-icon {
+  display: block !important;
+  width: 32px !important;
+  height: 32px !important;
+  object-fit: contain !important;
+}
+
+.spraoi-module-nav-button span:last-child {
+  font-family: var(--spraoi-font-body) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: #516176 !important;
+}
+
+.spraoi-module-nav-button[data-active="true"] span:last-child {
+  color: #10213A !important;
+  font-weight: 700 !important;
+}
+
+.spraoi-page-header-title {
+  font-family: var(--spraoi-font-display) !important;
+  font-weight: 700 !important;
+  letter-spacing: -.025em !important;
+}
+
+.spraoi-module-sidebar > div:first-child div[style*="font-size: 21"],
+.spraoi-module-sidebar > div:first-child div[style*="fontSize: 21"] {
+  font-family: var(--spraoi-font-display) !important;
+  font-weight: 700 !important;
+}
+
+
+/* === SPRAOI SAAS SHELL V4 === */
+html, body, button, input, select, textarea {
+  font-family: "Inter", "Segoe UI", system-ui, sans-serif !important;
+}
+.spraoi-page-header-title,
+.spraoi-topbar [style*="font-size: 24px"],
+.connect-topbar [style*="font-size:24px"],
+.cup-page-header-title {
+  font-family: "Manrope", "Segoe UI", system-ui, sans-serif !important;
+  font-weight: 750 !important;
+  letter-spacing: -.025em !important;
+}
+.spraoi-module-sidebar .spraoi-module-nav-button[data-active="true"] {
+  box-shadow: 0 7px 18px rgba(16,36,62,.055) !important;
+}
+.spraoi-secondary-nav-icon {
+  width: 30px !important;
+  height: 30px !important;
+}
+.spraoi-secondary-nav-icon-wrap {
+  width: 34px !important;
+  height: 34px !important;
+}
+
+
+/* Phase 5 — page hierarchy: module is named in sidebar, page title only in header */
+@media (min-width: 761px) {
+  .spraoi-page-header-title,
+  .cup-page-header-title,
+  .connect-topbar > div:first-child > div:nth-child(2) > div:first-child {
+    font-family: var(--spraoi-font-display) !important;
+    font-size: 21px !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.02em !important;
+  }
+}
+
+
+/* === SPRAOI SAAS SHELL V6 — restrained module colour === */
+:root {
+  --coach-accent: #7C3AED;
+  --coach-soft: #F5F0FF;
+  --academy-accent: #2563EB;
+  --academy-soft: #EEF5FF;
+  --connect-accent: #F97316;
+  --connect-soft: #FFF3E8;
+  --cup-accent: #D89A00;
+  --cup-soft: #FFF8E2;
+  --club-accent: #DC2626;
+  --club-soft: #FFF0F1;
+}
+
+/* Keep the sidebar clean, but give the module identity block a soft tint. */
+.spraoi-module-sidebar[data-module="coach"] > div:first-child {
+  background: linear-gradient(135deg, #FFFFFF 0%, var(--coach-soft) 100%) !important;
+  border-bottom-color: #E7DDFC !important;
+}
+.spraoi-module-sidebar[data-module="academy"] > div:first-child {
+  background: linear-gradient(135deg, #FFFFFF 0%, var(--academy-soft) 100%) !important;
+  border-bottom-color: #D8E7FF !important;
+}
+.spraoi-module-sidebar[data-module="connect"] > div:first-child {
+  background: linear-gradient(135deg, #FFFFFF 0%, var(--connect-soft) 100%) !important;
+  border-bottom-color: #FFE0C8 !important;
+}
+.spraoi-module-sidebar[data-module="cup"] > div:first-child {
+  background: linear-gradient(135deg, #FFFFFF 0%, var(--cup-soft) 100%) !important;
+  border-bottom-color: #F6E4AB !important;
+}
+.spraoi-module-sidebar[data-module="club"] > div:first-child {
+  background: linear-gradient(135deg, #FFFFFF 0%, var(--club-soft) 100%) !important;
+  border-bottom-color: #F5D6D9 !important;
+}
+
+/* Active sidebar item uses the module accent instead of generic grey. */
+.spraoi-module-sidebar[data-module="coach"] .spraoi-module-nav-button[data-active="true"] {
+  background: var(--coach-soft) !important;
+  border-color: #DCCBFA !important;
+}
+.spraoi-module-sidebar[data-module="academy"] .spraoi-module-nav-button[data-active="true"] {
+  background: var(--academy-soft) !important;
+  border-color: #CFE0FF !important;
+}
+.spraoi-module-sidebar[data-module="connect"] .spraoi-module-nav-button[data-active="true"] {
+  background: var(--connect-soft) !important;
+  border-color: #FFD8BB !important;
+}
+.spraoi-module-sidebar[data-module="cup"] .spraoi-module-nav-button[data-active="true"] {
+  background: var(--cup-soft) !important;
+  border-color: #F3DEA0 !important;
+}
+.spraoi-module-sidebar[data-module="club"] .spraoi-module-nav-button[data-active="true"] {
+  background: var(--club-soft) !important;
+  border-color: #F2CCD0 !important;
+}
+
+.spraoi-module-sidebar[data-module="coach"] .spraoi-module-nav-button[data-active="true"] span:last-child { color: #5B21B6 !important; }
+.spraoi-module-sidebar[data-module="academy"] .spraoi-module-nav-button[data-active="true"] span:last-child { color: #174FB8 !important; }
+.spraoi-module-sidebar[data-module="connect"] .spraoi-module-nav-button[data-active="true"] span:last-child { color: #C64D06 !important; }
+.spraoi-module-sidebar[data-module="cup"] .spraoi-module-nav-button[data-active="true"] span:last-child { color: #946700 !important; }
+.spraoi-module-sidebar[data-module="club"] .spraoi-module-nav-button[data-active="true"] span:last-child { color: #B91C1C !important; }
+
+/* Page-header tint is inferred from the actual module icon already rendered there.
+   This keeps the header architecture shared and avoids duplicating module markup. */
+.spraoi-page-header:has(img[src*="spraoi-coach-icon"]) {
+  background: linear-gradient(110deg, #FFFFFF 0%, #F6F1FF 68%, #EFE5FF 100%) !important;
+  border-bottom-color: #E2D5FB !important;
+}
+.spraoi-page-header:has(img[src*="spraoi-academy-icon"]) {
+  background: linear-gradient(110deg, #FFFFFF 0%, #F1F7FF 68%, #E5F0FF 100%) !important;
+  border-bottom-color: #D6E6FF !important;
+}
+.spraoi-page-header:has(img[src*="spraoi-connect-icon"]),
+.connect-topbar {
+  background: linear-gradient(110deg, #FFFFFF 0%, #FFF6ED 68%, #FFEBD9 100%) !important;
+  border-bottom-color: #FFDFC5 !important;
+}
+.spraoi-page-header:has(img[src*="spraoi-cup-icon"]) {
+  background: linear-gradient(110deg, #FFFFFF 0%, #FFFAEA 68%, #FFF1C7 100%) !important;
+  border-bottom-color: #F3DEA1 !important;
+}
+.spraoi-page-header:has(img[src*="spraoi-club-icon"]) {
+  background: linear-gradient(110deg, #FFFFFF 0%, #FFF4F5 68%, #FFE4E7 100%) !important;
+  border-bottom-color: #F1D0D4 !important;
+}
+
+/* Make the page/module typography read as one hierarchy. */
+.spraoi-page-header-title,
+.cup-page-header-title,
+.connect-topbar > div:first-child > div:nth-child(2) > div:first-child {
+  font-family: "Manrope", "Segoe UI", system-ui, sans-serif !important;
+  font-size: 21px !important;
+  font-weight: 700 !important;
+  letter-spacing: -.02em !important;
+}
+.spraoi-module-sidebar > div:first-child div[style*="fontSize: 21"],
+.spraoi-module-sidebar > div:first-child div[style*="font-size: 21"] {
+  font-family: "Manrope", "Segoe UI", system-ui, sans-serif !important;
+  font-size: 21px !important;
+  font-weight: 700 !important;
+  letter-spacing: -.02em !important;
+}
+
+/* Small top edge accent on stat cards gives colour without making the UI heavy. */
+.spraoi-stat-card {
+  position: relative;
+  overflow: hidden;
+}
+.spraoi-stat-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  border-radius: 15px 15px 0 0;
+  background: #D9E1EC;
+}
+body:has(.spraoi-module-sidebar[data-module="coach"]) .spraoi-stat-card::before { background: linear-gradient(90deg,#7C3AED,#A78BFA); }
+body:has(.spraoi-module-sidebar[data-module="academy"]) .spraoi-stat-card::before { background: linear-gradient(90deg,#2563EB,#60A5FA); }
+body:has(.spraoi-module-sidebar[data-module="connect"]) .spraoi-stat-card::before { background: linear-gradient(90deg,#F97316,#FB923C); }
+body:has(.spraoi-module-sidebar[data-module="cup"]) .spraoi-stat-card::before { background: linear-gradient(90deg,#D89A00,#F6C945); }
+body:has(.spraoi-module-sidebar[data-module="club"]) .spraoi-stat-card::before { background: linear-gradient(90deg,#DC2626,#F87171); }
+
+
+/* === SPRAOI SAAS SHELL V7 — unified staff mobile shell === */
+
+.spraoi-mobile-app-header {
+  position: fixed !important;
+  inset: 0 0 auto 0 !important;
+  z-index: 950 !important;
+  height: 116px !important;
+  box-sizing: border-box !important;
+  padding: 9px 12px 10px !important;
+  display: block !important;
+  color: #10243e !important;
+  background: #fff !important;
+  border-bottom: 1px solid #E5EAF1 !important;
+  box-shadow: 0 6px 20px rgba(16,36,62,.08) !important;
+}
+.spraoi-mobile-app-header[data-module="coach"] {
+  background: linear-gradient(135deg,#fff 0%,#F5F0FF 100%) !important;
+}
+.spraoi-mobile-app-header[data-module="academy"] {
+  background: linear-gradient(135deg,#fff 0%,#EEF5FF 100%) !important;
+}
+.spraoi-mobile-app-header[data-module="connect"] {
+  background: linear-gradient(135deg,#fff 0%,#FFF3E8 100%) !important;
+}
+.spraoi-mobile-app-header[data-module="cup"] {
+  background: linear-gradient(135deg,#fff 0%,#FFF8E2 100%) !important;
+}
+.spraoi-mobile-app-header[data-module="club"] {
+  background: linear-gradient(135deg,#fff 0%,#FFF0F1 100%) !important;
+}
+
+.spraoi-mobile-app-header-row {
+  height: 48px !important;
+  display: grid !important;
+  grid-template-columns: 44px minmax(0,1fr) 44px !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.spraoi-mobile-club-button,
+.spraoi-mobile-profile-button {
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 13px !important;
+  border: 1px solid #DDE5EE !important;
+  background: rgba(255,255,255,.88) !important;
+  box-shadow: 0 3px 10px rgba(16,36,62,.07) !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: 0 !important;
+  color: #10243e !important;
+  cursor: pointer !important;
+}
+.spraoi-mobile-club-button img {
+  width: 36px !important;
+  height: 36px !important;
+  object-fit: contain !important;
+}
+.spraoi-mobile-profile-button {
+  font-family: "Manrope","Segoe UI",system-ui,sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+}
+
+.spraoi-mobile-module-name {
+  font-family: "Manrope","Segoe UI",system-ui,sans-serif !important;
+  font-size: 18px !important;
+  line-height: 1.1 !important;
+  font-weight: 700 !important;
+  letter-spacing: -.02em !important;
+  color: #10243e !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.spraoi-mobile-team-row {
+  height: 48px !important;
+  display: flex !important;
+  align-items: flex-end !important;
+  padding-top: 7px !important;
+}
+
+.spraoi-mobile-team-select,
+.spraoi-mobile-team-single,
+.spraoi-mobile-clubwide {
+  width: 100% !important;
+  height: 40px !important;
+  box-sizing: border-box !important;
+  border: 1px solid #D9E2EC !important;
+  border-radius: 12px !important;
+  background: rgba(255,255,255,.92) !important;
+  color: #10243e !important;
+  font-family: Inter,"Segoe UI",system-ui,sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  padding: 0 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  box-shadow: 0 2px 8px rgba(16,36,62,.04) !important;
+}
+.spraoi-mobile-team-select {
+  appearance: auto !important;
+}
+.spraoi-mobile-clubwide {
+  color: #68778D !important;
+}
+
+/* Footer: identical geometry in every staff module. */
+.spraoi-mobile-bottom-nav,
+.connect-mobile-nav.spraoi-mobile-bottom-nav {
+  position: fixed !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  z-index: 900 !important;
+  min-height: 74px !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-around !important;
+  gap: 0 !important;
+  padding: 6px 4px calc(env(safe-area-inset-bottom, 0px) + 5px) !important;
+  background: #fff !important;
+  border-top: 1px solid #E5EAF1 !important;
+  box-shadow: 0 -7px 24px rgba(15,35,60,.08) !important;
+}
+
+.spraoi-mobile-bottom-nav-button {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 2px !important;
+  padding: 3px 1px 2px !important;
+  color: #68778D !important;
+  font-family: Inter,"Segoe UI",system-ui,sans-serif !important;
+  cursor: pointer !important;
+}
+
+.spraoi-mobile-bottom-nav-chip {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 12px !important;
+  display: grid !important;
+  place-items: center !important;
+  background: transparent !important;
+}
+.spraoi-mobile-bottom-nav-button[data-active="true"] .spraoi-mobile-bottom-nav-chip {
+  background: color-mix(in srgb, var(--module-color) 12%, white) !important;
+}
+
+.spraoi-mobile-bottom-nav-icon {
+  width: 20px !important;
+  height: 20px !important;
+  object-fit: contain !important;
+  display: block !important;
+  opacity: .68 !important;
+}
+.spraoi-mobile-bottom-nav-button[data-active="true"] .spraoi-mobile-bottom-nav-icon {
+  opacity: 1 !important;
+}
+
+.spraoi-mobile-bottom-nav-label {
+  width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  text-align: center !important;
+  font-size: 9px !important;
+  line-height: 1.1 !important;
+  font-weight: 600 !important;
+  color: #68778D !important;
+}
+.spraoi-mobile-bottom-nav-button[data-active="true"] .spraoi-mobile-bottom-nav-label {
+  color: var(--module-color) !important;
+  font-weight: 700 !important;
+}
+
+.spraoi-mobile-more-sheet {
+  position: fixed !important;
+  left: 12px !important;
+  right: 12px !important;
+  bottom: calc(78px + env(safe-area-inset-bottom, 0px)) !important;
+  z-index: 199 !important;
+  background: #fff !important;
+  border-radius: 18px !important;
+  border: 1px solid #E5EAF1 !important;
+  box-shadow: 0 18px 50px rgba(15,35,60,.20) !important;
+  padding: 10px !important;
+}
+.spraoi-mobile-more-title {
+  font-family: "Manrope","Segoe UI",system-ui,sans-serif !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  color: #10243e !important;
+  padding: 7px 8px 10px !important;
+}
+.spraoi-mobile-more-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+  gap: 8px !important;
+}
+.spraoi-mobile-more-button {
+  border: 1px solid #E5EAF1 !important;
+  background: #fff !important;
+  border-radius: 12px !important;
+  padding: 12px !important;
+  color: #10243e !important;
+  font-family: Inter,"Segoe UI",system-ui,sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+}
+.spraoi-mobile-more-button[data-active="true"] {
+  border-color: var(--module-color) !important;
+  color: var(--module-color) !important;
+  background: color-mix(in srgb, var(--module-color) 8%, white) !important;
+}
+
+/* Connect previously used its own mobile header/footer rules. */
+@media (max-width: 760px) {
+  .connect-mobile-header.spraoi-mobile-app-header { display:block !important; }
+  .connect-mobile-nav.spraoi-mobile-bottom-nav { display:flex !important; }
+  .connect-content { padding-top:116px !important; padding-bottom:78px !important; }
+  .connect-mobile-team-filter { display:none !important; }
+}
+
+
+/* === SPRAOI SAAS SHELL V8 — action + icon consistency === */
+
+/* Shared primary action geometry */
+.spraoi-action-button {
+  min-height: 40px !important;
+  height: 40px !important;
+  padding: 0 16px !important;
+  border-radius: 11px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  font-family: Inter, "Segoe UI", system-ui, sans-serif !important;
+  font-size: 12px !important;
+  line-height: 1 !important;
+  font-weight: 700 !important;
+  white-space: nowrap !important;
+  box-shadow: 0 7px 16px rgba(16,36,62,.12) !important;
+  transition: transform .15s ease, box-shadow .15s ease, filter .15s ease !important;
+}
+.spraoi-action-button:hover {
+  transform: translateY(-1px) !important;
+  filter: brightness(.98) !important;
+  box-shadow: 0 9px 20px rgba(16,36,62,.15) !important;
+}
+.spraoi-action-button[data-variant="ghost"],
+.spraoi-action-button[data-variant="secondary"] {
+  background: #fff !important;
+  color: #10243e !important;
+  border: 1px solid #D9E2EC !important;
+  box-shadow: 0 3px 10px rgba(16,36,62,.06) !important;
+}
+.spraoi-action-button[data-variant="danger"] {
+  background: #DC2626 !important;
+  color: #fff !important;
+  border: 1px solid #DC2626 !important;
+}
+
+/* Module colours for primary actions */
+body:has(.spraoi-module-sidebar[data-module="coach"]) .spraoi-action-button[data-variant="primary"] {
+  background: #7C3AED !important;
+  color: #fff !important;
+  border: 1px solid #7C3AED !important;
+}
+body:has(.spraoi-module-sidebar[data-module="academy"]) .spraoi-action-button[data-variant="primary"] {
+  background: #2563EB !important;
+  color: #fff !important;
+  border: 1px solid #2563EB !important;
+}
+body:has(.spraoi-module-sidebar[data-module="connect"]) .spraoi-action-button[data-variant="primary"],
+body:has(.connect-topbar) .spraoi-action-button[data-variant="primary"] {
+  background: #F97316 !important;
+  color: #fff !important;
+  border: 1px solid #F97316 !important;
+}
+body:has(.spraoi-module-sidebar[data-module="cup"]) .spraoi-action-button[data-variant="primary"] {
+  background: #D89A00 !important;
+  color: #fff !important;
+  border: 1px solid #D89A00 !important;
+}
+body:has(.spraoi-module-sidebar[data-module="club"]) .spraoi-action-button[data-variant="primary"] {
+  background: #DC2626 !important;
+  color: #fff !important;
+  border: 1px solid #DC2626 !important;
+}
+
+/* Dashboard/card icons: one size, stronger contrast, clearer tint */
+.spraoi-card-icon-chip {
+  width: 38px !important;
+  height: 38px !important;
+  min-width: 38px !important;
+  border-radius: 11px !important;
+  display: grid !important;
+  place-items: center !important;
+  background: color-mix(in srgb, var(--card-accent, #64748B) 13%, white) !important;
+  border: 1px solid color-mix(in srgb, var(--card-accent, #64748B) 22%, white) !important;
+  color: var(--card-accent, #64748B) !important;
+  box-sizing: border-box !important;
+}
+.spraoi-card-icon {
+  width: 25px !important;
+  height: 25px !important;
+  object-fit: contain !important;
+  opacity: 1 !important;
+  filter: saturate(1.65) contrast(1.25) brightness(.88) !important;
+}
+.spraoi-card-icon-fallback {
+  width: 25px !important;
+  height: 25px !important;
+  display: grid !important;
+  place-items: center !important;
+  color: var(--card-accent, #64748B) !important;
+  font-size: 16px !important;
+  font-weight: 800 !important;
+}
+
+/* Sidebar icons: same physical size + stronger colour/contrast */
+.spraoi-secondary-nav-icon {
+  width: 23px !important;
+  height: 23px !important;
+  opacity: 1 !important;
+  filter: saturate(1.8) contrast(1.32) brightness(.86) !important;
+}
+.spraoi-secondary-nav-icon-wrap {
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+}
+.spraoi-module-nav-button[data-active="true"] .spraoi-secondary-nav-icon-wrap {
+  background: rgba(255,255,255,.72) !important;
+}
+
+/* Mobile footer icons use the same visual weight */
+.spraoi-mobile-bottom-nav-icon {
+  width: 21px !important;
+  height: 21px !important;
+  opacity: .92 !important;
+  filter: saturate(1.7) contrast(1.28) brightness(.88) !important;
+}
+.spraoi-mobile-bottom-nav-button[data-active="true"] .spraoi-mobile-bottom-nav-icon {
+  opacity: 1 !important;
+  filter: saturate(2) contrast(1.35) brightness(.82) !important;
+}
+
+/* Page-header module icons: fixed consistent treatment */
+.spraoi-page-header img[src*="spraoi-coach-icon"],
+.spraoi-page-header img[src*="spraoi-academy-icon"],
+.spraoi-page-header img[src*="spraoi-connect-icon"],
+.spraoi-page-header img[src*="spraoi-cup-icon"],
+.spraoi-page-header img[src*="spraoi-club-icon"],
+.connect-topbar-icon img {
+  width: 44px !important;
+  height: 44px !important;
+  object-fit: contain !important;
+  opacity: 1 !important;
+  filter: saturate(1.25) contrast(1.12) !important;
+}
+
+/* Keep icon chips visibly tied to the module palette */
+body:has(.spraoi-module-sidebar[data-module="coach"]) {
+  --spraoi-current-accent: #7C3AED;
+}
+body:has(.spraoi-module-sidebar[data-module="academy"]) {
+  --spraoi-current-accent: #2563EB;
+}
+body:has(.spraoi-module-sidebar[data-module="connect"]) {
+  --spraoi-current-accent: #F97316;
+}
+body:has(.spraoi-module-sidebar[data-module="cup"]) {
+  --spraoi-current-accent: #D89A00;
+}
+body:has(.spraoi-module-sidebar[data-module="club"]) {
+  --spraoi-current-accent: #DC2626;
+}
+
+/* Small icon buttons that were visually washed out get a clearer module tint */
+.spraoi-stat-card .spraoi-card-icon-chip,
+.academy-dashboard-metrics .spraoi-card-icon-chip,
+.connect-grid .spraoi-card-icon-chip {
+  background: color-mix(in srgb, var(--card-accent, var(--spraoi-current-accent)) 14%, white) !important;
+}
+
+
+/* === SPRAOI SAAS SHELL V11 — stable CTA + supplied icon treatment === */
+
+.spraoi-action-button,
+.spraoi-touch-button,
+.spraoi-cup-action-button {
+  min-height: 40px !important;
+  height: 40px !important;
+  padding: 0 16px !important;
+  border-radius: 11px !important;
+  font-family: Inter,"Segoe UI",system-ui,sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  white-space: nowrap !important;
+}
+.spraoi-action-icon {
+  display: inline-grid !important;
+  place-items: center !important;
+  width: 16px !important;
+  height: 16px !important;
+  font-size: 14px !important;
+  line-height: 1 !important;
+}
+
+/* Secondary icons: use the supplied artwork cleanly until the replacement icon pack arrives. */
+.spraoi-secondary-nav-icon-wrap {
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  border-radius: 10px !important;
+  display: grid !important;
+  place-items: center !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+.spraoi-secondary-nav-icon {
+  width: 24px !important;
+  height: 24px !important;
+  object-fit: contain !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+.spraoi-module-nav-button[data-active="true"] .spraoi-secondary-nav-icon-wrap {
+  background: rgba(255,255,255,.72) !important;
+}
+
+.spraoi-card-icon-chip {
+  width: 38px !important;
+  height: 38px !important;
+  min-width: 38px !important;
+  border-radius: 11px !important;
+  display: grid !important;
+  place-items: center !important;
+  background: color-mix(in srgb,var(--card-accent,#64748B) 9%,white) !important;
+  border: 1px solid color-mix(in srgb,var(--card-accent,#64748B) 17%,white) !important;
+  box-shadow: none !important;
+}
+.spraoi-card-icon {
+  width: 26px !important;
+  height: 26px !important;
+  object-fit: contain !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+.spraoi-mobile-bottom-nav-icon {
+  width: 21px !important;
+  height: 21px !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+/* Tabs inside a page always read as subordinate navigation, never as a second page header. */
+.spraoi-subnav-tabs {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+/* Prevent Connect's staff mobile footer from appearing on desktop. */
+@media (min-width: 761px) {
+  .connect-mobile-nav,
+  .spraoi-mobile-bottom-nav.connect-mobile-nav {
+    display: none !important;
+  }
+  .connect-mobile-header {
+    display: none !important;
+  }
+}
+
+
+/* === PHASE 12 — dedicated Coach SVG icon library === */
+body:has(.spraoi-module-sidebar[data-module="coach"]) .spraoi-secondary-nav-icon,
+body:has(.spraoi-module-sidebar[data-module="coach"]) .spraoi-card-icon,
+body:has(.spraoi-module-sidebar[data-module="coach"]) .spraoi-action-icon img,
+body:has(.spraoi-module-sidebar[data-module="coach"]) .spraoi-mobile-bottom-nav-icon {
+  width: 24px !important;
+  height: 24px !important;
+  object-fit: contain !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+body:has(.spraoi-module-sidebar[data-module="coach"]) .spraoi-action-icon img {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+/* Keep Coach SVG presentation consistent everywhere. */
+img[src*="/icons/coach/"] {
+  object-fit: contain;
+  opacity: 1;
+}
+
+
+/* === PHASE 13 — dedicated Academy SVG icon library === */
+body:has(.spraoi-module-sidebar[data-module="academy"]) .spraoi-secondary-nav-icon,
+body:has(.spraoi-module-sidebar[data-module="academy"]) .spraoi-card-icon,
+body:has(.spraoi-module-sidebar[data-module="academy"]) .spraoi-mobile-bottom-nav-icon {
+  opacity: 1 !important;
+  filter: none !important;
+  object-fit: contain !important;
+}
+body:has(.spraoi-module-sidebar[data-module="academy"]) .spraoi-secondary-nav-icon {
+  width: 24px !important;
+  height: 24px !important;
+}
+body:has(.spraoi-module-sidebar[data-module="academy"]) .spraoi-card-icon {
+  width: 26px !important;
+  height: 26px !important;
+}
+body:has(.spraoi-module-sidebar[data-module="academy"]) .spraoi-mobile-bottom-nav-icon {
+  width: 21px !important;
+  height: 21px !important;
+}
+img[src*="/icons/academy/"] {
+  object-fit: contain;
+  opacity: 1;
+}
+
+/* === PHASE 14 module identity + dashboard analytics === */
+.spraoi-module-sidebar[data-module="coach"] > div:first-child{background:linear-gradient(135deg,#6D28D9,#7C3AED)!important;border-bottom-color:#7C3AED!important}.spraoi-module-sidebar[data-module="academy"] > div:first-child{background:linear-gradient(135deg,#1D4ED8,#2563EB)!important;border-bottom-color:#2563EB!important}.spraoi-module-sidebar[data-module="connect"] > div:first-child{background:linear-gradient(135deg,#EA580C,#F97316)!important;border-bottom-color:#F97316!important}.spraoi-module-sidebar[data-module="cup"] > div:first-child{background:linear-gradient(135deg,#B77900,#D89A00)!important;border-bottom-color:#D89A00!important}.spraoi-module-sidebar[data-module="club"] > div:first-child{background:linear-gradient(135deg,#B91C1C,#DC2626)!important;border-bottom-color:#DC2626!important}.spraoi-module-sidebar>div:first-child>div,.spraoi-module-sidebar>div:first-child>div *:not(img){color:#fff!important}.spraoi-module-sidebar>div:first-child>div>div:first-child{background:#fff!important;border-radius:14px!important;padding:2px!important}
+.spraoi-dashboard-analytics{margin-bottom:18px;background:#fff;border:1px solid #E2E8F0;border-radius:16px;box-shadow:0 6px 18px rgba(16,36,62,.055);padding:18px}.spraoi-dashboard-section-head{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:16px}.spraoi-dashboard-section-title{font-family:Manrope,Segoe UI,system-ui,sans-serif;font-size:16px;font-weight:800;color:#10243E}.spraoi-dashboard-section-sub{font-family:Inter,Segoe UI,system-ui,sans-serif;font-size:11px;color:#64748B;margin-top:2px}.spraoi-download-button{height:36px;padding:0 13px;border-radius:10px;border:1px solid #CFE0FF;background:#EEF5FF;color:#1D4ED8;font:800 11px Inter,Segoe UI,system-ui,sans-serif;cursor:pointer}.spraoi-dashboard-chart-grid{display:grid;grid-template-columns:1.15fr .9fr .9fr;gap:12px}.spraoi-chart-card{border:1px solid #E2E8F0;border-radius:14px;padding:16px;background:#FBFCFE;min-width:0}.spraoi-chart-card-title{font:800 13px Manrope,Segoe UI,system-ui,sans-serif;color:#10243E;margin-bottom:14px}.spraoi-bar-chart{display:flex;flex-direction:column;gap:13px}.spraoi-bar-label{display:flex;justify-content:space-between;gap:8px;font:600 10px Inter,Segoe UI,system-ui,sans-serif;color:#52627A;margin-bottom:5px}.spraoi-bar-label strong{color:#10243E;font-weight:800}.spraoi-bar-track{height:9px;border-radius:999px;background:#E8EEF6;overflow:hidden}.spraoi-bar-fill{height:100%;border-radius:999px}.spraoi-donut-wrap{display:flex;align-items:center;gap:18px}.spraoi-donut{width:112px;height:112px;border-radius:50%;display:grid;place-items:center;flex:0 0 auto}.spraoi-donut-centre{width:76px;height:76px;border-radius:50%;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:inset 0 0 0 1px #EEF2F7}.spraoi-donut-centre strong{font:800 19px Manrope,Segoe UI,system-ui,sans-serif;color:#10243E}.spraoi-donut-centre span{font:600 9px Inter,Segoe UI,system-ui,sans-serif;color:#64748B}.spraoi-chart-legend{display:flex;flex-direction:column;gap:10px;min-width:0;font:600 10px Inter,Segoe UI,system-ui,sans-serif;color:#64748B}.spraoi-chart-legend div{display:grid;grid-template-columns:9px minmax(0,1fr) auto;align-items:center;gap:7px}.spraoi-chart-legend strong{color:#10243E}.spraoi-legend-dot{width:8px;height:8px;border-radius:50%}.spraoi-mini-kpis{display:flex;flex-direction:column;gap:8px}.spraoi-mini-kpis>div{display:grid;grid-template-columns:32px minmax(0,1fr) auto;align-items:center;gap:9px;border:1px solid #E8EEF6;border-radius:11px;padding:8px 10px;background:#fff}.spraoi-mini-kpis img{width:22px;height:22px;object-fit:contain}.spraoi-mini-kpis span{font:600 10px Inter,Segoe UI,system-ui,sans-serif;color:#52627A}.spraoi-mini-kpis strong{font:800 15px Manrope,Segoe UI,system-ui,sans-serif;color:#10243E}@media(max-width:1050px){.spraoi-dashboard-chart-grid{grid-template-columns:1fr 1fr}.spraoi-chart-card:last-child{grid-column:1/-1}}@media(max-width:760px){.spraoi-dashboard-chart-grid{grid-template-columns:1fr}.spraoi-chart-card:last-child{grid-column:auto}}
+
+
+/* === PHASE 15 — final consistency pass === */
+/* Option C: white to very pale module gradient, not a saturated block */
+.spraoi-module-sidebar[data-module="coach"] > div:first-child{background:linear-gradient(120deg,#fff 0%,#fff 34%,#F1E9FF 100%)!important;border-bottom:3px solid #7C3AED!important}
+.spraoi-module-sidebar[data-module="academy"] > div:first-child{background:linear-gradient(120deg,#fff 0%,#fff 34%,#EAF2FF 100%)!important;border-bottom:3px solid #2563EB!important}
+.spraoi-module-sidebar[data-module="connect"] > div:first-child{background:linear-gradient(120deg,#fff 0%,#fff 34%,#FFF0E4 100%)!important;border-bottom:3px solid #F97316!important}
+.spraoi-module-sidebar[data-module="cup"] > div:first-child{background:linear-gradient(120deg,#fff 0%,#fff 34%,#FFF5D6 100%)!important;border-bottom:3px solid #D89A00!important}
+.spraoi-module-sidebar[data-module="club"] > div:first-child{background:linear-gradient(120deg,#fff 0%,#fff 34%,#FFECEF 100%)!important;border-bottom:3px solid #DC2626!important}
+.spraoi-module-sidebar > div:first-child > div,.spraoi-module-sidebar > div:first-child > div *:not(img){color:#10243E!important}
+.spraoi-module-sidebar[data-module="coach"] > div:first-child > div div:first-of-type{color:#7C3AED!important}
+.spraoi-module-sidebar[data-module="academy"] > div:first-child > div div:first-of-type{color:#2563EB!important}
+.spraoi-module-sidebar[data-module="connect"] > div:first-child > div div:first-of-type{color:#F97316!important}
+.spraoi-module-sidebar[data-module="cup"] > div:first-child > div div:first-of-type{color:#9A6D00!important}
+.spraoi-module-sidebar[data-module="club"] > div:first-child > div div:first-of-type{color:#DC2626!important}
+
+/* Header CTAs: text only, compact and identical geometry */
+.spraoi-page-header-actions .spraoi-action-icon,.cup-page-header-actions .spraoi-action-icon,.connect-topbar .spraoi-action-icon{display:none!important}
+.spraoi-action-button,.spraoi-touch-button,.spraoi-cup-action-button{height:40px!important;min-height:40px!important;min-width:0!important;padding:0 12px!important;border-radius:11px!important;font:700 12px/1 Inter,"Segoe UI",system-ui,sans-serif!important}
+
+/* Team selector label */
+.spraoi-team-selector-label{font:800 8px/1 Inter,"Segoe UI",system-ui,sans-serif;text-transform:uppercase;letter-spacing:.08em;color:#64748B;margin:0 0 4px 2px;text-align:left;width:62px}
+
+/* Coach top cards now match Academy structure */
+.coach-summary-card{position:relative!important;padding:16px 18px!important;min-height:112px!important}
+.coach-summary-card .coach-card-icon{position:absolute!important;top:14px!important;right:14px!important;width:38px!important;height:38px!important}
+.coach-summary-card .coach-card-icon img{width:25px!important;height:25px!important}
+.coach-summary-card>div:first-of-type{padding-right:48px!important}
+
+/* Mobile footer icons never shrink by module */
+@media(max-width:760px){
+ .spraoi-mobile-bottom-nav-icon,.connect-mobile-nav .spraoi-mobile-bottom-nav-icon{width:24px!important;height:24px!important;min-width:24px!important;min-height:24px!important;opacity:1!important;filter:none!important}
+ .spraoi-mobile-bottom-nav-chip{width:38px!important;height:38px!important}
+}
+
+/* module-specific download accents */
+.coach-download{background:#F5F0FF!important;border-color:#DED0FA!important;color:#6D28D9!important}.connect-download{background:#FFF3E8!important;border-color:#FFD8BB!important;color:#C64D06!important}.cup-download{background:#FFF8E2!important;border-color:#F3DEA0!important;color:#946700!important}.club-download{background:#FFF0F1!important;border-color:#F2CCD0!important;color:#B91C1C!important}
+
+
+/* === PHASE 16 — Coach overview + team selector + Club icon fixes === */
+
+/* Team label sits directly above and centered over the compact desktop dropdown. */
+.spraoi-global-rail > div:has(.spraoi-team-selector-label) {
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 3px !important;
+}
+.spraoi-team-selector-label {
+  width: 62px !important;
+  margin: 0 !important;
+  text-align: center !important;
+  color: #52627A !important;
+  font-size: 8px !important;
+  line-height: 1 !important;
+}
+
+/* Session Focus now lives in Coaching overview. */
+.coach-session-focus-legacy {
+  display: none !important;
+}
+.coach-dashboard-main-grid {
+  grid-template-columns: minmax(0,1fr) !important;
+}
+.coach-overview-grid {
+  grid-template-columns: 1fr 1fr 1fr !important;
+}
+.coach-focus-donut {
+  width: 104px !important;
+  height: 104px !important;
+}
+
+/* Club-specific SVGs should display with their authored red artwork. */
+body:has(.spraoi-module-sidebar[data-module="club"]) img[src*="/icons/club/"] {
+  opacity: 1 !important;
+  filter: none !important;
+  object-fit: contain !important;
+}
+
+@media (max-width: 1050px) {
+  .coach-overview-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .coach-overview-grid .spraoi-chart-card:last-child {
+    grid-column: 1 / -1 !important;
+  }
+}
+@media (max-width: 760px) {
+  .coach-overview-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .coach-overview-grid .spraoi-chart-card:last-child {
+    grid-column: auto !important;
+  }
+}
+
+
+/* === PHASE 18 — Connect + Club icon sizing === */
+.spraoi-module-sidebar[data-module="connect"] img[src*="/icons/connect/events"],
+.spraoi-module-sidebar[data-module="connect"] img[src*="/icons/connect/responses"] {
+  width: 25px !important;
+  height: 25px !important;
+}
+
+.connect-mobile-nav img[src*="/icons/connect/events"],
+.connect-mobile-nav img[src*="/icons/connect/responses"] {
+  width: 26px !important;
+  height: 26px !important;
+}
+
+.spraoi-module-sidebar[data-module="club"] img[src*="/icons/club/roles"],
+.spraoi-module-sidebar[data-module="club"] img[src*="/icons/club/roles-and-permissions"] {
+  width: 25px !important;
+  height: 25px !important;
+}
+
+.spraoi-secondary-nav-icon-wrap {
+  width: 28px !important;
+  height: 28px !important;
+  display: inline-grid !important;
+  place-items: center !important;
+  flex: 0 0 28px !important;
+}
+
+
+/* === PHASE 19 — Facilities crash + Coach card parity === */
+
+/* Coach dashboard cards now use the same visual language as Academy:
+   white card, slim colour rail on the left, clean top-right icon chip. */
+.coach-summary-card {
+  position: relative !important;
+  overflow: hidden !important;
+  border: 1px solid #DCE4EE !important;
+  border-top: 1px solid #DCE4EE !important;
+  box-shadow: 0 1px 2px rgba(15,23,42,.03) !important;
+  min-height: 112px !important;
+  padding: 16px !important;
+}
+
+.coach-summary-card::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 auto 0 0 !important;
+  width: 3px !important;
+  background: var(--coach-card-accent, #7C3AED) !important;
+}
+
+.coach-summary-card .coach-card-icon {
+  position: absolute !important;
+  top: 14px !important;
+  right: 14px !important;
+  width: 38px !important;
+  height: 38px !important;
+  min-width: 38px !important;
+  border-radius: 11px !important;
+  display: grid !important;
+  place-items: center !important;
+  border: 1px solid color-mix(in srgb, var(--coach-card-accent, #7C3AED) 16%, white) !important;
+  background: color-mix(in srgb, var(--coach-card-accent, #7C3AED) 10%, white) !important;
+  box-shadow: none !important;
+}
+
+.coach-summary-card .coach-card-icon img {
+  width: 24px !important;
+  height: 24px !important;
+  object-fit: contain !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+/* Explicit fallback colours so browsers without color-mix don't render grey. */
+@supports not (background: color-mix(in srgb, red 10%, white)) {
+  .coach-summary-card .coach-card-icon {
+    background: #F3EDFF !important;
+    border-color: #E5D8FF !important;
+  }
+}
+
+/* Keep the title/value clear of the top-right icon, as Academy does. */
+.coach-summary-card > div:first-of-type {
+  padding-right: 48px !important;
+}
+
+
+/* === PHASE 22 — shared Admin geometry baseline === */
+:root {
+  --spraoi-header-height: 118px;
+}
+
+/* Module header and page header share the same desktop height/baseline. */
+@media (min-width: 761px) {
+  .spraoi-module-sidebar > div:first-child,
+  .spraoi-page-header,
+  .spraoi-topbar,
+  .connect-topbar {
+    height: 118px !important;
+    min-height: 118px !important;
+    box-sizing: border-box !important;
+    border-bottom-width: 1px !important;
+  }
+
+  .spraoi-module-sidebar > div:first-child {
+    padding: 18px 16px !important;
+    border-bottom: 1px solid var(--spraoi-line) !important;
+  }
+
+  .spraoi-page-header,
+  .spraoi-topbar,
+  .connect-topbar {
+    padding: 20px 28px !important;
+  }
+}
+
+/* Page title treatment is identical across Coach, Academy, Connect, Cup and Club. */
+.spraoi-page-header-title,
+.spraoi-topbar > div:first-child > div:nth-child(2) > div:first-child,
+.connect-topbar > div:first-child > div:nth-child(2) > div:first-child {
+  font-family: "Manrope", "Segoe UI", system-ui, sans-serif !important;
+  font-size: 21px !important;
+  font-weight: 700 !important;
+  line-height: 1.1 !important;
+  letter-spacing: -.02em !important;
+  color: #10243E !important;
+}
+
+/* Shared 56px icon container with pale module tint and 34px artwork. */
+.spraoi-page-header-icon,
+.spraoi-topbar-icon,
+.connect-topbar-icon {
+  width: 56px !important;
+  height: 56px !important;
+  min-width: 56px !important;
+  flex: 0 0 56px !important;
+  border-radius: 16px !important;
+  box-shadow: none !important;
+}
+.spraoi-page-header-icon img,
+.spraoi-topbar-icon img,
+.connect-topbar-icon img {
+  width: 34px !important;
+  height: 34px !important;
+  object-fit: contain !important;
+}
+body:has(.spraoi-module-sidebar[data-module="coach"]) .spraoi-page-header-icon { background:#F4EFFF !important; border-color:#E7DBFF !important; }
+body:has(.spraoi-module-sidebar[data-module="academy"]) .spraoi-page-header-icon { background:#EEF4FF !important; border-color:#DCE8FF !important; }
+body:has(.spraoi-module-sidebar[data-module="connect"]) .connect-topbar-icon,
+body:has(.spraoi-module-sidebar[data-module="connect"]) .spraoi-page-header-icon { background:#FFF2E8 !important; border-color:#FFE0CA !important; }
+body:has(.spraoi-module-sidebar[data-module="cup"]) .spraoi-page-header-icon { background:#FFF8E4 !important; border-color:#F5E4AF !important; }
+body:has(.spraoi-module-sidebar[data-module="club"]) .spraoi-topbar-icon,
+body:has(.spraoi-module-sidebar[data-module="club"]) .spraoi-page-header-icon { background:#FFF0F1 !important; border-color:#F5DADB !important; }
+
+/* Header CTAs: text-only and exactly the same geometry. */
+.spraoi-page-header-actions > button,
+.spraoi-topbar > div:last-child > button,
+.connect-topbar > div:last-child > button,
+.spraoi-action-button,
+.spraoi-cup-action-button {
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 14px !important;
+  border-radius: 11px !important;
+  font: 700 12px/1 "Inter","Segoe UI",system-ui,sans-serif !important;
+}
+.spraoi-page-header-actions .spraoi-action-icon,
+.spraoi-topbar .spraoi-action-icon,
+.connect-topbar .spraoi-action-icon {
+  display: none !important;
+}
+
+/* Shared dashboard metric cards. */
+.spraoi-admin-metric-card,
+.coach-summary-card,
+.spraoi-stat-card {
+  position: relative !important;
+  overflow: hidden !important;
+  min-height: 118px !important;
+  padding: 16px 18px !important;
+  border: 1px solid #E2E8F0 !important;
+  border-top: 1px solid #E2E8F0 !important;
+  border-radius: 16px !important;
+  background: #fff !important;
+  box-shadow: 0 4px 14px rgba(16,36,62,.05) !important;
+  box-sizing: border-box !important;
+}
+.spraoi-admin-metric-card::before,
+.coach-summary-card::before {
+  content:"" !important;
+  position:absolute !important;
+  inset:0 auto 0 0 !important;
+  width:3px !important;
+  background:var(--card-accent,var(--coach-card-accent,#64748B)) !important;
+}
+.spraoi-admin-metric-label {
+  font: 800 11px/1.2 "Inter","Segoe UI",system-ui,sans-serif !important;
+  text-transform: uppercase !important;
+  letter-spacing: .07em !important;
+  color: #64748B !important;
+}
+.spraoi-admin-metric-value {
+  font: 700 28px/1.05 "Manrope","Segoe UI",system-ui,sans-serif !important;
+  letter-spacing: -.035em !important;
+  color:#10243E !important;
+}
+.spraoi-admin-metric-copy {
+  font: 500 11px/1.4 "Inter","Segoe UI",system-ui,sans-serif !important;
+  color:#64748B !important;
+}
+.spraoi-admin-metric-card .spraoi-card-icon-chip,
+.coach-summary-card .coach-card-icon {
+  width:38px !important;
+  height:38px !important;
+  min-width:38px !important;
+  border-radius:11px !important;
+  position:absolute !important;
+  top:14px !important;
+  right:14px !important;
+  display:grid !important;
+  place-items:center !important;
+  background: color-mix(in srgb,var(--card-accent,var(--coach-card-accent,#64748B)) 9%,white) !important;
+  border:1px solid color-mix(in srgb,var(--card-accent,var(--coach-card-accent,#64748B)) 17%,white) !important;
+  box-shadow:none !important;
+}
+.spraoi-admin-metric-card .spraoi-card-icon,
+.coach-summary-card .coach-card-icon img {
+  width:24px !important;
+  height:24px !important;
+}
+
+/* Team selector remains centred in the global rail. */
+.spraoi-global-rail > div:has(.spraoi-team-selector-label) {
+  width:100% !important;
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:center !important;
+  justify-content:center !important;
+}
+.spraoi-team-selector-label {
+  width:62px !important;
+  margin:0 0 4px !important;
+  text-align:center !important;
+}
+
+/* Sidebar icons have no grey square behind them. */
+.spraoi-secondary-nav-icon-wrap,
+.spraoi-module-switcher-button > span:first-of-type {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+.spraoi-module-nav-button[data-active="true"] .spraoi-secondary-nav-icon-wrap {
+  background: transparent !important;
+}
+.spraoi-secondary-nav-icon {
+  width:24px !important;
+  height:24px !important;
+}
+
+/* Club Roles & Permissions and Connect event/response icons align visually. */
+.spraoi-module-sidebar[data-module="club"] img[src*="/icons/club/roles"],
+.spraoi-module-sidebar[data-module="club"] img[src*="/icons/club/permissions"],
+.spraoi-module-sidebar[data-module="connect"] img[src*="/icons/connect/events"],
+.spraoi-module-sidebar[data-module="connect"] img[src*="/icons/connect/responses"] {
+  width:24px !important;
+  height:24px !important;
+}
+
+@media (max-width: 760px) {
+  .spraoi-page-header,
+  .spraoi-topbar,
+  .connect-topbar {
+    height:auto !important;
+    min-height:auto !important;
+  }
+}
+
+
+/* === CURRENT ADMIN BASELINE — header alignment + clean Club icons === */
+@media (min-width: 761px) {
+  .spraoi-module-sidebar > .spraoi-module-title-block,
+  .spraoi-topbar {
+    height: 118px !important;
+    min-height: 118px !important;
+    max-height: 118px !important;
+    box-sizing: border-box !important;
+  }
+}
+.spraoi-module-sidebar[data-module="club"] .spraoi-secondary-nav-icon-wrap {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+.spraoi-module-sidebar[data-module="club"] .spraoi-secondary-nav-icon {
+  width: 24px !important;
+  height: 24px !important;
+  object-fit: contain !important;
+  filter: none !important;
+  opacity: 1 !important;
+}
+
+
+/* === PHASE 24 — exact header alignment across every Admin module === */
+@media (min-width: 761px) {
+  .spraoi-module-sidebar > .spraoi-module-title-block,
+  .spraoi-page-header,
+  .spraoi-topbar,
+  .connect-topbar,
+  .cup-page-header {
+    height: 118px !important;
+    min-height: 118px !important;
+    max-height: 118px !important;
+    box-sizing: border-box !important;
+    flex-shrink: 0 !important;
+  }
+
+  .spraoi-module-sidebar > .spraoi-module-title-block {
+    padding: 18px 16px !important;
+  }
+
+  .spraoi-page-header,
+  .spraoi-topbar,
+  .connect-topbar,
+  .cup-page-header {
+    padding: 20px 28px !important;
+  }
+}
+
+/* Cup uses its own header component; give it the same icon geometry as the shared TopBar. */
+.cup-page-header-icon {
+  width: 56px !important;
+  height: 56px !important;
+  min-width: 56px !important;
+  flex: 0 0 56px !important;
+  border-radius: 16px !important;
+  background: #FFF8E4 !important;
+  border: 1px solid #F5E4AF !important;
+  box-shadow: none !important;
+}
+.cup-page-header-icon img {
+  width: 34px !important;
+  height: 34px !important;
+  object-fit: contain !important;
+}
+
+
+/* === PHASE 25 — Cup + Connect screenshot fixes === */
+@media (min-width: 761px) {
+  .spraoi-module-sidebar[data-module="cup"] > .spraoi-module-title-block {
+    height:118px !important;
+    min-height:118px !important;
+    max-height:118px !important;
+    flex:0 0 118px !important;
+    flex-shrink:0 !important;
+    box-sizing:border-box !important;
+  }
+}
+.spraoi-module-sidebar[data-module="cup"] .spraoi-cup-teams-nav-icon {
+  width:30px !important;
+  height:30px !important;
+}
+.spraoi-module-sidebar[data-module="connect"] .spraoi-secondary-nav-icon-wrap,
+.spraoi-module-sidebar[data-module="connect"] .spraoi-module-nav-button[data-active="true"] .spraoi-secondary-nav-icon-wrap,
+.spraoi-module-sidebar[data-module="connect"] .spraoi-secondary-nav-icon {
+  background:transparent !important;
+  border:0 !important;
+  box-shadow:none !important;
+}

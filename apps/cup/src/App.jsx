@@ -4,6 +4,8 @@ import html2canvas from "html2canvas";
 import { CUP_EVENTS_KEY, cupRead, cupReadSection, cupWriteSection, cupActiveEvent, cupSetActiveEvent, cupCreateEvent, cupUpdateEvent, cupDuplicateEvent, cupRefAccess, cupRefLink, cupGenerateSchedule, cupResolveFinals } from "./cupEventStore";
 import { openAdminModule, requestedScreenFromUrl, requestedTeamFromUrl, readModuleScreen, writeModuleScreen } from "../../../packages/ui/src/platformNavigation.js";
 
+import "../../../packages/ui/src/adminShell.css";
+import "../../../packages/ui/src/dashboardLayout.css";
 /* ============================================================
    SPRAOI COACH — Desktop-first redesign
    Navy sidebar, purple accents, responsive
@@ -11,14 +13,14 @@ import { openAdminModule, requestedScreenFromUrl, requestedTeamFromUrl, readModu
 
 // Design tokens (from Figma design system)
 const P = {
-  p900: "#4a0072", p800: "#6a1b9a", p700: "#7b1fa2", p600: "#8e24aa",
+  p900: "#4a0072", p800: "#6a1b9a", p700: "#7b1fa2", p600: "#7C3AED",
   p500: "#9c27b0", p400: "#ab47bc", p300: "#ce93d8", p200: "#e1bee7", p100: "#f3e5f5", p50: "#faf5fc",
   navy: "#0b2545", ink: "#13243b", muted: "#627187", line: "#dfe7ef",
   soft: "#f6f9fc", cream: "#fffaf2", white: "#ffffff",
   green: "#43a047", orange: "#fb8c00", coral: "#e64a19", sky: "#29b6f6", yellow: "#fbc02d",
 };
 const F = {
-  display: "'Nunito', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+  display: "'Manrope', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
   body: "'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
 };
 
@@ -29,7 +31,7 @@ function useSpraoiFonts() {
     const link = document.createElement("link");
     link.id = id;
     link.rel = "stylesheet";
-    link.href = "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Nunito:wght@600;700;800;900&display=swap";
+    link.href = "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@500;600;700;800&display=swap";
     document.head.appendChild(link);
   }, []);
 }
@@ -90,6 +92,30 @@ function teamDisplayName(team, fallback = "Team") {
 
 function SpraoiNavIcon({ name = "", size = 18 }) {
   const key = String(name || "").toLowerCase();
+  const secondary = (() => {
+    if (key.startsWith("academy")) {
+      if (key.includes("dashboard")) return "/icons/academy/home.png";
+      if (key.includes("content")) return "/icons/academy/mission.png";
+      if (key.includes("player")) return "/icons/academy/child-profile.png";
+      if (key.includes("parent")) return "/icons/academy/parent-lock.png";
+      if (key.includes("leader")) return "/icons/academy/leaderboard.png";
+      if (key.includes("engagement")) return "/icons/academy/progress.png";
+      if (key.includes("setting")) return "/icons/global/settings.png";
+    }
+    if (key.startsWith("cup")) {
+      if (key.includes("dashboard")) return "/icons/cup/dashboard.png";
+      if (key.includes("team")) return "/icons/cup/teams.svg";
+      if (key.includes("event") || key.includes("matchday")) return "/icons/cup/matchday.svg";
+      if (key.includes("standing")) return "/icons/cup/standings.svg";
+      if (key.includes("food")) return "/icons/cup/food.svg";
+      if (key.includes("announcement")) return "/icons/cup/announcements.png";
+      if (key.includes("participant")) return "/icons/cup/participant-view.svg";
+      if (key.includes("setting")) return "/icons/cup/settings.png";
+    }
+    return null;
+  })();
+  if (secondary) return <img src={secondary} alt="" aria-hidden="true" style={{width:size,height:size,objectFit:"contain"}} />;
+
   const common = { width:size, height:size, viewBox:"0 0 24 24", fill:"none", stroke:"currentColor", strokeWidth:1.9, strokeLinecap:"round", strokeLinejoin:"round", "aria-hidden":true };
   let shape;
   if (key.includes("dashboard")) shape=<><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V20h13v-9.5"/><path d="M9.5 20v-6h5v6"/></>;
@@ -105,6 +131,7 @@ function SpraoiNavIcon({ name = "", size = 18 }) {
   else if (key.includes("permission")||key.includes("compliance")) shape=<><path d="M12 3 5 6v5c0 4.7 2.8 8 7 10 4.2-2 7-5.3 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></>;
   else if (key.includes("food")) shape=<><path d="M7 3v8M4 3v5a3 3 0 0 0 6 0V3M7 11v10M16 3v18M16 3c3 2 4 6 4 9h-4"/></>;
   else if (key.includes("compose")||key.includes("announcement")||key.includes("inbox")) shape=<><path d="M4 5h16v12H8l-4 4V5Z"/><path d="m7 9 5 3 5-3"/></>;
+  else if (key.includes("more")) shape=<><circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none"/></>;
   else shape=<><circle cx="12" cy="12" r="8"/><path d="M8 12h8"/></>;
   return <svg {...common}>{shape}</svg>;
 }
@@ -124,7 +151,7 @@ function getDrillIcons(activity) {
   if (cat.includes("speed") || cat.includes("agility") || cat.includes("abc") || cat.includes("running") || title.includes("speed") || title.includes("agility") || title.includes("sprint"))
     catIcon = { icon: "/speed-mechanics-icon.png", bg: "linear-gradient(135deg, #fbc02d 0%, #f57f17 100%)", label: "Speed & Agility", color: "#f57f17" };
   else if (cat.includes("warm") || cat.includes("cool") || cat.includes("stretch") || cat.includes("recovery") || cat.includes("rest") || title.includes("warm up") || title.includes("cooldown"))
-    catIcon = { icon: "/rest-and-recovery-icon.png", bg: "linear-gradient(135deg, #ab47bc 0%, #6a1b9a 100%)", label: "Warm Up & Recovery", color: "#8e24aa" };
+    catIcon = { icon: "/rest-and-recovery-icon.png", bg: "linear-gradient(135deg, #ab47bc 0%, #6a1b9a 100%)", label: "Warm Up & Recovery", color: "#7C3AED" };
 
   return { sportIcon, catIcon };
 }
@@ -145,9 +172,90 @@ const MODULE_URLS = {
   cup: null,
 };
 
+
+function secondaryNavAsset(moduleKey, id) {
+  const maps = {
+    coach: {
+      "coach-dashboard": "/icons/coach/dashboard.svg",
+      "coach-planner": "/icons/global/calendar.png",
+      "coach-sessions": "/icons/connect/scheduled.png",
+      "coach-drills": "/icons/academy/mission.png",
+      "coach-players": "/icons/global/profile.png",
+    },
+    academy: {
+      "academy-dashboard": "/icons/academy/home.png",
+      "academy-content": "/icons/academy/week-calendar.png",
+      "academy-players": "/icons/academy/child-profile.png",
+      "academy-parents": "/icons/academy/parent-lock.png",
+      "academy-preview": "/icons/academy/child-profile.png",
+      "academy-leaderboard": "/icons/academy/leaderboard.png",
+      "academy-engagement": "/icons/academy/progress.png",
+      "academy-approvals": "/icons/academy/completed.png",
+      "academy-settings": "/icons/global/settings.png",
+    },
+    connect: {
+      "dashboard": "/icons/connect/home.png",
+      "events": "/icons/connect/events.png",
+      "messages": "/icons/connect/messages.png",
+      "groups": "/icons/connect/groups.png",
+      "responses": "/icons/connect/availability.png",
+      "settings": "/icons/connect/settings.png",
+      "connect-dashboard": "/icons/connect/home.png",
+      "connect-compose": "/icons/connect/send.png",
+      "connect-audiences": "/icons/connect/groups.png",
+      "connect-inbox": "/icons/connect/messages.png",
+      "connect-responses": "/icons/connect/availability.png",
+      "connect-templates": "/icons/connect/announcement.png",
+      "connect-settings": "/icons/connect/settings.png",
+    },
+    cup: {
+      "cup-dashboard": "/icons/cup/dashboard.svg",
+      "cup-events": "/icons/cup/matchday.svg",
+      "cup-checklist": "/icons/cup/results.svg",
+      "cup-teams": "/icons/cup/teams.svg",
+      "cup-competition": "/icons/cup/competition.svg",
+      "cup-matchday": "/icons/cup/matchday.svg",
+      "cup-content": "/icons/cup/participant-view.svg",
+      "cup-food": "/icons/cup/lunch-logistics.svg",
+      "cup-schedule": "/icons/cup/fixtures.svg",
+      "cup-results": "/icons/cup/results.svg",
+      "cup-standings": "/icons/cup/standings.svg",
+      "cup-announcements": "/icons/cup/share.svg",
+      "cup-participant-view": "/icons/cup/participant-view.svg",
+      "cup-settings": "/icons/global/settings.png",
+    },
+    club: {
+      "club-dashboard": "/icons/cup/dashboard.png",
+      "club-setup": "/icons/global/settings.png",
+      "club-teams": "/icons/cup/teams.svg",
+      "club-members": "/icons/connect/people-parents.png",
+      "club-coaches": "/icons/connect/people-parents.png",
+      "club-permissions": "/icons/global/lock.png",
+      "club-scheduling": "/icons/connect/pitch-location.png",
+      "club-facilities": "/icons/connect/pitch-location.png",
+      "club-branding": "/icons/global/edit.png",
+      "club-integrations": "/icons/global/external-link.png",
+      "club-reports": "/icons/academy/progress.png",
+      "club-settings": "/icons/global/settings.png",
+    },
+  };
+  return maps[moduleKey]?.[id] || "/icons/global/chevron.png";
+}
+
+function SecondarySidebarIcon({ moduleKey, id }) {
+  return (
+    <img
+      className={`spraoi-secondary-nav-icon${moduleKey === "cup" && id === "cup-teams" ? " spraoi-cup-teams-nav-icon" : ""}`}
+      src={secondaryNavAsset(moduleKey, id)}
+      alt=""
+      aria-hidden="true"
+    />
+  );
+}
+
 const MODULES = {
   coach: {
-    label: "Coach", color: "#8e24aa", icon: "/spraoi-coach-icon.png", tagline: "Plan and deliver better coaching.", nav: [
+    label: "Coach", color: "#7C3AED", icon: "/spraoi-coach-icon.png", tagline: "Plan and deliver better coaching.", nav: [
       { id: "coach-dashboard", icon: "⌂", label: "Dashboard" },
       { id: "coach-planner", icon: "◫", label: "Planner" },
       { id: "coach-sessions", icon: "▶", label: "Sessions" },
@@ -156,7 +264,7 @@ const MODULES = {
     ]
   },
   academy: {
-    label: "Academy", color: "#0277bd", icon: "/spraoi-academy-icon.png", tagline: "Turn weekly coaching into child-friendly practice.", nav: [
+    label: "Academy", color: "#2563EB", icon: "/spraoi-academy-icon.png", tagline: "Turn weekly coaching into child-friendly practice.", nav: [
       { id: "academy-dashboard", icon: "⌂", label: "Dashboard" },
       { id: "academy-content", icon: "✦", label: "Weekly Content" },
       { id: "academy-players", icon: "●", label: "Players" },
@@ -168,11 +276,11 @@ const MODULES = {
     ],
   },
   cup: {
-    label: "Cup", color: "#e65100", icon: "/spraoi-cup-icon.png", tagline: "Set up and run blitzes and tournaments.", nav: [
-      { id: "cup-events", icon: "◆", label: "Events" },
+    label: "Cup", color: "#FEBA00", icon: "/spraoi-cup-icon.png", tagline: "Set up and run blitzes and tournaments.", nav: [
+      { id: "cup-events", icon: "◆", label: "Matchday" },
       { id: "cup-dashboard", icon: "⌂", label: "Dashboard" },
       { id: "cup-checklist", icon: "✓", label: "Checklist" },
-      { id: "cup-teams", icon: "●", label: "Teams" },
+      { id: "cup-teams", icon: "●", label: "Teams & Competition" },
       { id: "cup-competition", icon: "◇", label: "Competition" },
       { id: "cup-matchday", icon: "★", label: "Matchday" },
       { id: "cup-content", icon: "i", label: "Event Content" },
@@ -192,7 +300,7 @@ const MODULES = {
     ]
   },
   connect: {
-    label: "Connect", color: "#f4b400", icon: "/spraoi-connect-icon.png", tagline: "Send messages, links and collect responses.", nav: [
+    label: "Connect", color: "#F97316", icon: "/spraoi-connect-icon.png", tagline: "Send messages, links and collect responses.", nav: [
       { id: "connect-dashboard", icon: "⌂", label: "Dashboard" },
       { id: "connect-compose", icon: "✎", label: "Compose" },
       { id: "connect-audiences", icon: "●", label: "Audiences" },
@@ -203,9 +311,9 @@ const MODULES = {
     ]
   },
   club: {
-    label: "Club", color: "#d32f2f", icon: "/spraoi-club-icon.png", tagline: "The operating centre for your club.", nav: [
+    label: "Club", color: "#DC2626", icon: "/spraoi-club-icon.png", tagline: "The operating centre for your club.", nav: [
       { id: "club-dashboard", icon: "⌂", label: "Dashboard" },
-      { id: "club-teams", icon: "◆", label: "Teams" },
+      { id: "club-teams", icon: "◆", label: "Teams & Competition" },
       { id: "club-members", icon: "●", label: "Members" },
       { id: "club-permissions", icon: "◇", label: "Roles & Permissions" },
       { id: "club-facilities", icon: "⌖", label: "Facilities" },
@@ -273,22 +381,67 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
   }
 
   return (
-    <div style={{ width: 306, minHeight: "100vh", display: "flex", flexShrink: 0, position: "sticky", top: 0, alignSelf: "flex-start", height: "100vh", zIndex: 30 }}>
+    <div className="spraoi-desktop-shell-nav" style={{ width: 306, minHeight: "100vh", display: "flex", flexShrink: 0, position: "sticky", top: 0, alignSelf: "flex-start", height: "100vh", zIndex: 30 }}>
       {/* Fixed global module rail: all modules are always reachable without scrolling */}
-      <aside style={{ width: 78, background: "#10243e", display: "flex", flexDirection: "column", alignItems: "center", padding: "12px 8px", gap: 8, borderRight: "1px solid rgba(255,255,255,.08)" }}>
+      <aside className="spraoi-global-rail" style={{ width: 78, background: "#10243e", display: "flex", flexDirection: "column", alignItems: "center", padding: "12px 8px", gap: 8, borderRight: "1px solid rgba(255,255,255,.08)" }}>
         <div title={clubName} style={{ width: 60, height: 60, borderRadius: 17, background: "#fff", display: "grid", placeItems: "center", overflow: "hidden", boxShadow: "0 5px 16px rgba(0,0,0,.20)", border: "1px solid rgba(255,255,255,.55)", marginBottom: 5 }}>
           <img src={club?.logo_url || "/spraoi-club-icon.png"} alt={`${clubName} crest`} style={{ width: 52, height: 52, objectFit: "contain" }} />
         </div>
+        <div style={{
+          width: "100%",
+          display: "flex",
+          justifyContent: "center",
+          marginBottom: 5
+        }}>
+          <div className="spraoi-team-selector-label">Team</div>
+          <select
+            aria-label="Active team"
+            title={selectedTeam ? teamDisplayName(selectedTeam) : "Select team"}
+            value={selectedTeam?.id || ""}
+            onChange={(e) => {
+              const ag = visibleTeams.find(
+                (team) => String(team.id) === String(e.target.value)
+              );
+              if (ag) onSelectTeam(ag);
+            }}
+            style={{
+              width: 62,
+              height: 34,
+              borderRadius: 10,
+              border: "1px solid rgba(255,255,255,.28)",
+              background: "#fff",
+              color: "#10243e",
+              fontFamily: F.body,
+              fontSize: 12,
+              fontWeight: 800,
+              padding: "0 4px",
+              cursor: "pointer"
+            }}
+          >
+            {visibleTeams.map((ag) => (
+              <option
+                key={ag.id}
+                value={ag.id}
+                style={{ color: "#10243e", background: "#fff" }}
+              >
+                {String(teamDisplayName(ag) || "")
+                  .replace(/\s*Boys$/i, "B")
+                  .replace(/\s*Girls$/i, "G")
+                  .replace(/\s+/g, "")}
+              </option>
+            ))}
+          </select>
+        </div>
         <div style={{ flex: 1, width: "100%", display: "flex", flexDirection: "column", justifyContent: "center", gap: 7 }}>
-          {Object.entries(MODULES).filter(([key]) => !["plus","connect"].includes(key)).map(([key, module]) => {
+          {["coach","academy","connect","cup","club"].filter((key) => MODULES[key]).map((key) => { const module = MODULES[key];
             const isActive = activeModule === key;
             const locked = !enabledModules.includes(key);
             const darkText = key === "connect";
             return (
-              <button key={key} title={`${module.label}${locked ? " — contact your administrator" : ""}`} onClick={() => openModule(key, module)} style={{ width: "100%", minHeight: 62, border: "none", borderRadius: 14, cursor: "pointer", background: isActive ? module.color : "transparent", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, position: "relative", boxShadow: isActive ? "0 8px 22px rgba(0,0,0,.24)" : "none" }}>
-                <span style={{ width: 38, height: 38, borderRadius: 12, background: "#fff", border: "1px solid rgba(15,23,42,.08)", display: "grid", placeItems: "center", boxShadow: isActive ? "0 6px 16px rgba(0,0,0,.18)" : "0 3px 10px rgba(0,0,0,.10)" }}><img src={module.icon} alt="" style={{ width: 28, height: 28, objectFit: "contain", filter: locked ? "grayscale(1) opacity(.55)" : "none" }} /></span>
+              <button className="spraoi-module-switcher-button" data-active={isActive} key={key} title={`${module.label}${locked ? " — contact your administrator" : ""}`} onClick={() => openModule(key, module)} style={{ width: "100%", minHeight: 62, border: "none", borderRadius: 14, cursor: "pointer", background: isActive ? module.color : "transparent", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, position: "relative", boxShadow: isActive ? "0 8px 22px rgba(0,0,0,.24)" : "none" }}>
+                <span style={{ width: 46, height: 46, borderRadius: 14, background: "#fff", border: "1px solid rgba(15,23,42,.08)", display: "grid", placeItems: "center", boxShadow: isActive ? "0 6px 16px rgba(0,0,0,.18)" : "0 3px 10px rgba(0,0,0,.10)" }}><img src={module.icon} alt="" style={{ width: 40, height: 40, objectFit: "contain", filter: locked ? "grayscale(1) opacity(.55)" : "none" }} /></span>
                 <span style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, letterSpacing: "-.01em", color: isActive ? (darkText ? "#332800" : "#fff") : "rgba(255,255,255,.7)" }}>{module.label}</span>
-                {locked && <span style={{ position: "absolute", top: 5, right: 5, fontSize: 9, color: "rgba(255,255,255,.8)" }}>🔒</span>}
+                {locked && <span style={{ position: "absolute", top: 5, right: 5, fontSize: 9, color: "rgba(16,36,62,.82)" }}>🔒</span>}
               </button>
             );
           })}
@@ -298,15 +451,15 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
       </aside>
 
       {/* Fixed navigation for the active module */}
-      <aside style={{ width: 228, background: `linear-gradient(180deg, ${mod.color} 0%, ${mod.color}ee 58%, #10243e 100%)`, display: "flex", flexDirection: "column", minHeight: "100vh", transition: "background .22s ease", color: activeModule === "connect" ? "#332800" : "#fff" }}>
-        <div style={{ padding: "18px 16px 14px", borderBottom: activeModule === "connect" ? "1px solid rgba(51,40,0,.18)" : "1px solid rgba(255,255,255,.16)" }}>
+      <aside className="spraoi-module-sidebar" data-module={activeModule} style={{ width: 228, background: `linear-gradient(180deg, ${mod.color} 0%, ${mod.color}ee 58%, #10243e 100%)`, display: "flex", flexDirection: "column", minHeight: "100vh", transition: "background .22s ease", color: activeModule === "cup" ? "#10243e" : "#fff" }}>
+        <div className="spraoi-module-title-block" style={{ height: 118, minHeight: 118, maxHeight: 118, flex: "0 0 118px", flexShrink: 0, boxSizing: "border-box", padding: "18px 16px", borderBottom: activeModule === "cup" ? `1px solid ${mod.color}33` : "1px solid rgba(255,255,255,.16)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
             <div style={{ width: 52, height: 52, borderRadius: 16, background: "#fff", display: "grid", placeItems: "center", border: "1px solid rgba(15,23,42,.08)", boxShadow: "0 7px 18px rgba(0,0,0,.14)" }}>
-              <img src={mod.icon} alt="" style={{ width: 36, height: 36, objectFit: "contain" }} />
+              <img src="/spraoi-logo.png" alt="Spraoi Sports" style={{ width: 42, height: 42, objectFit: "contain" }} />
             </div>
             <div>
-              <div style={{ fontFamily: F.display, fontSize: 19, fontWeight: 900, color: activeModule === "connect" ? "#332800" : "#fff", lineHeight: 1 }}>{mod.label}</div>
-              <div style={{ fontFamily: F.body, fontSize: 10, color: activeModule === "connect" ? "rgba(51,40,0,.72)" : "rgba(255,255,255,.74)", marginTop: 5 }}>{clubName}</div>
+              <div style={{ fontFamily: F.display, fontSize: 19, fontWeight: 800, color: activeModule === "cup" ? "#10243e" : "#fff", lineHeight: 1 }}>{mod.label}</div>
+              <div style={{ fontFamily: F.body, fontSize: 10, color: activeModule === "cup" ? "rgba(16,36,62,.72)" : "rgba(255,255,255,.74)", marginTop: 5 }}>{clubName}</div>
             </div>
           </div>
         </div>
@@ -318,63 +471,8 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
   <div
     style={{
       fontFamily: F.body,
-      fontSize: 9,
-      fontWeight: 800,
-      textTransform: "uppercase",
-      letterSpacing: ".08em",
-      color: "rgba(255,255,255,.68)",
-      margin: "0 2px 5px"
-    }}
-  >
-    Current team
-  </div>
-
-  {visibleTeams.length > 1 ? (
-    <select
-      value={selectedTeam?.id || ""}
-      onChange={(e) => {
-        const ag = ageGroups?.find((a) => a.id === e.target.value);
-        if (ag) onSelectTeam(ag);
-      }}
-      style={{
-        width: "100%",
-        padding: "9px 10px",
-        borderRadius: 9,
-        border: "1px solid rgba(255,255,255,.2)",
-        background: "rgba(255,255,255,.14)",
-        fontFamily: F.body,
-        fontSize: 11,
-        fontWeight: 700,
-        color: "#fff",
-        cursor: "pointer"
-      }}
-    >
-      {visibleTeams.map((ag) => (
-        <option key={ag.id} value={ag.id} style={{ color: P.ink }}>
-          {teamDisplayName(ag)}
-        </option>
-      ))}
-    </select>
-  ) : selectedTeam ? (
-    <div
-      style={{
-        padding: "9px 10px",
-        borderRadius: 9,
-        background: "rgba(255,255,255,.14)",
-        fontFamily: F.body,
-        fontSize: 11,
-        fontWeight: 700
-      }}
-    >
-      {teamDisplayName(selectedTeam)}
-    </div>
-  ) : null}
-
-  <div
-    style={{
-      fontFamily: F.body,
       fontSize: 8,
-      color: "rgba(255,255,255,.68)",
+      color: "rgba(16,36,62,.76)",
       marginTop: 5,
       paddingLeft: 2
     }}
@@ -383,32 +481,9 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
   </div>
 
               </div>
-              <button
-                type="button"
-                onClick={() => onNav("cup-events")}
-                style={{
-                  width: "100%",
-                  border: "none",
-                  borderRadius: 10,
-                  padding: "10px 11px",
-                  marginBottom: 10,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  cursor: "pointer",
-                  background: activeScreen === "cup-events" ? "#fff" : "rgba(255,255,255,.12)",
-                  textAlign: "left"
-                }}
-              >
-                <span style={{ color: activeScreen === "cup-events" ? mod.color : "#fff", display: "grid", placeItems: "center" }}>
-                  <SpraoiNavIcon name="cup-events" size={16} />
-                </span>
-                <span style={{ fontFamily: F.body, fontSize: 12, fontWeight: activeScreen === "cup-events" ? 700 : 650, color: activeScreen === "cup-events" ? mod.color : "#fff" }}>
-                  Events
-                </span>
-              </button>
 
-              <div style={{ fontFamily: F.body, fontSize: 8, fontWeight: 900, textTransform: "uppercase", letterSpacing: ".08em", color: "rgba(255,255,255,.68)", margin: "0 2px 5px" }}>Current event</div>
+
+              <div style={{ fontFamily: F.body, fontSize: 8, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".08em", color: "rgba(16,36,62,.76)", margin: "0 2px 5px" }}>Current event</div>
               {cupSidebarEvents.length > 0 ? (
                 <>
                   <select
@@ -424,35 +499,49 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
                       );
                       onNav("cup-dashboard");
                     }}
-                    style={{ width: "100%", padding: "9px 10px", borderRadius: 9, border: "1px solid rgba(255,255,255,.22)", background: "rgba(255,255,255,.15)", fontFamily: F.body, fontSize: 11, fontWeight: 700, color: "#fff", cursor: "pointer" }}
+                    style={{ width: "100%", padding: "9px 10px", borderRadius: 9, border: "1px solid rgba(16,36,62,.22)", background: "rgba(255,255,255,.62)", fontFamily: F.body, fontSize: 11, fontWeight: 700, color: "#10243e", cursor: "pointer" }}
                   >
                     {cupSidebarEvents.map((ev) => <option key={ev.id} value={ev.id} style={{ color: P.ink }}>{ev.name}</option>)}
                   </select>
-                  {cupSidebarEvent && <div style={{ fontFamily: F.body, fontSize: 8, color: "rgba(255,255,255,.72)", lineHeight: 1.45, padding: "5px 3px 0" }}>{cupSidebarEvent.date || "Date TBC"}{cupSidebarEvent.venue ? ` · ${cupSidebarEvent.venue}` : ""}</div>}
+                  {cupSidebarEvent && <div style={{ fontFamily: F.body, fontSize: 8, color: "rgba(16,36,62,.78)", lineHeight: 1.45, padding: "5px 3px 0" }}>{cupSidebarEvent.date || "Date TBC"}{cupSidebarEvent.venue ? ` · ${cupSidebarEvent.venue}` : ""}</div>}
                 </>
               ) : (
-                <div style={{ padding: "9px 10px", borderRadius: 9, background: "rgba(255,255,255,.12)", fontFamily: F.body, fontSize: 9, fontWeight: 800, color: "rgba(255,255,255,.85)" }}>
+                <div style={{ padding: "9px 10px", borderRadius: 9, background: "rgba(255,255,255,.12)", fontFamily: F.body, fontSize: 9, fontWeight: 800, color: "rgba(16,36,62,.85)" }}>
                   No event assigned to this team
                 </div>
               )}
             </div>
           ) : visibleTeams.length > 1 ? (
-            <select value={selectedTeam?.id || ""} onChange={(e) => { const ag = ageGroups?.find((a) => a.id === e.target.value); if (ag) onSelectTeam(ag); }} style={{ width: "100%", padding: "9px 10px", borderRadius: 9, border: activeModule === "connect" ? "1px solid rgba(51,40,0,.2)" : "1px solid rgba(255,255,255,.2)", background: activeModule === "connect" ? "rgba(255,255,255,.5)" : "rgba(255,255,255,.14)", fontFamily: F.body, fontSize: 11, fontWeight: 700, color: activeModule === "connect" ? "#332800" : "#fff", cursor: "pointer" }}>
+            <select value={selectedTeam?.id || ""} onChange={(e) => { const ag = ageGroups?.find((a) => a.id === e.target.value); if (ag) onSelectTeam(ag); }} style={{ width: "100%", padding: "9px 10px", borderRadius: 9, border: activeModule === "cup" ? "1px solid rgba(16,36,62,.2)" : "1px solid rgba(255,255,255,.2)", background: activeModule === "cup" ? "rgba(255,255,255,.62)" : "rgba(255,255,255,.14)", fontFamily: F.body, fontSize: 11, fontWeight: 700, color: activeModule === "cup" ? "#10243e" : "#fff", cursor: "pointer" }}>
               {visibleTeams.map((ag) => <option key={ag.id} value={ag.id} style={{ color: P.ink }}>{teamDisplayName(ag)}</option>)}
             </select>
           ) : selectedTeam ? (
-            <div style={{ padding: "9px 10px", borderRadius: 9, background: activeModule === "connect" ? "rgba(255,255,255,.5)" : "rgba(255,255,255,.14)", fontFamily: F.body, fontSize: 11, fontWeight: 700 }}>{teamDisplayName(selectedTeam)}</div>
+            <div style={{ padding: "9px 10px", borderRadius: 9, background: activeModule === "cup" ? "rgba(255,255,255,.62)" : "rgba(255,255,255,.14)", fontFamily: F.body, fontSize: 11, fontWeight: 700 }}>{teamDisplayName(selectedTeam)}</div>
           ) : null}
         </div>
 
         <nav style={{ flex: 1, padding: "9px 10px", display: "flex", flexDirection: "column", gap: 3, overflowY: "auto" }}>
-          {mod.nav.filter((item) => !(activeModule === "cup" && item.id === "cup-events")).map((item) => {
+          {(
+          activeModule === "cup"
+            ? [
+                "cup-dashboard",
+                "cup-teams",
+                "cup-events",
+                "cup-standings",
+                "cup-food",
+                "cup-announcements",
+                "cup-settings"
+              ]
+                .map(id => mod.nav.find(item => item.id === id))
+                .filter(Boolean)
+            : mod.nav
+        ).map((item) => {
             const isActive = activeScreen === item.id || (item.id === "coach-sessions" && activeScreen === "coach-builder");
-            const fg = activeModule === "connect" ? "#332800" : "#fff";
+            const fg = activeModule === "cup" ? "#10243e" : "#fff";
             return (
-              <button key={item.id} onClick={() => onNav(item.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 11px", borderRadius: 10, border: "none", cursor: "pointer", width: "100%", background: isActive ? "#fff" : "transparent", textAlign: "left" }}>
-                <span style={{ fontSize: 15, color: isActive ? (activeModule === "connect" ? "#5b4600" : mod.color) : "#fff", opacity: 1 }}><SpraoiNavIcon name={item.id} size={16} /></span>
-                <span style={{ fontFamily: F.body, fontSize: 12, fontWeight: isActive ? 700 : 550, letterSpacing: "-.01em", color: isActive ? (activeModule === "connect" ? "#5b4600" : mod.color) : "#fff", opacity: 1 }}>{item.label}</span>
+              <button className="spraoi-module-nav-button" data-active={isActive} key={item.id} onClick={() => onNav(item.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 11px", borderRadius: 10, border: "none", cursor: "pointer", width: "100%", background: isActive ? "#fff" : "transparent", textAlign: "left" }}>
+                <span className="spraoi-secondary-nav-icon-wrap"><SecondarySidebarIcon moduleKey={activeModule} id={item.id} /></span>
+                <span style={{ fontFamily: F.body, fontSize: 12, fontWeight: isActive ? 700 : 550, letterSpacing: "-.01em", color: isActive ? (activeModule === "cup" ? "#10243e" : mod.color) : (activeModule === "cup" ? "#10243e" : "#fff"), opacity: 1 }}>{item.label}</span>
               </button>
             );
           })}
@@ -509,13 +598,13 @@ function TopBar({ title, sub, children }) {
       ? "linear-gradient(135deg, #fff8d6 0%, #fbcf45 100%)"
       : `linear-gradient(135deg, ${module.color}16 0%, ${module.color}32 100%)`;
   return (
-    <div className="spraoi-page-header" style={{ padding: "20px 28px", background, borderBottom: `1px solid ${module.color}28`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, minHeight: 92 }}>
+    <div className="spraoi-page-header" style={{ height: 118, minHeight: 118, boxSizing: "border-box", padding: "20px 28px", background, borderBottom: `1px solid ${module.color}28`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
       <div className="spraoi-page-header-main" style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
         <div className="spraoi-page-header-icon" style={{ width: 64, height: 64, borderRadius: 20, display: "grid", placeItems: "center", background: "#fff", border: "1px solid rgba(15,23,42,.08)", boxShadow: "0 10px 26px rgba(16,36,62,.12)", flexShrink: 0 }}>
           <img src={module.icon} alt="" style={{ width: 48, height: 48, objectFit: "contain" }} />
         </div>
         <div style={{ minWidth: 0 }}>
-          <div className="spraoi-page-header-title" style={{ fontFamily: F.display, fontSize: 24, fontWeight: 900, color: isConnect ? "#332800" : P.ink, lineHeight: 1.1 }}>{title}</div>
+          <div className="spraoi-page-header-title" style={{ fontFamily: F.display, fontSize: 24, fontWeight: 800, color: isConnect ? "#332800" : P.ink, lineHeight: 1.1 }}>{title}</div>
           {sub && <div className="spraoi-page-header-sub" style={{ fontFamily: F.body, fontSize: 12, color: isConnect ? "rgba(51,40,0,.72)" : P.muted, marginTop: 6 }}>{sub}</div>}
         </div>
       </div>
@@ -531,7 +620,7 @@ function Btn({ label, variant = "primary", icon, onClick, style }) {
     ghost: { background: "transparent", color: P.ink, border: `1.5px solid ${P.line}` },
   };
   return (
-    <button onClick={onClick} style={{ height: 36, padding: "0 16px", borderRadius: 10, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6, fontFamily: F.body, fontSize: 12, fontWeight: 700, ...styles[variant], ...style }}>
+    <button className="spraoi-action-button" data-variant={variant} onClick={onClick} style={{ height: 36, padding: "0 16px", borderRadius: 10, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6, fontFamily: F.body, fontSize: 12, fontWeight: 700, ...styles[variant], ...style }}>
       {icon && <span>{icon}</span>}
       {label}
     </button>
@@ -543,12 +632,12 @@ function Btn({ label, variant = "primary", icon, onClick, style }) {
    ============================================================ */
 function StatCard({ label, value, sub, color = P.p600, icon }) {
   return (
-    <div style={{ background: P.white, borderRadius: 14, padding: "16px 18px", border: `1px solid ${P.line}`, borderTop: `3px solid ${color}`, boxShadow: Sh.card }}>
+    <div className="spraoi-stat-card" style={{ background: P.white, borderRadius: 14, padding: "16px 18px", border: `1px solid ${P.line}`, borderTop: `3px solid ${color}`, boxShadow: Sh.card }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
         <span style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</span>
-        {icon && <span style={{ fontSize: 16 }}>{icon}</span>}
+        {icon && (typeof icon === "string" && icon.startsWith("/") ? <span className="spraoi-card-icon-chip" style={{ "--card-accent": color }}><img className="spraoi-card-icon" src={icon} alt="" aria-hidden="true" /></span> : <span className="spraoi-card-icon-fallback" style={{ "--card-accent": color }}>{icon}</span>)}
       </div>
-      <div style={{ fontFamily: F.display, fontSize: 28, fontWeight: 900, color: P.ink, letterSpacing: "-0.04em", lineHeight: 1 }}>{value}</div>
+      <div style={{ fontFamily: F.display, fontSize: 28, fontWeight: 800, color: P.ink, letterSpacing: "-0.04em", lineHeight: 1 }}>{value}</div>
       {sub && <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 6 }}>{sub}</div>}
     </div>
   );
@@ -573,7 +662,7 @@ function CoachReadOnlyNotice({ title = "Read-only access", message = "Coach / Me
     }}>
       <span style={{ fontSize: 16 }}>🔒</span>
       <div>
-        <div style={{ fontSize: 12, fontWeight: 900, color: "#7a4b00" }}>{title}</div>
+        <div style={{ fontSize: 12, fontWeight: 800, color: "#7a4b00" }}>{title}</div>
         <div style={{ fontSize: 10, color: "#8a641f", marginTop: 3, lineHeight: 1.45 }}>{message}</div>
       </div>
     </div>
@@ -601,23 +690,23 @@ function DashboardScreen({ club, ageGroups, planSessions, weeklyPlan, upcomingSe
       `}
 </style>
       <TopBar title="Dashboard" sub={today}>
-        {canEdit && <Btn label="+ New Session" variant="primary" onClick={() => onNav("coach-builder")} />}
+        {canEdit && <Btn label="New Session" variant="primary" onClick={() => onNav("coach-builder")} />}
       </TopBar>
       {!canEdit && <CoachReadOnlyNotice />}
       <div style={{ padding: "20px 24px" }}>
         {/* Stat cards row */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
           <StatCard label="Favourite Drills" value="★" sub="Your saved drills" color={P.p600} icon="❤️" />
-          <div onClick={() => onNav("academy-dashboard")} style={{ background: P.white, borderRadius: 14, padding: "16px 18px", border: `1px solid ${P.line}`, borderTop: "3px solid #0277bd", boxShadow: Sh.card, cursor: "pointer" }}>
+          <div onClick={() => onNav("academy-dashboard")} style={{ background: P.white, borderRadius: 14, padding: "16px 18px", border: `1px solid ${P.line}`, borderTop: "3px solid #2563EB", boxShadow: Sh.card, cursor: "pointer" }}>
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
               <span style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", letterSpacing: "0.08em" }}>Academy Sync</span>
               <span style={{ fontSize: 16 }}>🎓</span>
             </div>
-            <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 900, color: P.ink, lineHeight: 1 }}>Open Academy</div>
+            <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 800, color: P.ink, lineHeight: 1 }}>Open Academy</div>
             <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 6 }}>Review skills generated from this week's plan</div>
           </div>
           <StatCard label="Drills" value={String(allActivities?.length || 0)} sub={`${allActivities?.filter(a => a.sport === 'football').length || 0} football`} color={P.sky} icon="📖" />
-          <StatCard label="Next Session" value={teamSessions?.[0]?.session_date ? new Date(upcomingSessions[0].session_date).getDate() : "—"} sub={teamSessions?.[0]?.session_date ? new Date(upcomingSessions[0].session_date).toLocaleDateString("en-IE", { weekday: "short", month: "short" }) : "None scheduled"} color={P.green} icon="📅" />
+          <StatCard label="Next Session" value={teamSessions?.[0]?.session_date ? new Date(upcomingSessions[0].session_date).getDate() : "—"} sub={teamSessions?.[0]?.session_date ? new Date(upcomingSessions[0].session_date).toLocaleDateString("en-IE", { weekday: "short", month: "short" }) : "None scheduled"} color={P.green} icon="/icons/cup/fixtures.svg" />
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
@@ -634,7 +723,7 @@ function DashboardScreen({ club, ageGroups, planSessions, weeklyPlan, upcomingSe
                 <div key={sess.id || i} onClick={() => onOpenSession(sess)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderTop: i > 0 ? `1px solid ${P.line}` : "none", cursor: "pointer" }}>
                   <div style={{ width: 40, textAlign: "center", background: P.soft, borderRadius: 8, padding: "6px 0" }}>
                     <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 700, color: P.muted, textTransform: "uppercase" }}>{sess.session_date ? new Date(sess.session_date).toLocaleDateString("en-IE", { weekday: "short" }) : ""}</div>
-                    <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink }}>{sess.session_date ? new Date(sess.session_date).getDate() : "?"}</div>
+                    <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink }}>{sess.session_date ? new Date(sess.session_date).getDate() : "?"}</div>
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontFamily: F.body, fontSize: 13, fontWeight: 700, color: P.ink }}>{sess.plan?.hurling_skill?.name || "Training Session"}</div>
@@ -808,7 +897,7 @@ function PlannerScreen({ onNav, club, ageGroups, upcomingSessions, onOpenSession
   return (
     <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
       <TopBar title="Planner" sub={`${fullMonths[selectedMonth]} ${selectedYear}`}>
-        {canEdit && <Btn label="+ New Session" variant="primary" onClick={() => { const d = new Date(); clickDate(d.getDate()); }} />}
+        {canEdit && <Btn label="New Session" variant="primary" onClick={() => { const d = new Date(); clickDate(d.getDate()); }} />}
       </TopBar>
       {!canEdit && <CoachReadOnlyNotice message="You can open and review existing sessions, but only a Lead Coach or Club Admin can add a new session." />}
       <div style={{ padding: "20px 24px", display: "flex", gap: 20 }}>
@@ -824,7 +913,7 @@ function PlannerScreen({ onNav, club, ageGroups, upcomingSessions, onOpenSession
           {/* Calendar grid */}
           <div style={{ background: P.white, borderRadius: 14, padding: 16, border: `1px solid ${P.line}`, boxShadow: Sh.card }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink }}>{fullMonths[selectedMonth]} {selectedYear}</div>
+              <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink }}>{fullMonths[selectedMonth]} {selectedYear}</div>
               <div style={{ display: "flex", gap: 4 }}>
                 <button onClick={() => setSelectedMonth((m) => m > 0 ? m - 1 : 11)} style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${P.line}`, background: P.white, cursor: "pointer", fontSize: 12 }}>◀</button>
                 <button onClick={() => setSelectedMonth((m) => m < 11 ? m + 1 : 0)} style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${P.line}`, background: P.white, cursor: "pointer", fontSize: 12 }}>▶</button>
@@ -872,7 +961,7 @@ function PlannerScreen({ onNav, club, ageGroups, upcomingSessions, onOpenSession
                 <div style={{ marginBottom: 12 }}>
                   {buildDrills.map((d, i) => (
                     <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 0", borderBottom: `1px solid ${P.line}` }}>
-                      <span style={{ fontFamily: F.display, fontSize: 11, fontWeight: 900, color: P.p600, width: 16 }}>{i + 1}</span>
+                      <span style={{ fontFamily: F.display, fontSize: 11, fontWeight: 800, color: P.p600, width: 16 }}>{i + 1}</span>
                       <span style={{ fontFamily: F.body, fontSize: 11, fontWeight: 600, color: P.ink, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.title}</span>
                       {coaches.length > 0 && (
                         <select value={d.coachId || ""} onChange={(e) => setBuildDrills((ds) => ds.map((dd, ii) => ii === i ? { ...dd, coachId: e.target.value } : dd))} style={{ width: 60, fontSize: 9, padding: 2, borderRadius: 4, border: `1px solid ${P.line}` }}>
@@ -1140,7 +1229,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
                   ) : (
                     sec.drills.map((d, di) => (
                       <div key={di} style={{ background: P.white, borderRadius: 10, padding: "10px 12px", border: `1px solid ${P.line}`, marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ fontFamily: F.display, fontSize: 12, fontWeight: 900, color: sectionColors[sec.type], width: 18 }}>{di + 1}</span>
+                        <span style={{ fontFamily: F.display, fontSize: 12, fontWeight: 800, color: sectionColors[sec.type], width: 18 }}>{di + 1}</span>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontFamily: F.body, fontSize: 12, fontWeight: 700, color: P.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.title}</div>
                         </div>
@@ -1243,7 +1332,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
         <div style={{ position: "fixed", inset: 0, background: "rgba(11,37,69,.45)", zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={() => setShowTimeModal(false)}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: "min(440px, 100%)", background: P.white, borderRadius: 18, padding: 22, boxShadow: "0 24px 70px rgba(11,37,69,.25)", border: `1px solid ${P.line}` }}>
             <div style={{ width: 48, height: 48, borderRadius: 14, background: "#fff3e0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: 14 }}>⏱</div>
-            <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 900, color: P.ink, marginBottom: 6 }}>Session is {totalTime - 60} minutes over</div>
+            <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 800, color: P.ink, marginBottom: 6 }}>Session is {totalTime - 60} minutes over</div>
             <div style={{ fontFamily: F.body, fontSize: 12, lineHeight: 1.6, color: P.muted, marginBottom: 18 }}>This plan totals <strong style={{ color: P.ink }}>{totalTime} minutes</strong>. Review the warm-up, section and drill times to bring it closer to the recommended 60-minute session.</div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
               <Btn label="Review times" variant="ghost" onClick={() => setShowTimeModal(false)} />
@@ -1309,7 +1398,7 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
       <TopBar title="Drills Library" sub={`${mergedActivities.length} activities${customDrills.length > 0 ? ` (${customDrills.length} custom)` : ""}`}>
         <div style={{ display: "flex", gap: 6 }}>
           <button onClick={() => { setMode("library"); setBuilderDrill(null); }} style={{ padding: "6px 14px", borderRadius: 8, border: `1.5px solid ${mode === "library" ? P.p600 : P.line}`, background: mode === "library" ? P.p50 : P.white, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: mode === "library" ? P.p600 : P.muted, cursor: "pointer" }}>Library</button>
-          {userRole?.role === "super_admin" && <button onClick={() => setMode("builder")} style={{ padding: "6px 14px", borderRadius: 8, border: `1.5px solid ${mode === "builder" ? P.p600 : P.line}`, background: mode === "builder" ? P.p50 : P.white, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: mode === "builder" ? P.p600 : P.muted, cursor: "pointer" }}>+ Create Drill</button>}
+          {userRole?.role === "super_admin" && <button onClick={() => setMode("builder")} style={{ padding: "6px 14px", borderRadius: 8, border: `1.5px solid ${mode === "builder" ? P.p600 : P.line}`, background: mode === "builder" ? P.p50 : P.white, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: mode === "builder" ? P.p600 : P.muted, cursor: "pointer" }}>Create Drill</button>}
         </div>
       </TopBar>
 
@@ -1415,7 +1504,7 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
                 ) : (
                   <div style={{ width: "100%", height: 120, background: sportIcon.bg, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden", marginBottom: 14 }}>
                     <img src={sportIcon.icon} alt="" style={{ width: 48, height: 48, objectFit: "contain", filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.3))" }} />
-                    {catIcon && <img src={catIcon.icon} alt="" style={{ position: "absolute", bottom: 10, right: 12, width: 28, height: 28, objectFit: "contain", opacity: 0.7 }} />}
+                    {catIcon && <img src={catIcon.icon} alt="" style={{ position: "absolute", bottom: 10, right: 12, width: 40, height: 40, objectFit: "contain", opacity: 0.7 }} />}
                     <div style={{ position: "absolute", top: 8, left: 8, display: "flex", gap: 4 }}>
                       <span style={{ background: "rgba(0,0,0,0.4)", borderRadius: 6, padding: "3px 8px", fontFamily: F.body, fontSize: 9, fontWeight: 700, color: "#fff", textTransform: "uppercase" }}>{selectedDrill.sport}</span>
                       {catIcon && <span style={{ background: "rgba(0,0,0,0.4)", borderRadius: 6, padding: "3px 8px", fontFamily: F.body, fontSize: 9, fontWeight: 700, color: "#fff", textTransform: "uppercase" }}>{catIcon.label.split(" ")[0]}</span>}
@@ -1425,7 +1514,7 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
                 );
               })()}
               {selectedDrill.equipment && <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginBottom: 10, padding: "6px 10px", background: P.soft, borderRadius: 6, display: "flex", alignItems: "center", gap: 6 }}><span style={{ fontWeight: 700, color: P.ink }}>Equipment:</span> {selectedDrill.equipment}</div>}
-              <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 900, color: P.ink, marginBottom: 4 }}>{selectedDrill.title}</div>
+              <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 800, color: P.ink, marginBottom: 4 }}>{selectedDrill.title}</div>
               <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginBottom: 12 }}>{selectedDrill.skill?.name || ""} · {selectedDrill.sport} · {selectedDrill.duration_mins || "?"}min · {selectedDrill.difficulty}</div>
               {selectedDrill.description && <div style={{ fontFamily: F.body, fontSize: 13, color: P.ink, lineHeight: 1.5, marginBottom: 14 }}>{selectedDrill.description}</div>}
               {selectedDrill.coaching_points && <div style={{ marginBottom: 14 }}><div style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.p600, textTransform: "uppercase", marginBottom: 6 }}>Coaching Points</div><div style={{ fontFamily: F.body, fontSize: 12, color: P.ink, lineHeight: 1.6, background: P.soft, borderRadius: 10, padding: 14 }}>{selectedDrill.coaching_points.split("•").filter(Boolean).map((pt, i) => <div key={i} style={{ display: "flex", gap: 6, marginBottom: 4 }}><span style={{ color: P.p600, fontWeight: 700 }}>•</span><span>{pt.trim()}</span></div>)}</div></div>}
@@ -1591,7 +1680,7 @@ function DiagramCreator({ onSave, onClose, initialElements, backgroundImage }) {
   ];
   const playerColors = [
     { color: "#073B74", label: "Navy" },
-    { color: "#8e24aa", label: "Purple" },
+    { color: "#7C3AED", label: "Purple" },
     { color: "#c51417", label: "Red" },
     { color: "#43a047", label: "Green" },
     { color: "#f57f17", label: "Gold" },
@@ -1986,7 +2075,7 @@ function DrillCardBuilder({ diagramMap, allActivities, userRole, copyFrom, onBac
               {/* Card content */}
               <div style={{ padding: "12px 14px" }}>
                 {equipment && <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginBottom: 8, padding: "5px 8px", background: P.soft, borderRadius: 5, display: "flex", alignItems: "center", gap: 4 }}><span style={{ fontWeight: 700, color: P.ink }}>Equipment:</span> {equipment}</div>}
-                <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 900, color: title ? P.ink : P.muted, lineHeight: 1.2, marginBottom: 4 }}>{title || "Drill Title"}</div>
+                <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 800, color: title ? P.ink : P.muted, lineHeight: 1.2, marginBottom: 4 }}>{title || "Drill Title"}</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
                   <span style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>{category ? category.replace(/_/g, " ") : "category"}</span>
                   <span style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>·</span>
@@ -2177,7 +2266,7 @@ function SessionsListScreen({ club, selectedTeam, onOpenSession, onNav, onEditSe
   return (
     <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
       <TopBar title="Sessions" sub={`${sessions.length} saved sessions`}>
-        <Btn label="+ New Session" variant="primary" onClick={() => onNav("coach-builder")} />
+        <Btn label="New Session" variant="primary" onClick={() => onNav("coach-builder")} />
       </TopBar>
       <div style={{ padding: "20px 24px" }}>
         {sessions.length === 0 && loaded && (
@@ -2190,7 +2279,7 @@ function SessionsListScreen({ club, selectedTeam, onOpenSession, onNav, onEditSe
           <div key={sess.id} onClick={() => onOpenSession(sess)} style={{ background: P.white, borderRadius: 12, padding: "14px 18px", border: `1px solid ${P.line}`, marginBottom: 8, display: "flex", alignItems: "center", gap: 14, cursor: "pointer", boxShadow: Sh.card }}>
             <div style={{ width: 44, textAlign: "center", background: P.soft, borderRadius: 8, padding: "6px 0", flexShrink: 0 }}>
               <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 700, color: P.muted, textTransform: "uppercase" }}>{sess.session_date ? new Date(sess.session_date).toLocaleDateString("en-IE", { weekday: "short" }) : ""}</div>
-              <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink }}>{sess.session_date ? new Date(sess.session_date).getDate() : "?"}</div>
+              <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink }}>{sess.session_date ? new Date(sess.session_date).getDate() : "?"}</div>
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontFamily: F.body, fontSize: 13, fontWeight: 700, color: P.ink }}>{sess.plan?.hurling_skill?.name || "Training Session"}</div>
@@ -2321,7 +2410,7 @@ function ClubPermissionsScreen({ club, userRole }) {
           ) : (
             <div>
               {users.map((u) => {
-                const roleColor = u.role === "super_admin" ? P.p600 : u.role === "club_admin" ? "#d32f2f" : u.role === "coach" ? P.green : P.sky;
+                const roleColor = u.role === "super_admin" ? P.p600 : u.role === "club_admin" ? "#DC2626" : u.role === "coach" ? P.green : P.sky;
                 return (
                   <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 12px", borderBottom: `1px solid ${P.line}`, cursor: isSuperAdmin ? "pointer" : "default" }} onClick={() => startEdit(u)}>
                     <div style={{ width: 32, height: 32, borderRadius: "50%", background: roleColor + "20", display: "flex", alignItems: "center", justifyContent: "center", color: roleColor, fontFamily: F.display, fontSize: 12, fontWeight: 800 }}>
@@ -2611,7 +2700,7 @@ const previewPill = {
   color: "#fff",
   fontFamily: F.body,
   fontSize: 8,
-  fontWeight: 900,
+  fontWeight: 800,
   backdropFilter: "blur(8px)",
 };
 
@@ -2621,15 +2710,15 @@ function AcademyPhonePreview({ planSessions = [], extras = [], skills = [], over
   const hurling = recommendations.filter((item) => item.code === "hurling");
   const grouped = { steps: [], exercises: [], runs: [], bonus: [], recovery: [] };
   extras.forEach((extra) => grouped[academyExtraGroup(extra)].push(extra));
-  const section = (title, items, color, icon, render) => items.length ? <div style={{ background:"#fff",border:`1px solid ${color}33`,borderRadius:14,padding:11,marginTop:9 }}><div style={{ display:"flex",alignItems:"center",gap:7,fontFamily:F.body,fontSize:10,fontWeight:900,color,textTransform:"uppercase" }}><span>{icon}</span>{title}</div><div style={{ display:"grid",gap:7,marginTop:8 }}>{items.map(render)}</div></div> : null;
-  const taskRow=(item)=><div key={item.id} style={{ display:"flex",alignItems:"center",gap:8,padding:"8px 9px",borderRadius:10,background:"#f8fafc" }}><div style={{flex:1,minWidth:0}}><div style={{fontFamily:F.body,fontSize:10,fontWeight:900,color:P.ink}}>{item.title}</div><div style={{fontFamily:F.body,fontSize:8,color:P.muted,marginTop:2}}>{item.target || item.description || item.instruction || "Complete this mission"}</div></div><span style={{fontFamily:F.body,fontSize:8,fontWeight:900,color:"#b45309"}}>+{item.xp || item.xp_reward || 10} XP</span></div>;
-  const skillRow=(item)=><div key={item.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 9px",borderRadius:10,background:"#f8fafc"}}><div style={{width:32,height:32,borderRadius:9,background:"#e0f2fe",display:"grid",placeItems:"center"}}>▶</div><div style={{flex:1,minWidth:0}}><div style={{fontFamily:F.body,fontSize:10,fontWeight:900,color:P.ink}}>{item.matchedSkill?.name || "Choose weekly video"}</div><div style={{fontFamily:F.body,fontSize:8,color:P.muted,marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>Based on {item.sourceDrills.length} Coach drill{item.sourceDrills.length===1?"":"s"}</div></div><span style={{fontFamily:F.body,fontSize:8,fontWeight:900,color:"#b45309"}}>+20 XP</span></div>;
+  const section = (title, items, color, icon, render) => items.length ? <div style={{ background:"#fff",border:`1px solid ${color}33`,borderRadius:14,padding:11,marginTop:9 }}><div style={{ display:"flex",alignItems:"center",gap:7,fontFamily:F.body,fontSize:10,fontWeight:800,color,textTransform:"uppercase" }}><span>{icon}</span>{title}</div><div style={{ display:"grid",gap:7,marginTop:8 }}>{items.map(render)}</div></div> : null;
+  const taskRow=(item)=><div key={item.id} style={{ display:"flex",alignItems:"center",gap:8,padding:"8px 9px",borderRadius:10,background:"#f8fafc" }}><div style={{flex:1,minWidth:0}}><div style={{fontFamily:F.body,fontSize:10,fontWeight:800,color:P.ink}}>{item.title}</div><div style={{fontFamily:F.body,fontSize:8,color:P.muted,marginTop:2}}>{item.target || item.description || item.instruction || "Complete this mission"}</div></div><span style={{fontFamily:F.body,fontSize:8,fontWeight:800,color:"#b45309"}}>+{item.xp || item.xp_reward || 10} XP</span></div>;
+  const skillRow=(item)=><div key={item.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 9px",borderRadius:10,background:"#f8fafc"}}><div style={{width:32,height:32,borderRadius:9,background:"#e0f2fe",display:"grid",placeItems:"center"}}>▶</div><div style={{flex:1,minWidth:0}}><div style={{fontFamily:F.body,fontSize:10,fontWeight:800,color:P.ink}}>{item.matchedSkill?.name || "Choose weekly video"}</div><div style={{fontFamily:F.body,fontSize:8,color:P.muted,marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>Based on {item.sourceDrills.length} Coach drill{item.sourceDrills.length===1?"":"s"}</div></div><span style={{fontFamily:F.body,fontSize:8,fontWeight:800,color:"#b45309"}}>+20 XP</span></div>;
   const visibleCount = football.length+hurling.length+Object.values(grouped).reduce((sum,items)=>sum+items.length,0);
-  return <div style={{ width: compact ? 300 : "min(390px,100%)", maxHeight: compact ? 600 : "none", overflow:"hidden", background:"#fff",borderRadius:compact?26:32,border:compact?"6px solid #16324a":"8px solid #16324a",boxShadow:"0 22px 52px rgba(7,89,133,.2)" }}><div style={{background:"linear-gradient(135deg,#38bdf8,#0284c7)",padding:compact?"16px 14px":"22px 18px",color:"#fff",position:"relative",overflow:"hidden"}}><img src="/spraoi-academy-icon.png" alt="" style={{position:"absolute",right:8,bottom:-8,width:compact?68:88,height:compact?68:88,objectFit:"contain",background:"#fff",borderRadius:18,padding:6}}/><div style={{fontFamily:F.body,fontSize:8,fontWeight:900,opacity:.85,textTransform:"uppercase"}}>Club Spraoi Academy</div><div style={{fontFamily:F.display,fontSize:compact?18:24,fontWeight:900,marginTop:3,maxWidth:"70%"}}>Your weekly adventure</div><div style={{display:"flex",gap:6,marginTop:11}}><span style={previewPill}>⭐ {recommendations.length*20+extras.reduce((s,x)=>s+Number(x.xp||x.xp_reward||0),0)} XP</span><span style={previewPill}>🏅 Badges</span></div></div><div style={{padding:compact?10:15,background:"#f3f9fd",maxHeight:compact?460:"none",overflowY:"auto"}}>{visibleCount===0?<div style={{padding:18,textAlign:"center",fontFamily:F.body,fontSize:10,color:P.muted}}>Add weekly content to see the child experience here.</div>:<>{section("Step Goals",grouped.steps,"#0f9f6e","👟",taskRow)}{section("Exercises",grouped.exercises,"#7c3aed","💪",taskRow)}{section("Run Challenge",grouped.runs,"#e65100","🏃",taskRow)}{section("Football Skills",football,"#2563eb","⚽",skillRow)}{section(selectedTeam?.gender === "girls" ? "Camogie Skills" : "Hurling Skills",hurling,"#dc2626","🏑",skillRow)}{section("Bonus",grouped.bonus,"#d97706","✨",taskRow)}{section("Rest & Recovery",grouped.recovery,"#0f766e","🌙",taskRow)}</>}<div style={{marginTop:10,padding:9,borderRadius:11,background:published?"#dcfce7":"#fff7ed",color:published?"#15803d":"#b45309",fontFamily:F.body,fontSize:8,fontWeight:900,textAlign:"center"}}>{published?"✓ Published to children":"Preview mode · not published"}</div></div></div>;
+  return <div style={{ width: compact ? 300 : "min(390px,100%)", maxHeight: compact ? 600 : "none", overflow:"hidden", background:"#fff",borderRadius:compact?26:32,border:compact?"6px solid #16324a":"8px solid #16324a",boxShadow:"0 22px 52px rgba(7,89,133,.2)" }}><div style={{background:"linear-gradient(135deg,#38bdf8,#0284c7)",padding:compact?"16px 14px":"22px 18px",color:"#fff",position:"relative",overflow:"hidden"}}><img src="/spraoi-academy-icon.png" alt="" style={{position:"absolute",right:8,bottom:-8,width:compact?68:88,height:compact?68:88,objectFit:"contain",background:"#fff",borderRadius:18,padding:6}}/><div style={{fontFamily:F.body,fontSize:8,fontWeight:800,opacity:.85,textTransform:"uppercase"}}>Club Spraoi Academy</div><div style={{fontFamily:F.display,fontSize:compact?18:24,fontWeight:800,marginTop:3,maxWidth:"70%"}}>Your weekly adventure</div><div style={{display:"flex",gap:6,marginTop:11}}><span style={previewPill}>⭐ {recommendations.length*20+extras.reduce((s,x)=>s+Number(x.xp||x.xp_reward||0),0)} XP</span><span style={previewPill}>🏅 Badges</span></div></div><div style={{padding:compact?10:15,background:"#f3f9fd",maxHeight:compact?460:"none",overflowY:"auto"}}>{visibleCount===0?<div style={{padding:18,textAlign:"center",fontFamily:F.body,fontSize:10,color:P.muted}}>Add weekly content to see the child experience here.</div>:<>{section("Step Goals",grouped.steps,"#0f9f6e","👟",taskRow)}{section("Exercises",grouped.exercises,"#7c3aed","💪",taskRow)}{section("Run Challenge",grouped.runs,"#FEBA00","🏃",taskRow)}{section("Football Skills",football,"#2563eb","⚽",skillRow)}{section(selectedTeam?.gender === "girls" ? "Camogie Skills" : "Hurling Skills",hurling,"#dc2626","🏑",skillRow)}{section("Bonus",grouped.bonus,"#d97706","✨",taskRow)}{section("Rest & Recovery",grouped.recovery,"#0f766e","🌙",taskRow)}</>}<div style={{marginTop:10,padding:9,borderRadius:11,background:published?"#dcfce7":"#fff7ed",color:published?"#15803d":"#b45309",fontFamily:F.body,fontSize:8,fontWeight:800,textAlign:"center"}}>{published?"✓ Published to children":"Preview mode · not published"}</div></div></div>;
 }
 
 function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras = [], skills = [], overrides = {}, published = false, onSetOverride, onNav }) {
-  const academyBlue = "#0277bd";
+  const academyBlue = "#2563EB";
   const academyDark = "#075985";
   const academySoft = "#eef8ff";
   const teamName = selectedTeam
@@ -2671,10 +2760,10 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
         <div>
           <div style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted }}>{label}</div>
-          <div style={{ fontFamily: F.display, fontSize: 27, lineHeight: 1.15, fontWeight: 900, color: P.ink, marginTop: 8 }}>{value}</div>
+          <div style={{ fontFamily: F.display, fontSize: 27, lineHeight: 1.15, fontWeight: 800, color: P.ink, marginTop: 8 }}>{value}</div>
         </div>
-        <div style={{ width: 34, height: 34, borderRadius: 10, background: `${accent}12`, color: accent, display: "grid", placeItems: "center", fontSize: 15, fontWeight: 900 }}>
-          {icon}
+        <div className="spraoi-card-icon-chip" style={{ "--card-accent": accent }}>
+          {typeof icon === "string" && icon.startsWith("/") ? <img className="spraoi-card-icon" src={icon} alt="" aria-hidden="true" /> : <span className="spraoi-card-icon-fallback" style={{ "--card-accent": accent }}>{icon}</span>}
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 9, minHeight: 16 }}>
@@ -2688,7 +2777,7 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
     <div style={{ flex: 1, minWidth: 0, overflow: "auto", background: "#f7f9fc" }}>
       <TopBar title="Academy Admin" sub={`${teamName} · ${weekLabel}`}>
         <Btn label="Child Preview" variant="ghost" icon="◉" onClick={() => onNav("academy-preview")} />
-        <Btn label="Manage Weekly Content" variant="primary" icon="＋" onClick={() => onNav("academy-content")} style={{ background: academyBlue, boxShadow: "0 5px 16px rgba(2,119,189,.22)" }} />
+        <Btn label="Manage Weekly Content" variant="primary" onClick={() => onNav("academy-content")} />
       </TopBar>
 
       <div style={{ padding: "22px 24px 32px", maxWidth: 1500, width: "100%", boxSizing: "border-box", margin: "0 auto" }}>
@@ -2705,7 +2794,7 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: hasPlan ? "#86efac" : "#fbbf24" }} />
                 {hasPlan ? "Coach plan connected" : "Action required"}
               </div>
-              <h2 style={{ fontFamily: F.display, fontSize: 25, lineHeight: 1.15, fontWeight: 900, letterSpacing: "-.025em", margin: "13px 0 7px" }}>
+              <h2 style={{ fontFamily: F.display, fontSize: 25, lineHeight: 1.15, fontWeight: 800, letterSpacing: "-.025em", margin: "13px 0 7px" }}>
                 {hasSkills ? `${weeklyRecommendations.length} primary ${weeklyRecommendations.length === 1 ? "skill is" : "skills are"} ready for Academy` : "Prepare this week’s Academy experience"}
               </h2>
               <p style={{ fontFamily: F.body, fontSize: 12, lineHeight: 1.6, color: "#4c7187", margin: 0 }}>
@@ -2725,7 +2814,7 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 18 }}>
           <MetricCard label="Academy players" value="24" detail="in this squad" accent={academyBlue} icon="P" onClick={() => onNav("academy-players")} />
           <MetricCard label="Parents linked" value="19" detail="5 invitations pending" trend={{ label: "79% linked", color: "#0369a1", bg: "#e0f2fe" }} accent="#0ea5e9" icon="↗" onClick={() => onNav("academy-parents")} />
-          <MetricCard label="Active this week" value="17" detail="of 24 players" trend={{ label: "+8%", color: "#15803d", bg: "#dcfce7" }} accent={P.green} icon="✓" onClick={() => onNav("academy-engagement")} />
+          <MetricCard label="Active this week" value="17" detail="of 24 players" trend={{ label: "+8%", color: "#15803d", bg: "#dcfce7" }} accent={P.green} icon="/icons/cup/results.svg" onClick={() => onNav("academy-engagement")} />
           <MetricCard label="Completion rate" value="68%" detail="across published practices" trend={{ label: "+12%", color: "#15803d", bg: "#dcfce7" }} accent={P.orange} icon="◒" onClick={() => onNav("academy-engagement")} />
         </div>
 
@@ -2734,7 +2823,7 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
             <section style={{ background: P.white, borderRadius: 16, border: `1px solid ${P.line}`, boxShadow: Sh.card, overflow: "hidden" }}>
               <div style={{ padding: "17px 18px", borderBottom: `1px solid ${P.line}`, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
                 <div>
-                  <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink }}>Suggested Weekly Videos</div>
+                  <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink }}>Suggested Weekly Videos</div>
                   <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 2 }}>One Football and one Hurling/Camogie video can be chosen from {sessionCount} connected Coach {sessionCount === 1 ? "session" : "sessions"}</div>
                 </div>
                 <button onClick={() => onNav("academy-content")} style={{ border: "none", background: "transparent", color: academyBlue, fontFamily: F.body, fontSize: 11, fontWeight: 800, cursor: "pointer" }}>View all →</button>
@@ -2755,7 +2844,7 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
                       <div style={{ width: 40, height: 40, borderRadius: 11, background: bg, display: "grid", placeItems: "center", fontSize: 20 }}>{rec.code === "football" ? "⚽" : "🏑"}</div>
                       <div style={{ minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
-                          <span style={{ fontFamily: F.body, fontSize: 9, lineHeight: 1, fontWeight: 900, color, textTransform: "uppercase", letterSpacing: ".06em" }}>{rec.label}</span>
+                          <span style={{ fontFamily: F.body, fontSize: 9, lineHeight: 1, fontWeight: 800, color, textTransform: "uppercase", letterSpacing: ".06em" }}>{rec.label}</span>
                           <span style={{ width: 3, height: 3, borderRadius: "50%", background: P.line }} />
                           <span style={{ fontFamily: F.body, fontSize: 9, color: P.muted }}>Based on {rec.sourceDrills.length} Coach drill{rec.sourceDrills.length===1?"":"s"}</span>
                         </div>
@@ -2764,7 +2853,7 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap:"wrap", justifyContent:"flex-end" }}>
                         <span style={{ padding: "5px 8px", borderRadius: 999, background: selected ? "#dcfce7" : "#fff7ed", color: selected ? "#15803d" : "#c2410c", fontFamily: F.body, fontSize: 9, fontWeight: 800 }}>{isPreviewSelected ? "Selected" : "Suggested"}</span>
-                        <div className="academy-match-actions" style={{display:"flex",gap:6,flexWrap:"wrap"}}><button onClick={()=>setPreviewIndexes((current)=>({...current,[rec.code]:Math.max(0,previewIndex-1)}))} disabled={previewIndex===0} style={{height:30,borderRadius:8,border:`1px solid ${P.line}`,background:"#fff",color:previewIndex===0?P.muted:academyBlue,padding:"0 10px",fontFamily:F.body,fontSize:9,fontWeight:900,cursor:previewIndex===0?"default":"pointer"}}>Previous</button><button onClick={()=>setPreviewIndexes((current)=>({...current,[rec.code]:Math.min(options.length-1,previewIndex+1)}))} disabled={previewIndex>=options.length-1} style={{height:30,borderRadius:8,border:`1px solid ${P.line}`,background:"#fff",color:previewIndex>=options.length-1?P.muted:academyBlue,padding:"0 10px",fontFamily:F.body,fontSize:9,fontWeight:900,cursor:previewIndex>=options.length-1?"default":"pointer"}}>Next suggestion</button>{previewSkill?.id && !isPreviewSelected && <button onClick={() => onSetOverride?.(rec.code, previewSkill.id)} style={{height:30,borderRadius:8,border:0,background:academyBlue,color:"#fff",padding:"0 10px",fontFamily:F.body,fontSize:9,fontWeight:900,cursor:"pointer"}}>Use this video</button>}<span style={{alignSelf:"center",fontFamily:F.body,fontSize:9,color:P.muted}}>Suggestion {options.length?previewIndex+1:0} of {options.length}</span></div>
+                        <div className="academy-match-actions" style={{display:"flex",gap:6,flexWrap:"wrap"}}><button onClick={()=>setPreviewIndexes((current)=>({...current,[rec.code]:Math.max(0,previewIndex-1)}))} disabled={previewIndex===0} style={{height:30,borderRadius:8,border:`1px solid ${P.line}`,background:"#fff",color:previewIndex===0?P.muted:academyBlue,padding:"0 10px",fontFamily:F.body,fontSize:9,fontWeight:800,cursor:previewIndex===0?"default":"pointer"}}>Previous</button><button onClick={()=>setPreviewIndexes((current)=>({...current,[rec.code]:Math.min(options.length-1,previewIndex+1)}))} disabled={previewIndex>=options.length-1} style={{height:30,borderRadius:8,border:`1px solid ${P.line}`,background:"#fff",color:previewIndex>=options.length-1?P.muted:academyBlue,padding:"0 10px",fontFamily:F.body,fontSize:9,fontWeight:800,cursor:previewIndex>=options.length-1?"default":"pointer"}}>Next suggestion</button>{previewSkill?.id && !isPreviewSelected && <button onClick={() => onSetOverride?.(rec.code, previewSkill.id)} style={{height:30,borderRadius:8,border:0,background:academyBlue,color:"#fff",padding:"0 10px",fontFamily:F.body,fontSize:9,fontWeight:800,cursor:"pointer"}}>Use this video</button>}<span style={{alignSelf:"center",fontFamily:F.body,fontSize:9,color:P.muted}}>Suggestion {options.length?previewIndex+1:0} of {options.length}</span></div>
                         <button onClick={() => onNav("academy-content")} aria-label={`Review ${rec.label}`} style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${P.line}`, background: P.white, color: P.muted, cursor: "pointer" }}>›</button>
                       </div>
                     </div>
@@ -2783,7 +2872,7 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
             <section style={{ background: P.white, borderRadius: 16, border: `1px solid ${P.line}`, boxShadow: Sh.card, padding: 18 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 14, marginBottom: 18 }}>
                 <div>
-                  <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink }}>Weekly engagement</div>
+                  <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink }}>Weekly engagement</div>
                   <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 2 }}>Player activity over the last seven days</div>
                 </div>
                 <button onClick={() => onNav("academy-engagement")} style={{ border: "none", background: "transparent", color: academyBlue, fontFamily: F.body, fontSize: 11, fontWeight: 800, cursor: "pointer" }}>Open engagement →</button>
@@ -2798,9 +2887,9 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
                 ))}
               </div>
               <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginTop: 14 }}>
-                <div><span style={{ fontFamily: F.display, fontSize: 17, fontWeight: 900, color: P.ink }}>41</span><span style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginLeft: 5 }}>practice opens</span></div>
-                <div><span style={{ fontFamily: F.display, fontSize: 17, fontWeight: 900, color: P.ink }}>29</span><span style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginLeft: 5 }}>completions</span></div>
-                <div><span style={{ fontFamily: F.display, fontSize: 17, fontWeight: 900, color: P.ink }}>8</span><span style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginLeft: 5 }}>active streaks</span></div>
+                <div><span style={{ fontFamily: F.display, fontSize: 17, fontWeight: 800, color: P.ink }}>41</span><span style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginLeft: 5 }}>practice opens</span></div>
+                <div><span style={{ fontFamily: F.display, fontSize: 17, fontWeight: 800, color: P.ink }}>29</span><span style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginLeft: 5 }}>completions</span></div>
+                <div><span style={{ fontFamily: F.display, fontSize: 17, fontWeight: 800, color: P.ink }}>8</span><span style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginLeft: 5 }}>active streaks</span></div>
               </div>
             </section>
           </div>
@@ -2809,17 +2898,17 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
             <section style={{ background: P.white, borderRadius: 16, border: `1px solid ${P.line}`, boxShadow: Sh.card, padding: 18 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
-                  <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink }}>Publish readiness</div>
+                  <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink }}>Publish readiness</div>
                   <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 2 }}>{completedSetupSteps} of {setupSteps.length} steps complete</div>
                 </div>
                 <div style={{ width: 46, height: 46, borderRadius: "50%", background: `conic-gradient(${academyBlue} ${setupProgress * 3.6}deg, #e8edf3 0deg)`, display: "grid", placeItems: "center" }}>
-                  <div style={{ width: 36, height: 36, borderRadius: "50%", background: P.white, display: "grid", placeItems: "center", fontFamily: F.body, fontSize: 10, fontWeight: 900, color: academyDark }}>{setupProgress}%</div>
+                  <div style={{ width: 36, height: 36, borderRadius: "50%", background: P.white, display: "grid", placeItems: "center", fontFamily: F.body, fontSize: 10, fontWeight: 800, color: academyDark }}>{setupProgress}%</div>
                 </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 11, marginTop: 18 }}>
                 {setupSteps.map((step, index) => (
                   <div key={step.label} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <div style={{ width: 20, height: 20, flexShrink: 0, borderRadius: "50%", display: "grid", placeItems: "center", background: step.complete ? "#dcfce7" : "#f1f5f9", color: step.complete ? "#15803d" : "#94a3b8", fontFamily: F.body, fontSize: 10, fontWeight: 900 }}>{step.complete ? "✓" : index + 1}</div>
+                    <div style={{ width: 20, height: 20, flexShrink: 0, borderRadius: "50%", display: "grid", placeItems: "center", background: step.complete ? "#dcfce7" : "#f1f5f9", color: step.complete ? "#15803d" : "#94a3b8", fontFamily: F.body, fontSize: 10, fontWeight: 800 }}>{step.complete ? "✓" : index + 1}</div>
                     <div style={{ fontFamily: F.body, fontSize: 11, fontWeight: step.complete ? 600 : 700, color: step.complete ? P.muted : P.ink, textDecoration: step.complete ? "line-through" : "none" }}>{step.label}</div>
                   </div>
                 ))}
@@ -2830,10 +2919,10 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
             <section style={{ background: P.white, borderRadius: 16, border: `1px solid ${P.line}`, boxShadow: Sh.card, padding: 18 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
                 <div>
-                  <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink }}>Parent access</div>
+                  <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink }}>Parent access</div>
                   <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 2 }}>5 invitations still need attention</div>
                 </div>
-                <div style={{ width: 36, height: 36, borderRadius: 11, background: "#ecfeff", color: "#0891b2", display: "grid", placeItems: "center", fontWeight: 900 }}>@</div>
+                <div style={{ width: 36, height: 36, borderRadius: 11, background: "#ecfeff", color: "#0891b2", display: "grid", placeItems: "center", fontWeight: 800 }}>@</div>
               </div>
               <div style={{ marginTop: 15, height: 7, borderRadius: 999, background: "#e8edf3", overflow: "hidden" }}><div style={{ width: "79%", height: "100%", borderRadius: 999, background: "linear-gradient(90deg, #0284c7, #22d3ee)" }} /></div>
               <div style={{ display: "flex", justifyContent: "space-between", marginTop: 7 }}>
@@ -2844,7 +2933,7 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
             </section>
 
             <section style={{ background: academySoft, borderRadius: 16, border: "1px solid #cfeeff", padding: 16 }}>
-              <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:12 }}><div><div style={{ fontFamily:F.display,fontSize:16,fontWeight:900,color:academyDark }}>Live child preview</div><div style={{fontFamily:F.body,fontSize:10,color:"#477084",marginTop:2}}>Only sections with content are shown.</div></div><button onClick={()=>onNav("academy-preview")} style={{border:0,background:"transparent",color:academyBlue,fontFamily:F.body,fontSize:10,fontWeight:900,cursor:"pointer"}}>Open full →</button></div>
+              <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:12 }}><div><div style={{ fontFamily:F.display,fontSize:16,fontWeight:800,color:academyDark }}>Live child preview</div><div style={{fontFamily:F.body,fontSize:10,color:"#477084",marginTop:2}}>Only sections with content are shown.</div></div><button onClick={()=>onNav("academy-preview")} style={{border:0,background:"transparent",color:academyBlue,fontFamily:F.body,fontSize:10,fontWeight:800,cursor:"pointer"}}>Open full →</button></div>
               <div style={{display:"grid",placeItems:"center"}}><AcademyPhonePreview planSessions={planSessions} extras={extras} skills={skills} overrides={overrides} published={published} compact selectedTeam={selectedTeam} /></div>
             </section>
           </div>
@@ -2854,7 +2943,7 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
   );
 }
 
-const ACADEMY_BLUE = "#0277bd";
+const ACADEMY_BLUE = "#2563EB";
 const ACADEMY_DARK = "#075985";
 const ACADEMY_SOFT = "#eef8ff";
 const ACADEMY_TEMPLATES = [
@@ -2873,7 +2962,7 @@ function AcademyPageHeader({ title, sub, actions }) {
     <div style={{ background: "linear-gradient(135deg,#f8fcff 0%,#e9f6ff 100%)", borderBottom: "1px solid #cfeeff", padding: "18px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18, flexWrap: "wrap" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 13 }}>
         <div style={{ width: 64, height: 64, borderRadius: 20, background: "#fff", border: "1px solid rgba(15,23,42,.08)", display: "grid", placeItems: "center", boxShadow: "0 10px 26px rgba(2,119,189,.12)" }}><img src="/spraoi-academy-icon.png" alt="Academy" style={{ width: 48, height: 48, objectFit: "contain" }} /></div>
-        <div><div style={{ fontFamily: F.display, fontSize: 23, fontWeight: 900, color: ACADEMY_DARK }}>{title}</div><div style={{ fontFamily: F.body, fontSize: 12, color: "#4c7187", marginTop: 2 }}>{sub}</div></div>
+        <div><div style={{ fontFamily: F.display, fontSize: 23, fontWeight: 800, color: ACADEMY_DARK }}>{title}</div><div style={{ fontFamily: F.body, fontSize: 12, color: "#4c7187", marginTop: 2 }}>{sub}</div></div>
       </div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{actions}</div>
     </div>
@@ -2881,7 +2970,7 @@ function AcademyPageHeader({ title, sub, actions }) {
 }
 
 function AcademyCard({ children, style }) { return <div style={{ background: P.white, border: `1px solid ${P.line}`, borderRadius: 16, padding: 18, boxShadow: Sh.card, ...style }}>{children}</div>; }
-function AcademyBadge({ children, color = ACADEMY_BLUE, bg = ACADEMY_SOFT }) { return <span style={{ display: "inline-flex", alignItems: "center", padding: "5px 8px", borderRadius: 999, background: bg, color, fontFamily: F.body, fontSize: 9, fontWeight: 900, letterSpacing: ".04em", textTransform: "uppercase" }}>{children}</span>; }
+function AcademyBadge({ children, color = ACADEMY_BLUE, bg = ACADEMY_SOFT }) { return <span style={{ display: "inline-flex", alignItems: "center", padding: "5px 8px", borderRadius: 999, background: bg, color, fontFamily: F.body, fontSize: 9, fontWeight: 800, letterSpacing: ".04em", textTransform: "uppercase" }}>{children}</span>; }
 
 function getFoundationActivities(planSessions) {
   const rows = [];
@@ -2935,7 +3024,7 @@ function AcademyWeeklyContent({ selectedTeam, weeklyPlan, planSessions, extras, 
   const groups = [
     { key:"steps", label:"Step Goals", icon:"👟", color:"#0f9f6e", test:x=>(x.type||x.activity_type)==="steps" },
     { key:"exercise", label:"Exercises", icon:"💪", color:"#7c3aed", test:x=>(x.type||x.activity_type)==="exercise" },
-    { key:"run", label:"Run Challenge", icon:"🏃", color:"#e65100", test:x=>(x.type||x.activity_type)==="run" },
+    { key:"run", label:"Run Challenge", icon:"🏃", color:"#FEBA00", test:x=>(x.type||x.activity_type)==="run" },
     { key:"skill", label:"Extra Skill Practice", icon:"🎯", color:"#2563eb", test:x=>(x.type||x.activity_type)==="skill" },
     { key:"club", label:"Bonus & Club Activities", icon:"✨", color:"#d97706", test:x=>(x.type||x.activity_type)==="club" },
     { key:"recovery", label:"Rest & Recovery", icon:"🌙", color:"#0f766e", test:x=>(x.type||x.activity_type)==="recovery" },
@@ -2944,40 +3033,40 @@ function AcademyWeeklyContent({ selectedTeam, weeklyPlan, planSessions, extras, 
     <AcademyPageHeader title="Weekly Content" sub={`${selectedTeam?.label || "Selected team"} · Build, review and publish the child experience`} actions={<Btn label={published ? "Unpublish week" : "Review & publish"} variant="primary" icon={published ? "↓" : "↑"} onClick={requestPublish} style={{ background: published ? P.green : ACADEMY_BLUE }} />} />
     <div style={{ padding: 24, maxWidth: 1240, margin: "0 auto" }}>
       <AcademyCard style={{ marginBottom: 16, borderColor: "#b9e3f8" }}>
-        <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><div><AcademyBadge>Weekly readiness</AcademyBadge><div style={{fontFamily:F.display,fontSize:18,fontWeight:900,color:P.ink,marginTop:8}}>{published?"This week is live":"Complete the checks before publishing"}</div></div><div style={{display:"flex",gap:7,flexWrap:"wrap"}}>{validation.map(v=><AcademyBadge key={v.label} color={v.ok?"#15803d":"#b45309"} bg={v.ok?"#dcfce7":"#fff7ed"}>{v.ok?"✓":"!"} {v.label}</AcademyBadge>)}</div></div>
+        <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><div><AcademyBadge>Weekly readiness</AcademyBadge><div style={{fontFamily:F.display,fontSize:18,fontWeight:800,color:P.ink,marginTop:8}}>{published?"This week is live":"Complete the checks before publishing"}</div></div><div style={{display:"flex",gap:7,flexWrap:"wrap"}}>{validation.map(v=><AcademyBadge key={v.label} color={v.ok?"#15803d":"#b45309"} bg={v.ok?"#dcfce7":"#fff7ed"}>{v.ok?"✓":"!"} {v.label}</AcademyBadge>)}</div></div>
       </AcademyCard>
       <AcademyCard style={{ marginBottom: 16, borderColor: "#b9e3f8" }}>
-        <div><AcademyBadge>Suggested weekly videos</AcademyBadge><div style={{fontFamily:F.display,fontSize:18,fontWeight:900,color:P.ink,marginTop:8}}>One video per code</div><div style={{fontFamily:F.body,fontSize:11,color:P.muted,marginTop:4}}>Browse suggestions, then explicitly select the Football and {selectedTeam?.gender === "girls" ? "Camogie" : "Hurling"} videos for this week.</div></div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:14,marginTop:16}}>{recommendations.map(rec=>{const options=rec.alternatives?.length?rec.alternatives:(rec.matchedSkill?[rec.matchedSkill]:[]);const idx=Math.min(previewIndexes[rec.code]??Math.max(0,options.findIndex(x=>x.id===rec.matchedSkill?.id)),Math.max(0,options.length-1));const skill=options[idx]||rec.matchedSkill;const selected=overrides?.[rec.code]===skill?.id;return <div key={rec.code} style={{border:`1px solid ${selected?"#86efac":"#bae6fd"}`,borderRadius:16,padding:15,background:"#fff"}}><div style={{display:"flex",justifyContent:"space-between",gap:8}}><AcademyBadge color={rec.code==="football"?"#1d4ed8":"#b91c1c"} bg={rec.code==="football"?"#dbeafe":"#fee2e2"}>{rec.label}</AcademyBadge><AcademyBadge color={selected?"#15803d":"#0369a1"} bg={selected?"#dcfce7":"#e0f2fe"}>{selected?"Selected":"Suggestion"}</AcademyBadge></div><div style={{fontFamily:F.display,fontSize:18,fontWeight:900,color:P.ink,marginTop:10}}>{skill?.name||"No match available"}</div>{skill?.video_url&&<div style={{borderRadius:11,overflow:"hidden",background:"#071827",marginTop:10}}><iframe title={skill.name} src={skill.video_url.replace("watch?v=","embed/").split("&")[0]} style={{width:"100%",height:180,border:0,display:"block"}} allowFullScreen /></div>}<div className="academy-match-actions" style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:7,marginTop:10}}><button disabled={idx===0} onClick={()=>setPreviewIndexes(p=>({...p,[rec.code]:Math.max(0,idx-1)}))} style={smallAction(idx===0)}>Previous</button><button disabled={idx>=options.length-1} onClick={()=>setPreviewIndexes(p=>({...p,[rec.code]:Math.min(options.length-1,idx+1)}))} style={smallAction(idx>=options.length-1)}>Next suggestion</button><button disabled={!skill?.id||selected} onClick={()=>skill?.id&&onSetOverride?.(rec.code,skill.id)} style={{...smallAction(false),background:selected?"#dcfce7":ACADEMY_BLUE,color:selected?"#15803d":"#fff",border:0}}>{selected?"Selected":"Use this video"}</button></div><div style={{fontFamily:F.body,fontSize:9,color:P.muted,marginTop:7}}>Suggestion {options.length?idx+1:0} of {options.length} · based on {rec.sourceDrills.length} Coach activities</div></div>})}</div>
+        <div><AcademyBadge>Suggested weekly videos</AcademyBadge><div style={{fontFamily:F.display,fontSize:18,fontWeight:800,color:P.ink,marginTop:8}}>One video per code</div><div style={{fontFamily:F.body,fontSize:11,color:P.muted,marginTop:4}}>Browse suggestions, then explicitly select the Football and {selectedTeam?.gender === "girls" ? "Camogie" : "Hurling"} videos for this week.</div></div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:14,marginTop:16}}>{recommendations.map(rec=>{const options=rec.alternatives?.length?rec.alternatives:(rec.matchedSkill?[rec.matchedSkill]:[]);const idx=Math.min(previewIndexes[rec.code]??Math.max(0,options.findIndex(x=>x.id===rec.matchedSkill?.id)),Math.max(0,options.length-1));const skill=options[idx]||rec.matchedSkill;const selected=overrides?.[rec.code]===skill?.id;return <div key={rec.code} style={{border:`1px solid ${selected?"#86efac":"#bae6fd"}`,borderRadius:16,padding:15,background:"#fff"}}><div style={{display:"flex",justifyContent:"space-between",gap:8}}><AcademyBadge color={rec.code==="football"?"#1d4ed8":"#b91c1c"} bg={rec.code==="football"?"#dbeafe":"#fee2e2"}>{rec.label}</AcademyBadge><AcademyBadge color={selected?"#15803d":"#0369a1"} bg={selected?"#dcfce7":"#e0f2fe"}>{selected?"Selected":"Suggestion"}</AcademyBadge></div><div style={{fontFamily:F.display,fontSize:18,fontWeight:800,color:P.ink,marginTop:10}}>{skill?.name||"No match available"}</div>{skill?.video_url&&<div style={{borderRadius:11,overflow:"hidden",background:"#071827",marginTop:10}}><iframe title={skill.name} src={skill.video_url.replace("watch?v=","embed/").split("&")[0]} style={{width:"100%",height:180,border:0,display:"block"}} allowFullScreen /></div>}<div className="academy-match-actions" style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:7,marginTop:10}}><button disabled={idx===0} onClick={()=>setPreviewIndexes(p=>({...p,[rec.code]:Math.max(0,idx-1)}))} style={smallAction(idx===0)}>Previous</button><button disabled={idx>=options.length-1} onClick={()=>setPreviewIndexes(p=>({...p,[rec.code]:Math.min(options.length-1,idx+1)}))} style={smallAction(idx>=options.length-1)}>Next suggestion</button><button disabled={!skill?.id||selected} onClick={()=>skill?.id&&onSetOverride?.(rec.code,skill.id)} style={{...smallAction(false),background:selected?"#dcfce7":ACADEMY_BLUE,color:selected?"#15803d":"#fff",border:0}}>{selected?"Selected":"Use this video"}</button></div><div style={{fontFamily:F.body,fontSize:9,color:P.muted,marginTop:7}}>Suggestion {options.length?idx+1:0} of {options.length} · based on {rec.sourceDrills.length} Coach activities</div></div>})}</div>
       </AcademyCard>
       <div className="academy-content-grid" style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(320px,1fr))", gap:16, alignItems:"start" }}>
         <AcademyCard>
-          <div style={{fontFamily:F.display,fontSize:18,fontWeight:900,color:P.ink}}>{editingId?"Edit activity":"Add an activity"}</div><div style={{fontFamily:F.body,fontSize:11,color:P.muted,marginTop:4}}>Add multiple items to a section; they will appear together on one child card.</div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(125px,1fr))",gap:8,marginTop:13}}>{ACADEMY_TEMPLATES.map(t=><button key={t.title} onClick={()=>applyTemplate(t)} style={{border:`1px solid ${P.line}`,borderRadius:12,background:P.white,padding:10,cursor:"pointer",textAlign:"left"}}><div style={{fontSize:20}}>{t.icon}</div><div style={{fontFamily:F.body,fontSize:10,fontWeight:900,color:P.ink,marginTop:4}}>{t.title}</div><div style={{fontFamily:F.body,fontSize:9,color:ACADEMY_BLUE}}>{t.xp} XP</div></button>)}</div>
+          <div style={{fontFamily:F.display,fontSize:18,fontWeight:800,color:P.ink}}>{editingId?"Edit activity":"Add an activity"}</div><div style={{fontFamily:F.body,fontSize:11,color:P.muted,marginTop:4}}>Add multiple items to a section; they will appear together on one child card.</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(125px,1fr))",gap:8,marginTop:13}}>{ACADEMY_TEMPLATES.map(t=><button key={t.title} onClick={()=>applyTemplate(t)} style={{border:`1px solid ${P.line}`,borderRadius:12,background:P.white,padding:10,cursor:"pointer",textAlign:"left"}}><div style={{fontSize:20}}>{t.icon}</div><div style={{fontFamily:F.body,fontSize:10,fontWeight:800,color:P.ink,marginTop:4}}>{t.title}</div><div style={{fontFamily:F.body,fontSize:9,color:ACADEMY_BLUE}}>{t.xp} XP</div></button>)}</div>
           <div className="academy-form-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:10,marginTop:15}}><label style={{gridColumn:"1/-1"}}><span style={labelStyle}>Activity name</span><input value={draft.title} onChange={e=>setDraft({...draft,title:e.target.value})} style={inputStyle}/></label><label style={{gridColumn:"1/-1"}}><span style={labelStyle}>Child instructions</span><textarea value={draft.instruction} onChange={e=>setDraft({...draft,instruction:e.target.value})} style={{...inputStyle,minHeight:72,paddingTop:9}}/></label><label><span style={labelStyle}>Target</span><input value={draft.target} onChange={e=>setDraft({...draft,target:e.target.value})} style={inputStyle}/></label><label><span style={labelStyle}>XP</span><input type="number" min="0" value={draft.xp} onChange={e=>setDraft({...draft,xp:Number(e.target.value)})} style={inputStyle}/></label><label><span style={labelStyle}>Section</span><select value={draft.type} onChange={e=>setDraft({...draft,type:e.target.value})} style={inputStyle}><option value="steps">Step Goals</option><option value="exercise">Exercises</option><option value="run">Run Challenge</option><option value="skill">Extra Skill Practice</option><option value="club">Bonus & Club Activity</option><option value="recovery">Rest & Recovery</option></select></label><label style={{display:"flex",alignItems:"center",gap:8,marginTop:22,fontFamily:F.body,fontSize:11}}><input type="checkbox" checked={draft.required} onChange={e=>setDraft({...draft,required:e.target.checked})}/> Required</label></div>
-          <div style={{display:"flex",gap:8,marginTop:13}}><button onClick={saveDraft} style={{height:38,border:0,borderRadius:10,background:ACADEMY_BLUE,color:"#fff",padding:"0 15px",fontFamily:F.body,fontSize:11,fontWeight:900,cursor:"pointer"}}>{editingId?"Save changes":"＋ Add to week"}</button>{editingId&&<button onClick={resetDraft} style={{height:38,border:`1px solid ${P.line}`,borderRadius:10,background:"#fff",padding:"0 15px",fontFamily:F.body,fontSize:11,fontWeight:900,cursor:"pointer"}}>Cancel</button>}</div>
+          <div style={{display:"flex",gap:8,marginTop:13}}><button onClick={saveDraft} style={{height:38,border:0,borderRadius:10,background:ACADEMY_BLUE,color:"#fff",padding:"0 15px",fontFamily:F.body,fontSize:11,fontWeight:800,cursor:"pointer"}}>{editingId?"Save changes":"＋ Add to week"}</button>{editingId&&<button onClick={resetDraft} style={{height:38,border:`1px solid ${P.line}`,borderRadius:10,background:"#fff",padding:"0 15px",fontFamily:F.body,fontSize:11,fontWeight:800,cursor:"pointer"}}>Cancel</button>}</div>
         </AcademyCard>
-        <div style={{display:"grid",gap:12}}>{groups.map(group=>{const items=extras.filter(group.test);if(!items.length)return null;return <AcademyCard key={group.key} style={{borderTop:`4px solid ${group.color}`}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{fontFamily:F.display,fontSize:16,fontWeight:900,color:P.ink}}>{group.icon} {group.label}</div><AcademyBadge>{items.length}</AcademyBadge></div><div style={{display:"grid",gap:8,marginTop:10}}>{items.map((x,i)=><div key={x.id} style={{border:`1px solid ${P.line}`,borderRadius:11,padding:11,background:"#fff"}}><div style={{display:"flex",justifyContent:"space-between",gap:8}}><div><div style={{fontFamily:F.body,fontSize:11,fontWeight:900,color:P.ink}}>{x.title}</div><div style={{fontFamily:F.body,fontSize:9,color:P.muted,marginTop:2}}>{x.target||x.instruction||x.description}</div></div><div style={{display:"flex",gap:3}}><button title="Move up" disabled={i===0} onClick={()=>onMoveExtra?.(x.id,-1,group.test)} style={iconAction(i===0)}>↑</button><button title="Move down" disabled={i===items.length-1} onClick={()=>onMoveExtra?.(x.id,1,group.test)} style={iconAction(i===items.length-1)}>↓</button><button title="Edit" onClick={()=>beginEdit(x)} style={iconAction(false)}>✎</button><button title="Remove" onClick={()=>onRemoveExtra(x.id)} style={{...iconAction(false),color:"#dc2626"}}>×</button></div></div><div style={{display:"flex",gap:6,marginTop:7}}><AcademyBadge color="#b45309" bg="#fff7ed">{x.xp||x.xp_reward||0} XP</AcademyBadge>{x.required&&<AcademyBadge color="#b91c1c" bg="#fef2f2">Required</AcademyBadge>}</div></div>)}</div></AcademyCard>})}</div>
+        <div style={{display:"grid",gap:12}}>{groups.map(group=>{const items=extras.filter(group.test);if(!items.length)return null;return <AcademyCard key={group.key} style={{borderTop:`4px solid ${group.color}`}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{fontFamily:F.display,fontSize:16,fontWeight:800,color:P.ink}}>{group.icon} {group.label}</div><AcademyBadge>{items.length}</AcademyBadge></div><div style={{display:"grid",gap:8,marginTop:10}}>{items.map((x,i)=><div key={x.id} style={{border:`1px solid ${P.line}`,borderRadius:11,padding:11,background:"#fff"}}><div style={{display:"flex",justifyContent:"space-between",gap:8}}><div><div style={{fontFamily:F.body,fontSize:11,fontWeight:800,color:P.ink}}>{x.title}</div><div style={{fontFamily:F.body,fontSize:9,color:P.muted,marginTop:2}}>{x.target||x.instruction||x.description}</div></div><div style={{display:"flex",gap:3}}><button title="Move up" disabled={i===0} onClick={()=>onMoveExtra?.(x.id,-1,group.test)} style={iconAction(i===0)}>↑</button><button title="Move down" disabled={i===items.length-1} onClick={()=>onMoveExtra?.(x.id,1,group.test)} style={iconAction(i===items.length-1)}>↓</button><button title="Edit" onClick={()=>beginEdit(x)} style={iconAction(false)}>✎</button><button title="Remove" onClick={()=>onRemoveExtra(x.id)} style={{...iconAction(false),color:"#dc2626"}}>×</button></div></div><div style={{display:"flex",gap:6,marginTop:7}}><AcademyBadge color="#b45309" bg="#fff7ed">{x.xp||x.xp_reward||0} XP</AcademyBadge>{x.required&&<AcademyBadge color="#b91c1c" bg="#fef2f2">Required</AcademyBadge>}</div></div>)}</div></AcademyCard>})}</div>
       </div>
     </div>
-    {publishReview&&<div style={{position:"fixed",inset:0,zIndex:5000,background:"rgba(15,23,42,.55)",display:"grid",placeItems:"center",padding:18}}><div style={{width:"min(520px,100%)",background:"#fff",borderRadius:20,padding:22,boxShadow:"0 30px 80px rgba(15,23,42,.3)"}}><div style={{fontFamily:F.display,fontSize:22,fontWeight:900,color:P.ink}}>Review before publishing</div><div style={{fontFamily:F.body,fontSize:11,color:P.muted,marginTop:5}}>Only published content is visible in the child app for {selectedTeam?.label||"this team"}.</div><div style={{display:"grid",gap:8,marginTop:16}}>{validation.map(v=><div key={v.label} style={{display:"flex",justifyContent:"space-between",padding:10,borderRadius:10,background:v.ok?"#f0fdf4":"#fff7ed",fontFamily:F.body,fontSize:11,fontWeight:800,color:v.ok?"#15803d":"#b45309"}}><span>{v.label}</span><span>{v.ok?"Ready":"Needs attention"}</span></div>)}</div><div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:18,flexWrap:"wrap"}}><button onClick={()=>setPublishReview(false)} style={modalButton(false)}>Keep editing</button><button disabled={!canPublish} onClick={()=>{if(canPublish){onPublish?.();setPublishReview(false)}}} style={{...modalButton(true),opacity:canPublish?1:.45,cursor:canPublish?"pointer":"default"}}>Publish to children</button></div></div></div>}
+    {publishReview&&<div style={{position:"fixed",inset:0,zIndex:5000,background:"rgba(15,23,42,.55)",display:"grid",placeItems:"center",padding:18}}><div style={{width:"min(520px,100%)",background:"#fff",borderRadius:20,padding:22,boxShadow:"0 30px 80px rgba(15,23,42,.3)"}}><div style={{fontFamily:F.display,fontSize:22,fontWeight:800,color:P.ink}}>Review before publishing</div><div style={{fontFamily:F.body,fontSize:11,color:P.muted,marginTop:5}}>Only published content is visible in the child app for {selectedTeam?.label||"this team"}.</div><div style={{display:"grid",gap:8,marginTop:16}}>{validation.map(v=><div key={v.label} style={{display:"flex",justifyContent:"space-between",padding:10,borderRadius:10,background:v.ok?"#f0fdf4":"#fff7ed",fontFamily:F.body,fontSize:11,fontWeight:800,color:v.ok?"#15803d":"#b45309"}}><span>{v.label}</span><span>{v.ok?"Ready":"Needs attention"}</span></div>)}</div><div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:18,flexWrap:"wrap"}}><button onClick={()=>setPublishReview(false)} style={modalButton(false)}>Keep editing</button><button disabled={!canPublish} onClick={()=>{if(canPublish){onPublish?.();setPublishReview(false)}}} style={{...modalButton(true),opacity:canPublish?1:.45,cursor:canPublish?"pointer":"default"}}>Publish to children</button></div></div></div>}
   </div>;
 }
-const smallAction=(disabled)=>({height:36,border:`1px solid ${P.line}`,borderRadius:9,background:"#fff",color:disabled?P.muted:ACADEMY_BLUE,fontFamily:F.body,fontSize:9,fontWeight:900,cursor:disabled?"default":"pointer"});
-const iconAction=(disabled)=>({width:28,height:28,border:`1px solid ${P.line}`,borderRadius:7,background:"#fff",color:disabled?"#cbd5e1":P.ink,cursor:disabled?"default":"pointer",fontWeight:900});
-const modalButton=(primary)=>({height:38,border:primary?0:`1px solid ${P.line}`,borderRadius:10,background:primary?ACADEMY_BLUE:"#fff",color:primary?"#fff":P.ink,padding:"0 15px",fontFamily:F.body,fontSize:11,fontWeight:900,cursor:"pointer"});
-const labelStyle={display:"block",fontFamily:F.body,fontSize:9,fontWeight:900,color:P.muted,textTransform:"uppercase",letterSpacing:".07em",marginBottom:5};
+const smallAction=(disabled)=>({height:36,border:`1px solid ${P.line}`,borderRadius:9,background:"#fff",color:disabled?P.muted:ACADEMY_BLUE,fontFamily:F.body,fontSize:9,fontWeight:800,cursor:disabled?"default":"pointer"});
+const iconAction=(disabled)=>({width:28,height:28,border:`1px solid ${P.line}`,borderRadius:7,background:"#fff",color:disabled?"#cbd5e1":P.ink,cursor:disabled?"default":"pointer",fontWeight:800});
+const modalButton=(primary)=>({height:38,border:primary?0:`1px solid ${P.line}`,borderRadius:10,background:primary?ACADEMY_BLUE:"#fff",color:primary?"#fff":P.ink,padding:"0 15px",fontFamily:F.body,fontSize:11,fontWeight:800,cursor:"pointer"});
+const labelStyle={display:"block",fontFamily:F.body,fontSize:9,fontWeight:800,color:P.muted,textTransform:"uppercase",letterSpacing:".07em",marginBottom:5};
 const inputStyle={width:"100%",height:38,border:`1px solid ${P.line}`,borderRadius:9,padding:"0 10px",boxSizing:"border-box",fontFamily:F.body,fontSize:11,color:P.ink,background:P.white,outline:"none"};
 
-function AcademyPlayers({ selectedTeam }) { const players=Array.from({length:12},(_,i)=>({id:i,name:["Aoife Murphy","Cian Byrne","Saoirse Kelly","Rory Walsh","Niamh Doyle","Oisín Ryan","Emma Nolan","Darragh Flynn","Lucy Brennan","Conor Murray","Mia O'Brien","Sean Gallagher"][i],xp:420-i*21,streak:(i%5)+1})); return <div style={{flex:1,overflow:"auto",background:P.soft}}><AcademyPageHeader title="Players" sub={`${selectedTeam?.label||"Team"} · Academy profiles and progress`} /><div style={{padding:24,maxWidth:1180,margin:"0 auto"}}><AcademyCard><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:10}}>{players.map(p=><div key={p.id} style={{border:`1px solid ${P.line}`,borderRadius:13,padding:13,display:"flex",alignItems:"center",gap:11}}><div style={{width:40,height:40,borderRadius:"50%",background:ACADEMY_SOFT,color:ACADEMY_BLUE,display:"grid",placeItems:"center",fontWeight:900}}>{p.name[0]}</div><div style={{flex:1}}><div style={{fontFamily:F.body,fontSize:12,fontWeight:900,color:P.ink}}>{p.name}</div><div style={{fontFamily:F.body,fontSize:10,color:P.muted,marginTop:2}}>{p.xp} XP · {p.streak} day streak</div></div><span style={{fontSize:17}}>🔥</span></div>)}</div></AcademyCard></div></div>; }
+function AcademyPlayers({ selectedTeam }) { const players=Array.from({length:12},(_,i)=>({id:i,name:["Aoife Murphy","Cian Byrne","Saoirse Kelly","Rory Walsh","Niamh Doyle","Oisín Ryan","Emma Nolan","Darragh Flynn","Lucy Brennan","Conor Murray","Mia O'Brien","Sean Gallagher"][i],xp:420-i*21,streak:(i%5)+1})); return <div style={{flex:1,overflow:"auto",background:P.soft}}><AcademyPageHeader title="Players" sub={`${selectedTeam?.label||"Team"} · Academy profiles and progress`} /><div style={{padding:24,maxWidth:1180,margin:"0 auto"}}><AcademyCard><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:10}}>{players.map(p=><div key={p.id} style={{border:`1px solid ${P.line}`,borderRadius:13,padding:13,display:"flex",alignItems:"center",gap:11}}><div style={{width:40,height:40,borderRadius:"50%",background:ACADEMY_SOFT,color:ACADEMY_BLUE,display:"grid",placeItems:"center",fontWeight:800}}>{p.name[0]}</div><div style={{flex:1}}><div style={{fontFamily:F.body,fontSize:12,fontWeight:800,color:P.ink}}>{p.name}</div><div style={{fontFamily:F.body,fontSize:10,color:P.muted,marginTop:2}}>{p.xp} XP · {p.streak} day streak</div></div><span style={{fontSize:17}}>🔥</span></div>)}</div></AcademyCard></div></div>; }
 
 function AcademyParents({ selectedTeam, parentRows, setParentRows }) {
   const [teamLink] = useState(()=>`${window.location.origin}/academy/join/${selectedTeam?.id||"club-spraoi"}`);
   const parseFile = (file) => { const r=new FileReader(); r.onload=()=>{ const lines=String(r.result||"").split(/\r?\n/).filter(Boolean); const headers=lines.shift()?.split(",").map(h=>h.trim().toLowerCase())||[]; const find=(names)=>headers.findIndex(h=>names.includes(h)); const pi=find(["parent name","parent","guardian name"]), ei=find(["parent email","email","guardian email"]), ci=find(["child name","child","player name"]); const rows=lines.map((l,i)=>{const c=l.split(",").map(x=>x.trim());return{id:`upload-${Date.now()}-${i}`,parent:c[pi]||"",email:c[ei]||"",child:c[ci]||"",status:c[ei]&&c[ci]?"Ready":"Needs review",link:`${teamLink}?invite=${i+1}`}}); setParentRows(rows); }; r.readAsText(file); };
   const copy=(text)=>navigator.clipboard?.writeText(text);
   return <div style={{flex:1,overflow:"auto",background:P.soft}}><AcademyPageHeader title="Parent Access" sub={`${selectedTeam?.label||"Team"} · Upload families and send child-app invitations`} actions={<Btn label="Copy team link" variant="primary" icon="⧉" onClick={()=>copy(teamLink)} style={{background:ACADEMY_BLUE}}/>}/><div style={{padding:24,maxWidth:1180,margin:"0 auto",display:"grid",gap:16}}>
-    <AcademyCard><div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:16,alignItems:"center"}}><div><div style={{fontFamily:F.display,fontSize:18,fontWeight:900,color:P.ink}}>Upload parent and child list</div><div style={{fontFamily:F.body,fontSize:11,color:P.muted,marginTop:4}}>CSV columns: Parent Name, Parent Email, Child Name. One parent can appear on multiple rows for multiple children.</div></div><label style={{height:38,padding:"0 14px",borderRadius:10,background:ACADEMY_BLUE,color:"#fff",display:"flex",alignItems:"center",fontFamily:F.body,fontSize:11,fontWeight:900,cursor:"pointer"}}>Upload CSV<input type="file" accept=".csv,text/csv" onChange={(e)=>e.target.files?.[0]&&parseFile(e.target.files[0])} style={{display:"none"}}/></label></div></AcademyCard>
-    <AcademyCard><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap"}}><div><div style={{fontFamily:F.display,fontSize:17,fontWeight:900,color:P.ink}}>Invitation review</div><div style={{fontFamily:F.body,fontSize:10,color:P.muted,marginTop:3}}>{parentRows.length} family links prepared</div></div><button onClick={()=>setParentRows(rows=>rows.map(r=>({...r,status:r.email&&r.child?"Sent":r.status})))} style={{height:36,border:0,borderRadius:9,background:parentRows.length?ACADEMY_BLUE:"#cbd5e1",color:"#fff",padding:"0 13px",fontFamily:F.body,fontSize:10,fontWeight:900,cursor:parentRows.length?"pointer":"default"}}>Send all ready invitations</button></div>
+    <AcademyCard><div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:16,alignItems:"center"}}><div><div style={{fontFamily:F.display,fontSize:18,fontWeight:800,color:P.ink}}>Upload parent and child list</div><div style={{fontFamily:F.body,fontSize:11,color:P.muted,marginTop:4}}>CSV columns: Parent Name, Parent Email, Child Name. One parent can appear on multiple rows for multiple children.</div></div><label style={{height:38,padding:"0 14px",borderRadius:10,background:ACADEMY_BLUE,color:"#fff",display:"flex",alignItems:"center",fontFamily:F.body,fontSize:11,fontWeight:800,cursor:"pointer"}}>Upload CSV<input type="file" accept=".csv,text/csv" onChange={(e)=>e.target.files?.[0]&&parseFile(e.target.files[0])} style={{display:"none"}}/></label></div></AcademyCard>
+    <AcademyCard><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap"}}><div><div style={{fontFamily:F.display,fontSize:17,fontWeight:800,color:P.ink}}>Invitation review</div><div style={{fontFamily:F.body,fontSize:10,color:P.muted,marginTop:3}}>{parentRows.length} family links prepared</div></div><button onClick={()=>setParentRows(rows=>rows.map(r=>({...r,status:r.email&&r.child?"Sent":r.status})))} style={{height:36,border:0,borderRadius:9,background:parentRows.length?ACADEMY_BLUE:"#cbd5e1",color:"#fff",padding:"0 13px",fontFamily:F.body,fontSize:10,fontWeight:800,cursor:parentRows.length?"pointer":"default"}}>Send all ready invitations</button></div>
     <div style={{overflowX:"auto",marginTop:14}}><table style={{width:"100%",borderCollapse:"collapse",minWidth:720}}><thead><tr>{["Parent","Email","Child","Status","App link"].map(h=><th key={h} style={{textAlign:"left",padding:"9px 8px",borderBottom:`1px solid ${P.line}`,fontFamily:F.body,fontSize:9,color:P.muted,textTransform:"uppercase"}}>{h}</th>)}</tr></thead><tbody>{parentRows.length===0?<tr><td colSpan="5" style={{padding:22,textAlign:"center",fontFamily:F.body,fontSize:11,color:P.muted}}>Upload a CSV to review parent-child links.</td></tr>:parentRows.map(r=><tr key={r.id}><td style={td}>{r.parent}</td><td style={td}>{r.email}</td><td style={td}>{r.child}</td><td style={td}><AcademyBadge color={r.status==="Sent"?"#15803d":r.status==="Ready"?ACADEMY_BLUE:"#b45309"} bg={r.status==="Sent"?"#dcfce7":r.status==="Ready"?ACADEMY_SOFT:"#fff7ed"}>{r.status}</AcademyBadge></td><td style={td}><button onClick={()=>copy(r.link)} style={{border:`1px solid ${P.line}`,background:P.white,borderRadius:8,padding:"6px 9px",fontFamily:F.body,fontSize:9,fontWeight:800,cursor:"pointer"}}>Copy link</button></td></tr>)}</tbody></table></div></AcademyCard>
   </div></div>;
 }
@@ -2987,9 +3076,9 @@ function AcademyPreview({ planSessions, extras, skills = [], overrides = {}, pub
 }
 
 
-function AcademyEngagement() { return <div style={{flex:1,overflow:"auto",background:P.soft}}><AcademyPageHeader title="Engagement" sub="Completion, activity and invitation health" /><div style={{padding:24,maxWidth:1180,margin:"0 auto",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(210px,1fr))",gap:12}}><MetricCard label="Active children" value="17" detail="of 24 this week" accent={ACADEMY_BLUE} icon="✓"/><MetricCard label="Completion" value="68%" detail="across all missions" accent="#0ea5e9" icon="◒"/><MetricCard label="XP earned" value="4,820" detail="this week" accent="#7c3aed" icon="★"/><MetricCard label="Parent opens" value="83%" detail="invitation and app links" accent="#16a34a" icon="↗"/></div></div>; }
+function AcademyEngagement() { return <div style={{flex:1,overflow:"auto",background:P.soft}}><AcademyPageHeader title="Engagement" sub="Completion, activity and invitation health" /><div style={{padding:24,maxWidth:1180,margin:"0 auto",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(210px,1fr))",gap:12}}><MetricCard label="Active children" value="17" detail="of 24 this week" accent={ACADEMY_BLUE} icon="/icons/cup/results.svg"/><MetricCard label="Completion" value="68%" detail="across all missions" accent="#0ea5e9" icon="◒"/><MetricCard label="XP earned" value="4,820" detail="this week" accent="#7c3aed" icon="★"/><MetricCard label="Parent opens" value="83%" detail="invitation and app links" accent="#16a34a" icon="↗"/></div></div>; }
 
-function AcademySettings({ published }) { return <div style={{flex:1,overflow:"auto",background:P.soft}}><AcademyPageHeader title="Settings" sub="Publishing, XP, privacy and parent access defaults" /><div style={{padding:24,maxWidth:900,margin:"0 auto",display:"grid",gap:12}}>{[["Publishing","Only published weeks are visible in the child app.",published?"Published":"Draft"],["Leaderboard privacy","Use first name plus surname initial by default.","Enabled"],["Default XP","Coach foundations receive 20 XP unless changed.","20 XP"],["Parent claiming","Parents can link multiple children using one account.","Enabled"]].map(x=><AcademyCard key={x[0]}><div style={{display:"flex",justifyContent:"space-between",gap:16,alignItems:"center"}}><div><div style={{fontFamily:F.body,fontSize:12,fontWeight:900,color:P.ink}}>{x[0]}</div><div style={{fontFamily:F.body,fontSize:10,color:P.muted,marginTop:3}}>{x[1]}</div></div><AcademyBadge>{x[2]}</AcademyBadge></div></AcademyCard>)}</div></div>; }
+function AcademySettings({ published }) { return <div style={{flex:1,overflow:"auto",background:P.soft}}><AcademyPageHeader title="Settings" sub="Publishing, XP, privacy and parent access defaults" /><div style={{padding:24,maxWidth:900,margin:"0 auto",display:"grid",gap:12}}>{[["Publishing","Only published weeks are visible in the child app.",published?"Published":"Draft"],["Leaderboard privacy","Use first name plus surname initial by default.","Enabled"],["Default XP","Coach foundations receive 20 XP unless changed.","20 XP"],["Parent claiming","Parents can link multiple children using one account.","Enabled"]].map(x=><AcademyCard key={x[0]}><div style={{display:"flex",justifyContent:"space-between",gap:16,alignItems:"center"}}><div><div style={{fontFamily:F.body,fontSize:12,fontWeight:800,color:P.ink}}>{x[0]}</div><div style={{fontFamily:F.body,fontSize:10,color:P.muted,marginTop:3}}>{x[1]}</div></div><AcademyBadge>{x[2]}</AcademyBadge></div></AcademyCard>)}</div></div>; }
 
 function AcademySectionScreen({ screen, selectedTeam, weeklyPlan, planSessions, extras, skills, overrides, onSetOverride, onAddExtra, onUpdateExtra, onRemoveExtra, onMoveExtra, published, onPublish, parentRows, setParentRows }) {
   if (screen === "academy-content") return <AcademyWeeklyContent selectedTeam={selectedTeam} weeklyPlan={weeklyPlan} planSessions={planSessions} extras={extras} skills={skills} overrides={overrides} onSetOverride={onSetOverride} onAddExtra={onAddExtra} onUpdateExtra={onUpdateExtra} onRemoveExtra={onRemoveExtra} onMoveExtra={onMoveExtra} published={published} onPublish={onPublish}/>;
@@ -3013,8 +3102,8 @@ function ModulePlaceholder({ module, screen, club }) {
       <div style={{ padding: "28px", maxWidth: 1180, margin: "0 auto" }}>
         <div style={{ borderRadius: 22, padding: "28px 30px", background: `linear-gradient(135deg, ${module.color} 0%, ${module.color}c9 100%)`, color: module.id === "connect" ? "#332800" : "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24, boxShadow: `0 18px 40px ${module.color}30`, marginBottom: 22 }}>
           <div style={{ maxWidth: 650 }}>
-            <div style={{ fontFamily: F.body, fontSize: 10, fontWeight: 900, letterSpacing: ".14em", textTransform: "uppercase", opacity: .72, marginBottom: 8 }}>{module.label} module</div>
-            <div style={{ fontFamily: F.display, fontSize: 30, fontWeight: 900, lineHeight: 1.05, marginBottom: 8 }}>{screenLabel}</div>
+            <div style={{ fontFamily: F.body, fontSize: 10, fontWeight: 800, letterSpacing: ".14em", textTransform: "uppercase", opacity: .72, marginBottom: 8 }}>{module.label} module</div>
+            <div style={{ fontFamily: F.display, fontSize: 30, fontWeight: 800, lineHeight: 1.05, marginBottom: 8 }}>{screenLabel}</div>
             <div style={{ fontFamily: F.body, fontSize: 14, lineHeight: 1.55, opacity: .88 }}>{module.tagline}</div>
           </div>
           <div style={{ width: 120, height: 120, borderRadius: 30, background: "#fff", border: "1px solid rgba(15,23,42,.08)", display: "grid", placeItems: "center", flexShrink: 0, boxShadow: "0 16px 34px rgba(15,23,42,.16)" }}>
@@ -3024,8 +3113,8 @@ function ModulePlaceholder({ module, screen, club }) {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
           {module.nav.slice(0, 4).map((item, index) => (
             <div key={item.id} style={{ background: P.white, border: `1px solid ${P.line}`, borderRadius: 16, padding: 18, boxShadow: Sh.card }}>
-              <div style={{ width: 38, height: 38, borderRadius: 11, display: "grid", placeItems: "center", background: `${module.color}12`, color: module.color, fontSize: 18, fontWeight: 900, marginBottom: 13 }}>{item.icon}</div>
-              <div style={{ fontFamily: F.display, fontWeight: 900, fontSize: 15, color: P.ink }}>{item.label}</div>
+              <div style={{ width: 38, height: 38, borderRadius: 11, display: "grid", placeItems: "center", background: `${module.color}12`, color: module.color, fontSize: 18, fontWeight: 800, marginBottom: 13 }}>{item.icon}</div>
+              <div style={{ fontFamily: F.display, fontWeight: 800, fontSize: 15, color: P.ink }}>{item.label}</div>
               <div style={{ fontFamily: F.body, color: P.muted, fontSize: 11, lineHeight: 1.5, marginTop: 5 }}>{index === 0 ? "Your overview and priority actions will live here." : "This connected workspace is ready for the next build phase."}</div>
             </div>
           ))}
@@ -3046,7 +3135,7 @@ function AccessDeniedScreen({ module, club }) {
             <img src={module.icon} alt="" style={{ width: 70, height: 70, objectFit: "contain", filter: "grayscale(.3)" }} />
             <span style={{ position: "absolute", right: -3, bottom: -3, width: 30, height: 30, borderRadius: "50%", background: P.navy, color: "#fff", display: "grid", placeItems: "center", fontSize: 13 }}>🔒</span>
           </div>
-          <h2 style={{ fontFamily: F.display, fontSize: 24, fontWeight: 900, color: P.ink, margin: "0 0 8px" }}>{module.label} access required</h2>
+          <h2 style={{ fontFamily: F.display, fontSize: 24, fontWeight: 800, color: P.ink, margin: "0 0 8px" }}>{module.label} access required</h2>
           <p style={{ fontFamily: F.body, color: P.muted, fontSize: 13, lineHeight: 1.65, margin: "0 auto 18px", maxWidth: 420 }}>You can see every Spraoi module so the platform always feels consistent, but your current role does not include access to {module.label}. Please contact your Club Spraoi administrator.</p>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "9px 13px", borderRadius: 10, background: `${module.color}0e`, color: module.color, fontFamily: F.body, fontSize: 11, fontWeight: 800 }}>Administrator approval needed</div>
         </div>
@@ -3062,61 +3151,76 @@ function MobileHeader({ activeModule, setActiveModule, onNav, enabledModules, cl
   const [open, setOpen] = useState(false);
   const mod = MODULES[activeModule];
   const clubName = club?.name || "Club Spraoi";
-  const mobileTeams = ageGroups.filter((ag) => (myTeams || []).some((id) => String(id) === String(ag.id)));
+  const mobileTeams = myTeams?.length ? ageGroups.filter((ag) => myTeams.includes(ag.id)) : ageGroups;
+  const initial = clubName[0];
+
   function openModule(key, module) {
     if (!enabledModules.includes(key)) {
       onNav(`access-denied-${key}`);
       setOpen(false);
       return;
     }
-    const target = readModuleScreen(key, module.nav[0].id);
     if (key !== APP_MODULE) {
-      openAdminModule(key, target);
+      openAdminModule(key, module.nav[0].id);
       return;
     }
     setActiveModule(APP_MODULE);
-    onNav(target);
+    onNav(module.nav[0].id);
     setOpen(false);
   }
+
   return (
     <>
-      <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 62, zIndex: 200, padding: "0 12px", background: mod.color, color: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: `0 5px 18px ${mod.color}35` }}>
-        <button onClick={() => setOpen(true)} style={{ border: "1px solid rgba(15,23,42,.10)", background: "#fff", width: 42, height: 42, borderRadius: 12, display: "grid", placeItems: "center", cursor: "pointer", padding: 0, boxSizing: "border-box", boxShadow: "0 5px 14px rgba(15,23,42,.14)" }}>
-          <img
-            src={activeModule === "cup"
-              ? (club?.logo_url || "/spraoi-club-icon.png")
-              : mod.icon}
-            alt={activeModule === "cup" ? `${clubName} crest` : mod.label}
-            style={{
-              width: activeModule === "cup" ? 36 : 31,
-              height: activeModule === "cup" ? 36 : 31,
-              objectFit: "contain",
-              display: "block"
-            }}
-          />
-        </button>
-        <div style={{ minWidth:0, flex:1, padding:"0 10px", display:"flex", alignItems:"center", justifyContent:"center" }}>
-          {mobileTeams.length > 1 ? (
-            <select aria-label="Current team" value={selectedTeam?.id || ""} onChange={(e)=>{ const ag=ageGroups.find(a=>String(a.id)===String(e.target.value)); if(ag&&onSelectTeam) onSelectTeam(ag); }} style={{ maxWidth:220, width:"100%", border:"1px solid rgba(255,255,255,.42)", background:"rgba(255,255,255,.18)", color:"#fff", borderRadius:10, padding:"8px 10px", fontFamily:F.body, fontSize:16, fontWeight:900 }}>
-              {!selectedTeam && <option value="" style={{color:P.ink}}>Select team</option>}
-              {mobileTeams.map(ag=><option key={ag.id} value={ag.id} style={{color:P.ink}}>{teamDisplayName(ag)}</option>)}
-            </select>
-          ) : <div style={{fontFamily:F.body,fontSize:11,fontWeight:900}}>{selectedTeam ? teamDisplayName(selectedTeam) : clubName}</div>}
+      <div className="spraoi-mobile-app-header" data-module={activeModule}>
+        <div className="spraoi-mobile-app-header-row">
+          <button onClick={() => setOpen(true)} className="spraoi-mobile-club-button" aria-label="Switch module">
+            <img src={club?.logo_url || "/spraoi-club-icon.png"} alt={`${clubName} crest`} />
+          </button>
+
+          <div className="spraoi-mobile-module-name">{mod.label}</div>
+
+          <button onClick={onShowProfile} aria-label="Open profile" className="spraoi-mobile-profile-button">
+            {initial}
+          </button>
         </div>
-        <button onClick={onShowProfile} aria-label="Open profile" style={{ width:42,height:42,borderRadius:12,border:"1px solid rgba(255,255,255,.2)",background:"rgba(255,255,255,.14)",color:"#fff",display:"grid",placeItems:"center",fontFamily:F.display,fontWeight:900,cursor:"pointer" }}>EA</button>
+
+        <div className="spraoi-mobile-team-row">
+          {mobileTeams.length > 1 ? (
+            <select
+              aria-label="Current team"
+              value={selectedTeam?.id || ""}
+              onChange={(e) => {
+                const ag = ageGroups.find((a) => String(a.id) === String(e.target.value));
+                if (ag && onSelectTeam) onSelectTeam(ag);
+              }}
+              className="spraoi-mobile-team-select"
+            >
+              {!selectedTeam && <option value="">Select team</option>}
+              {mobileTeams.map((ag) => <option key={ag.id} value={ag.id}>{teamDisplayName(ag)}</option>)}
+            </select>
+          ) : (
+            <div className="spraoi-mobile-team-single">
+              {selectedTeam ? teamDisplayName(selectedTeam) : "Select team"}
+            </div>
+          )}
+        </div>
       </div>
+
       {open && (
         <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(5,18,34,.62)", padding: 16, display: "flex", alignItems: "flex-start", justifyContent: "center" }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ marginTop: 58, width: "100%", maxWidth: 430, background: P.white, borderRadius: 20, padding: 16, boxShadow: Sh.lift }}>
-            <div style={{ fontFamily: F.display, fontWeight: 900, color: P.ink, fontSize: 18, marginBottom: 12 }}>Switch module</div>
+          <div onClick={(e) => e.stopPropagation()} style={{ marginTop: 82, width: "100%", maxWidth: 430, background: P.white, borderRadius: 20, padding: 16, boxShadow: Sh.lift }}>
+            <div style={{ fontFamily: F.display, fontWeight: 700, color: P.ink, fontSize: 18, marginBottom: 12 }}>Switch module</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
-              {Object.entries(MODULES).filter(([key]) => !["plus","connect"].includes(key)).map(([key, m]) => {
+              {["coach","academy","connect","cup","club"].filter((key) => MODULES[key]).map((key) => {
+                const m = MODULES[key];
                 const unlocked = enabledModules.includes(key);
                 return (
                   <button key={key} onClick={() => openModule(key, m)} style={{ position: "relative", border: `1px solid ${activeModule === key ? m.color : P.line}`, background: activeModule === key ? `${m.color}0d` : P.white, borderRadius: 14, padding: 13, display: "flex", alignItems: "center", gap: 10, textAlign: "left", cursor: "pointer" }}>
-                    <img src={m.icon} alt="" style={{ width: 38, height: 38, objectFit: "contain", opacity: unlocked ? 1 : .5, filter: unlocked ? "none" : "grayscale(1)" }} />
+                    <span style={{ width: 46, height: 46, borderRadius: 13, background: "#fff", border: "1px solid rgba(15,23,42,.08)", display: "grid", placeItems: "center", padding: 0, boxSizing: "border-box", flexShrink: 0, boxShadow: "0 3px 10px rgba(15,23,42,.08)" }}>
+                      <img src={m.icon} alt="" style={{ width: 34, height: 34, objectFit: "contain", display: "block", opacity: unlocked ? 1 : .5, filter: unlocked ? "none" : "grayscale(1)" }} />
+                    </span>
                     <div>
-                      <div style={{ fontFamily: F.display, fontWeight: 900, color: P.ink, fontSize: 13 }}>{m.label}</div>
+                      <div style={{ fontFamily: F.display, fontWeight: 700, color: P.ink, fontSize: 13 }}>{m.label}</div>
                       <div style={{ fontFamily: F.body, color: unlocked ? P.muted : m.color, fontSize: 9 }}>{unlocked ? "Open module" : "Access required"}</div>
                     </div>
                     {!unlocked && <span style={{ position: "absolute", top: 8, right: 8, fontSize: 10 }}>🔒</span>}
@@ -3137,16 +3241,15 @@ function MobileNav({ activeModule, screen, onNav, enabledModules }) {
 
   const items = [
     { id: "cup-dashboard", label: "Dashboard" },
+    { id: "cup-teams", label: "Teams" },
     { id: "cup-matchday", label: "Matchday" },
-    { id: "cup-food", label: "Logistics" },
-    { id: "cup-checklist", label: "Checklist" },
+    { id: "cup-food", label: "Lunch & Logistics" }
   ];
 
   const moreItems = [
-    { id: "cup-events", label: "Events / Switch Event" },
-    { id: "cup-teams", label: "Teams" },
     { id: "cup-competition", label: "Competition" },
-    { id: "cup-content", label: "Event Content" },
+    { id: "cup-content", label: "Announcements" },
+    { id: "cup-settings", label: "Settings" }
   ];
 
   const moreActive = moreItems.some((item) => item.id === screen);
@@ -3155,95 +3258,21 @@ function MobileNav({ activeModule, screen, onNav, enabledModules }) {
     <>
       {showMore && (
         <>
-          <div
-            onClick={() => setShowMore(false)}
-            style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(15,35,60,.28)",
-              zIndex: 198
-            }}
-          />
-
-          <div
-            style={{
-              position: "fixed",
-              left: 12,
-              right: 12,
-              bottom: "calc(72px + env(safe-area-inset-bottom, 0px))",
-              zIndex: 199,
-              background: "#fff",
-              borderRadius: 18,
-              border: `1px solid ${P.line}`,
-              boxShadow: "0 18px 50px rgba(15,35,60,.20)",
-              padding: 10
-            }}
-          >
-            <div
-              style={{
-                fontFamily: F.display,
-                fontSize: 14,
-                fontWeight: 900,
-                color: P.ink,
-                padding: "7px 8px 10px"
-              }}
-            >
-              More Cup tools
-            </div>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(2,minmax(0,1fr))",
-                gap: 8
-              }}
-            >
+          <div onClick={() => setShowMore(false)} style={{ position: "fixed", inset: 0, background: "rgba(15,35,60,.28)", zIndex: 198 }} />
+          <div className="spraoi-mobile-more-sheet">
+            <div className="spraoi-mobile-more-title">More {module.label} tools</div>
+            <div className="spraoi-mobile-more-grid">
               {moreItems.map((item) => {
                 const isActive = screen === item.id;
-
                 return (
                   <button
                     key={item.id}
-                    onClick={() => {
-                      setShowMore(false);
-                      onNav(item.id);
-                    }}
-                    style={{
-                      border: `1px solid ${isActive ? module.color : P.line}`,
-                      background: isActive ? `${module.color}10` : P.soft,
-                      borderRadius: 12,
-                      padding: "13px 10px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 9,
-                      cursor: "pointer",
-                      textAlign: "left",
-                      color: P.ink
-                    }}
+                    onClick={() => { setShowMore(false); onNav(item.id); }}
+                    className="spraoi-mobile-more-button"
+                    data-active={isActive}
+                    style={{ "--module-color": module.color }}
                   >
-                    <span
-                      style={{
-                        width: 30,
-                        height: 30,
-                        borderRadius: 9,
-                        display: "grid",
-                        placeItems: "center",
-                        background: isActive ? `${module.color}15` : "#fff",
-                        flexShrink: 0
-                      }}
-                    >
-                      <SpraoiNavIcon name={item.id} size={17} />
-                    </span>
-
-                    <span
-                      style={{
-                        fontFamily: F.body,
-                        fontSize: 10,
-                        fontWeight: 800
-                      }}
-                    >
-                      {item.label}
-                    </span>
+                    {item.label}
                   </button>
                 );
               })}
@@ -3252,127 +3281,48 @@ function MobileNav({ activeModule, screen, onNav, enabledModules }) {
         </>
       )}
 
-      <div
-        style={{
-          position: "fixed",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          background: "#fff",
-          borderTop: `1px solid ${P.line}`,
-          display: "flex",
-          padding: "6px 4px calc(env(safe-area-inset-bottom, 0px) + 5px)",
-          zIndex: 200,
-          boxShadow: "0 -7px 24px rgba(15,35,60,.08)"
-        }}
-      >
+      <div className="spraoi-mobile-bottom-nav" style={{ "--module-color": module.color }}>
         {items.map((item) => {
           const isActive = screen === item.id;
-
           return (
             <button
               key={item.id}
-              onClick={() => {
-                setShowMore(false);
-                onNav(item.id);
-              }}
-              style={{
-                flex: 1,
-                minWidth: 0,
-                background: "none",
-                border: "none",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 2,
-                cursor: "pointer",
-                color: isActive ? module.color : P.muted,
-                padding: "3px 1px"
-              }}
+              aria-label={item.label}
+              title={item.label}
+              onClick={() => onNav(item.id)}
+              className="spraoi-mobile-bottom-nav-button"
+              data-active={isActive}
             >
-              <span
-                style={{
-                  width: 28,
-                  height: 24,
-                  borderRadius: 8,
-                  display: "grid",
-                  placeItems: "center",
-                  background: isActive ? `${module.color}12` : "transparent",
-                  fontSize: 14,
-                  fontWeight: 900
-                }}
-              >
-                <SpraoiNavIcon name={item.id} size={16} />
+              <span className="spraoi-mobile-bottom-nav-chip">
+                <img src={secondaryNavAsset(activeModule, item.id)} alt="" aria-hidden="true" className="spraoi-mobile-bottom-nav-icon" />
               </span>
-
-              <span
-                style={{
-                  fontSize: 8,
-                  lineHeight: 1.1,
-                  fontWeight: isActive ? 900 : 600,
-                  whiteSpace: "nowrap"
-                }}
-              >
-                {item.label}
-              </span>
+              <span className="spraoi-mobile-bottom-nav-label">{item.label}</span>
             </button>
           );
         })}
 
         <button
-          onClick={() => setShowMore((current) => !current)}
-          style={{
-            flex: 1,
-            minWidth: 0,
-            background: "none",
-            border: "none",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 2,
-            cursor: "pointer",
-            color: moreActive || showMore ? module.color : P.muted,
-            padding: "3px 1px"
-          }}
+          onClick={() => setShowMore((value) => !value)}
+          aria-label="More sections"
+          className="spraoi-mobile-bottom-nav-button"
+          data-active={moreActive || showMore}
         >
-          <span
-            style={{
-              width: 28,
-              height: 24,
-              borderRadius: 8,
-              display: "grid",
-              placeItems: "center",
-              background: moreActive || showMore ? `${module.color}12` : "transparent",
-              fontSize: 17,
-              fontWeight: 900
-            }}
-          >
-            •••
+          <span className="spraoi-mobile-bottom-nav-chip">
+            <img src="/icons/global/more.png" alt="" aria-hidden="true" className="spraoi-mobile-bottom-nav-icon" />
           </span>
-
-          <span
-            style={{
-              fontSize: 8,
-              lineHeight: 1.1,
-              fontWeight: moreActive || showMore ? 900 : 600
-            }}
-          >
-            More
-          </span>
+          <span className="spraoi-mobile-bottom-nav-label">More</span>
         </button>
       </div>
     </>
   );
 }
 
-
-
 /* ============================================================
    SPRAOI CUP — real organiser screens
    Uses the same shell/layout as Coach, with Cup orange styling.
    ============================================================ */
 
-const CUP_ORANGE = "#e65100";
+const CUP_ORANGE = "#FEBA00";
 const CUP_ORANGE_SOFT = "#fff3e8";
 
 const CUP_EVENT = {
@@ -3625,30 +3575,14 @@ function CupCard({ children, style = {} }) {
 }
 
 function CupBtn({ label, onClick, variant = "primary", icon, style = {} }) {
-  const styles = variant === "ghost"
-    ? { background: "#fff", color: "#9a3412", border: "1.5px solid #fed7aa" }
-    : variant === "soft"
-      ? { background: "#fff7ed", color: "#c2410c", border: "1.5px solid #fdba74" }
-      : { background: CUP_ORANGE, color: "#fff", border: "none", boxShadow: "0 5px 16px rgba(230,81,0,.22)" };
+  const styles = variant === "ghost" || variant === "soft"
+    ? { background: "#fff", color: "#10243e", border: "1px solid #D9E2EC", boxShadow: "0 2px 8px rgba(16,36,62,.05)" }
+    : { background: "#D89A00", color: "#fff", border: "1px solid #D89A00", boxShadow: "0 5px 14px rgba(16,36,62,.12)" };
 
   return (
-    <button onClick={onClick} style={{
-      minHeight: 38,
-      padding: "0 15px",
-      borderRadius: 10,
-      cursor: "pointer",
-      display: "inline-flex",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 6,
-      fontFamily: F.body,
-      fontSize: 11,
-      fontWeight: 900,
-      ...styles,
-      ...style,
-    }}>
-      {icon && <span>{icon}</span>}
-      {label}
+    <button className="spraoi-action-button spraoi-cup-action-button" data-variant={variant} onClick={onClick} style={{ ...styles, ...style }}>
+      {icon && <span className="spraoi-action-icon">{icon}</span>}
+      <span>{label}</span>
     </button>
   );
 }
@@ -3686,8 +3620,10 @@ function CupRichTextEditor({ value, onChange }) {
 function CupTopBar({ title, sub, children }) {
   return (
     <div className="cup-page-header" style={{
+      height: 118,
+      minHeight: 118,
+      boxSizing: "border-box",
       padding: "20px 28px",
-      minHeight: 98,
       background: "linear-gradient(135deg, #fff7ed 0%, #ffedd5 56%, #fed7aa 100%)",
       borderBottom: "1px solid rgba(230,81,0,.16)",
       display: "flex",
@@ -3710,7 +3646,6 @@ function CupTopBar({ title, sub, children }) {
           <img src="/spraoi-cup-icon.png" alt="" style={{ width: 50, height: 50, objectFit: "contain" }} />
         </div>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 900, color: "#c2410c", letterSpacing: ".12em", textTransform: "uppercase", marginBottom: 4 }}>Spraoi Cup</div>
           <div className="cup-page-header-title" style={{ fontFamily: F.display, fontSize: 25, fontWeight: 900, color: P.ink, lineHeight: 1.08 }}>{title}</div>
           {sub && <div className="cup-page-header-sub" style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 6, lineHeight: 1.45 }}>{sub}</div>}
         </div>
@@ -3726,7 +3661,7 @@ function CupStatCard({ label, value, sub, icon, color = CUP_ORANGE }) {
     <CupCard style={{ padding: "16px 18px", borderTop: `4px solid ${color}`, minHeight: 112 }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8, gap: 8 }}>
         <span style={{ fontFamily: F.body, fontSize: 9, fontWeight: 900, color: P.muted, textTransform: "uppercase", letterSpacing: "0.09em" }}>{label}</span>
-        {icon && <span style={{ width: 30, height: 30, borderRadius: 9, background: `${color}12`, display: "grid", placeItems: "center", fontSize: 15 }}>{icon}</span>}
+        {icon && <span className="spraoi-card-icon-chip" style={{"--card-accent":color}}>{String(icon).startsWith("/")?<img className="spraoi-card-icon" src={icon} alt=""/>:<span>{icon}</span>}</span>}
       </div>
       <div style={{ fontFamily: F.display, fontSize: 29, fontWeight: 900, color: P.ink, letterSpacing: "-0.04em", lineHeight: 1 }}>{value}</div>
       {sub && <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 7, lineHeight: 1.4 }}>{sub}</div>}
@@ -4919,7 +4854,7 @@ function CupModuleScreen({ screen, onNav, contextTeam, selectedEventId = "", cup
           ))}
         </div>
       )}
-    </div>,<CupBtn label="+ Create Event" onClick={createEvent}/>);
+    </div>,<CupBtn label="Create Event" onClick={createEvent}/>);
   }
   if(screen==="cup-teams"){
     const grades=["A","B","C","D"];
@@ -4975,7 +4910,7 @@ function CupModuleScreen({ screen, onNav, contextTeam, selectedEventId = "", cup
       }
     };
     return sectionWrap("Teams",`${clubs.length} clubs · ${teams.length} competition teams`,<>
-      <div style={{display:"flex",justifyContent:"flex-end",marginBottom:12}}><CupBtn label="+ Add Club" onClick={async()=>{const name=prompt("Club name");if(!name)return;const id=uid("club");const c={id,name,town:"",county:"",logo_url:"",primary_color:"#10243E",secondary_color:"#FFFFFF",accent_color:CUP_ORANGE};await save("clubs",[...clubs,c],setClubs);await save("teams",[...teams,{id:`${id}-A-${Date.now()}`,clubId:id,name:`${name} A`,grade:"A",playerCount:0,mentorCount:0,foodCode:String(Math.floor(1000+Math.random()*9000)),coachBusCount:0,passengerCount:0,arrivalTime:"",departureTime:"",transportNotes:""}],setTeams)}}/></div>
+      <div style={{display:"flex",justifyContent:"flex-end",marginBottom:12}}><CupBtn label="Add Club" onClick={async()=>{const name=prompt("Club name");if(!name)return;const id=uid("club");const c={id,name,town:"",county:"",logo_url:"",primary_color:"#10243E",secondary_color:"#FFFFFF",accent_color:CUP_ORANGE};await save("clubs",[...clubs,c],setClubs);await save("teams",[...teams,{id:`${id}-A-${Date.now()}`,clubId:id,name:`${name} A`,grade:"A",playerCount:0,mentorCount:0,foodCode:String(Math.floor(1000+Math.random()*9000)),coachBusCount:0,passengerCount:0,arrivalTime:"",departureTime:"",transportNotes:""}],setTeams)}}/></div>
       <div className="cup-team-grid" style={{display:"grid",gridTemplateColumns:isMobile?"1fr":"repeat(2,1fr)",gap:14,minWidth:0}}>
         {clubs.map(c=>{
           const clubTeams=teams.filter(t=>t.clubId===c.id);
@@ -5022,7 +4957,7 @@ function CupModuleScreen({ screen, onNav, contextTeam, selectedEventId = "", cup
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:10}}>{field("Start",<input type="time" value={config.startTime} onChange={e=>save("config",{...config,startTime:e.target.value},setConfig)} style={inp}/>)}{field("Target finish",<input type="time" value={config.targetFinish} onChange={e=>save("config",{...config,targetFinish:e.target.value},setConfig)} style={inp}/>)}{field("Match mins",<input type="number" value={config.matchDurationMins} onChange={e=>save("config",{...config,matchDurationMins:+e.target.value},setConfig)} style={inp}/>)}{field("Turnaround",<input type="number" value={config.turnaroundMins} onChange={e=>save("config",{...config,turnaroundMins:+e.target.value},setConfig)} style={inp}/>)}{field("Lunch mins",<input type="number" min="30" value={config.lunchMinutes||30} onChange={e=>save("config",{...config,lunchMinutes:Math.max(30,+e.target.value||30)},setConfig)} style={inp}/>)}{field("Maximum people per lunch slot",<input type="number" min="1" value={config.lunchCapacity||90} onChange={e=>save("config",{...config,lunchCapacity:Math.max(1,+e.target.value||90)},setConfig)} style={inp}/>)}{field("Groups / grade",<input type="number" min="1" max="4" value={config.groupCount} onChange={e=>save("config",{...config,groupCount:+e.target.value},setConfig)} style={inp}/>)}</div>
         </CupCard>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
-          <CupCard style={{padding:18}}><div style={{display:"flex",justifyContent:"space-between"}}><b style={{fontFamily:F.display}}>Pitches</b><CupBtn label="+ Pitch" variant="ghost" onClick={()=>save("config",{...config,pitches:[...pitches,{id:uid("pitch"),name:`Pitch ${pitches.length+1}`}]},setConfig)}/></div>{pitches.map((p,i)=><div key={p.id} style={{display:"grid",gridTemplateColumns:"1fr auto",gap:8,marginTop:8}}><input value={p.name} onChange={e=>save("config",{...config,pitches:pitches.map((x,j)=>j===i?{...x,name:e.target.value}:x)},setConfig)} style={inp}/><CupBtn label="Remove" variant="ghost" onClick={()=>save("config",{...config,pitches:pitches.filter((_,j)=>j!==i)},setConfig)}/></div>)}</CupCard>
+          <CupCard style={{padding:18}}><div style={{display:"flex",justifyContent:"space-between"}}><b style={{fontFamily:F.display}}>Pitches</b><CupBtn label="Pitch" variant="ghost" onClick={()=>save("config",{...config,pitches:[...pitches,{id:uid("pitch"),name:`Pitch ${pitches.length+1}`}]},setConfig)}/></div>{pitches.map((p,i)=><div key={p.id} style={{display:"grid",gridTemplateColumns:"1fr auto",gap:8,marginTop:8}}><input value={p.name} onChange={e=>save("config",{...config,pitches:pitches.map((x,j)=>j===i?{...x,name:e.target.value}:x)},setConfig)} style={inp}/><CupBtn label="Remove" variant="ghost" onClick={()=>save("config",{...config,pitches:pitches.filter((_,j)=>j!==i)},setConfig)}/></div>)}</CupCard>
           <CupCard style={{padding:18}}>
             <div style={{fontFamily:F.display,fontSize:16,fontWeight:900}}>Placement competitions</div>
             <div style={{fontSize:9.5,color:P.muted,lineHeight:1.5,marginTop:4}}>Applied independently to every enabled grade. With 2 groups: Cup = group winners, Shield = runners-up, Plate = 3rd, Bowl = 4th. With 1 group: Cup = 1st v 2nd, Shield = 3rd v 4th, Plate = 5th v 6th, Bowl = 7th v 8th.</div>
@@ -5096,7 +5031,7 @@ function CupModuleScreen({ screen, onNav, contextTeam, selectedEventId = "", cup
     };
     return sectionWrap("Results","Scores automatically populate qualified finals; Lead Mentor / Club Admin can still amend finals in Schedule",<div className="cup-results-grid" style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12}}>{matches.map(m=><CupCard key={m.id} style={{padding:14,borderLeft:m.finalLabel?`4px solid ${CUP_ORANGE}`:undefined}}><b style={{fontFamily:F.display}}>{m.time} · {m.pitch}</b><div style={{fontSize:9,color:P.muted,marginTop:3}}>{m.stageLabel||m.finalLabel}</div>{[["A",m.teamA,"goalsA","pointsA"],["B",m.teamB,"goalsB","pointsB"]].map(([k,id,g,p])=><div key={k} style={{display:"grid",gridTemplateColumns:"1fr 60px 60px",gap:7,marginTop:8,alignItems:"center"}}><b style={{fontSize:10}}>{teamById(id).name}</b><input type="number" min="0" value={m[g]||0} onChange={e=>updateResult(m,{[g]:+e.target.value})} style={inp}/><input type="number" min="0" value={m[p]||0} onChange={e=>updateResult(m,{[p]:+e.target.value})} style={inp}/></div>)}<select value={m.status||"scheduled"} onChange={e=>updateResult(m,{status:e.target.value})} style={{...inp,marginTop:8}}><option value="scheduled">Scheduled</option><option value="live">Live</option><option value="finished">Finished</option></select>{m.lastEditedBy&&<div style={{fontSize:8,color:P.muted,marginTop:5}}>Last edited by {m.lastEditedBy}</div>}</CupCard>)}</div>);
   }
-  if(screen==="cup-referees")return sectionWrap("Referees","Pitch-only score access with link, code and reset controls",<div style={{display:"grid",gap:10}}>{refs.map(r=><CupCard key={r.id} style={{padding:15,opacity:r.active?1:.55}}><div style={{display:"flex",justifyContent:"space-between"}}><b style={{fontFamily:F.display}}>{r.label}</b><b style={{color:r.active?P.green:"#b91c1c"}}>{r.active?"ACTIVE":"DISABLED"}</b></div><div style={{fontFamily:"monospace",fontSize:9,background:P.soft,padding:8,borderRadius:8,marginTop:8,wordBreak:"break-all"}}>{`${cupParticipantBase()}/?event=${encodeURIComponent(eventId)}&ref=${encodeURIComponent(r.id)}`}</div><div style={{display:"flex",gap:8,alignItems:"center",marginTop:8,flexWrap:"wrap"}}><strong style={{fontSize:22,color:CUP_ORANGE,letterSpacing:3}}>{r.code}</strong><CupBtn label="Copy" variant="ghost" onClick={()=>navigator.clipboard.writeText(`Referee link: ${`${cupParticipantBase()}/?event=${encodeURIComponent(eventId)}&ref=${encodeURIComponent(r.id)}`}\nCode: ${r.code}`)}/><CupBtn label="New code" variant="ghost" onClick={()=>save("refereeAccess",refs.map(x=>x.id===r.id?{...x,code:String(Math.floor(100000+Math.random()*900000)),version:(x.version||1)+1}:x),setRefs)}/><CupBtn label={r.active?"Disable":"Enable"} variant="ghost" onClick={()=>save("refereeAccess",refs.map(x=>x.id===r.id?{...x,active:!x.active,version:(x.version||1)+1}:x),setRefs)}/></div></CupCard>)}</div>,<><CupBtn label="+ Referee" onClick={()=>{const label=prompt("Referee name/label","Pitch referee");if(!label)return;const ids=(prompt(`Pitch IDs, comma separated:\n${pitches.map(p=>`${p.id} = ${p.name}`).join("\n")}`,pitches[0]?.id||"")||"").split(",").map(x=>x.trim()).filter(Boolean);save("refereeAccess",[...refs,cupRefAccess(eventId,ids,label)],setRefs)}}/><CupBtn label="Reset All" variant="ghost" onClick={()=>confirm("Invalidate every existing referee session?")&&save("refereeAccess",refs.map(r=>({...r,active:false,version:(r.version||1)+1})),setRefs)}/></>);
+  if(screen==="cup-referees")return sectionWrap("Referees","Pitch-only score access with link, code and reset controls",<div style={{display:"grid",gap:10}}>{refs.map(r=><CupCard key={r.id} style={{padding:15,opacity:r.active?1:.55}}><div style={{display:"flex",justifyContent:"space-between"}}><b style={{fontFamily:F.display}}>{r.label}</b><b style={{color:r.active?P.green:"#b91c1c"}}>{r.active?"ACTIVE":"DISABLED"}</b></div><div style={{fontFamily:"monospace",fontSize:9,background:P.soft,padding:8,borderRadius:8,marginTop:8,wordBreak:"break-all"}}>{`${cupParticipantBase()}/?event=${encodeURIComponent(eventId)}&ref=${encodeURIComponent(r.id)}`}</div><div style={{display:"flex",gap:8,alignItems:"center",marginTop:8,flexWrap:"wrap"}}><strong style={{fontSize:22,color:CUP_ORANGE,letterSpacing:3}}>{r.code}</strong><CupBtn label="Copy" variant="ghost" onClick={()=>navigator.clipboard.writeText(`Referee link: ${`${cupParticipantBase()}/?event=${encodeURIComponent(eventId)}&ref=${encodeURIComponent(r.id)}`}\nCode: ${r.code}`)}/><CupBtn label="New code" variant="ghost" onClick={()=>save("refereeAccess",refs.map(x=>x.id===r.id?{...x,code:String(Math.floor(100000+Math.random()*900000)),version:(x.version||1)+1}:x),setRefs)}/><CupBtn label={r.active?"Disable":"Enable"} variant="ghost" onClick={()=>save("refereeAccess",refs.map(x=>x.id===r.id?{...x,active:!x.active,version:(x.version||1)+1}:x),setRefs)}/></div></CupCard>)}</div>,<><CupBtn label="Referee" onClick={()=>{const label=prompt("Referee name/label","Pitch referee");if(!label)return;const ids=(prompt(`Pitch IDs, comma separated:\n${pitches.map(p=>`${p.id} = ${p.name}`).join("\n")}`,pitches[0]?.id||"")||"").split(",").map(x=>x.trim()).filter(Boolean);save("refereeAccess",[...refs,cupRefAccess(eventId,ids,label)],setRefs)}}/><CupBtn label="Reset All" variant="ghost" onClick={()=>confirm("Invalidate every existing referee session?")&&save("refereeAccess",refs.map(r=>({...r,active:false,version:(r.version||1)+1})),setRefs)}/></>);
   if(screen==="cup-announcements"){
     const emojis=["📣","⚠️","🚗","🅿️","🍔","☕","🏑","⚽","🏆","🌧️","⏰","📍","🚑","✅","ℹ️","🎉"];
     const createDraft=async()=>{const draft={id:uid("ann"),emoji:"📣",title:"New announcement",html:"",text:"",status:"draft",publishAt:"",expiresAt:"",active:true,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()};await save("announcements",[draft,...announcements],setAnnouncements);setEditingAnnouncementId(draft.id)};
@@ -5117,7 +5052,7 @@ function CupModuleScreen({ screen, onNav, contextTeam, selectedEventId = "", cup
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:10}}><label style={{display:"grid",gap:5,fontSize:9,fontWeight:800,color:P.muted}}>Publish date & time<input type="datetime-local" value={editing.publishAt||editing.startsAt||""} onChange={e=>updateAnnouncement(editing.id,{publishAt:e.target.value})} style={{...inp,textTransform:"none"}}/></label><label style={{display:"grid",gap:5,fontSize:9,fontWeight:800,color:P.muted}}>Optional expiry<input type="datetime-local" value={editing.expiresAt||editing.endsAt||""} onChange={e=>updateAnnouncement(editing.id,{expiresAt:e.target.value})} style={{...inp,textTransform:"none"}}/></label></div>
         <div style={{display:"flex",gap:7,marginTop:12,flexWrap:"wrap"}}><CupBtn label="Save Draft" variant="ghost" onClick={()=>updateAnnouncement(editing.id,{status:"draft"})}/><CupBtn label="Publish Now" onClick={()=>updateAnnouncement(editing.id,{status:"published",publishAt:new Date().toISOString().slice(0,16)})}/><CupBtn label="Schedule" variant="ghost" onClick={()=>{if(!editing.publishAt){alert("Choose a publish date and time first.");return}updateAnnouncement(editing.id,{status:"scheduled"})}}/><CupBtn label="Delete" variant="ghost" onClick={()=>{if(confirm("Delete this announcement?")){save("announcements",announcements.filter(x=>x.id!==editing.id),setAnnouncements);setEditingAnnouncementId(null)}}}/></div>
       </div></div>}
-    </div>,<CupBtn label="+ Create Announcement" onClick={createDraft}/>);
+    </div>,<CupBtn label="Create Announcement" onClick={createDraft}/>);
   }
   if(screen==="cup-information"){
     const builtIn=[
@@ -5161,7 +5096,7 @@ function CupModuleScreen({ screen, onNav, contextTeam, selectedEventId = "", cup
           {field("Content",<textarea rows={3} value={section.content||""} onChange={e=>updateCustom(index,{content:e.target.value})} style={inp}/>)}
         </div>
       </CupCard>)}
-    </div>,<CupBtn label="+ Custom Section" onClick={()=>save("eventInfo",{...info,customSections:[...custom,{id:uid("info"),heading:"Additional Information",content:""}]},setInfo)}/>);
+    </div>,<CupBtn label="Custom Section" onClick={()=>save("eventInfo",{...info,customSections:[...custom,{id:uid("info"),heading:"Additional Information",content:""}]},setInfo)}/>);
   }
   if(screen==="cup-sponsors"){
     const editing=sponsors.find(s=>s.id===editingSponsorId);
@@ -5178,7 +5113,7 @@ function CupModuleScreen({ screen, onNav, contextTeam, selectedEventId = "", cup
         </div>
         <div style={{display:"flex",justifyContent:"flex-end",gap:7,marginTop:14}}><CupBtn label="Delete" variant="ghost" onClick={()=>{if(confirm("Delete this sponsor?")){save("sponsors",sponsors.filter(x=>x.id!==editing.id),setSponsors);setEditingSponsorId(null)}}}/><CupBtn label="Done" onClick={()=>setEditingSponsorId(null)}/></div>
       </div></div>}
-    </div>,<CupBtn label="+ Sponsor" onClick={addSponsor}/>);
+    </div>,<CupBtn label="Sponsor" onClick={addSponsor}/>);
   }
   if(screen==="cup-food") {
     const pc=teams.reduce((n,t)=>n+Number(t.playerCount||0),0);
@@ -5309,7 +5244,7 @@ function CupModuleScreen({ screen, onNav, contextTeam, selectedEventId = "", cup
       "Plan lunch serving slots, exact food quantities and visiting team transport",
       <div style={{display:"grid",gap:14}}>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:10}}>
-          <CupStatCard label="Players" value={pc} icon="👥"/>
+          <CupStatCard label="Players" value={pc} icon="/icons/cup/teams.svg"/>
           <CupStatCard label="Mentors" value={mc} color={P.green} icon="🧑‍🏫"/>
           <CupStatCard label="Lunch slots" value={lunchWindows.length} color="#fb8c00" icon="🍔"/>
           <CupStatCard label="Coaches / buses" value={coachBusTotal} sub={passengerTotal?`${passengerTotal} passengers declared`:"Transport numbers not complete"} color="#0284c7" icon="🚌"/>
@@ -5321,7 +5256,7 @@ function CupModuleScreen({ screen, onNav, contextTeam, selectedEventId = "", cup
               <div style={{fontFamily:F.display,fontSize:18,fontWeight:900,color:P.ink}}>Lunch serving times</div>
               <div style={{fontFamily:F.body,fontSize:9.5,color:P.muted,marginTop:3}}>Lunch slots are created automatically when you generate the Cup schedule. You can still amend the times or club allocations here. Player and mentor numbers are calculated automatically from Teams.</div>
             </div>
-            <CupBtn label="+ Lunch slot" onClick={addLunchWindow}/>
+            <CupBtn label="Lunch slot" onClick={addLunchWindow}/>
           </div>
 
           {lunchWindows.length===0&&<div style={{marginTop:14,padding:14,borderRadius:12,background:P.soft,fontSize:10,color:P.muted}}>No lunch times have been added yet.</div>}
@@ -5385,7 +5320,7 @@ function CupModuleScreen({ screen, onNav, contextTeam, selectedEventId = "", cup
               <CupBtn label="Remove" variant="ghost" onClick={()=>save("foodMenu",food.filter((_,j)=>j!==i),setFood)}/>
             </div>)}
           </div>
-          <div style={{marginTop:10}}><CupBtn label="+ Food item" variant="ghost" onClick={()=>save("foodMenu",[...food,{id:uid("food"),name:"Burger",price:null,active:true,freeForPlayers:true,freeForMentors:true}],setFood)}/></div>
+          <div style={{marginTop:10}}><CupBtn label="Food item" variant="ghost" onClick={()=>save("foodMenu",[...food,{id:uid("food"),name:"Burger",price:null,active:true,freeForPlayers:true,freeForMentors:true}],setFood)}/></div>
         </CupCard>
 
         <CupCard style={{padding:18}}>
@@ -5569,14 +5504,15 @@ function CupModuleScreen({ screen, onNav, contextTeam, selectedEventId = "", cup
     );
   }
   const participantUrl=`${cupParticipantBase()}/?event=${encodeURIComponent(eventId)}${event?.status==="draft"?"&preview=1":""}`;
-  return sectionWrap("Cup Dashboard",event?.name?`${event.name}${event.date?` · ${event.date}`:""}`:"Set up and run your event",<>
+  return sectionWrap("Dashboard",event?.name?`${event.name}${event.date?` · ${event.date}`:""}`:"Set up and run your event",<>
     <div className="cup-dashboard-stats" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:18}}>
-      <CupStatCard label="Teams" value={teams.length} sub={`${clubs.length} clubs registered`} icon="👥"/>
-      <CupStatCard label="Fixtures" value={matches.length} sub={`${finished.length} finished · ${live.length} live`} color="#fb8c00" icon="📅"/>
-      <CupStatCard label="Pitches" value={pitches.length} sub={pitches.length?pitches.map(p=>p.name).join(" · "):"No pitches configured"} color="#0284c7" icon="📍"/>
-      <CupStatCard label="Event status" value={statusLabel} sub={`${announcements.length} announcements · ${activeSponsors} sponsors`} color={statusColor} icon="✓"/>
+      <CupStatCard label="Teams" value={teams.length} sub={`${clubs.length} clubs registered`} icon="/icons/cup/teams.svg"/>
+      <CupStatCard label="Fixtures" value={matches.length} sub={`${finished.length} finished · ${live.length} live`} color="#fb8c00" icon="/icons/cup/fixtures.svg"/>
+      <CupStatCard label="Pitches" value={pitches.length} sub={pitches.length?pitches.map(p=>p.name).join(" · "):"No pitches configured"} color="#0284c7" icon="/icons/cup/pitch.svg"/>
+      <CupStatCard label="Event status" value={statusLabel} sub={`${announcements.length} announcements · ${activeSponsors} sponsors`} color={statusColor} icon="/icons/cup/results.svg"/>
     </div>
 
+    <section className="spraoi-dashboard-analytics cup-dashboard-analytics"><div className="spraoi-dashboard-section-head"><div><div className="spraoi-dashboard-section-title">Event overview</div><div className="spraoi-dashboard-section-sub">Fixture progress and event readiness at a glance.</div></div><button className="spraoi-download-button cup-download" type="button" onClick={()=>{const rows=[["Metric","Value"],["Teams",teams.length],["Fixtures",matches.length],["Finished",finished.length],["Live",live.length],["Pitches",pitches.length],["Announcements",announcements.length],["Sponsors",activeSponsors]];const csv=rows.map(r=>r.map(v=>`"${String(v??"").replaceAll('"','""')}"`).join(",")).join("\n");const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="cup-dashboard.csv";a.click();URL.revokeObjectURL(url);}}>Download</button></div><div className="spraoi-dashboard-chart-grid"><div className="spraoi-chart-card"><div className="spraoi-chart-card-title">Fixture progress</div><div className="spraoi-bar-chart"><div><div className="spraoi-bar-label"><span>Completed</span><strong>{finished.length} / {matches.length}</strong></div><div className="spraoi-bar-track"><div className="spraoi-bar-fill" style={{width:`${matches.length?Math.round((finished.length/matches.length)*100):0}%`,background:"#D89A00"}}/></div></div><div><div className="spraoi-bar-label"><span>Live</span><strong>{live.length}</strong></div><div className="spraoi-bar-track"><div className="spraoi-bar-fill" style={{width:`${matches.length?Math.min(100,(live.length/matches.length)*100):0}%`,background:"#F59E0B"}}/></div></div></div></div><div className="spraoi-chart-card"><div className="spraoi-chart-card-title">Event content</div><div className="spraoi-mini-kpis"><div><img src="/icons/cup/teams.svg" alt=""/><span>Teams</span><strong>{teams.length}</strong></div><div><img src="/icons/cup/pitch.svg" alt=""/><span>Pitches</span><strong>{pitches.length}</strong></div><div><img src="/icons/cup/sponsors.svg" alt=""/><span>Sponsors</span><strong>{activeSponsors}</strong></div></div></div></div></section>
     <CupCard style={{padding:18,marginBottom:18,borderColor:"#fdba74",background:"linear-gradient(135deg,#fff 0%,#fffaf5 100%)"}}>
       <div style={{display:"flex",justifyContent:"space-between",gap:14,alignItems:"center",flexWrap:"wrap"}}>
         <div style={{minWidth:220}}>
@@ -5585,8 +5521,8 @@ function CupModuleScreen({ screen, onNav, contextTeam, selectedEventId = "", cup
           <div style={{fontFamily:F.body,fontSize:10,color:P.muted,marginTop:5}}>{event?.venue||"Venue TBC"} · {config.startTime||"Start TBC"}–{config.targetFinish||"Finish TBC"}</div>
         </div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-          <CupBtn label="Participant View" variant="ghost" icon="↗" onClick={()=>window.open(participantUrl,"_blank")}/>
-          <CupBtn label="Manage Event Content" icon="i" onClick={()=>onNav("cup-content")}/>
+          <CupBtn label="Participant View" variant="ghost" onClick={()=>window.open(participantUrl,"_blank")}/>
+          <CupBtn label="Manage Event Content" onClick={()=>onNav("cup-content")}/>
         </div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:8,marginTop:16}}>
@@ -5611,9 +5547,19 @@ function CupModuleScreen({ screen, onNav, contextTeam, selectedEventId = "", cup
       <CupCard style={{padding:16}}><div style={{fontFamily:F.display,fontSize:16,fontWeight:900}}>Event Content</div><div style={{fontSize:10,color:P.muted,margin:"4px 0 12px"}}>{announcements.length} announcements · {activeSponsors} active sponsors.</div><CupBtn label="Open Content" variant="ghost" onClick={()=>onNav("cup-content")}/></CupCard>
       <CupCard style={{padding:16}}><div style={{fontFamily:F.display,fontSize:16,fontWeight:900}}>Lunch & Logistics</div><div style={{fontSize:10,color:P.muted,margin:"4px 0 12px"}}>{lunchWindows.length} lunch slots · {dashboardCoachBusTotal} coaches/buses.</div><CupBtn label="Open Logistics" variant="ghost" onClick={()=>onNav("cup-food")}/></CupCard>
     </div>
-  </>,<CupBtn label="+ New Event" onClick={createEvent}/>);
+  </>,<CupBtn label="New Event" onClick={createEvent}/>);
 
 }
+
+/* ============================================================
+   MAIN APP
+   ============================================================ */
+
+/* ============================================================
+   CUP MODULE ENTRY
+   Single source of truth for Cup screens rendered by Admin.
+   ============================================================ */
+
 
 /* ============================================================
    MAIN APP
@@ -5647,7 +5593,7 @@ export function CupModule({
 
 
 function SpraoiPasswordRecovery({
-  accent = "#0277bd",
+  accent = "#2563EB",
   lightBackground = false,
   logo = "/spraoi-logo-white.png",
   onDone,
@@ -5735,7 +5681,7 @@ function SpraoiPasswordRecovery({
           <div
             style={{
               fontSize: 21,
-              fontWeight: 900,
+              fontWeight: 800,
               color: "#13243b",
               marginBottom: 6,
             }}
@@ -6492,7 +6438,7 @@ setAgeGroups(data || []);
         <div style={{ maxWidth: 580, margin: "0 auto", padding: "20px 16px" }}>
           <div style={{ background: `linear-gradient(135deg, ${P.p700}, ${P.p900})`, borderRadius: 14, padding: 20, color: "#fff", marginBottom: 16 }}>
             <div style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, textTransform: "uppercase", opacity: 0.6 }}>Training Session</div>
-            <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 900, marginTop: 4 }}>{sharedSession.hurling_skill?.name || "Session Plan"}</div>
+            <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 800, marginTop: 4 }}>{sharedSession.hurling_skill?.name || "Session Plan"}</div>
             {sess?.session_date && <div style={{ fontFamily: F.body, fontSize: 12, opacity: 0.8, marginTop: 4 }}>{new Date(sess.session_date + "T12:00:00").toLocaleDateString("en-IE", { weekday: "long", day: "numeric", month: "short", year: "numeric" })}</div>}
             <div style={{ fontFamily: F.body, fontSize: 11, opacity: 0.7, marginTop: 2 }}>{sess?.total_duration_mins || "?"}min · {activities.length} drills</div>
           </div>
@@ -6512,7 +6458,7 @@ setAgeGroups(data || []);
             return (
               <div key={sa.id} style={{ background: P.white, borderRadius: 12, border: `1px solid ${P.line}`, padding: 14, marginBottom: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                  <span style={{ fontFamily: F.display, fontSize: 14, fontWeight: 900, color: P.p600 }}>{i + 1}</span>
+                  <span style={{ fontFamily: F.display, fontSize: 14, fontWeight: 800, color: P.p600 }}>{i + 1}</span>
                   <div style={{ width: 28, height: 28, borderRadius: 7, background: sportIcon.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, position: "relative" }}>
                     <img src={sportIcon.icon} alt="" style={{ width: 16, height: 16, objectFit: "contain", filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.2))" }} />
                     {catIcon && <img src={catIcon.icon} alt="" style={{ position: "absolute", bottom: -2, right: -2, width: 10, height: 10, objectFit: "contain", background: "#fff", borderRadius: 2, padding: 1 }} />}
@@ -6538,7 +6484,7 @@ setAgeGroups(data || []);
   if (recoveryMode && session) {
     return (
       <SpraoiPasswordRecovery
-        accent={MODULES[APP_MODULE]?.color || "#0277bd"}
+        accent={MODULES[APP_MODULE]?.color || "#2563EB"}
         onDone={() => setRecoveryMode(false)}
       />
     );
@@ -6619,7 +6565,7 @@ setAgeGroups(data || []);
                   fontFamily: F.body,
                   fontSize: 11,
                   fontWeight: 800,
-                  color: MODULES[APP_MODULE]?.color || "#0277bd",
+                  color: MODULES[APP_MODULE]?.color || "#2563EB",
                   cursor: "pointer",
                 }}
               >
@@ -6661,7 +6607,7 @@ setAgeGroups(data || []);
                       border: "none",
                       borderRadius: 9,
                       background:
-                        MODULES[APP_MODULE]?.color || "#0277bd",
+                        MODULES[APP_MODULE]?.color || "#2563EB",
                       color: "#fff",
                       fontFamily: F.body,
                       fontSize: 11,
@@ -6712,7 +6658,7 @@ setAgeGroups(data || []);
         <div style={{ minHeight: "100vh", background: P.soft, display: "grid", placeItems: "center", fontFamily: F.body, padding: 18 }}>
           <div style={{ width: "min(100%, 520px)", background: P.white, borderRadius: 18, border: `1px solid ${P.line}`, boxShadow: Sh.card, padding: 24, textAlign: "center" }}>
             <img src="/spraoi-cup-icon.png" alt="" style={{ width: 64, height: 64, objectFit: "contain" }} />
-            <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 900, color: P.ink, marginTop: 10 }}>No team assigned</div>
+            <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 800, color: P.ink, marginTop: 10 }}>No team assigned</div>
             <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, lineHeight: 1.6, marginTop: 6 }}>
               A Club Admin must assign your account to a team before team or Cup event data is shown.
             </div>
@@ -6728,7 +6674,7 @@ setAgeGroups(data || []);
       <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: P.soft, fontFamily: F.body }}>
         <div style={{ textAlign: "center", color: P.muted }}>
           <img src="/spraoi-cup-icon.png" alt="" style={{ width: 54, height: 54, objectFit: "contain", marginBottom: 10 }} />
-          <div style={{ fontFamily: F.display, fontWeight: 900, color: P.ink }}>Loading Cup…</div>
+          <div style={{ fontFamily: F.display, fontWeight: 800, color: P.ink }}>Loading Cup…</div>
         </div>
       </div>
     );
@@ -6762,7 +6708,7 @@ setAgeGroups(data || []);
   const showMobile = isMobile;
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", width: "100%", fontFamily: F.body, paddingTop: showMobile ? 62 : 0, paddingBottom: showMobile ? 68 : 0, boxSizing: "border-box" }}>
+    <div style={{ display: "flex", minHeight: "100vh", width: "100%", fontFamily: F.body, paddingTop: showMobile ? 116 : 0, paddingBottom: showMobile ? 78 : 0, boxSizing: "border-box" }}>
       {showMobile && <MobileHeader activeModule={activeModule} setActiveModule={setActiveModule} onNav={setScreen} enabledModules={enabledModules} club={club} selectedTeam={selectedTeam} ageGroups={ageGroups} myTeams={myTeams} onSelectTeam={selectTeam} onShowProfile={()=>setShowProfile(true)} />}
 
       {/* Sidebar — desktop only */}
@@ -6821,13 +6767,13 @@ setAgeGroups(data || []);
         <div onClick={() => setShowProfile(false)} style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: P.white, borderRadius: 18, maxWidth: 420, width: "100%", maxHeight: "80vh", overflowY: "auto", boxShadow: Sh.lift }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", borderBottom: `1px solid ${P.line}` }}>
-              <div style={{ fontFamily: F.display, fontSize: 17, fontWeight: 900, color: P.ink }}>Profile</div>
+              <div style={{ fontFamily: F.display, fontSize: 17, fontWeight: 800, color: P.ink }}>Profile</div>
               <button onClick={() => setShowProfile(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: P.muted }}>×</button>
             </div>
             <div style={{ padding: 20 }}>
               {/* User info */}
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-                <div style={{ width: 48, height: 48, borderRadius: "50%", background: `${P.p600}20`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F.display, fontSize: 18, fontWeight: 900, color: P.p600 }}>
+                <div style={{ width: 48, height: 48, borderRadius: "50%", background: `${P.p600}20`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F.display, fontSize: 18, fontWeight: 800, color: P.p600 }}>
                   {(() => {
   const rawName =
     session?.user?.user_metadata?.full_name ||
@@ -6890,7 +6836,7 @@ setAgeGroups(data || []);
         <div onClick={() => setShareUrl(null)} style={{ position: "fixed", inset: 0, zIndex: 99999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: P.white, borderRadius: 16, maxWidth: 400, width: "100%", padding: 24, boxShadow: Sh.lift, textAlign: "center" }}>
             <div style={{ fontSize: 32, marginBottom: 10 }}>🔗</div>
-            <div style={{ fontFamily: F.display, fontSize: 17, fontWeight: 900, color: P.ink, marginBottom: 6 }}>Link Copied!</div>
+            <div style={{ fontFamily: F.display, fontSize: 17, fontWeight: 800, color: P.ink, marginBottom: 6 }}>Link Copied!</div>
             <div style={{ fontFamily: F.body, fontSize: 12, color: P.muted, marginBottom: 14 }}>Share this link with your coaches. They can view the full session without an account.</div>
             <div style={{ background: P.soft, borderRadius: 8, padding: "10px 12px", marginBottom: 16, wordBreak: "break-all", fontFamily: F.body, fontSize: 11, color: P.ink, textAlign: "left" }}>{shareUrl}</div>
             <div style={{ display: "flex", gap: 8 }}>
@@ -6909,7 +6855,7 @@ setAgeGroups(data || []);
             {/* Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", borderBottom: `1px solid ${P.line}`, position: "sticky", top: 0, background: P.white, borderRadius: "18px 18px 0 0", zIndex: 1 }}>
               <div>
-                <div style={{ fontFamily: F.display, fontSize: 17, fontWeight: 900, color: P.ink }}>Session Details</div>
+                <div style={{ fontFamily: F.display, fontSize: 17, fontWeight: 800, color: P.ink }}>Session Details</div>
                 <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted }}>
                   {sessionDetail.session_date ? new Date(sessionDetail.session_date).toLocaleDateString("en-IE", { weekday: "long", day: "numeric", month: "short" }) : ""}
                   {sessionDetail.plan?.hurling_skill?.name ? ` · ${sessionDetail.plan.hurling_skill.matchedSkill?.name || "Needs review"}` : ""}
@@ -6931,7 +6877,7 @@ setAgeGroups(data || []);
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
                 <img src="/spraoi-logo-white.png" alt="" style={{ width: 80, height: "auto", display: "none" }} />
                 <div>
-                  <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink }}>
+                  <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink }}>
                     {sessionDetail.session_date ? new Date(sessionDetail.session_date + "T12:00:00").toLocaleDateString("en-IE", { weekday: "long", day: "numeric", month: "short", year: "numeric" }) : "Training Session"}
                   </div>
                   <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted }}>{selectedTeam?.label} {selectedTeam?.gender === "girls" ? "Girls" : "Boys"} · {sessionDetail.total_duration_mins}min · {sessionDetail.session_activities?.length || 0} drills</div>
@@ -6970,7 +6916,7 @@ setAgeGroups(data || []);
                     return (
                       <div key={sa.id} style={{ padding: "12px 0", borderBottom: `1px solid ${P.line}` }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                          <span style={{ fontFamily: F.display, fontSize: 14, fontWeight: 900, color: P.p600, width: 22 }}>{i + 1}</span>
+                          <span style={{ fontFamily: F.display, fontSize: 14, fontWeight: 800, color: P.p600, width: 22 }}>{i + 1}</span>
                           <div style={{ flex: 1 }}>
                             <div style={{ fontFamily: F.body, fontSize: 13, fontWeight: 700, color: P.ink }}>{act.title}</div>
                             <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>{act.skill?.name || ""} · {act.duration_mins || "?"}min</div>
@@ -7004,7 +6950,7 @@ setAgeGroups(data || []);
                     return (
                       <div key={sa.id} style={{ borderRadius: 10, overflow: "hidden", border: `1.5px solid ${P.line}` }}>
                         <div style={{ background: P.p600, padding: "6px 10px", display: "flex", alignItems: "center", gap: 6 }}>
-                          <span style={{ fontFamily: F.display, fontSize: 12, fontWeight: 900, color: "#fff" }}>{i + 1}</span>
+                          <span style={{ fontFamily: F.display, fontSize: 12, fontWeight: 800, color: "#fff" }}>{i + 1}</span>
                           <span style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, color: "#fff", opacity: 0.9 }}>{sa.activity?.title?.substring(0, 20)}</span>
                         </div>
                         {sa.coach && <div style={{ background: P.p50, padding: "3px 10px", fontFamily: F.body, fontSize: 10, fontWeight: 700, color: P.p600 }}>{sa.coach.name}</div>}

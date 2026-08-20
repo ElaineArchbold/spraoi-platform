@@ -1,25 +1,26 @@
-﻿import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabaseClient";
 import ClubScheduling from "./ClubScheduling";
 import html2canvas from "html2canvas";
 import { openAdminModule, requestedTeamFromUrl, readModuleScreen, writeModuleScreen } from "../../../packages/ui/src/platformNavigation.js";
 import { LEGAL_POLICIES, LEGAL_POLICY_VERSION, LEGAL_EFFECTIVE_DATE } from "../../../packages/ui/src/legalPolicies.js";
 import * as XLSX from "xlsx";
+import "../../../packages/ui/src/adminShell.css";
 /* ============================================================
-   SPRAOI COACH â€” Desktop-first redesign
+   SPRAOI COACH — Desktop-first redesign
    Navy sidebar, purple accents, responsive
    ============================================================ */
 
 // Design tokens (from Figma design system)
 const P = {
-  p900: "#4a0072", p800: "#6a1b9a", p700: "#7b1fa2", p600: "#8e24aa",
+  p900: "#4a0072", p800: "#6a1b9a", p700: "#7b1fa2", p600: "#7C3AED",
   p500: "#9c27b0", p400: "#ab47bc", p300: "#ce93d8", p200: "#e1bee7", p100: "#f3e5f5", p50: "#faf5fc",
   navy: "#0b2545", ink: "#13243b", muted: "#627187", line: "#dfe7ef",
   soft: "#f6f9fc", cream: "#fffaf2", white: "#ffffff",
   green: "#43a047", orange: "#fb8c00", coral: "#e64a19", sky: "#29b6f6", yellow: "#fbc02d",
 };
 const F = {
-  display: "'Nunito', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+  display: "'Manrope', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
   body: "'Inter', 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
 };
 
@@ -30,7 +31,7 @@ function useSpraoiFonts() {
     const link = document.createElement("link");
     link.id = id;
     link.rel = "stylesheet";
-    link.href = "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Nunito:wght@600;700;800;900&display=swap";
+    link.href = "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@500;600;700;800&display=swap";
     document.head.appendChild(link);
   }, []);
 }
@@ -41,7 +42,7 @@ const Sh = {
 };
 
 /* ============================================================
-   CATEGORY ICON MAPPING â€” sport + category dual tags on drill cards
+   CATEGORY ICON MAPPING — sport + category dual tags on drill cards
    ============================================================ */
 
 const ACTIVE_TEAM_KEY = "spraoi_active_team_id";
@@ -70,6 +71,7 @@ function displayRoleLabel(role) {
   if (normalized === "super_admin") return "Super Admin";
   if (normalized === "admin" || normalized === "club_admin") return "Admin";
   if (normalized === "lead_coach") return "Lead Coach";
+  if (normalized === "team_admin") return "Team Admin";
   return "Coach/Mentor";
 }
 
@@ -78,6 +80,7 @@ function roleCapabilities(role) {
   return {
     isClubAdmin: ["club_admin", "super_admin", "admin"].includes(normalized),
     isLeadCoach: normalized === "lead_coach",
+    isTeamAdmin: normalized === "team_admin",
     isCoachMentor: ["coach_mentor", "coach", "mentor"].includes(normalized),
     canEditCoachPlans: ["club_admin", "super_admin", "admin", "lead_coach"].includes(normalized),
     canEditAcademyPlans: ["club_admin", "super_admin", "admin", "lead_coach"].includes(normalized),
@@ -115,6 +118,7 @@ function SpraoiNavIcon({ name = "", size = 18 }) {
   else if (key.includes("permission")||key.includes("compliance")) shape=<><path d="M12 3 5 6v5c0 4.7 2.8 8 7 10 4.2-2 7-5.3 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></>;
   else if (key.includes("food")) shape=<><path d="M7 3v8M4 3v5a3 3 0 0 0 6 0V3M7 11v10M16 3v18M16 3c3 2 4 6 4 9h-4"/></>;
   else if (key.includes("compose")||key.includes("announcement")||key.includes("inbox")) shape=<><path d="M4 5h16v12H8l-4 4V5Z"/><path d="m7 9 5 3 5-3"/></>;
+  else if (key.includes("more")) shape=<><circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none"/></>;
   else shape=<><circle cx="12" cy="12" r="8"/><path d="M8 12h8"/></>;
   return <svg {...common}>{shape}</svg>;
 }
@@ -134,7 +138,7 @@ function getDrillIcons(activity) {
   if (cat.includes("speed") || cat.includes("agility") || cat.includes("abc") || cat.includes("running") || title.includes("speed") || title.includes("agility") || title.includes("sprint"))
     catIcon = { icon: "/speed-mechanics-icon.png", bg: "linear-gradient(135deg, #fbc02d 0%, #f57f17 100%)", label: "Speed & Agility", color: "#f57f17" };
   else if (cat.includes("warm") || cat.includes("cool") || cat.includes("stretch") || cat.includes("recovery") || cat.includes("rest") || title.includes("warm up") || title.includes("cooldown"))
-    catIcon = { icon: "/rest-and-recovery-icon.png", bg: "linear-gradient(135deg, #ab47bc 0%, #6a1b9a 100%)", label: "Warm Up & Recovery", color: "#8e24aa" };
+    catIcon = { icon: "/rest-and-recovery-icon.png", bg: "linear-gradient(135deg, #ab47bc 0%, #6a1b9a 100%)", label: "Warm Up & Recovery", color: "#7C3AED" };
 
   return { sportIcon, catIcon };
 }
@@ -154,64 +158,146 @@ const MODULE_URLS = {
   club: null,
 };
 
+
+function secondaryNavAsset(moduleKey, id) {
+  const maps = {
+    coach: {
+      "coach-dashboard": "/icons/coach/dashboard.svg",
+      "coach-planner": "/icons/global/calendar.png",
+      "coach-sessions": "/icons/connect/scheduled.png",
+      "coach-drills": "/icons/academy/mission.png",
+      "coach-players": "/icons/global/profile.png",
+    },
+    academy: {
+      "academy-dashboard": "/icons/academy/home.png",
+      "academy-content": "/icons/academy/week-calendar.png",
+      "academy-players": "/icons/academy/child-profile.png",
+      "academy-parents": "/icons/academy/parent-lock.png",
+      "academy-preview": "/icons/academy/child-profile.png",
+      "academy-leaderboard": "/icons/academy/leaderboard.png",
+      "academy-engagement": "/icons/academy/progress.png",
+      "academy-approvals": "/icons/academy/completed.png",
+      "academy-settings": "/icons/global/settings.png",
+    },
+    connect: {
+      "dashboard": "/icons/connect/home.svg",
+      "events": "/icons/connect/events.png",
+      "messages": "/icons/connect/messages.png",
+      "groups": "/icons/connect/groups.png",
+      "responses": "/icons/connect/availability.png",
+      "settings": "/icons/connect/settings.svg",
+      "connect-dashboard": "/icons/connect/home.svg",
+      "connect-compose": "/icons/connect/send.png",
+      "connect-audiences": "/icons/connect/groups.png",
+      "connect-inbox": "/icons/connect/messages.png",
+      "connect-responses": "/icons/connect/availability.png",
+      "connect-templates": "/icons/connect/announcement.png",
+      "connect-settings": "/icons/connect/settings.svg",
+    },
+    cup: {
+      "cup-dashboard": "/icons/cup/dashboard.png",
+      "cup-events": "/icons/cup/matchday.png",
+      "cup-checklist": "/icons/cup/completed.png",
+      "cup-teams": "/icons/cup/teams.png",
+      "cup-competition": "/icons/cup/competition-bracket.png",
+      "cup-matchday": "/icons/cup/matchday.png",
+      "cup-content": "/icons/cup/announcements.png",
+      "cup-food": "/icons/cup/food.png",
+      "cup-schedule": "/icons/cup/fixtures.png",
+      "cup-results": "/icons/cup/results.png",
+      "cup-standings": "/icons/cup/standings.png",
+      "cup-announcements": "/icons/cup/announcements.png",
+      "cup-participant-view": "/icons/cup/participant-view.png",
+      "cup-settings": "/icons/cup/settings.png",
+    },
+    club: {
+      "club-dashboard": "/icons/club/dashboard.svg",
+      "club-setup": "/icons/club/settings.svg",
+      "club-teams": "/icons/club/team-shield.svg",
+      "club-members": "/icons/club/people.svg",
+      "club-coaches": "/icons/club/people.svg",
+      "club-permissions": "/icons/club/roles.svg",
+      "club-scheduling": "/icons/club/facilities.svg",
+      "club-compliance": "/icons/club/compliance.svg",
+      "club-facilities": "/icons/club/facilities.svg",
+      "club-branding": "/icons/global/edit.png",
+      "club-integrations": "/icons/global/external-link.png",
+      "club-reports": "/icons/club/reports.svg",
+      "club-settings": "/icons/global/settings.png",
+    },
+  };
+  return maps[moduleKey]?.[id] || "/icons/global/chevron.png";
+}
+
+function SecondarySidebarIcon({ moduleKey, id }) {
+  return (
+    <img
+      className="spraoi-secondary-nav-icon"
+      src={secondaryNavAsset(moduleKey, id)}
+      alt=""
+      aria-hidden="true"
+    />
+  );
+}
+
 const MODULES = {
   coach: {
-    label: "Coach", color: "#8e24aa", icon: "/spraoi-coach-icon.png", tagline: "Plan and deliver better coaching.", nav: [
-      { id: "coach-dashboard", icon: "âŒ‚", label: "Dashboard" },
-      { id: "coach-planner", icon: "â—«", label: "Planner" },
-      { id: "coach-sessions", icon: "â–¶", label: "Sessions" },
-      { id: "coach-drills", icon: "â—‡", label: "Drills" },
-      { id: "coach-players", icon: "â—", label: "Players" },
+    label: "Coach", color: "#7C3AED", icon: "/spraoi-coach-icon.png", tagline: "Plan and deliver better coaching.", nav: [
+      { id: "coach-dashboard", icon: "⌂", label: "Dashboard" },
+      { id: "coach-planner", icon: "◫", label: "Planner" },
+      { id: "coach-sessions", icon: "▶", label: "Sessions" },
+      { id: "coach-drills", icon: "◇", label: "Drills" },
+      { id: "coach-players", icon: "●", label: "Players" },
     ]
   },
   academy: {
-    label: "Academy", color: "#0277bd", icon: "/spraoi-academy-icon.png", tagline: "Turn weekly coaching into child-friendly practice.", nav: [
-      { id: "academy-dashboard", icon: "âŒ‚", label: "Dashboard" },
-      { id: "academy-content", icon: "âœ¦", label: "Weekly Content" },
-      { id: "academy-players", icon: "â—", label: "Players" },
-      { id: "academy-parents", icon: "â™§", label: "Parent Access" },
-      { id: "academy-preview", icon: "â—‰", label: "Child Preview" },
-      { id: "academy-leaderboard", icon: "â˜…", label: "Leaderboard" },
-      { id: "academy-engagement", icon: "â†—", label: "Engagement" },
-      { id: "academy-settings", icon: "âš™", label: "Settings" },
+    label: "Academy", color: "#2563EB", icon: "/spraoi-academy-icon.png", tagline: "Turn weekly coaching into child-friendly practice.", nav: [
+      { id: "academy-dashboard", icon: "⌂", label: "Dashboard" },
+      { id: "academy-content", icon: "✦", label: "Weekly Content" },
+      { id: "academy-players", icon: "●", label: "Players" },
+      { id: "academy-parents", icon: "♧", label: "Parent Access" },
+      { id: "academy-preview", icon: "◉", label: "Child Preview" },
+      { id: "academy-leaderboard", icon: "★", label: "Leaderboard" },
+      { id: "academy-engagement", icon: "↗", label: "Engagement" },
+      { id: "academy-settings", icon: "⚙", label: "Settings" },
     ],
   },
   cup: {
-    label: "Cup", color: "#e65100", icon: "/spraoi-cup-icon.png", tagline: "Set up and run blitzes and tournaments.", nav: [
-      { id: "cup-dashboard", icon: "âŒ‚", label: "Dashboard" },
-      { id: "cup-events", icon: "â—†", label: "Events" },
-      { id: "cup-teams", icon: "â—", label: "Teams" },
-      { id: "cup-schedule", icon: "â—«", label: "Schedule" },
-      { id: "cup-results", icon: "â˜…", label: "Results" },
-      { id: "cup-participant-view", icon: "â†—", label: "Participant View" },
-      { id: "cup-settings", icon: "âš™", label: "Settings" },
+    label: "Cup", color: "#D89A00", icon: "/spraoi-cup-icon.png", tagline: "Set up and run blitzes and tournaments.", nav: [
+      { id: "cup-dashboard", icon: "⌂", label: "Dashboard" },
+      { id: "cup-events", icon: "◆", label: "Events" },
+      { id: "cup-teams", icon: "●", label: "Teams" },
+      { id: "cup-schedule", icon: "◫", label: "Schedule" },
+      { id: "cup-results", icon: "★", label: "Results" },
+      { id: "cup-participant-view", icon: "↗", label: "Participant View" },
+      { id: "cup-settings", icon: "⚙", label: "Settings" },
     ]
   },
   plus: {
     label: "Plus", color: "#43a047", icon: "/spraoi-plus-icon.png", tagline: "Create club challenges and seasonal campaigns.", nav: [
-      { id: "plus-dashboard", icon: "âŒ‚", label: "Dashboard" },
-      { id: "plus-challenges", icon: "âš¡", label: "Challenges" },
+      { id: "plus-dashboard", icon: "⌂", label: "Dashboard" },
+      { id: "plus-challenges", icon: "⚡", label: "Challenges" },
       { id: "plus-create", icon: "+", label: "Create Challenge" },
-      { id: "plus-participants", icon: "â—", label: "Participants" },
-      { id: "plus-leaderboards", icon: "â˜…", label: "Leaderboards" },
-      { id: "plus-rewards", icon: "â—†", label: "Rewards" },
-      { id: "plus-templates", icon: "â—‡", label: "Templates" },
-      { id: "plus-settings", icon: "âš™", label: "Settings" },
+      { id: "plus-participants", icon: "●", label: "Participants" },
+      { id: "plus-leaderboards", icon: "★", label: "Leaderboards" },
+      { id: "plus-rewards", icon: "◆", label: "Rewards" },
+      { id: "plus-templates", icon: "◇", label: "Templates" },
+      { id: "plus-settings", icon: "⚙", label: "Settings" },
     ]
   },
   connect: {
-    label: "Connect", color: "#f4b400", icon: "/spraoi-connect-icon.png", tagline: "Send messages, links and collect responses.", nav: [
-      { id: "connect-dashboard", icon: "âŒ‚", label: "Dashboard" },
-      { id: "connect-compose", icon: "âœŽ", label: "Compose" },
-      { id: "connect-audiences", icon: "â—", label: "Audiences" },
-      { id: "connect-inbox", icon: "â–£", label: "Inbox" },
-      { id: "connect-responses", icon: "âœ“", label: "Responses" },
-      { id: "connect-templates", icon: "â—‡", label: "Templates" },
-      { id: "connect-settings", icon: "âš™", label: "Settings" },
+    label: "Connect", color: "#F97316", icon: "/spraoi-connect-icon.png", tagline: "Send messages, links and collect responses.", nav: [
+      { id: "connect-dashboard", icon: "⌂", label: "Dashboard" },
+      { id: "connect-compose", icon: "✎", label: "Compose" },
+      { id: "connect-audiences", icon: "●", label: "Audiences" },
+      { id: "connect-inbox", icon: "▣", label: "Inbox" },
+      { id: "connect-responses", icon: "✓", label: "Responses" },
+      { id: "connect-templates", icon: "◇", label: "Templates" },
+      { id: "connect-settings", icon: "⚙", label: "Settings" },
     ]
   },
   club: {
-    label: "Club", color: "#d32f2f", icon: "/spraoi-club-icon.png", tagline: "Set up your club, teams and coaching access.", nav: [
+    label: "Club", color: "#DC2626", icon: "/spraoi-club-icon.png", tagline: "Set up your club, teams and coaching access.", nav: [
       { id: "club-dashboard", icon: "home", label: "Dashboard" },
       { id: "club-setup", icon: "setup", label: "Club Setup" },
       { id: "club-teams", icon: "teams", label: "Teams" },
@@ -248,7 +334,7 @@ function normalizeModuleIds(moduleIds = []) {
 }
 
 /* ============================================================
-   SIDEBAR â€” with module switcher
+   SIDEBAR — with module switcher
    ============================================================ */
 function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, selectedTeam, onSelectTeam, enabledModules, onLogout, ageGroups, myTeams, onShowProfile, userInitial }) {
   const visibleTeams = (ageGroups || []).filter((ag) => (myTeams || []).includes(ag.id));
@@ -266,22 +352,32 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
   }
 
   return (
-    <div style={{ width: 306, minHeight: "100vh", display: "flex", flexShrink: 0, position: "sticky", top: 0, alignSelf: "flex-start", height: "100vh", zIndex: 30 }}>
+    <div className="spraoi-desktop-shell-nav" style={{ width: 306, minHeight: "100vh", display: "flex", flexShrink: 0, position: "sticky", top: 0, alignSelf: "flex-start", height: "100vh", zIndex: 30 }}>
       {/* Fixed global module rail: all modules are always reachable without scrolling */}
-      <aside style={{ width: 78, background: "#10243e", display: "flex", flexDirection: "column", alignItems: "center", padding: "12px 8px", gap: 8, borderRight: "1px solid rgba(255,255,255,.08)" }}>
+      <aside className="spraoi-global-rail" style={{ width: 78, background: "#10243e", display: "flex", flexDirection: "column", alignItems: "center", padding: "12px 8px", gap: 8, borderRight: "1px solid rgba(255,255,255,.08)" }}>
         <div title={clubName} style={{ width: 60, height: 60, borderRadius: 17, background: "#fff", display: "grid", placeItems: "center", overflow: "hidden", boxShadow: "0 5px 16px rgba(0,0,0,.20)", border: "1px solid rgba(255,255,255,.55)", marginBottom: 5 }}>
           <img src={club?.logo_url || "/spraoi-club-icon.png"} alt={`${clubName} crest`} style={{ width: 52, height: 52, objectFit: "contain" }} />
         </div>
+        <div
+          aria-hidden="true"
+          style={{
+            width: 62,
+            height: 34,
+            marginBottom: 5,
+            flexShrink: 0
+          }}
+        />
         <div style={{ flex: 1, width: "100%", display: "flex", flexDirection: "column", justifyContent: "center", gap: 7 }}>
-          {Object.entries(MODULES).filter(([key]) => !["plus","connect"].includes(key)).map(([key, module]) => {
+          {["coach", "academy", "connect", "cup", "club"].map((key) => {
+            const module = MODULES[key];
             const isActive = activeModule === key;
             const locked = !enabledModules.includes(key);
             const darkText = key === "connect";
             return (
-              <button key={key} title={`${module.label}${locked ? " â€” contact your administrator" : ""}`} onClick={() => openModule(key, module)} style={{ width: "100%", minHeight: 62, border: "none", borderRadius: 14, cursor: "pointer", background: isActive ? module.color : "transparent", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, position: "relative", boxShadow: isActive ? "0 8px 22px rgba(0,0,0,.24)" : "none" }}>
-                <span style={{ width: 38, height: 38, borderRadius: 12, background: "#fff", border: "1px solid rgba(15,23,42,.08)", display: "grid", placeItems: "center", boxShadow: isActive ? "0 6px 16px rgba(0,0,0,.18)" : "0 3px 10px rgba(0,0,0,.10)" }}><img src={module.icon} alt="" style={{ width: 28, height: 28, objectFit: "contain", filter: locked ? "grayscale(1) opacity(.55)" : "none" }} /></span>
+              <button className="spraoi-module-switcher-button" data-active={isActive} key={key} title={`${module.label}${locked ? " — contact your administrator" : ""}`} onClick={() => openModule(key, module)} style={{ width: "100%", minHeight: 62, border: "none", borderRadius: 14, cursor: "pointer", background: isActive ? module.color : "transparent", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, position: "relative", boxShadow: isActive ? "0 8px 22px rgba(0,0,0,.24)" : "none" }}>
+                <span style={{ width: 46, height: 46, borderRadius: 14, background: "#fff", border: "1px solid rgba(15,23,42,.08)", display: "grid", placeItems: "center", boxShadow: isActive ? "0 6px 16px rgba(0,0,0,.18)" : "0 3px 10px rgba(0,0,0,.10)" }}><img src={module.icon} alt="" style={{ width: 40, height: 40, objectFit: "contain", filter: locked ? "grayscale(1) opacity(.55)" : "none" }} /></span>
                 <span style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, letterSpacing: "-.01em", color: isActive ? (darkText ? "#332800" : "#fff") : "rgba(255,255,255,.7)" }}>{module.label}</span>
-                {locked && <span style={{ position: "absolute", top: 5, right: 5, fontSize: 9, color: "rgba(255,255,255,.8)" }}>ðŸ”’</span>}
+                {locked && <span style={{ position: "absolute", top: 5, right: 5, fontSize: 9, color: "rgba(255,255,255,.8)" }}>🔒</span>}
               </button>
             );
           })}
@@ -291,14 +387,14 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
       </aside>
 
       {/* Fixed navigation for the active module */}
-      <aside style={{ width: 228, background: `linear-gradient(180deg, ${mod.color} 0%, ${mod.color}ee 58%, #10243e 100%)`, display: "flex", flexDirection: "column", minHeight: "100vh", transition: "background .22s ease", color: activeModule === "connect" ? "#332800" : "#fff" }}>
-        <div style={{ padding: "18px 16px 14px", borderBottom: activeModule === "connect" ? "1px solid rgba(51,40,0,.18)" : "1px solid rgba(255,255,255,.16)" }}>
+      <aside className="spraoi-module-sidebar" data-module={activeModule} style={{ width: 228, background: `linear-gradient(180deg, ${mod.color} 0%, ${mod.color}ee 58%, #10243e 100%)`, display: "flex", flexDirection: "column", minHeight: "100vh", transition: "background .22s ease", color: activeModule === "connect" ? "#332800" : "#fff" }}>
+        <div className="spraoi-module-title-block" style={{ height: 118, minHeight: 118, boxSizing: "border-box", padding: "18px 16px", borderBottom: activeModule === "connect" ? "1px solid rgba(51,40,0,.18)" : `1px solid ${mod.color}33` }}>
           <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
             <div style={{ width: 54, height: 54, borderRadius: 16, background: "#fff", display: "grid", placeItems: "center", border: "1px solid rgba(15,23,42,.10)", boxShadow: "0 7px 18px rgba(0,0,0,.16)", overflow: "hidden", flexShrink: 0 }}>
-              <img src={mod.icon} alt={`${mod.label} module`} style={{ width: 38, height: 38, objectFit: "contain" }} />
+              <img src="/spraoi-logo.png" alt="Spraoi Sports" style={{ width: 42, height: 42, objectFit: "contain" }} />
             </div>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontFamily: F.display, fontSize: 21, fontWeight: 900, letterSpacing: "-.02em", color: activeModule === "connect" ? "#332800" : "#fff", lineHeight: 1.05 }}>{mod.label}</div>
+              <div style={{ fontFamily: F.display, fontSize: 21, fontWeight: 800, letterSpacing: "-.02em", color: activeModule === "connect" ? "#332800" : "#fff", lineHeight: 1.05 }}>{mod.label}</div>
               <div style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, color: activeModule === "connect" ? "#5b4600" : "#fff", marginTop: 5 }}>{clubName}</div>
             </div>
           </div>
@@ -319,9 +415,9 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
             const isActive = activeScreen === item.id || (item.id === "coach-sessions" && activeScreen === "coach-builder");
             const fg = activeModule === "connect" ? "#332800" : "#fff";
             return (
-              <button key={item.id} onClick={() => onNav(item.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 11px", borderRadius: 10, border: isActive ? "1px solid rgba(255,255,255,.75)" : "1px solid transparent", cursor: "pointer", width: "100%", background: isActive ? "#fff" : "transparent", textAlign: "left", boxShadow: isActive ? "0 4px 12px rgba(16,36,62,.14)" : "none" }}>
-                <span style={{ width: 20, height: 20, display: "grid", placeItems: "center", color: isActive ? (activeModule === "connect" ? "#5b4600" : mod.color) : "#fff", opacity: 1 }}>
-                  {activeModule === "club" ? <ClubNavIcon name={item.icon} /> : <span style={{ fontSize: 15 }}><SpraoiNavIcon name={item.id} size={16} /></span>}
+              <button className="spraoi-module-nav-button" data-active={isActive} key={item.id} onClick={() => onNav(item.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 11px", borderRadius: 10, border: isActive ? "1px solid rgba(255,255,255,.75)" : "1px solid transparent", cursor: "pointer", width: "100%", background: isActive ? "#fff" : "transparent", textAlign: "left", boxShadow: isActive ? "0 4px 12px rgba(16,36,62,.14)" : "none" }}>
+                <span className="spraoi-secondary-nav-icon-wrap" style={{ background: "transparent", border: 0, boxShadow: "none", padding: 0 }}>
+                  <SecondarySidebarIcon moduleKey={activeModule} id={item.id} />
                 </span>
                 <span style={{ fontFamily: F.body, fontSize: 12, fontWeight: isActive ? 750 : 650, letterSpacing: "-.01em", color: isActive ? (activeModule === "connect" ? "#5b4600" : mod.color) : "#fff", opacity: 1 }}>{item.label}</span>
               </button>
@@ -351,15 +447,17 @@ function TopBar({ title, sub, children, moduleKey }) {
     ? "linear-gradient(135deg, #eef8ff 0%, #d8f0ff 52%, #c8e9fb 100%)"
     : isConnect
       ? "linear-gradient(135deg, #fff8d6 0%, #fbcf45 100%)"
-      : `linear-gradient(135deg, ${module.color}16 0%, ${module.color}32 100%)`;
+      : key === "club"
+        ? "linear-gradient(135deg, #fffafa 0%, #fff0f0 52%, #fbdcdc 100%)"
+        : `linear-gradient(135deg, ${module.color}14 0%, ${module.color}2c 100%)`;
   return (
-    <div className={`spraoi-topbar spraoi-topbar-${key}`} style={{ padding: "20px 28px", background, borderBottom: `1px solid ${module.color}28`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, minHeight: 92 }}>
+    <div className={`spraoi-topbar spraoi-topbar-${key}`} style={{ height: 118, minHeight: 118, boxSizing: "border-box", padding: "20px 28px", background, borderBottom: `1px solid ${module.color}33`, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 14, minWidth: 0 }}>
         <div className="spraoi-topbar-icon" style={{ width: 64, height: 64, borderRadius: 20, display: "grid", placeItems: "center", background: "#fff", border: "1px solid rgba(15,23,42,.08)", boxShadow: "0 10px 26px rgba(16,36,62,.12)", flexShrink: 0 }}>
           <img src={module.icon} alt="" style={{ width: 48, height: 48, objectFit: "contain" }} />
         </div>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontFamily: F.display, fontSize: 24, fontWeight: 900, color: isConnect ? "#332800" : P.ink, lineHeight: 1.1 }}>{title}</div>
+          <div style={{ fontFamily: F.display, fontSize: 21, fontWeight: 700, color: isConnect ? "#332800" : P.ink, lineHeight: 1.1 }}>{title}</div>
           {sub && <div style={{ fontFamily: F.body, fontSize: 12, color: isConnect ? "rgba(51,40,0,.72)" : P.muted, marginTop: 6 }}>{sub}</div>}
         </div>
       </div>
@@ -370,14 +468,19 @@ function TopBar({ title, sub, children, moduleKey }) {
 
 function Btn({ label, variant = "primary", icon, onClick, style }) {
   const styles = {
-    primary: { background: P.p600, color: P.white, border: "none", boxShadow: "0 4px 14px rgba(142,36,170,.25)" },
-    secondary: { background: P.p50, color: P.p600, border: `1.5px solid ${P.p200}` },
-    ghost: { background: "transparent", color: P.ink, border: `1.5px solid ${P.line}` },
+    primary: { background: "#DC2626", color: P.white, border: "1px solid #DC2626", boxShadow: "0 5px 14px rgba(16,36,62,.12)" },
+    secondary: { background: P.white, color: P.ink, border: `1px solid ${P.line}`, boxShadow: "0 2px 8px rgba(16,36,62,.05)" },
+    ghost: { background: P.white, color: P.ink, border: `1px solid ${P.line}`, boxShadow: "none" },
   };
   return (
-    <button onClick={onClick} style={{ height: 36, padding: "0 16px", borderRadius: 10, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6, fontFamily: F.body, fontSize: 12, fontWeight: 700, ...styles[variant], ...style }}>
-      {icon && <span>{icon}</span>}
-      {label}
+    <button
+      className="spraoi-touch-button spraoi-action-button"
+      data-variant={variant}
+      onClick={onClick}
+      style={{ ...styles[variant], ...style }}
+    >
+      {icon && <span className="spraoi-action-icon">{icon}</span>}
+      <span>{label}</span>
     </button>
   );
 }
@@ -387,19 +490,19 @@ function Btn({ label, variant = "primary", icon, onClick, style }) {
    ============================================================ */
 function StatCard({ label, value, sub, color = P.p600, icon }) {
   return (
-    <div style={{ background: P.white, borderRadius: 14, padding: "16px 18px", border: `1px solid ${P.line}`, borderTop: `3px solid ${color}`, boxShadow: Sh.card }}>
+    <div className="spraoi-stat-card" style={{ background: P.white, borderRadius: 14, padding: "16px 18px", border: `1px solid ${P.line}`, borderTop: `3px solid ${color}`, boxShadow: Sh.card }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
         <span style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</span>
-        {icon && <span style={{ fontSize: 16 }}>{icon}</span>}
+        {icon && (typeof icon === "string" && icon.startsWith("/") ? <span className="spraoi-card-icon-chip" style={{ "--card-accent": color }}><img className="spraoi-card-icon" src={icon} alt="" aria-hidden="true" /></span> : <span className="spraoi-card-icon-fallback" style={{ "--card-accent": color }}>{icon}</span>)}
       </div>
-      <div style={{ fontFamily: F.display, fontSize: 28, fontWeight: 900, color: P.ink, letterSpacing: "-0.04em", lineHeight: 1 }}>{value}</div>
+      <div style={{ fontFamily: F.display, fontSize: 28, fontWeight: 800, color: P.ink, letterSpacing: "-0.04em", lineHeight: 1 }}>{value}</div>
       {sub && <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 6 }}>{sub}</div>}
     </div>
   );
 }
 
 /* ============================================================
-   DASHBOARD SCREEN â€” matches Figma design
+   DASHBOARD SCREEN — matches Figma design
    ============================================================ */
 function DashboardScreen({ club, ageGroups, planSessions, weeklyPlan, upcomingSessions, onNav, onOpenSession, allActivities, selectedTeam }) {
   const today = new Date().toLocaleDateString("en-IE", { weekday: "long", day: "numeric", month: "short", year: "numeric" });
@@ -421,23 +524,23 @@ function DashboardScreen({ club, ageGroups, planSessions, weeklyPlan, upcomingSe
         }
       `}
 </style>
-      <TopBar title="Club Dashboard" sub={today}>
-        <Btn label="+ New Session" variant="primary" onClick={() => onNav("coach-builder")} />
+      <TopBar title="Dashboard" sub={today}>
+        <Btn label="New Session" variant="primary" onClick={() => onNav("coach-builder")} />
       </TopBar>
       <div style={{ padding: "20px 24px" }}>
         {/* Stat cards row */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
-          <StatCard label="Favourite Drills" value="â˜…" sub="Your saved drills" color={P.p600} icon="â¤ï¸" />
-          <div onClick={() => onNav("academy-dashboard")} style={{ background: P.white, borderRadius: 14, padding: "16px 18px", border: `1px solid ${P.line}`, borderTop: "3px solid #0277bd", boxShadow: Sh.card, cursor: "pointer" }}>
+          <StatCard label="Favourite Drills" value="★" sub="Your saved drills" color={P.p600} icon="❤️" />
+          <div onClick={() => onNav("academy-dashboard")} style={{ background: P.white, borderRadius: 14, padding: "16px 18px", border: `1px solid ${P.line}`, borderTop: "3px solid #2563EB", boxShadow: Sh.card, cursor: "pointer" }}>
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
               <span style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", letterSpacing: "0.08em" }}>Academy Sync</span>
-              <span style={{ fontSize: 16 }}>ðŸŽ“</span>
+              <span style={{ fontSize: 16 }}>🎓</span>
             </div>
-            <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 900, color: P.ink, lineHeight: 1 }}>Open Academy</div>
+            <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 800, color: P.ink, lineHeight: 1 }}>Open Academy</div>
             <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 6 }}>Review skills generated from this week's plan</div>
           </div>
-          <StatCard label="Drills" value={String(allActivities?.length || 0)} sub={`${allActivities?.filter(a => a.sport === 'football').length || 0} football`} color={P.sky} icon="ðŸ“–" />
-          <StatCard label="Next Session" value={teamSessions?.[0]?.session_date ? new Date(upcomingSessions[0].session_date).getDate() : "—"} sub={teamSessions?.[0]?.session_date ? new Date(upcomingSessions[0].session_date).toLocaleDateString("en-IE", { weekday: "short", month: "short" }) : "None scheduled"} color={P.green} icon="ðŸ“…" />
+          <StatCard label="Drills" value={String(allActivities?.length || 0)} sub={`${allActivities?.filter(a => a.sport === 'football').length || 0} football`} color={P.sky} icon="📖" />
+          <StatCard label="Next Session" value={teamSessions?.[0]?.session_date ? new Date(upcomingSessions[0].session_date).getDate() : "—"} sub={teamSessions?.[0]?.session_date ? new Date(upcomingSessions[0].session_date).toLocaleDateString("en-IE", { weekday: "short", month: "short" }) : "None scheduled"} color={P.green} icon="📅" />
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 20 }}>
@@ -454,11 +557,11 @@ function DashboardScreen({ club, ageGroups, planSessions, weeklyPlan, upcomingSe
                 <div key={sess.id || i} onClick={() => onOpenSession(sess)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderTop: i > 0 ? `1px solid ${P.line}` : "none", cursor: "pointer" }}>
                   <div style={{ width: 40, textAlign: "center", background: P.soft, borderRadius: 8, padding: "6px 0" }}>
                     <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 700, color: P.muted, textTransform: "uppercase" }}>{sess.session_date ? new Date(sess.session_date).toLocaleDateString("en-IE", { weekday: "short" }) : ""}</div>
-                    <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink }}>{sess.session_date ? new Date(sess.session_date).getDate() : "?"}</div>
+                    <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink }}>{sess.session_date ? new Date(sess.session_date).getDate() : "?"}</div>
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontFamily: F.body, fontSize: 13, fontWeight: 700, color: P.ink }}>{sess.plan?.hurling_skill?.name || "Training Session"}</div>
-                    <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>{sess.session_date ? new Date(sess.session_date).toLocaleDateString("en-IE", { weekday: "long", day: "numeric", month: "short" }) : ""} Â· {sess.total_duration_mins || "?"}min</div>
+                    <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>{sess.session_date ? new Date(sess.session_date).toLocaleDateString("en-IE", { weekday: "long", day: "numeric", month: "short" }) : ""} · {sess.total_duration_mins || "?"}min</div>
                   </div>
                   <Btn label="View" variant="ghost" style={{ height: 28, fontSize: 11 }} onClick={() => onOpenSession(sess)} />
                 </div>
@@ -493,13 +596,13 @@ function DashboardScreen({ club, ageGroups, planSessions, weeklyPlan, upcomingSe
             </div>
             {(allActivities || []).slice(0, 3).map((a, i) => (
               <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderTop: i > 0 ? `1px solid ${P.line}` : "none" }}>
-                <div style={{ width: 36, height: 36, borderRadius: "50%", background: `${P.p600}15`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>ðŸ“–</div>
+                <div style={{ width: 36, height: 36, borderRadius: "50%", background: `${P.p600}15`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>📖</div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontFamily: F.body, fontSize: 12, fontWeight: 700, color: P.ink }}>{a.title}</div>
                   <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>{a.skill?.name || a.category || ""}</div>
                 </div>
                 <span style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, color: P.p600, padding: "2px 8px", background: `${P.p600}12`, borderRadius: 4 }}>{a.difficulty || ""}</span>
-                <span style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>â± {a.duration_mins || "?"}min</span>
+                <span style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>⏱ {a.duration_mins || "?"}min</span>
                 <Btn label="Use Drill" variant="ghost" style={{ height: 26, fontSize: 10, padding: "0 8px" }} onClick={() => onNav("coach-builder")} />
               </div>
             ))}
@@ -626,7 +729,7 @@ function PlannerScreen({ onNav, club, ageGroups, upcomingSessions, onOpenSession
   return (
     <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
       <TopBar title="Planner" sub={`${fullMonths[selectedMonth]} ${selectedYear}`}>
-        <Btn label="+ New Session" variant="primary" onClick={() => { const d = new Date(); clickDate(d.getDate()); }} />
+        <Btn label="New Session" variant="primary" onClick={() => { const d = new Date(); clickDate(d.getDate()); }} />
       </TopBar>
       <div style={{ padding: "20px 24px", display: "flex", gap: 20 }}>
         {/* Calendar */}
@@ -641,10 +744,10 @@ function PlannerScreen({ onNav, club, ageGroups, upcomingSessions, onOpenSession
           {/* Calendar grid */}
           <div style={{ background: P.white, borderRadius: 14, padding: 16, border: `1px solid ${P.line}`, boxShadow: Sh.card }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink }}>{fullMonths[selectedMonth]} {selectedYear}</div>
+              <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink }}>{fullMonths[selectedMonth]} {selectedYear}</div>
               <div style={{ display: "flex", gap: 4 }}>
-                <button onClick={() => setSelectedMonth((m) => m > 0 ? m - 1 : 11)} style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${P.line}`, background: P.white, cursor: "pointer", fontSize: 12 }}>â—€</button>
-                <button onClick={() => setSelectedMonth((m) => m < 11 ? m + 1 : 0)} style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${P.line}`, background: P.white, cursor: "pointer", fontSize: 12 }}>â–¶</button>
+                <button onClick={() => setSelectedMonth((m) => m > 0 ? m - 1 : 11)} style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${P.line}`, background: P.white, cursor: "pointer", fontSize: 12 }}>◀</button>
+                <button onClick={() => setSelectedMonth((m) => m < 11 ? m + 1 : 0)} style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${P.line}`, background: P.white, cursor: "pointer", fontSize: 12 }}>▶</button>
               </div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2, marginBottom: 4 }}>
@@ -672,7 +775,7 @@ function PlannerScreen({ onNav, club, ageGroups, upcomingSessions, onOpenSession
           </div>
         </div>
 
-        {/* Right panel â€” session builder (when building) or empty */}
+        {/* Right panel — session builder (when building) or empty */}
         {buildingDate && (
           <div style={{ width: 300, flexShrink: 0 }}>
             <div style={{ background: P.white, borderRadius: 14, padding: 16, border: `1px solid ${P.line}`, boxShadow: Sh.card, position: "sticky", top: 80 }}>
@@ -681,7 +784,7 @@ function PlannerScreen({ onNav, club, ageGroups, upcomingSessions, onOpenSession
                   <div style={{ fontFamily: F.display, fontSize: 14, fontWeight: 800, color: P.ink }}>New Session</div>
                   <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted }}>{new Date(buildingDate).toLocaleDateString("en-IE", { weekday: "long", day: "numeric", month: "short" })}</div>
                 </div>
-                <button onClick={() => setBuildingDate(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: P.muted }}>Ã—</button>
+                <button onClick={() => setBuildingDate(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 16, color: P.muted }}>×</button>
               </div>
 
               {/* Added drills */}
@@ -689,7 +792,7 @@ function PlannerScreen({ onNav, club, ageGroups, upcomingSessions, onOpenSession
                 <div style={{ marginBottom: 12 }}>
                   {buildDrills.map((d, i) => (
                     <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 0", borderBottom: `1px solid ${P.line}` }}>
-                      <span style={{ fontFamily: F.display, fontSize: 11, fontWeight: 900, color: P.p600, width: 16 }}>{i + 1}</span>
+                      <span style={{ fontFamily: F.display, fontSize: 11, fontWeight: 800, color: P.p600, width: 16 }}>{i + 1}</span>
                       <span style={{ fontFamily: F.body, fontSize: 11, fontWeight: 600, color: P.ink, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.title}</span>
                       {coaches.length > 0 && (
                         <select value={d.coachId || ""} onChange={(e) => setBuildDrills((ds) => ds.map((dd, ii) => ii === i ? { ...dd, coachId: e.target.value } : dd))} style={{ width: 60, fontSize: 9, padding: 2, borderRadius: 4, border: `1px solid ${P.line}` }}>
@@ -697,10 +800,10 @@ function PlannerScreen({ onNav, club, ageGroups, upcomingSessions, onOpenSession
                           {coaches.map((c) => <option key={c.id} value={c.id}>{c.name.split(" ")[0]}</option>)}
                         </select>
                       )}
-                      <button onClick={() => setBuildDrills((ds) => ds.filter((_, ii) => ii !== i))} style={{ background: "none", border: "none", color: P.coral, cursor: "pointer", fontSize: 14 }}>Ã—</button>
+                      <button onClick={() => setBuildDrills((ds) => ds.filter((_, ii) => ii !== i))} style={{ background: "none", border: "none", color: P.coral, cursor: "pointer", fontSize: 14 }}>×</button>
                     </div>
                   ))}
-                  <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 6 }}>{buildDrills.reduce((t, d) => t + (d.duration_mins || 0), 0)} min Â· {buildDrills.length} drills</div>
+                  <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 6 }}>{buildDrills.reduce((t, d) => t + (d.duration_mins || 0), 0)} min · {buildDrills.length} drills</div>
                 </div>
               )}
 
@@ -715,7 +818,7 @@ function PlannerScreen({ onNav, club, ageGroups, upcomingSessions, onOpenSession
                 {filtered.slice(0, 20).map((a) => (
                   <div key={a.id} onClick={() => addDrillToBuild(a)} style={{ padding: "6px 0", borderBottom: `1px solid ${P.line}`, cursor: "pointer" }}>
                     <div style={{ fontFamily: F.body, fontSize: 11, fontWeight: 600, color: P.ink }}>{a.title}</div>
-                    <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted }}>{a.skill?.name || ""} Â· {a.duration_mins || "?"}m</div>
+                    <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted }}>{a.skill?.name || ""} · {a.duration_mins || "?"}m</div>
                   </div>
                 ))}
               </div>
@@ -903,16 +1006,16 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
         <Btn label="Save Session" variant="primary" onClick={saveSession} style={{ opacity: allDrills.length > 0 ? 1 : 0.5 }} />
       </TopBar>
       <div className="session-builder-layout" style={{ padding: "16px 20px", display: "flex", gap: 16 }}>
-        {/* Main â€” session structure */}
+        {/* Main — session structure */}
         <div style={{ flex: 1, minWidth: 0 }}>
           {/* Week diary picker */}
           <div style={{ background: P.white, borderRadius: 12, padding: 14, border: `1px solid ${P.line}`, marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-              <button onClick={() => setWeekOffset((w) => (w || 0) - 1)} style={{ background: P.soft, border: "none", borderRadius: 6, width: 28, height: 28, cursor: "pointer", fontSize: 12 }}>â—€</button>
+              <button onClick={() => setWeekOffset((w) => (w || 0) - 1)} style={{ background: P.soft, border: "none", borderRadius: 6, width: 28, height: 28, cursor: "pointer", fontSize: 12 }}>◀</button>
               <span style={{ fontFamily: F.body, fontSize: 12, fontWeight: 700, color: P.ink }}>
                 {(() => { const mon = new Date(); mon.setDate(mon.getDate() - (mon.getDay() || 7) + 1 + (weekOffset || 0) * 7); return `Week of ${mon.toLocaleDateString("en-IE", { day: "numeric", month: "short" })}`; })()}
               </span>
-              <button onClick={() => setWeekOffset((w) => (w || 0) + 1)} style={{ background: P.soft, border: "none", borderRadius: 6, width: 28, height: 28, cursor: "pointer", fontSize: 12 }}>â–¶</button>
+              <button onClick={() => setWeekOffset((w) => (w || 0) + 1)} style={{ background: P.soft, border: "none", borderRadius: 6, width: 28, height: 28, cursor: "pointer", fontSize: 12 }}>▶</button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
               {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d, i) => {
@@ -929,7 +1032,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
             </div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
               <span style={{ fontFamily: F.body, fontSize: 11, color: P.muted }}>{day ? `Selected: ${day}` : "Pick a day"}</span>
-              <span><strong style={{ fontFamily: F.display, fontSize: 16, color: P.ink }}>{totalTime}</strong> <span style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>min</span> Â· <strong style={{ fontFamily: F.display, fontSize: 16, color: P.ink }}>{allDrills.length}</strong> <span style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>drills</span></span>
+              <span><strong style={{ fontFamily: F.display, fontSize: 16, color: P.ink }}>{totalTime}</strong> <span style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>min</span> · <strong style={{ fontFamily: F.display, fontSize: 16, color: P.ink }}>{allDrills.length}</strong> <span style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>drills</span></span>
             </div>
           </div>
 
@@ -943,21 +1046,21 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
                   <span style={{ fontFamily: F.display, fontSize: 13, fontWeight: 800, color: P.ink }}>{sec.label}</span>
                   <span style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>{sec.drills.reduce((t, d) => t + (d.duration_mins || 0), 0)}min</span>
                   <div style={{ marginLeft: "auto", display: "flex", gap: 2 }}>
-                    <button onClick={() => moveSection(sec.id, -1)} style={{ background: "none", border: "none", color: P.muted, cursor: "pointer", fontSize: 10 }}>â–²</button>
-                    <button onClick={() => moveSection(sec.id, 1)} style={{ background: "none", border: "none", color: P.muted, cursor: "pointer", fontSize: 10 }}>â–¼</button>
-                    <button onClick={() => removeSection(sec.id)} style={{ background: "none", border: "none", color: P.coral, cursor: "pointer", fontSize: 12 }}>Ã—</button>
+                    <button onClick={() => moveSection(sec.id, -1)} style={{ background: "none", border: "none", color: P.muted, cursor: "pointer", fontSize: 10 }}>▲</button>
+                    <button onClick={() => moveSection(sec.id, 1)} style={{ background: "none", border: "none", color: P.muted, cursor: "pointer", fontSize: 10 }}>▼</button>
+                    <button onClick={() => removeSection(sec.id)} style={{ background: "none", border: "none", color: P.coral, cursor: "pointer", fontSize: 12 }}>×</button>
                   </div>
                 </div>
                 {sec.type === "stations" ? (
-                  /* Stations â€” drill cards from library */
+                  /* Stations — drill cards from library */
                   sec.drills.length === 0 ? (
                     <div style={{ background: P.white, borderRadius: 10, padding: 12, border: `1.5px dashed ${P.line}`, textAlign: "center", fontFamily: F.body, fontSize: 11, color: P.muted }}>
-                      Click a drill from the library to add â†’
+                      Click a drill from the library to add →
                     </div>
                   ) : (
                     sec.drills.map((d, di) => (
                       <div key={di} style={{ background: P.white, borderRadius: 10, padding: "10px 12px", border: `1px solid ${P.line}`, marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ fontFamily: F.display, fontSize: 12, fontWeight: 900, color: sectionColors[sec.type], width: 18 }}>{di + 1}</span>
+                        <span style={{ fontFamily: F.display, fontSize: 12, fontWeight: 800, color: sectionColors[sec.type], width: 18 }}>{di + 1}</span>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontFamily: F.body, fontSize: 12, fontWeight: 700, color: P.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.title}</div>
                         </div>
@@ -971,15 +1074,15 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
                         )}
                         <span style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>{d.duration_mins || "?"}m</span>
                         <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-                          <button onClick={() => di > 0 && moveDrill(sec.id, di, di - 1)} style={{ background: "none", border: "none", color: di > 0 ? P.ink : P.line, cursor: di > 0 ? "pointer" : "default", fontSize: 9, padding: 0, lineHeight: 1 }}>â–²</button>
-                          <button onClick={() => di < sec.drills.length - 1 && moveDrill(sec.id, di, di + 1)} style={{ background: "none", border: "none", color: di < sec.drills.length - 1 ? P.ink : P.line, cursor: di < sec.drills.length - 1 ? "pointer" : "default", fontSize: 9, padding: 0, lineHeight: 1 }}>â–¼</button>
+                          <button onClick={() => di > 0 && moveDrill(sec.id, di, di - 1)} style={{ background: "none", border: "none", color: di > 0 ? P.ink : P.line, cursor: di > 0 ? "pointer" : "default", fontSize: 9, padding: 0, lineHeight: 1 }}>▲</button>
+                          <button onClick={() => di < sec.drills.length - 1 && moveDrill(sec.id, di, di + 1)} style={{ background: "none", border: "none", color: di < sec.drills.length - 1 ? P.ink : P.line, cursor: di < sec.drills.length - 1 ? "pointer" : "default", fontSize: 9, padding: 0, lineHeight: 1 }}>▼</button>
                         </div>
-                        <button onClick={() => removeDrill(sec.id, di)} style={{ background: "none", border: "none", color: P.coral, cursor: "pointer", fontSize: 14 }}>Ã—</button>
+                        <button onClick={() => removeDrill(sec.id, di)} style={{ background: "none", border: "none", color: P.coral, cursor: "pointer", fontSize: 14 }}>×</button>
                       </div>
                     ))
                   )
                 ) : (
-                  /* Warmup / Cooldown / Match â€” time + coach only */
+                  /* Warmup / Cooldown / Match — time + coach only */
                   <div style={{ background: P.white, borderRadius: 10, padding: "12px 14px", border: `1px solid ${P.line}`, display: "flex", alignItems: "center", gap: 10 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                       <input type="number" placeholder="10" value={sec.duration || ""} onChange={(e) => setSections((s) => s.map((ss) => ss.id === sec.id ? { ...ss, duration: e.target.value } : ss))} style={{ width: 44, padding: "6px", borderRadius: 6, border: `1.5px solid ${P.line}`, fontSize: 12, textAlign: "center", fontFamily: F.body }} />
@@ -1015,7 +1118,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
           </div>
         </div>
 
-        {/* Right â€” Drill Library */}
+        {/* Right — Drill Library */}
         <div className="session-drill-library" style={{ width: 260, flexShrink: 0 }}>
           <div style={{ background: P.white, borderRadius: 12, padding: 14, border: `1px solid ${P.line}`, boxShadow: Sh.card, position: "sticky", top: 76 }}>
             <div style={{ fontFamily: F.display, fontSize: 14, fontWeight: 800, color: P.ink, marginBottom: 8 }}>Drill Library</div>
@@ -1024,7 +1127,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
               {[
                 { id: "football", label: "Football", icon: "/football-icon.png", color: "#1565c0" },
                 { id: "hurling", label: selectedTeam?.gender === "girls" ? "Camogie" : "Hurling", icon: "/hurling-icon.png", color: "#c51417" },
-                { id: "athletic", label: "Athletic", emoji: "âš¡", color: "#7c3aed" },
+                { id: "athletic", label: "Athletic", emoji: "⚡", color: "#7c3aed" },
               ].map((option) => {
                 const active = filterSport === option.id;
                 return <button key={option.id} onClick={() => setFilterSport(active ? "" : option.id)} style={{ minWidth:0, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, padding: "7px 4px", borderRadius: 8, border: `1.5px solid ${active ? option.color : P.line}`, background: active ? `${option.color}12` : P.white, color: active ? option.color : P.muted, fontFamily: F.body, fontSize: 9, fontWeight: 800, cursor: "pointer" }}>{option.icon ? <img src={option.icon} alt="" style={{ width: 15, height: 15, objectFit: "contain" }} /> : <span style={{fontSize:14}}>{option.emoji}</span>}<span style={{overflow:"hidden",textOverflow:"ellipsis"}}>{option.label}</span></button>;
@@ -1046,7 +1149,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
                     </div>
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <div style={{ fontFamily: F.body, fontSize: 11, fontWeight: 600, color: P.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.title}</div>
-                      <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted }}>{a.skill?.name || a.category || ""} Â· {a.duration_mins || "?"}m</div>
+                      <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted }}>{a.skill?.name || a.category || ""} · {a.duration_mins || "?"}m</div>
                     </div>
                   </div>
                 );
@@ -1059,8 +1162,8 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
       {showTimeModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(11,37,69,.45)", zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={() => setShowTimeModal(false)}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: "min(440px, 100%)", background: P.white, borderRadius: 18, padding: 22, boxShadow: "0 24px 70px rgba(11,37,69,.25)", border: `1px solid ${P.line}` }}>
-            <div style={{ width: 48, height: 48, borderRadius: 14, background: "#fff3e0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: 14 }}>â±</div>
-            <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 900, color: P.ink, marginBottom: 6 }}>Session is {totalTime - 60} minutes over</div>
+            <div style={{ width: 48, height: 48, borderRadius: 14, background: "#fff3e0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: 14 }}>⏱</div>
+            <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 800, color: P.ink, marginBottom: 6 }}>Session is {totalTime - 60} minutes over</div>
             <div style={{ fontFamily: F.body, fontSize: 12, lineHeight: 1.6, color: P.muted, marginBottom: 18 }}>This plan totals <strong style={{ color: P.ink }}>{totalTime} minutes</strong>. Review the warm-up, section and drill times to bring it closer to the recommended 60-minute session.</div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
               <Btn label="Review times" variant="ghost" onClick={() => setShowTimeModal(false)} />
@@ -1126,7 +1229,7 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
       <TopBar title="Drills Library" sub={`${mergedActivities.length} activities${customDrills.length > 0 ? ` (${customDrills.length} custom)` : ""}`}>
         <div style={{ display: "flex", gap: 6 }}>
           <button onClick={() => { setMode("library"); setBuilderDrill(null); }} style={{ padding: "6px 14px", borderRadius: 8, border: `1.5px solid ${mode === "library" ? P.p600 : P.line}`, background: mode === "library" ? P.p50 : P.white, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: mode === "library" ? P.p600 : P.muted, cursor: "pointer" }}>Library</button>
-          {userRole?.role === "super_admin" && <button onClick={() => setMode("builder")} style={{ padding: "6px 14px", borderRadius: 8, border: `1.5px solid ${mode === "builder" ? P.p600 : P.line}`, background: mode === "builder" ? P.p50 : P.white, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: mode === "builder" ? P.p600 : P.muted, cursor: "pointer" }}>+ Create Drill</button>}
+          {userRole?.role === "super_admin" && <button onClick={() => setMode("builder")} style={{ padding: "6px 14px", borderRadius: 8, border: `1.5px solid ${mode === "builder" ? P.p600 : P.line}`, background: mode === "builder" ? P.p50 : P.white, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: mode === "builder" ? P.p600 : P.muted, cursor: "pointer" }}>Create Drill</button>}
         </div>
       </TopBar>
 
@@ -1152,7 +1255,7 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
               const df = a.customDiagram || diagramMap[a.title];
               return (
                 <div key={a.id} onClick={() => setSelectedIdx(idx)} style={{ background: P.white, borderRadius: 14, border: `1.5px solid ${isFav ? "#fbc02d55" : P.line}`, overflow: "hidden", cursor: "pointer", boxShadow: Sh.card, position: "relative", transition: "transform .15s, box-shadow .15s" }} onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-2px)"} onMouseLeave={(e) => e.currentTarget.style.transform = "none"}>
-                  {/* Badges â€” sport + category + difficulty */}
+                  {/* Badges — sport + category + difficulty */}
                   <div style={{ position: "absolute", top: 8, left: 8, display: "flex", gap: 4, zIndex: 1, flexWrap: "wrap" }}>
                     {a.isCustom && <span style={{ background: P.p600, borderRadius: 4, padding: "2px 6px", fontFamily: F.body, fontSize: 8, fontWeight: 700, color: "#fff", textTransform: "uppercase" }}>Custom</span>}
                     <span style={{ background: sportIcon.color, borderRadius: 4, padding: "2px 6px", fontFamily: F.body, fontSize: 8, fontWeight: 700, color: "#fff", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 3 }}>
@@ -1163,8 +1266,8 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
                     </span>}
                     <span style={{ background: diffColor, borderRadius: 4, padding: "2px 6px", fontFamily: F.body, fontSize: 8, fontWeight: 700, color: "#fff" }}>{a.difficulty || "foundation"}</span>
                   </div>
-                  {isFav && <div style={{ position: "absolute", top: 8, right: 8, background: "#fbc02d", borderRadius: 4, padding: "2px 6px", fontFamily: F.body, fontSize: 9, fontWeight: 700, color: "#fff", zIndex: 1 }}>â˜…</div>}
-                  {hasVideo && <div style={{ position: "absolute", top: 8, right: isFav ? 32 : 8, background: "rgba(0,0,0,0.6)", borderRadius: 4, padding: "2px 6px", fontFamily: F.body, fontSize: 9, fontWeight: 700, color: "#fff", zIndex: 1 }}>â–¶</div>}
+                  {isFav && <div style={{ position: "absolute", top: 8, right: 8, background: "#fbc02d", borderRadius: 4, padding: "2px 6px", fontFamily: F.body, fontSize: 9, fontWeight: 700, color: "#fff", zIndex: 1 }}>★</div>}
+                  {hasVideo && <div style={{ position: "absolute", top: 8, right: isFav ? 32 : 8, background: "rgba(0,0,0,0.6)", borderRadius: 4, padding: "2px 6px", fontFamily: F.body, fontSize: 9, fontWeight: 700, color: "#fff", zIndex: 1 }}>▶</div>}
                   {/* Image: diagram if available, otherwise sport icon gradient */}
                   {df ? (
                     <img src={df.startsWith("data:") ? df : `/diagrams/${df}`} alt="" style={{ width: "100%", height: 130, objectFit: "cover", display: "block" }} />
@@ -1180,7 +1283,7 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
                     <div style={{ fontFamily: F.body, fontSize: 13, fontWeight: 700, color: P.ink, lineHeight: 1.2, marginBottom: 4 }}>{a.title}</div>
                     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                       <span style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>{a.skill?.name || a.category || ""}</span>
-                      <span style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>Â·</span>
+                      <span style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>·</span>
                       <span style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, color: P.ink }}>{a.duration_mins || "?"}min</span>
                     </div>
                   </div>
@@ -1188,7 +1291,7 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
               );
             })}
           </div>
-          {filtered.length > 60 && <div style={{ textAlign: "center", padding: 16, fontFamily: F.body, fontSize: 12, color: P.muted }}>Showing 60 of {filtered.length} â€” refine your search</div>}
+          {filtered.length > 60 && <div style={{ textAlign: "center", padding: 16, fontFamily: F.body, fontSize: 12, color: P.muted }}>Showing 60 of {filtered.length} — refine your search</div>}
         </div>
       )}
 
@@ -1199,16 +1302,16 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
             {/* Header with nav arrows + favourite */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 18px", borderBottom: `1px solid ${P.line}`, position: "sticky", top: 0, background: P.white, borderRadius: "16px 16px 0 0", zIndex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <button onClick={goPrev} disabled={selectedIdx === 0} style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${P.line}`, background: P.white, cursor: selectedIdx > 0 ? "pointer" : "not-allowed", fontSize: 14, opacity: selectedIdx > 0 ? 1 : 0.3 }}>â—€</button>
+                <button onClick={goPrev} disabled={selectedIdx === 0} style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${P.line}`, background: P.white, cursor: selectedIdx > 0 ? "pointer" : "not-allowed", fontSize: 14, opacity: selectedIdx > 0 ? 1 : 0.3 }}>◀</button>
                 <span style={{ fontFamily: F.body, fontSize: 11, color: P.muted }}>{selectedIdx + 1} / {filtered.length}</span>
-                <button onClick={goNext} disabled={selectedIdx >= filtered.length - 1} style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${P.line}`, background: P.white, cursor: selectedIdx < filtered.length - 1 ? "pointer" : "not-allowed", fontSize: 14, opacity: selectedIdx < filtered.length - 1 ? 1 : 0.3 }}>â–¶</button>
+                <button onClick={goNext} disabled={selectedIdx >= filtered.length - 1} style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${P.line}`, background: P.white, cursor: selectedIdx < filtered.length - 1 ? "pointer" : "not-allowed", fontSize: 14, opacity: selectedIdx < filtered.length - 1 ? 1 : 0.3 }}>▶</button>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <button onClick={() => onToggleFavourite && onToggleFavourite(selectedDrill.id)} style={{ padding: "5px 10px", borderRadius: 6, border: `1.5px solid ${(favouriteIds || []).includes(selectedDrill.id) ? "#fbc02d" : P.line}`, background: (favouriteIds || []).includes(selectedDrill.id) ? "#fbc02d15" : P.white, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: (favouriteIds || []).includes(selectedDrill.id) ? "#f59e0b" : P.muted, cursor: "pointer" }}>
-                  {(favouriteIds || []).includes(selectedDrill.id) ? "â˜… Favourited" : "â˜† Favourite"}
+                  {(favouriteIds || []).includes(selectedDrill.id) ? "★ Favourited" : "☆ Favourite"}
                 </button>
                 {userRole?.role === "super_admin" && <button onClick={() => { if (!window.confirm(`Copy & edit "${selectedDrill.title}"?\n\nThis will create an editable copy in your custom cards.`)) return; setBuilderDrill(selectedDrill); setMode("builder"); setSelectedIdx(null); }} style={{ padding: "5px 10px", borderRadius: 6, border: `1.5px solid ${P.p600}`, background: P.p50, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.p600, cursor: "pointer" }}>Copy & Edit</button>}
-                <button onClick={() => setSelectedIdx(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: P.muted }}>Ã—</button>
+                <button onClick={() => setSelectedIdx(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: P.muted }}>×</button>
               </div>
             </div>
             {/* Content */}
@@ -1242,14 +1345,14 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
                 );
               })()}
               {selectedDrill.equipment && <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginBottom: 10, padding: "6px 10px", background: P.soft, borderRadius: 6, display: "flex", alignItems: "center", gap: 6 }}><span style={{ fontWeight: 700, color: P.ink }}>Equipment:</span> {selectedDrill.equipment}</div>}
-              <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 900, color: P.ink, marginBottom: 4 }}>{selectedDrill.title}</div>
-              <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginBottom: 12 }}>{selectedDrill.skill?.name || ""} Â· {selectedDrill.sport} Â· {selectedDrill.duration_mins || "?"}min Â· {selectedDrill.difficulty}</div>
+              <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 800, color: P.ink, marginBottom: 4 }}>{selectedDrill.title}</div>
+              <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginBottom: 12 }}>{selectedDrill.skill?.name || ""} · {selectedDrill.sport} · {selectedDrill.duration_mins || "?"}min · {selectedDrill.difficulty}</div>
               {selectedDrill.description && <div style={{ fontFamily: F.body, fontSize: 13, color: P.ink, lineHeight: 1.5, marginBottom: 14 }}>{selectedDrill.description}</div>}
-              {selectedDrill.coaching_points && <div style={{ marginBottom: 14 }}><div style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.p600, textTransform: "uppercase", marginBottom: 6 }}>Coaching Points</div><div style={{ fontFamily: F.body, fontSize: 12, color: P.ink, lineHeight: 1.6, background: P.soft, borderRadius: 10, padding: 14 }}>{selectedDrill.coaching_points.split("â€¢").filter(Boolean).map((pt, i) => <div key={i} style={{ display: "flex", gap: 6, marginBottom: 4 }}><span style={{ color: P.p600, fontWeight: 700 }}>â€¢</span><span>{pt.trim()}</span></div>)}</div></div>}
+              {selectedDrill.coaching_points && <div style={{ marginBottom: 14 }}><div style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.p600, textTransform: "uppercase", marginBottom: 6 }}>Coaching Points</div><div style={{ fontFamily: F.body, fontSize: 12, color: P.ink, lineHeight: 1.6, background: P.soft, borderRadius: 10, padding: 14 }}>{selectedDrill.coaching_points.split("•").filter(Boolean).map((pt, i) => <div key={i} style={{ display: "flex", gap: 6, marginBottom: 4 }}><span style={{ color: P.p600, fontWeight: 700 }}>•</span><span>{pt.trim()}</span></div>)}</div></div>}
               {selectedDrill.setup && <div style={{ marginBottom: 14 }}><div style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.p600, textTransform: "uppercase", marginBottom: 4 }}>Setup</div><div style={{ fontFamily: F.body, fontSize: 12, color: P.ink, lineHeight: 1.5 }}>{selectedDrill.setup}</div></div>}
               {selectedDrill.skill?.video_url && (
                 <a href={selectedDrill.skill.video_url} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 10, background: "#ff000012", border: "1.5px solid #ff000022", textDecoration: "none", fontFamily: F.body, fontSize: 12, fontWeight: 700, color: "#cc0000" }}>
-                  â–¶ Watch Skill Video â€” {selectedDrill.skill?.name}
+                  ▶ Watch Skill Video — {selectedDrill.skill?.name}
                 </a>
               )}
             </div>
@@ -1262,7 +1365,7 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
 
 
 /* ============================================================
-   DIAGRAM CREATOR â€” drag-and-drop pitch diagram builder
+   DIAGRAM CREATOR — drag-and-drop pitch diagram builder
    ============================================================ */
 function DiagramCreator({ onSave, onClose, initialElements, backgroundImage }) {
   const [elements, setElements] = useState(initialElements || []);
@@ -1302,7 +1405,7 @@ function DiagramCreator({ onSave, onClose, initialElements, backgroundImage }) {
       if (!arrowStart) { setArrowStart(pt); }
       else { setElements((els) => [...els, { id: Date.now(), type: "arrow", x1: arrowStart.x, y1: arrowStart.y, x2: pt.x, y2: pt.y }]); setArrowStart(null); }
     } else if (tool === "select") {
-      // Hit test â€” find element under click
+      // Hit test — find element under click
       const hit = findElementAt(pt);
       setSelectedEl(hit ? hit.id : null);
     }
@@ -1398,17 +1501,17 @@ function DiagramCreator({ onSave, onClose, initialElements, backgroundImage }) {
   }
 
   const tools = [
-    { id: "select", label: "Select", icon: "â†–" },
-    { id: "player", label: "Player", icon: "â—" },
-    { id: "cone", label: "Cone", icon: "â–²" },
-    { id: "ball", label: "Ball", icon: "â—‰" },
-    { id: "hurdle", label: "Hurdle", icon: "â•" },
-    { id: "arrow", label: "Arrow", icon: "â†’" },
+    { id: "select", label: "Select", icon: "↖" },
+    { id: "player", label: "Player", icon: "●" },
+    { id: "cone", label: "Cone", icon: "▲" },
+    { id: "ball", label: "Ball", icon: "◉" },
+    { id: "hurdle", label: "Hurdle", icon: "═" },
+    { id: "arrow", label: "Arrow", icon: "→" },
     { id: "text", label: "Text", icon: "T" },
   ];
   const playerColors = [
     { color: "#073B74", label: "Navy" },
-    { color: "#8e24aa", label: "Purple" },
+    { color: "#7C3AED", label: "Purple" },
     { color: "#c51417", label: "Red" },
     { color: "#43a047", label: "Green" },
     { color: "#f57f17", label: "Gold" },
@@ -1423,7 +1526,7 @@ function DiagramCreator({ onSave, onClose, initialElements, backgroundImage }) {
           <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 800, color: P.ink }}>Create Diagram</div>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={saveDiagram} style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: P.p600, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: "#fff", cursor: "pointer" }}>Save Diagram</button>
-            <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: P.muted }}>Ã—</button>
+            <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: P.muted }}>×</button>
           </div>
         </div>
 
@@ -1536,7 +1639,7 @@ function DiagramCreator({ onSave, onClose, initialElements, backgroundImage }) {
 
 
 /* ============================================================
-   DRILL CARD BUILDER â€” Create custom drill cards from scratch
+   DRILL CARD BUILDER — Create custom drill cards from scratch
    ============================================================ */
 function DrillCardBuilder({ diagramMap, allActivities, userRole, copyFrom, onBack }) {
   const [title, setTitle] = useState(copyFrom?.title ? copyFrom.title + " (Copy)" : "");
@@ -1575,7 +1678,7 @@ function DrillCardBuilder({ diagramMap, allActivities, userRole, copyFrom, onBac
 
   function saveCard() {
     if (!title.trim()) { showToast("Add a title first"); return; }
-    if (title.trim().endsWith("(Copy)")) { showToast("Rename the card â€” remove '(Copy)' and give it a unique name"); return; }
+    if (title.trim().endsWith("(Copy)")) { showToast("Rename the card — remove '(Copy)' and give it a unique name"); return; }
     if (!description.trim()) { showToast("Add a description"); return; }
     if (!coachingPoints.trim()) { showToast("Add at least one coaching point"); return; }
     // Duplicate title check (skip if editing the same card)
@@ -1586,10 +1689,10 @@ function DrillCardBuilder({ diagramMap, allActivities, userRole, copyFrom, onBac
     if (editingIdx !== null) { updated = [...savedCards]; updated[editingIdx] = card; } else { updated = [...savedCards, card]; }
     setSavedCards(updated);
     try { localStorage.setItem("spraoi_custom_drills", JSON.stringify(updated)); }
-    catch (e) { showToast("Warning: storage full â€” diagram image may not persist"); }
+    catch (e) { showToast("Warning: storage full — diagram image may not persist"); }
     showToast(editingIdx !== null ? "Card updated!" : "Card saved!");
     setEditingIdx(null);
-    // Don't reset form â€” stay on it so they can see the result, just clear editing state
+    // Don't reset form — stay on it so they can see the result, just clear editing state
   }
 
   function showToast(msg) { setToastMsg(msg); setTimeout(() => setToastMsg(""), 3000); }
@@ -1638,10 +1741,10 @@ function DrillCardBuilder({ diagramMap, allActivities, userRole, copyFrom, onBac
     <div style={{ padding: "16px 24px" }}>
       {/* Back button */}
       <div style={{ marginBottom: 14 }}>
-        <button onClick={onBack} style={{ padding: "6px 14px", borderRadius: 8, border: `1.5px solid ${P.line}`, background: P.white, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, cursor: "pointer" }}>â† Back to Library</button>
+        <button onClick={onBack} style={{ padding: "6px 14px", borderRadius: 8, border: `1.5px solid ${P.line}`, background: P.white, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, cursor: "pointer" }}>← Back to Library</button>
       </div>
       <div style={{ display: "flex", gap: 20 }}>
-        {/* LEFT â€” Form */}
+        {/* LEFT — Form */}
         <div style={{ flex: 1, minWidth: 0 }}>
           {/* Quick copy from existing */}
           <div style={{ background: P.white, borderRadius: 12, padding: 14, border: `1px solid ${P.line}`, marginBottom: 14 }}>
@@ -1697,7 +1800,7 @@ function DrillCardBuilder({ diagramMap, allActivities, userRole, copyFrom, onBac
 
             {/* Coaching Points */}
             <label style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, color: P.muted, textTransform: "uppercase", marginBottom: 4, display: "block" }}>Coaching Points</label>
-            <textarea value={coachingPoints} onChange={(e) => setCoachingPoints(e.target.value)} placeholder="Key points, use bullet â€¢ for separation..." rows={3} style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 12, resize: "vertical", marginBottom: 12 }} />
+            <textarea value={coachingPoints} onChange={(e) => setCoachingPoints(e.target.value)} placeholder="Key points, use bullet • for separation..." rows={3} style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 12, resize: "vertical", marginBottom: 12 }} />
 
             {/* Setup */}
             <label style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, color: P.muted, textTransform: "uppercase", marginBottom: 4, display: "block" }}>Setup</label>
@@ -1753,23 +1856,23 @@ function DrillCardBuilder({ diagramMap, allActivities, userRole, copyFrom, onBac
             <div style={{ marginTop: 14, padding: "10px 12px", background: P.cream, borderRadius: 8, border: "1px solid #f0e6d6" }}>
               <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 700, color: P.orange, textTransform: "uppercase", marginBottom: 4 }}>Card Guidelines</div>
               <div style={{ fontFamily: F.body, fontSize: 10, color: P.ink, lineHeight: 1.6 }}>
-                â€¢ Every card needs: title, sport, difficulty, duration, description, coaching points<br />
-                â€¢ Coaching points should be actionable and age-appropriate<br />
-                â€¢ Use clear, simple language suitable for all coaches<br />
-                â€¢ Pick a diagram that closely matches your drill setup<br />
-                â€¢ Keep descriptions concise (2-3 sentences max)
+                • Every card needs: title, sport, difficulty, duration, description, coaching points<br />
+                • Coaching points should be actionable and age-appropriate<br />
+                • Use clear, simple language suitable for all coaches<br />
+                • Pick a diagram that closely matches your drill setup<br />
+                • Keep descriptions concise (2-3 sentences max)
               </div>
             </div>
           </div>
         </div>
 
-        {/* RIGHT â€” Live Preview + Saved Cards */}
+        {/* RIGHT — Live Preview + Saved Cards */}
         <div style={{ width: 320, flexShrink: 0 }}>
           {/* Live Preview */}
           <div style={{ position: "sticky", top: 76 }}>
             <div style={{ fontFamily: F.display, fontSize: 12, fontWeight: 800, color: P.ink, marginBottom: 8 }}>Live Preview</div>
             <div ref={cardRef} style={{ background: P.white, borderRadius: 14, border: `1.5px solid ${P.line}`, overflow: "hidden", boxShadow: Sh.card }}>
-              {/* Card header â€” diagram or icon gradient */}
+              {/* Card header — diagram or icon gradient */}
               {(selectedDiagram || customDiagram) ? (
                 <div style={{ position: "relative", cursor: customDiagram ? "pointer" : "default" }} onClick={() => { if (customDiagram) setShowDiagramCreator(true); }}>
                   <img src={customDiagram || `/diagrams/${selectedDiagram}`} alt="" style={{ width: "100%", height: 140, objectFit: "cover", display: "block" }} />
@@ -1803,10 +1906,10 @@ function DrillCardBuilder({ diagramMap, allActivities, userRole, copyFrom, onBac
               {/* Card content */}
               <div style={{ padding: "12px 14px" }}>
                 {equipment && <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginBottom: 8, padding: "5px 8px", background: P.soft, borderRadius: 5, display: "flex", alignItems: "center", gap: 4 }}><span style={{ fontWeight: 700, color: P.ink }}>Equipment:</span> {equipment}</div>}
-                <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 900, color: title ? P.ink : P.muted, lineHeight: 1.2, marginBottom: 4 }}>{title || "Drill Title"}</div>
+                <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 800, color: title ? P.ink : P.muted, lineHeight: 1.2, marginBottom: 4 }}>{title || "Drill Title"}</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
                   <span style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>{category ? category.replace(/_/g, " ") : "category"}</span>
-                  <span style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>Â·</span>
+                  <span style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>·</span>
                   <span style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, color: P.ink }}>{duration || "?"}min</span>
                 </div>
                 {description && <div style={{ fontFamily: F.body, fontSize: 11, color: P.ink, lineHeight: 1.5, marginBottom: 8 }}>{description}</div>}
@@ -1814,7 +1917,7 @@ function DrillCardBuilder({ diagramMap, allActivities, userRole, copyFrom, onBac
                   <div style={{ marginBottom: 8 }}>
                     <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 700, color: P.p600, textTransform: "uppercase", marginBottom: 4 }}>Coaching Points</div>
                     <div style={{ fontFamily: F.body, fontSize: 10, color: P.ink, lineHeight: 1.5, background: P.soft, borderRadius: 6, padding: 8 }}>
-                      {coachingPoints.split("â€¢").filter(Boolean).map((pt, i) => <div key={i} style={{ display: "flex", gap: 4, marginBottom: 2 }}><span style={{ color: P.p600, fontWeight: 700 }}>â€¢</span><span>{pt.trim()}</span></div>)}
+                      {coachingPoints.split("•").filter(Boolean).map((pt, i) => <div key={i} style={{ display: "flex", gap: 4, marginBottom: 2 }}><span style={{ color: P.p600, fontWeight: 700 }}>•</span><span>{pt.trim()}</span></div>)}
                     </div>
                   </div>
                 )}
@@ -1841,9 +1944,9 @@ function DrillCardBuilder({ diagramMap, allActivities, userRole, copyFrom, onBac
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.title}</div>
-                          <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted }}>{c.sport} Â· {c.duration}min</div>
+                          <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted }}>{c.sport} · {c.duration}min</div>
                         </div>
-                        <button onClick={(e) => { e.stopPropagation(); deleteCard(idx); }} style={{ background: "none", border: "none", color: P.coral, cursor: isSuperAdmin ? "pointer" : "not-allowed", fontSize: 14, padding: "2px 4px", opacity: isSuperAdmin ? 1 : 0.3 }} title={isSuperAdmin ? "Delete" : "Admin only"}>Ã—</button>
+                        <button onClick={(e) => { e.stopPropagation(); deleteCard(idx); }} style={{ background: "none", border: "none", color: P.coral, cursor: isSuperAdmin ? "pointer" : "not-allowed", fontSize: 14, padding: "2px 4px", opacity: isSuperAdmin ? 1 : 0.3 }} title={isSuperAdmin ? "Delete" : "Admin only"}>×</button>
                       </div>
                     );
                   })}
@@ -1972,7 +2075,7 @@ function PlayersScreen({ club, ageGroups, selectedTeam }) {
 }
 
 /* ============================================================
-   SESSIONS LIST â€” view/edit saved sessions
+   SESSIONS LIST — view/edit saved sessions
    ============================================================ */
 function SessionsListScreen({ club, selectedTeam, onOpenSession, onNav, onEditSession }) {
   const [sessions, setSessions] = useState([]);
@@ -1994,7 +2097,7 @@ function SessionsListScreen({ club, selectedTeam, onOpenSession, onNav, onEditSe
   return (
     <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
       <TopBar title="Sessions" sub={`${sessions.length} saved sessions`}>
-        <Btn label="+ New Session" variant="primary" onClick={() => onNav("coach-builder")} />
+        <Btn label="New Session" variant="primary" onClick={() => onNav("coach-builder")} />
       </TopBar>
       <div style={{ padding: "20px 24px" }}>
         {sessions.length === 0 && loaded && (
@@ -2007,12 +2110,12 @@ function SessionsListScreen({ club, selectedTeam, onOpenSession, onNav, onEditSe
           <div key={sess.id} onClick={() => onOpenSession(sess)} style={{ background: P.white, borderRadius: 12, padding: "14px 18px", border: `1px solid ${P.line}`, marginBottom: 8, display: "flex", alignItems: "center", gap: 14, cursor: "pointer", boxShadow: Sh.card }}>
             <div style={{ width: 44, textAlign: "center", background: P.soft, borderRadius: 8, padding: "6px 0", flexShrink: 0 }}>
               <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 700, color: P.muted, textTransform: "uppercase" }}>{sess.session_date ? new Date(sess.session_date).toLocaleDateString("en-IE", { weekday: "short" }) : ""}</div>
-              <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink }}>{sess.session_date ? new Date(sess.session_date).getDate() : "?"}</div>
+              <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink }}>{sess.session_date ? new Date(sess.session_date).getDate() : "?"}</div>
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontFamily: F.body, fontSize: 13, fontWeight: 700, color: P.ink }}>{sess.plan?.hurling_skill?.name || "Training Session"}</div>
               <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted }}>
-                {sess.session_date ? new Date(sess.session_date).toLocaleDateString("en-IE", { day: "numeric", month: "short" }) : ""} Â· {sess.total_duration_mins || "?"}min Â· {sess.session_activities?.length || 0} drills
+                {sess.session_date ? new Date(sess.session_date).toLocaleDateString("en-IE", { day: "numeric", month: "short" }) : ""} · {sess.total_duration_mins || "?"}min · {sess.session_activities?.length || 0} drills
               </div>
             </div>
             <div style={{ display: "flex", gap: 6 }}>
@@ -2028,14 +2131,14 @@ function SessionsListScreen({ club, selectedTeam, onOpenSession, onNav, onEditSe
 }
 
 /* ============================================================
-   CLUB PERMISSIONS â€” RBAC matrix and user role management
+   CLUB PERMISSIONS — RBAC matrix and user role management
    ============================================================ */
 
 /* ============================================================
-   CLUB ADMIN â€” Dashboard, teams, members and RBAC
+   CLUB ADMIN — Dashboard, teams, members and RBAC
    ============================================================ */
 
-const CLUB_RED = "#d32f2f";
+const CLUB_RED = "#DC2626";
 const CLUB_RED_DARK = "#a91f1f";
 const CLUB_SOFT = "#fff1f1";
 
@@ -2119,47 +2222,21 @@ function ClubCard({ children, style }) {
 function ClubDashboardScreen({ club, ageGroups, coaches, selectedTeam, onNav }) {
   return (
     <ClubPage
-      title="Club Dashboard"
-      sub={`${club?.name || "Club Spraoi"} - Operating centre`}
-      actions={<Btn label="Manage Teams" onClick={() => onNav("club-teams")} style={{ background: CLUB_RED }} />}
+      title="Dashboard"
+      sub={`${club?.name || "Club Spraoi"} · Operating centre`}
+      actions={<Btn label="Manage Teams" onClick={() => onNav("club-teams")} />}
     >
-      <div style={{
-        borderRadius: 20,
-        padding: "24px 26px",
-        marginBottom: 18,
-        background: "linear-gradient(135deg, #fff1f1 0%, #ffffff 58%, #ffe0e0 100%)",
-        border: "1px solid #f3caca",
-        display: "grid",
-        gridTemplateColumns: "auto minmax(0,1fr)",
-        gap: 18,
-        alignItems: "center",
-      }}>
-        <div style={{
-          width: 82, height: 82, borderRadius: 22, background: "#fff",
-          border: "1px solid #f1caca", display: "grid", placeItems: "center",
-          boxShadow: "0 12px 28px rgba(211,47,47,.14)",
-        }}>
-          <img src="/spraoi-club-icon.png" alt="" style={{ width: 58, height: 58, objectFit: "contain" }} />
-        </div>
-        <div>
-          <div style={{ fontFamily: F.body, fontSize: 10, fontWeight: 900, color: CLUB_RED, textTransform: "uppercase", letterSpacing: ".08em" }}>Club Admin</div>
-          <div style={{ fontFamily: F.display, fontSize: 34, fontWeight: 900, color: P.ink, marginTop: 3 }}>{club?.name || "Club Spraoi"}</div>
-          <div style={{ fontFamily: F.body, fontSize: 12, color: P.muted, marginTop: 5 }}>
-            Set up your club, create teams, appoint Lead Coaches and manage coaching access from one place.
-          </div>
-        </div>
-      </div>
-
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12, marginBottom: 18 }}>
-        <StatCard label="Teams" value={String(ageGroups?.length || 0)} sub="Persistent club teams" color={CLUB_RED} icon="T" />
-        <StatCard label="Coaches" value={String(coaches?.length || 0)} sub="Club staff records" color={CLUB_RED_DARK} icon="C" />
-        <StatCard label="Active Team" value={selectedTeam ? teamDisplayName(selectedTeam) : "-"} sub="Shared across modules" color="#e57373" icon="A" />
-        <StatCard label="Access Model" value="4 roles" sub="Super Admin, Admin, Lead Coach, Coach/Mentor" color="#ef5350" icon="4" />
+        <StatCard label="Teams" value={String(ageGroups?.length || 0)} sub="Persistent club teams" color={CLUB_RED} icon="/icons/club/team-shield.svg" />
+        <StatCard label="Coaches" value={String(coaches?.length || 0)} sub="Club staff records" color={CLUB_RED_DARK} icon="/icons/club/people.svg" />
+        <StatCard label="Active Team" value={selectedTeam ? teamDisplayName(selectedTeam) : "—"} sub="Shared across modules" color="#e57373" icon="/icons/club/team-shield.svg" />
+        <StatCard label="Access Model" value="4 roles" sub="Super Admin, Admin, Lead Coach, Coach/Mentor" color="#ef5350" icon="/icons/club/roles.svg" />
       </div>
 
+      <section className="spraoi-dashboard-analytics club-dashboard-analytics"><div className="spraoi-dashboard-section-head"><div><div className="spraoi-dashboard-section-title">Club overview</div><div className="spraoi-dashboard-section-sub">Team and coaching coverage across the club.</div></div><button className="spraoi-download-button club-download" type="button" onClick={()=>{const rows=[["Metric","Value"],["Teams",ageGroups?.length||0],["Coaches",coaches?.length||0],["Active team",selectedTeam?teamDisplayName(selectedTeam):""]];const csv=rows.map(r=>r.map(v=>`"${String(v??"").replaceAll('"','""')}"`).join(",")).join("\n");const blob=new Blob([csv],{type:"text/csv;charset=utf-8"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="club-dashboard.csv";a.click();URL.revokeObjectURL(url);}}>Download</button></div><div className="spraoi-dashboard-chart-grid"><div className="spraoi-chart-card"><div className="spraoi-chart-card-title">Organisation</div><div className="spraoi-mini-kpis"><div><img src="/icons/club/team-shield.svg" alt=""/><span>Teams</span><strong>{ageGroups?.length||0}</strong></div><div><img src="/icons/club/people.svg" alt=""/><span>Coaches / staff</span><strong>{coaches?.length||0}</strong></div><div><img src="/icons/club/roles.svg" alt=""/><span>Access roles</span><strong>4</strong></div></div></div><div className="spraoi-chart-card"><div className="spraoi-chart-card-title">Team coverage</div><div className="spraoi-bar-chart"><div><div className="spraoi-bar-label"><span>Teams with coaching coverage</span><strong>{Math.min(ageGroups?.length||0,coaches?.length||0)} / {ageGroups?.length||0}</strong></div><div className="spraoi-bar-track"><div className="spraoi-bar-fill" style={{width:`${(ageGroups?.length||0)?Math.min(100,((Math.min(ageGroups.length,coaches?.length||0))/ageGroups.length)*100):0}%`,background:CLUB_RED}}/></div></div></div></div></div></section>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 14 }}>
         <ClubCard>
-          <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink, marginBottom: 10 }}>Quick actions</div>
+          <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink, marginBottom: 10 }}>Quick actions</div>
           {[
             ["Set up club details", "club-setup"],
             ["Create and manage teams", "club-teams"],
@@ -2172,16 +2249,16 @@ function ClubDashboardScreen({ club, ageGroups, coaches, selectedTeam, onNav }) 
               background: "transparent", display: "flex", justifyContent: "space-between",
               cursor: "pointer", fontFamily: F.body, fontSize: 12, fontWeight: 700, color: P.ink,
             }}>
-              <span>{label}</span><span style={{ color: CLUB_RED }}>{">"}</span>
+              <span>{label}</span><span style={{ color: CLUB_RED }}>›</span>
             </button>
           ))}
         </ClubCard>
 
         <ClubCard>
-          <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink, marginBottom: 10 }}>Active team context</div>
+          <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink, marginBottom: 10 }}>Active team context</div>
           <div style={{ padding: 14, borderRadius: 12, background: CLUB_SOFT, border: "1px solid #f4caca" }}>
-            <div style={{ fontFamily: F.body, fontSize: 10, fontWeight: 900, color: CLUB_RED, textTransform: "uppercase" }}>Currently selected</div>
-            <div style={{ fontFamily: F.display, fontSize: 23, fontWeight: 900, color: P.ink, marginTop: 4 }}>{selectedTeam ? teamDisplayName(selectedTeam) : "No team selected"}</div>
+            <div style={{ fontFamily: F.body, fontSize: 10, fontWeight: 800, color: CLUB_RED, textTransform: "uppercase" }}>Currently selected</div>
+            <div style={{ fontFamily: F.display, fontSize: 23, fontWeight: 800, color: P.ink, marginTop: 4 }}>{selectedTeam ? teamDisplayName(selectedTeam) : "No team selected"}</div>
             <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 6 }}>
               Coach, Academy, Cup, Connect and Plus use this same team selection.
             </div>
@@ -2199,7 +2276,7 @@ function ClubSetupScreen({ club, userRole, onClubUpdated, onNav }) {
   const [logoUrl, setLogoUrl] = useState(club?.logo_url || "");
   const [websiteUrl, setWebsiteUrl] = useState(club?.website_url || "");
   const [contactEmail, setContactEmail] = useState(club?.contact_email || "");
-  const [primaryColor, setPrimaryColor] = useState(club?.primary_color || "#d32f2f");
+  const [primaryColor, setPrimaryColor] = useState(club?.primary_color || "#DC2626");
   const [secondaryColor, setSecondaryColor] = useState(club?.secondary_color || "#ffffff");
   const [contacts, setContacts] = useState([]);
   const [contactTitle, setContactTitle] = useState("");
@@ -2208,11 +2285,6 @@ function ClubSetupScreen({ club, userRole, onClubUpdated, onNav }) {
   const [contactPhone, setContactPhone] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
-
-  const [bulkParentRows, setBulkParentRows] = useState([]);
-  const [bulkParentFileName, setBulkParentFileName] = useState("");
-  const [bulkParentTeamId, setBulkParentTeamId] = useState(selectedTeam?.id || "");
-  const [bulkParentSending, setBulkParentSending] = useState(false);
   const [contactError, setContactError] = useState("");
 
   useEffect(() => {
@@ -2220,7 +2292,7 @@ function ClubSetupScreen({ club, userRole, onClubUpdated, onNav }) {
     setLogoUrl(club?.logo_url || "");
     setWebsiteUrl(club?.website_url || "");
     setContactEmail(club?.contact_email || "");
-    setPrimaryColor(club?.primary_color || "#d32f2f");
+    setPrimaryColor(club?.primary_color || "#DC2626");
     setSecondaryColor(club?.secondary_color || "#ffffff");
   }, [club?.id]);
 
@@ -2254,7 +2326,7 @@ function ClubSetupScreen({ club, userRole, onClubUpdated, onNav }) {
       logo_url: logoUrl.trim() || null,
       website_url: websiteUrl.trim() || null,
       contact_email: contactEmail.trim() || null,
-      primary_color: primaryColor || "#d32f2f",
+      primary_color: primaryColor || "#DC2626",
       secondary_color: secondaryColor || "#ffffff",
     };
     const { data, error } = await supabase
@@ -2305,9 +2377,9 @@ function ClubSetupScreen({ club, userRole, onClubUpdated, onNav }) {
 
   return (
     <ClubPage
-      title="Club Setup"
+      title="Setup"
       sub="Club identity, contact details and leadership"
-      actions={canEdit ? <Btn label={saving ? "Savingâ€¦" : "Save Club Details"} onClick={saveClub} style={{ background: CLUB_RED }} /> : null}
+      actions={canEdit ? <Btn label={saving ? "Saving…" : "Save Club Details"} onClick={saveClub} /> : null}
     >
       {!canEdit && (
         <div style={{ marginBottom: 14, padding: 11, borderRadius: 10, background: "#fff8e1", border: "1px solid #f4d58d", fontFamily: F.body, fontSize: 10, color: "#7a4b00" }}>
@@ -2405,14 +2477,14 @@ function ClubSetupScreen({ club, userRole, onClubUpdated, onNav }) {
                 marginTop: 5,
               }}
             >
-              Current version: {LEGAL_POLICY_VERSION} Â· Effective {LEGAL_EFFECTIVE_DATE}
+              Current version: {LEGAL_POLICY_VERSION} · Effective {LEGAL_EFFECTIVE_DATE}
             </div>
           </div>
 
           <Btn
             label="Open Legal & Policies"
             onClick={() => onNav?.("club-legal")}
-            style={{ background: CLUB_RED }}
+           
           />
         </div>
       </ClubCard>
@@ -2459,7 +2531,7 @@ function ClubSetupScreen({ club, userRole, onClubUpdated, onNav }) {
               <label style={{ display: "block", fontFamily: F.body, fontSize: 9, fontWeight: 800, color: P.muted, marginBottom: 4 }}>Phone</label>
               <input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="Phone" style={{ width: "100%", boxSizing: "border-box", padding: 9, borderRadius: 8, border: `1px solid ${P.line}` }} />
             </div>
-            <Btn label="Add Contact" onClick={addContact} style={{ background: CLUB_RED }} />
+            <Btn label="Add Contact" onClick={addContact} />
           </div>
         )}
 
@@ -2573,7 +2645,7 @@ function ClubLegalScreen({ club, currentUserId, onNav }) {
   return (
     <ClubPage
       title="Legal & Policies"
-      sub={`Spraoi Sports private beta Â· ${LEGAL_POLICY_VERSION}`}
+      sub={`Spraoi Sports private beta · ${LEGAL_POLICY_VERSION}`}
       actions={
         <Btn
           label="Back to Club Setup"
@@ -2613,7 +2685,7 @@ function ClubLegalScreen({ club, currentUserId, onNav }) {
             style={{
               fontFamily: F.display,
               fontSize: 15,
-              fontWeight: 900,
+              fontWeight: 800,
               color: P.ink,
               marginBottom: 10,
             }}
@@ -2674,7 +2746,7 @@ function ClubLegalScreen({ club, currentUserId, onNav }) {
                         fontSize: 12,
                       }}
                     >
-                      âœ“
+                      ✓
                     </span>
                   )}
                 </button>
@@ -2699,7 +2771,7 @@ function ClubLegalScreen({ club, currentUserId, onNav }) {
                 style={{
                   fontFamily: F.display,
                   fontSize: 21,
-                  fontWeight: 900,
+                  fontWeight: 800,
                   color: P.ink,
                 }}
               >
@@ -2714,7 +2786,7 @@ function ClubLegalScreen({ club, currentUserId, onNav }) {
                   marginTop: 4,
                 }}
               >
-                Version {activePolicy.version} Â· Effective{" "}
+                Version {activePolicy.version} · Effective{" "}
                 {activePolicy.effectiveDate}
               </div>
 
@@ -2728,7 +2800,7 @@ function ClubLegalScreen({ club, currentUserId, onNav }) {
                     fontWeight: 800,
                   }}
                 >
-                  âœ“ Accepted{" "}
+                  ✓ Accepted{" "}
                   {new Date(
                     currentAcceptance.accepted_at
                   ).toLocaleString("en-IE")}
@@ -2740,11 +2812,11 @@ function ClubLegalScreen({ club, currentUserId, onNav }) {
               <Btn
                 label={
                   accepting
-                    ? "Savingâ€¦"
+                    ? "Saving…"
                     : `Accept ${activePolicy.shortTitle}`
                 }
                 onClick={acceptCurrentPolicy}
-                style={{ background: CLUB_RED }}
+               
               />
             )}
           </div>
@@ -2756,7 +2828,7 @@ function ClubLegalScreen({ club, currentUserId, onNav }) {
                   style={{
                     fontFamily: F.display,
                     fontSize: 14,
-                    fontWeight: 900,
+                    fontWeight: 800,
                     color: P.ink,
                     marginBottom: 6,
                   }}
@@ -2791,7 +2863,7 @@ function ClubLegalScreen({ club, currentUserId, onNav }) {
                 color: P.muted,
               }}
             >
-              Checking your acceptance recordâ€¦
+              Checking your acceptance record…
             </div>
           )}
 
@@ -2833,7 +2905,7 @@ function ClubLegalScreen({ club, currentUserId, onNav }) {
 }
 
 
-function ClubTeamsCoreScreen({ club, ageGroups, coaches, selectedTeam, onSelectTeam, onReloadTeams, userRole }) {
+function ClubTeamsCoreScreen({ club, ageGroups, coaches, selectedTeam, onSelectTeam, onReloadTeams, userRole, tabsNode = null }) {
   const [staff, setStaff] = useState([]);
   const [seasonHistory, setSeasonHistory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -2853,6 +2925,9 @@ function ClubTeamsCoreScreen({ club, ageGroups, coaches, selectedTeam, onSelectT
 
   const roles = [
     { value: "lead_coach", label: "Lead Coach" },
+    { value: "team_admin", label: "Team Admin" },
+    { value: "coach", label: "Coach" },
+    { value: "mentor", label: "Mentor" },
   ];
 
   async function loadStaff() {
@@ -3064,35 +3139,36 @@ function ClubTeamsCoreScreen({ club, ageGroups, coaches, selectedTeam, onSelectT
       sub="Create club teams, assign Lead Coaches and carry the same team forward each season"
       actions={
         <div style={{ display: "flex", gap: 8 }}>
-          {canManageTeams && <Btn label="+ Add Team" onClick={() => setShowAddTeam(true)} style={{ background: CLUB_RED }} />}
+          {canManageTeams && <Btn label="Add Team" onClick={() => setShowAddTeam(true)} />}
           {selectedTeam && canManageTeams && <Btn label="Advance Season" onClick={openRollover} variant="ghost" />}
         </div>
       }
     >
+      {tabsNode}
       {error && <div style={{ marginBottom: 12, padding: 11, borderRadius: 10, background: "#fff1f2", color: "#b42318", fontFamily: F.body, fontSize: 11 }}>{error}</div>}
 
       <div className="club-team-summary-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,minmax(0,1fr))", gap: 10, marginBottom: 15 }}>
         <ClubCard style={{ padding: 14 }}>
-          <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 900, color: P.muted, textTransform: "uppercase" }}>Teams</div>
-          <div style={{ fontFamily: F.display, fontSize: 24, fontWeight: 900, color: CLUB_RED, marginTop: 4 }}>{ageGroups?.length || 0}</div>
+          <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 800, color: P.muted, textTransform: "uppercase" }}>Teams</div>
+          <div style={{ fontFamily: F.display, fontSize: 24, fontWeight: 800, color: CLUB_RED, marginTop: 4 }}>{ageGroups?.length || 0}</div>
         </ClubCard>
         <ClubCard style={{ padding: 14 }}>
-          <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 900, color: P.muted, textTransform: "uppercase" }}>Active Team</div>
-          <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 900, color: P.ink, marginTop: 6 }}>{selectedDisplay || "None selected"}</div>
+          <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 800, color: P.muted, textTransform: "uppercase" }}>Active Team</div>
+          <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 800, color: P.ink, marginTop: 6 }}>{selectedDisplay || "None selected"}</div>
         </ClubCard>
         <ClubCard style={{ padding: 14 }}>
-          <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 900, color: P.muted, textTransform: "uppercase" }}>Lead Coach</div>
-          <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 900, color: P.ink, marginTop: 6 }}>{leadCoach?.coach?.name || "Not assigned"}</div>
+          <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 800, color: P.muted, textTransform: "uppercase" }}>Lead Coach</div>
+          <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 800, color: P.ink, marginTop: 6 }}>{leadCoach?.coach?.name || "Not assigned"}</div>
         </ClubCard>
         <ClubCard style={{ padding: 14 }}>
-          <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 900, color: P.muted, textTransform: "uppercase" }}>Staff</div>
-          <div style={{ fontFamily: F.display, fontSize: 24, fontWeight: 900, color: CLUB_RED, marginTop: 4 }}>{selectedStaff.length}</div>
+          <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 800, color: P.muted, textTransform: "uppercase" }}>Staff</div>
+          <div style={{ fontFamily: F.display, fontSize: 24, fontWeight: 800, color: CLUB_RED, marginTop: 4 }}>{selectedStaff.length}</div>
         </ClubCard>
       </div>
 
       <div className="club-teams-layout" style={{ display: "grid", gridTemplateColumns: "minmax(240px,.72fr) minmax(430px,1.5fr)", gap: 15 }}>
         <ClubCard>
-          <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink, marginBottom: 5 }}>Club teams</div>
+          <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink, marginBottom: 5 }}>Club teams</div>
           <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginBottom: 11 }}>Click a team to make it the active team across Spraoi.</div>
           {(ageGroups || []).map((team) => {
             const active = selectedTeam?.id === team.id;
@@ -3106,14 +3182,14 @@ function ClubTeamsCoreScreen({ club, ageGroups, coaches, selectedTeam, onSelectT
                 display: "flex", alignItems: "center", gap: 10,
                 boxShadow: active ? "0 5px 16px rgba(211,47,47,.10)" : "none",
               }}>
-                <span style={{ width: 34, height: 34, borderRadius: 10, display: "grid", placeItems: "center", background: active ? "#fff" : P.soft, color: active ? CLUB_RED : P.muted, fontWeight: 900 }}>â—†</span>
+                <span style={{ width: 34, height: 34, borderRadius: 10, display: "grid", placeItems: "center", background: active ? "#fff" : P.soft, color: active ? CLUB_RED : P.muted, fontWeight: 800 }}>◆</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: F.body, fontSize: 12, fontWeight: 900, color: P.ink }}>{teamDisplayName(team)}</div>
+                  <div style={{ fontFamily: F.body, fontSize: 12, fontWeight: 800, color: P.ink }}>{teamDisplayName(team)}</div>
                   <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted, marginTop: 3 }}>
-                    {lead?.coach?.name ? `Lead: ${lead.coach.name} Â· ` : ""}{teamStaff.length} staff
+                    {lead?.coach?.name ? `Lead: ${lead.coach.name} · ` : ""}{teamStaff.length} staff
                   </div>
                 </div>
-                {active && <span style={{ color: CLUB_RED, fontWeight: 900 }}>âœ“</span>}
+                {active && <span style={{ color: CLUB_RED, fontWeight: 800 }}>✓</span>}
               </button>
             );
           })}
@@ -3123,14 +3199,14 @@ function ClubTeamsCoreScreen({ club, ageGroups, coaches, selectedTeam, onSelectT
           <ClubCard>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", marginBottom: 12 }}>
               <div>
-                <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 900, color: P.ink }}>
+                <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 800, color: P.ink }}>
                   {selectedTeam ? selectedDisplay : "Select a team"}
                 </div>
                 <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 4 }}>
-                  Persistent team ID Â· staff stay attached when the age group changes.
+                  Persistent team ID · staff stay attached when the age group changes.
                 </div>
               </div>
-              {selectedTeam && <span style={{ fontFamily: F.body, fontSize: 9, fontWeight: 900, color: selectedTeam.active === false ? "#b42318" : "#16803c", background: selectedTeam.active === false ? "#fff1f2" : "#ecfdf3", padding: "5px 8px", borderRadius: 999 }}>{selectedTeam.active === false ? "Inactive" : "Active"}</span>}
+              {selectedTeam && <span style={{ fontFamily: F.body, fontSize: 9, fontWeight: 800, color: selectedTeam.active === false ? "#b42318" : "#16803c", background: selectedTeam.active === false ? "#fff1f2" : "#ecfdf3", padding: "5px 8px", borderRadius: 999 }}>{selectedTeam.active === false ? "Inactive" : "Active"}</span>}
             </div>
 
             {!selectedTeam ? (
@@ -3144,19 +3220,19 @@ function ClubTeamsCoreScreen({ club, ageGroups, coaches, selectedTeam, onSelectT
                     ["Code", selectedTeam.gender === "girls" ? "Camogie / Football" : selectedTeam.gender === "boys" ? "Hurling / Football" : "Club team"],
                   ].map(([label, value]) => (
                     <div key={label} style={{ padding: 10, borderRadius: 10, background: P.soft }}>
-                      <div style={{ fontFamily: F.body, fontSize: 8, fontWeight: 900, color: P.muted, textTransform: "uppercase" }}>{label}</div>
-                      <div style={{ fontFamily: F.body, fontSize: 11, fontWeight: 900, color: P.ink, marginTop: 4 }}>{value}</div>
+                      <div style={{ fontFamily: F.body, fontSize: 8, fontWeight: 800, color: P.muted, textTransform: "uppercase" }}>{label}</div>
+                      <div style={{ fontFamily: F.body, fontSize: 11, fontWeight: 800, color: P.ink, marginTop: 4 }}>{value}</div>
                     </div>
                   ))}
                 </div>
 
-                <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 900, color: P.ink }}>Staff & access</div>
+                <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 800, color: P.ink }}>Staff & access</div>
                 <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, margin: "4px 0 10px" }}>
                   Lead Coach can edit Coach and Academy plans. Coach / Mentor is read-only. Club Admin has full club control.
                 </div>
 
                 {loading ? (
-                  <div style={{ padding: 16, color: P.muted, fontFamily: F.body, fontSize: 11 }}>Loading team accessâ€¦</div>
+                  <div style={{ padding: 16, color: P.muted, fontFamily: F.body, fontSize: 11 }}>Loading team access…</div>
                 ) : (coaches || []).length === 0 ? (
                   <div style={{ padding: 16, color: P.muted, fontFamily: F.body, fontSize: 11, background: P.soft, borderRadius: 10 }}>Add coaches under Members first.</div>
                 ) : (
@@ -3168,9 +3244,9 @@ function ClubTeamsCoreScreen({ club, ageGroups, coaches, selectedTeam, onSelectT
                         gap: 12, alignItems: "center", padding: "11px 0", borderTop: `1px solid ${P.line}`,
                       }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                          <div style={{ width: 32, height: 32, borderRadius: "50%", background: CLUB_SOFT, color: CLUB_RED, display: "grid", placeItems: "center", fontFamily: F.display, fontWeight: 900 }}>{coach.name?.[0] || "?"}</div>
+                          <div style={{ width: 32, height: 32, borderRadius: "50%", background: CLUB_SOFT, color: CLUB_RED, display: "grid", placeItems: "center", fontFamily: F.display, fontWeight: 800 }}>{coach.name?.[0] || "?"}</div>
                           <div>
-                            <div style={{ fontFamily: F.body, fontSize: 12, fontWeight: 900, color: P.ink }}>{coach.name}</div>
+                            <div style={{ fontFamily: F.body, fontSize: 12, fontWeight: 800, color: P.ink }}>{coach.name}</div>
                             <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted, marginTop: 2 }}>{coach.email || "No login email"}</div>
                           </div>
                         </div>
@@ -3193,10 +3269,10 @@ function ClubTeamsCoreScreen({ club, ageGroups, coaches, selectedTeam, onSelectT
             <ClubCard>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
                 <div>
-                  <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 900, color: P.ink }}>Season history</div>
-                  <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 3 }}>Rollover changes the age-group label but keeps this teamâ€™s ID, staff and history.</div>
+                  <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 800, color: P.ink }}>Season history</div>
+                  <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 3 }}>Rollover changes the age-group label but keeps this team’s ID, staff and history.</div>
                 </div>
-                <button onClick={openRollover} style={{ border: `1px solid ${CLUB_RED}`, color: CLUB_RED, background: "#fff", borderRadius: 9, padding: "7px 10px", cursor: "pointer", fontFamily: F.body, fontSize: 10, fontWeight: 900 }}>Rollover</button>
+                <button onClick={openRollover} style={{ border: `1px solid ${CLUB_RED}`, color: CLUB_RED, background: "#fff", borderRadius: 9, padding: "7px 10px", cursor: "pointer", fontFamily: F.body, fontSize: 10, fontWeight: 800 }}>Rollover</button>
               </div>
 
               {seasonHistory.length === 0 ? (
@@ -3205,7 +3281,7 @@ function ClubTeamsCoreScreen({ club, ageGroups, coaches, selectedTeam, onSelectT
                 <div style={{ marginTop: 10 }}>
                   {seasonHistory.map((season) => (
                     <div key={season.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "9px 0", borderTop: `1px solid ${P.line}` }}>
-                      <span style={{ fontFamily: F.body, fontSize: 11, fontWeight: 900, color: P.ink }}>{season.season_label}</span>
+                      <span style={{ fontFamily: F.body, fontSize: 11, fontWeight: 800, color: P.ink }}>{season.season_label}</span>
                       <span style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>{season.age_label} {season.gender === "girls" ? "Girls" : season.gender === "boys" ? "Boys" : ""}</span>
                     </div>
                   ))}
@@ -3248,7 +3324,7 @@ function ClubTeamsCoreScreen({ club, ageGroups, coaches, selectedTeam, onSelectT
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
                 <Btn label="Cancel" variant="ghost" onClick={() => setShowAddTeam(false)} />
-                <Btn label={creatingTeam ? "Creatingâ€¦" : "Create Team"} onClick={createTeam} style={{ background: CLUB_RED }} />
+                <Btn label={creatingTeam ? "Creating…" : "Create Team"} onClick={createTeam} />
               </div>
             </div>
           </div>
@@ -3259,21 +3335,21 @@ function ClubTeamsCoreScreen({ club, ageGroups, coaches, selectedTeam, onSelectT
         <div onClick={() => !rolling && setShowRollover(false)} style={{ position: "fixed", inset: 0, zIndex: 15000, background: "rgba(16,36,62,.55)", display: "grid", placeItems: "center", padding: 18 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: "min(480px,100%)", background: "#fff", borderRadius: 18, boxShadow: Sh.lift, overflow: "hidden" }}>
             <div style={{ padding: "18px 20px", background: CLUB_SOFT, borderBottom: `1px solid ${P.line}` }}>
-              <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 900, color: P.ink }}>Advance Season</div>
+              <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 800, color: P.ink }}>Advance Season</div>
               <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 4 }}>Keep the same team ID, Lead Coach and coaching assignments while updating the age label for the new season. A season-history snapshot is retained.</div>
               <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 4 }}>{selectedDisplay} keeps the same team ID and staff assignments.</div>
             </div>
             <div style={{ padding: 20 }}>
-              <label style={{ display: "block", fontFamily: F.body, fontSize: 10, fontWeight: 900, color: P.ink, marginBottom: 5 }}>New season</label>
+              <label style={{ display: "block", fontFamily: F.body, fontSize: 10, fontWeight: 800, color: P.ink, marginBottom: 5 }}>New season</label>
               <input value={nextSeason} onChange={(e) => setNextSeason(e.target.value)} placeholder="2027-28" style={{ width: "100%", boxSizing: "border-box", padding: 10, borderRadius: 9, border: `1px solid ${P.line}`, marginBottom: 12 }} />
-              <label style={{ display: "block", fontFamily: F.body, fontSize: 10, fontWeight: 900, color: P.ink, marginBottom: 5 }}>New age group</label>
+              <label style={{ display: "block", fontFamily: F.body, fontSize: 10, fontWeight: 800, color: P.ink, marginBottom: 5 }}>New age group</label>
               <input value={nextAgeLabel} onChange={(e) => setNextAgeLabel(e.target.value)} placeholder="U12" style={{ width: "100%", boxSizing: "border-box", padding: 10, borderRadius: 9, border: `1px solid ${P.line}`, marginBottom: 12 }} />
               <div style={{ padding: 11, borderRadius: 10, background: "#fff8e1", border: "1px solid #f4d58d", fontFamily: F.body, fontSize: 10, color: "#7a4b00", lineHeight: 1.5 }}>
                 This changes the current display age only. Coach assignments, player links, parent links and historical plans remain attached to the same team ID.
               </div>
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 16 }}>
                 <button disabled={rolling} onClick={() => setShowRollover(false)} style={{ border: `1px solid ${P.line}`, background: "#fff", borderRadius: 9, padding: "9px 12px", cursor: "pointer", fontFamily: F.body, fontWeight: 800 }}>Cancel</button>
-                <button disabled={rolling || !nextSeason.trim() || !nextAgeLabel.trim()} onClick={rolloverSeason} style={{ border: "none", background: CLUB_RED, color: "#fff", borderRadius: 9, padding: "9px 13px", cursor: "pointer", fontFamily: F.body, fontWeight: 900 }}>{rolling ? "Rolling overâ€¦" : "Confirm Rollover"}</button>
+                <button disabled={rolling || !nextSeason.trim() || !nextAgeLabel.trim()} onClick={rolloverSeason} style={{ border: "none", background: CLUB_RED, color: "#fff", borderRadius: 9, padding: "9px 13px", cursor: "pointer", fontFamily: F.body, fontWeight: 800 }}>{rolling ? "Rolling over…" : "Confirm Rollover"}</button>
               </div>
             </div>
           </div>
@@ -3351,13 +3427,6 @@ function ClubPlayersParentsPanel({
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
 
-  const [manualChildName, setManualChildName] = useState("");
-  const [manualTeamId, setManualTeamId] = useState(selectedTeam?.id || "");
-  const [manualParentName, setManualParentName] = useState("");
-  const [manualParentEmail, setManualParentEmail] = useState("");
-  const [manualParentPhone, setManualParentPhone] = useState("");
-  const [manualSaving, setManualSaving] = useState(false);
-
   async function loadData() {
     if (!club?.id) return;
 
@@ -3417,12 +3486,6 @@ function ClubPlayersParentsPanel({
     loadData();
   }, [club?.id]);
 
-  useEffect(() => {
-    if (selectedTeam?.id) {
-      setManualTeamId(selectedTeam.id);
-    }
-  }, [selectedTeam?.id]);
-
   const visiblePlayers = selectedTeam?.id
     ? players.filter(
         (player) =>
@@ -3469,135 +3532,6 @@ function ClubPlayersParentsPanel({
     if (invite.status === "pending") return "Pending";
 
     return invite.status || "Not invited";
-  }
-
-  async function addManualPlayerParent() {
-    if (!club?.id) return;
-
-    const childName = manualChildName.trim();
-    const parentName = manualParentName.trim();
-    const parentEmail = manualParentEmail.trim().toLowerCase();
-    const parentPhone = manualParentPhone.trim();
-
-    if (!childName || !manualTeamId) {
-      setMessage("Please enter the child's name and choose a team.");
-      return;
-    }
-
-    if ((parentName || parentEmail || parentPhone) && !parentEmail) {
-      setMessage("Please enter a parent / guardian email address.");
-      return;
-    }
-
-    setManualSaving(true);
-    setMessage("");
-
-    try {
-      let player = players.find(
-        (item) =>
-          String(item.name || "").trim().toLowerCase() ===
-            childName.toLowerCase() &&
-          String(item.age_group_id) === String(manualTeamId)
-      );
-
-      if (!player) {
-        const { data, error } = await supabase
-          .from("journey_players")
-          .insert({
-            parent_user_id:
-              "00000000-0000-0000-0000-000000000000",
-            club_id: club.id,
-            age_group_id: manualTeamId,
-            name: childName,
-          })
-          .select("id,name,age_group_id")
-          .single();
-
-        if (error) throw error;
-
-        player = data;
-      }
-
-      if (parentEmail) {
-        let guardian = guardians.find(
-          (item) =>
-            String(item.email || "").trim().toLowerCase() ===
-            parentEmail
-        );
-
-        if (!guardian) {
-          const { data, error } = await supabase
-            .from("club_guardians")
-            .upsert(
-              {
-                club_id: club.id,
-                name:
-                  parentName ||
-                  parentEmail.split("@")[0],
-                email: parentEmail,
-                phone: parentPhone || null,
-              },
-              {
-                onConflict: "club_id,email",
-              }
-            )
-            .select("id,name,email,phone,user_id")
-            .single();
-
-          if (error) throw error;
-
-          guardian = data;
-        } else if (
-          parentName ||
-          parentPhone
-        ) {
-          const { error } = await supabase
-            .from("club_guardians")
-            .update({
-              name: parentName || guardian.name,
-              phone: parentPhone || guardian.phone,
-            })
-            .eq("id", guardian.id);
-
-          if (error) throw error;
-        }
-
-        const { error: linkError } = await supabase
-          .from("club_player_guardians")
-          .upsert(
-            {
-              player_id: player.id,
-              guardian_id: guardian.id,
-              is_primary: true,
-            },
-            {
-              onConflict: "player_id,guardian_id",
-            }
-          );
-
-        if (linkError) throw linkError;
-      }
-
-      setManualChildName("");
-      setManualParentName("");
-      setManualParentEmail("");
-      setManualParentPhone("");
-
-      setMessage(
-        parentEmail
-          ? "Child and parent / guardian saved."
-          : "Child saved."
-      );
-
-      await loadData();
-    } catch (error) {
-      setMessage(
-        error?.message ||
-          "Could not save the child and parent details."
-      );
-    } finally {
-      setManualSaving(false);
-    }
   }
 
   async function chooseFile(file) {
@@ -3858,7 +3792,7 @@ function ClubPlayersParentsPanel({
           style={{
             fontFamily: F.display,
             fontSize: 18,
-            fontWeight: 900,
+            fontWeight: 800,
             color: P.ink,
           }}
         >
@@ -3873,7 +3807,7 @@ function ClubPlayersParentsPanel({
             marginTop: 3,
           }}
         >
-          {selectedTeam ? teamDisplayName(selectedTeam) : "All club teams"} Â·
+          {selectedTeam ? teamDisplayName(selectedTeam) : "All club teams"} ·
           children, linked parents and Academy access
         </div>
 
@@ -3931,7 +3865,7 @@ function ClubPlayersParentsPanel({
                           {teamLabel(player)}
                         </td>
                         <td style={td}>Not linked</td>
-                        <td style={td}>â€”</td>
+                        <td style={td}>—</td>
                         <td style={td}>Not invited</td>
                       </tr>
                     );
@@ -3997,249 +3931,6 @@ function ClubPlayersParentsPanel({
       <ClubCard>
         <div
           style={{
-            fontFamily: F.display,
-            fontSize: 16,
-            fontWeight: 900,
-            color: P.ink,
-          }}
-        >
-          Add child / parent manually
-        </div>
-
-        <div
-          style={{
-            fontFamily: F.body,
-            fontSize: 10,
-            color: P.muted,
-            marginTop: 3,
-            marginBottom: 13,
-          }}
-        >
-          Add one child at a time and optionally link their parent or guardian.
-        </div>
-
-        <div
-          className="club-manual-parent-grid"
-          style={{
-            display: "grid",
-            gridTemplateColumns:
-              "1.1fr 1fr 1.1fr 1.3fr 1fr",
-            gap: 8,
-            alignItems: "end",
-          }}
-        >
-          <label>
-            <span
-              style={{
-                display: "block",
-                fontFamily: F.body,
-                fontSize: 9,
-                fontWeight: 900,
-                color: P.muted,
-                marginBottom: 4,
-              }}
-            >
-              Child
-            </span>
-
-            <input
-              value={manualChildName}
-              onChange={(event) =>
-                setManualChildName(event.target.value)
-              }
-              placeholder="Child name"
-              style={{
-                width: "100%",
-                boxSizing: "border-box",
-                height: 38,
-                border: `1px solid ${P.line}`,
-                borderRadius: 9,
-                padding: "0 10px",
-              }}
-            />
-          </label>
-
-          <label>
-            <span
-              style={{
-                display: "block",
-                fontFamily: F.body,
-                fontSize: 9,
-                fontWeight: 900,
-                color: P.muted,
-                marginBottom: 4,
-              }}
-            >
-              Team
-            </span>
-
-            <select
-              value={manualTeamId}
-              onChange={(event) =>
-                setManualTeamId(event.target.value)
-              }
-              style={{
-                width: "100%",
-                height: 38,
-                border: `1px solid ${P.line}`,
-                borderRadius: 9,
-                padding: "0 8px",
-                background: P.white,
-              }}
-            >
-              <option value="">Choose team</option>
-
-              {ageGroups.map((team) => (
-                <option
-                  key={team.id}
-                  value={team.id}
-                >
-                  {teamDisplayName(team)}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            <span
-              style={{
-                display: "block",
-                fontFamily: F.body,
-                fontSize: 9,
-                fontWeight: 900,
-                color: P.muted,
-                marginBottom: 4,
-              }}
-            >
-              Parent / Guardian
-            </span>
-
-            <input
-              value={manualParentName}
-              onChange={(event) =>
-                setManualParentName(event.target.value)
-              }
-              placeholder="Parent / guardian name"
-              style={{
-                width: "100%",
-                boxSizing: "border-box",
-                height: 38,
-                border: `1px solid ${P.line}`,
-                borderRadius: 9,
-                padding: "0 10px",
-              }}
-            />
-          </label>
-
-          <label>
-            <span
-              style={{
-                display: "block",
-                fontFamily: F.body,
-                fontSize: 9,
-                fontWeight: 900,
-                color: P.muted,
-                marginBottom: 4,
-              }}
-            >
-              Email
-            </span>
-
-            <input
-              type="email"
-              value={manualParentEmail}
-              onChange={(event) =>
-                setManualParentEmail(event.target.value)
-              }
-              placeholder="parent@example.ie"
-              style={{
-                width: "100%",
-                boxSizing: "border-box",
-                height: 38,
-                border: `1px solid ${P.line}`,
-                borderRadius: 9,
-                padding: "0 10px",
-              }}
-            />
-          </label>
-
-          <label>
-            <span
-              style={{
-                display: "block",
-                fontFamily: F.body,
-                fontSize: 9,
-                fontWeight: 900,
-                color: P.muted,
-                marginBottom: 4,
-              }}
-            >
-              Phone
-            </span>
-
-            <input
-              value={manualParentPhone}
-              onChange={(event) =>
-                setManualParentPhone(event.target.value)
-              }
-              placeholder="Optional"
-              style={{
-                width: "100%",
-                boxSizing: "border-box",
-                height: 38,
-                border: `1px solid ${P.line}`,
-                borderRadius: 9,
-                padding: "0 10px",
-              }}
-            />
-          </label>
-        </div>
-
-        <button
-          type="button"
-          disabled={manualSaving}
-          onClick={addManualPlayerParent}
-          style={{
-            marginTop: 12,
-            height: 36,
-            border: 0,
-            borderRadius: 9,
-            background: CLUB_RED,
-            color: "#fff",
-            padding: "0 14px",
-            fontFamily: F.body,
-            fontSize: 10,
-            fontWeight: 900,
-            cursor: manualSaving
-              ? "default"
-              : "pointer",
-          }}
-        >
-          {manualSaving
-            ? "Saving?"
-            : "Add to People"}
-        </button>
-
-        <style>{`
-          @media(max-width:900px){
-            .club-manual-parent-grid{
-              grid-template-columns:1fr 1fr!important;
-            }
-          }
-
-          @media(max-width:560px){
-            .club-manual-parent-grid{
-              grid-template-columns:1fr!important;
-            }
-          }
-        `}</style>
-      </ClubCard>
-
-      <div style={{ height: 14 }} />
-
-      <ClubCard>
-        <div
-          style={{
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
@@ -4252,7 +3943,7 @@ function ClubPlayersParentsPanel({
               style={{
                 fontFamily: F.display,
                 fontSize: 16,
-                fontWeight: 900,
+                fontWeight: 800,
                 color: P.ink,
               }}
             >
@@ -4312,7 +4003,7 @@ function ClubPlayersParentsPanel({
               style={{
                 fontFamily: F.body,
                 fontSize: 10,
-                fontWeight: 900,
+                fontWeight: 800,
                 color: P.ink,
               }}
             >
@@ -4320,7 +4011,7 @@ function ClubPlayersParentsPanel({
                 preview.filter((row) => row.valid)
                   .length
               }{" "}
-              ready Â·{" "}
+              ready ·{" "}
               {
                 preview.filter((row) => !row.valid)
                   .length
@@ -4346,11 +4037,11 @@ function ClubPlayersParentsPanel({
                       : "#b45309",
                   }}
                 >
-                  {row.playerName || "Missing child"} Â·{" "}
+                  {row.playerName || "Missing child"} ·{" "}
                   {row.team?.label ||
                     row.teamName ||
                     "Missing team"}{" "}
-                  Â· {row.parentEmail || "No parent email"}
+                  · {row.parentEmail || "No parent email"}
                 </div>
               ))}
             </div>
@@ -4369,14 +4060,14 @@ function ClubPlayersParentsPanel({
                 padding: "0 13px",
                 fontFamily: F.body,
                 fontSize: 10,
-                fontWeight: 900,
+                fontWeight: 800,
                 cursor: busy
                   ? "default"
                   : "pointer",
               }}
             >
               {busy
-                ? "Importingâ€¦"
+                ? "Importing…"
                 : `Import ${
                     preview.filter(
                       (row) => row.valid
@@ -4783,7 +4474,7 @@ function ClubAttendancePanel({
               style={{
                 fontFamily: F.display,
                 fontSize: 17,
-                fontWeight: 900,
+                fontWeight: 800,
                 color: P.ink,
               }}
             >
@@ -4830,7 +4521,7 @@ function ClubAttendancePanel({
               style={{
                 fontFamily: F.body,
                 fontSize: 10,
-                fontWeight: 900,
+                fontWeight: 800,
                 color: P.ink,
               }}
             >
@@ -4838,7 +4529,7 @@ function ClubAttendancePanel({
                 preview.filter((row) => row.valid)
                   .length
               }{" "}
-              ready Â·{" "}
+              ready ·{" "}
               {
                 preview.filter(
                   (row) => !row.valid
@@ -4865,11 +4556,11 @@ function ClubAttendancePanel({
                       : "#b45309",
                   }}
                 >
-                  {row.playerName || "Missing player"} Â·{" "}
+                  {row.playerName || "Missing player"} ·{" "}
                   {row.team?.label ||
                     row.teamName ||
                     "Missing team"}{" "}
-                  Â· {row.date || "Missing date"} Â·{" "}
+                  · {row.date || "Missing date"} ·{" "}
                   {row.status}
                 </div>
               ))}
@@ -4889,14 +4580,14 @@ function ClubAttendancePanel({
                 padding: "0 13px",
                 fontFamily: F.body,
                 fontSize: 10,
-                fontWeight: 900,
+                fontWeight: 800,
                 cursor: busy
                   ? "default"
                   : "pointer",
               }}
             >
               {busy
-                ? "Importingâ€¦"
+                ? "Importing…"
                 : "Import attendance"}
             </button>
           </div>
@@ -4910,7 +4601,7 @@ function ClubAttendancePanel({
           style={{
             fontFamily: F.display,
             fontSize: 16,
-            fontWeight: 900,
+            fontWeight: 800,
             color: P.ink,
             marginBottom: 10,
           }}
@@ -4949,7 +4640,7 @@ function ClubAttendancePanel({
                     style={{
                       fontFamily: F.body,
                       fontSize: 11,
-                      fontWeight: 900,
+                      fontWeight: 800,
                       color: P.ink,
                     }}
                   >
@@ -4989,86 +4680,33 @@ function ClubAttendancePanel({
 
 
 function ClubTeamsScreen(props) {
-  const [clubTeamsTab, setClubTeamsTab] =
-    useState("teams");
+  const [clubTeamsTab, setClubTeamsTab] = useState("teams");
+  const tabs = [["teams","Teams"],["players","Players & Parents"],["attendance","Attendance"]];
+  const tabsNode = (
+    <div className="spraoi-subnav-tabs" style={{ display:"flex", gap:7, overflowX:"auto", marginBottom:16, paddingBottom:10, borderBottom:`1px solid ${P.line}` }}>
+      {tabs.map(([id,label]) => (
+        <button key={id} type="button" onClick={() => setClubTeamsTab(id)} style={{ whiteSpace:"nowrap", height:36, borderRadius:9, padding:"0 13px", border:`1px solid ${clubTeamsTab===id?CLUB_RED:P.line}`, background:clubTeamsTab===id?CLUB_SOFT:P.white, color:clubTeamsTab===id?CLUB_RED:P.ink, fontFamily:F.body, fontSize:10, fontWeight:700, cursor:"pointer" }}>{label}</button>
+      ))}
+    </div>
+  );
 
-  const tabs = [
-    ["teams", "Teams"],
-    ["attendance", "Attendance"],
-  ];
+  if (clubTeamsTab === "teams") return <ClubTeamsCoreScreen {...props} tabsNode={tabsNode} />;
+
+  const pageTitle = clubTeamsTab === "players" ? "Players & Parents" : "Attendance";
+  const pageSub = clubTeamsTab === "players"
+    ? "Review the players and parent links attached to this team."
+    : "Review team attendance records and imported attendance.";
 
   return (
-    <div
-      style={{
-        flex: 1,
-        minWidth: 0,
-        overflow: "auto",
-        background: P.soft,
-      }}
-    >
-      <div
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 40,
-          padding: "9px 16px",
-          display: "flex",
-          gap: 7,
-          overflowX: "auto",
-          background: P.white,
-          borderBottom: `1px solid ${P.line}`,
-        }}
-      >
-        {tabs.map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setClubTeamsTab(id)}
-            style={{
-              whiteSpace: "nowrap",
-              height: 34,
-              borderRadius: 9,
-              padding: "0 12px",
-              border: `1px solid ${
-                clubTeamsTab === id
-                  ? CLUB_RED
-                  : P.line
-              }`,
-              background:
-                clubTeamsTab === id
-                  ? CLUB_SOFT
-                  : P.white,
-              color:
-                clubTeamsTab === id
-                  ? CLUB_RED
-                  : P.ink,
-              fontFamily: F.body,
-              fontSize: 10,
-              fontWeight: 900,
-              cursor: "pointer",
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {clubTeamsTab === "teams" && (
-        <ClubTeamsCoreScreen {...props} />
-      )}
-
-      {clubTeamsTab === "attendance" && (
-        <ClubAttendancePanel
-          club={props.club}
-          ageGroups={props.ageGroups}
-          selectedTeam={props.selectedTeam}
-        />
-      )}
-    </div>
+    <ClubPage title={pageTitle} sub={pageSub}>
+      {tabsNode}
+      {clubTeamsTab === "players" && <ClubPlayersParentsPanel club={props.club} ageGroups={props.ageGroups} selectedTeam={props.selectedTeam} />}
+      {clubTeamsTab === "attendance" && <ClubAttendancePanel club={props.club} ageGroups={props.ageGroups} selectedTeam={props.selectedTeam} />}
+    </ClubPage>
   );
 }
 
-function ClubCoachesCoreScreen({ mode = "coaches", peopleTeamId = "all", club, ageGroups, coaches, selectedTeam, onReloadCoaches, userRole, currentUserId }) {
+function ClubCoachesScreen({ club, ageGroups, coaches, selectedTeam, onReloadCoaches, userRole, currentUserId }) {
   const [staff, setStaff] = useState([]);
   const [invitations, setInvitations] = useState([]);
   const [invitationTeams, setInvitationTeams] = useState([]);
@@ -5085,15 +4723,6 @@ function ClubCoachesCoreScreen({ mode = "coaches", peopleTeamId = "all", club, a
   const [teamId, setTeamId] = useState(selectedTeam?.id || "");
   const [childIds, setChildIds] = useState([]);
 
-  const [bulkParentRows, setBulkParentRows] = useState([]);
-  const [bulkParentFileName, setBulkParentFileName] = useState("");
-  const [bulkParentTeamId, setBulkParentTeamId] = useState(selectedTeam?.id || "");
-  const [bulkParentSending, setBulkParentSending] = useState(false);
-
-  const [coachImportRows, setCoachImportRows] = useState([]);
-  const [coachImportFileName, setCoachImportFileName] = useState("");
-  const [coachImportSending, setCoachImportSending] = useState(false);
-
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -5106,10 +4735,7 @@ function ClubCoachesCoreScreen({ mode = "coaches", peopleTeamId = "all", club, a
   }, [club?.id, currentUserId]);
 
   useEffect(() => {
-    if (selectedTeam?.id) {
-      setTeamId(selectedTeam.id);
-      setBulkParentTeamId(selectedTeam.id);
-    }
+    if (selectedTeam?.id) setTeamId(selectedTeam.id);
   }, [selectedTeam?.id]);
 
   useEffect(() => {
@@ -5201,540 +4827,6 @@ function ClubCoachesCoreScreen({ mode = "coaches", peopleTeamId = "all", club, a
   const selectedTeamPlayers = (journeyPlayers || []).filter(
     (player) => String(player.age_group_id) === String(teamId)
   );
-
-  function normalisePersonName(value) {
-    return String(value || "")
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, " ");
-  }
-
-  function parseParentCsvLine(line) {
-    const values = [];
-    let current = "";
-    let quoted = false;
-
-    for (let i = 0; i < line.length; i += 1) {
-      const char = line[i];
-
-      if (char === '"') {
-        if (quoted && line[i + 1] === '"') {
-          current += '"';
-          i += 1;
-        } else {
-          quoted = !quoted;
-        }
-      } else if (char === "," && !quoted) {
-        values.push(current.trim());
-        current = "";
-      } else {
-        current += char;
-      }
-    }
-
-    values.push(current.trim());
-    return values;
-  }
-
-  function handleParentBulkCsv(file) {
-    if (!file) return;
-
-    if (!bulkParentTeamId) {
-      setMessage("Please choose a team before uploading the parent list.");
-      return;
-    }
-
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      const lines = String(reader.result || "")
-        .split(/\r?\n/)
-        .filter((line) => line.trim());
-
-      if (lines.length < 2) {
-        setBulkParentRows([]);
-        setMessage("The CSV does not contain any parent rows.");
-        return;
-      }
-
-      const headers = parseParentCsvLine(lines.shift()).map((value) =>
-        String(value || "").trim().toLowerCase()
-      );
-
-      const findColumn = (names) =>
-        headers.findIndex((header) => names.includes(header));
-
-      const parentNameIndex = findColumn([
-        "parent name",
-        "parent",
-        "guardian name",
-        "guardian",
-      ]);
-
-      const emailIndex = findColumn([
-        "parent email",
-        "email",
-        "guardian email",
-      ]);
-
-      const childIndex = findColumn([
-        "child name",
-        "child",
-        "player name",
-        "player",
-      ]);
-
-      if (
-        parentNameIndex < 0 ||
-        emailIndex < 0 ||
-        childIndex < 0
-      ) {
-        setBulkParentRows([]);
-        setMessage(
-          "CSV columns must include Parent Name, Parent Email and Child Name."
-        );
-        return;
-      }
-
-      const teamPlayers = (journeyPlayers || []).filter(
-        (player) =>
-          String(player.age_group_id) === String(bulkParentTeamId)
-      );
-
-      const rows = lines.map((line, index) => {
-        const columns = parseParentCsvLine(line);
-
-        const parent = String(columns[parentNameIndex] || "").trim();
-        const email = String(columns[emailIndex] || "")
-          .trim()
-          .toLowerCase();
-        const child = String(columns[childIndex] || "").trim();
-
-        const matchedPlayer = teamPlayers.find(
-          (player) =>
-            normalisePersonName(player.name) ===
-            normalisePersonName(child)
-        );
-
-        const errors = [];
-
-        if (!parent) errors.push("Parent name required");
-        if (!email) errors.push("Parent email required");
-        if (!child) errors.push("Child name required");
-        if (child && !matchedPlayer) {
-          errors.push("Child not found in this team");
-        }
-
-        return {
-          id: `parent-import-${Date.now()}-${index}`,
-          parent,
-          email,
-          child,
-          playerId: matchedPlayer?.id || null,
-          valid: errors.length === 0,
-          errors,
-          status: errors.length === 0 ? "Ready" : "Needs review",
-        };
-      });
-
-      setBulkParentFileName(file.name);
-      setBulkParentRows(rows);
-      setMessage("");
-    };
-
-    reader.readAsText(file);
-  }
-
-  async function sendBulkParentInvitations() {
-    if (!isAdmin || !club?.id || !bulkParentTeamId) return;
-
-    const readyRows = bulkParentRows.filter(
-      (row) => row.valid && row.status !== "Sent"
-    );
-
-    if (!readyRows.length) {
-      setMessage("There are no ready parent invitations to send.");
-      return;
-    }
-
-    const grouped = new Map();
-
-    readyRows.forEach((row) => {
-      const key = row.email;
-
-      if (!grouped.has(key)) {
-        grouped.set(key, {
-          name: row.parent,
-          email: row.email,
-          childIds: [],
-        });
-      }
-
-      const group = grouped.get(key);
-
-      if (row.playerId && !group.childIds.includes(row.playerId)) {
-        group.childIds.push(row.playerId);
-      }
-    });
-
-    setBulkParentSending(true);
-    setMessage("");
-
-    const results = {};
-
-    for (const group of grouped.values()) {
-      try {
-        const { data, error } = await supabase.functions.invoke(
-          "send-spraoi-invite",
-          {
-            body: {
-              clubId: club.id,
-              name: group.name,
-              email: group.email,
-              inviteType: "parent_guardian",
-              teamIds: [bulkParentTeamId],
-              childIds: group.childIds,
-            },
-          }
-        );
-
-        if (error || data?.ok === false) {
-          results[group.email] = {
-            ok: false,
-            error:
-              data?.error ||
-              error?.message ||
-              "Could not send invitation",
-          };
-        } else {
-          results[group.email] = { ok: true };
-        }
-      } catch (error) {
-        results[group.email] = {
-          ok: false,
-          error: error?.message || "Could not send invitation",
-        };
-      }
-    }
-
-    setBulkParentRows((rows) =>
-      rows.map((row) => {
-        const result = results[row.email];
-
-        if (!result || !row.valid) return row;
-
-        return result.ok
-          ? { ...row, status: "Sent" }
-          : {
-              ...row,
-              status: "Failed",
-              errors: [result.error],
-            };
-      })
-    );
-
-    const sentCount = Object.values(results).filter(
-      (result) => result.ok
-    ).length;
-
-    const failedCount = Object.values(results).filter(
-      (result) => !result.ok
-    ).length;
-
-    setMessage(
-      failedCount
-        ? `${sentCount} parent invitation${sentCount === 1 ? "" : "s"} sent. ${failedCount} failed.`
-        : `${sentCount} parent invitation${sentCount === 1 ? "" : "s"} sent successfully.`
-    );
-
-    await loadPeopleData();
-    setBulkParentSending(false);
-  }
-
-  function normaliseCoachImportRole(value) {
-    const raw = String(value || "").trim().toLowerCase();
-
-    if (
-      raw === "lead coach" ||
-      raw === "lead_coach" ||
-      raw === "leadcoach"
-    ) {
-      return {
-        value: "lead_coach",
-        label: "Lead Coach",
-      };
-    }
-
-    if (
-      raw === "coach" ||
-      raw === "mentor" ||
-      raw === "coach / mentor" ||
-      raw === "coach/mentor" ||
-      raw === "coach mentor"
-    ) {
-      return {
-        value: "coach",
-        label: "Coach / Mentor",
-      };
-    }
-
-    return null;
-  }
-
-  function teamMatchesImportValue(team, value) {
-    const wanted = String(value || "")
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, " ");
-
-    if (!wanted) return false;
-
-    const label = String(team?.label || "")
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, " ");
-
-    const display = String(teamDisplayName(team) || "")
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, " ");
-
-    return wanted === label || wanted === display;
-  }
-
-  async function chooseCoachImportFile(file) {
-    if (!file) return;
-
-    setMessage("");
-    setCoachImportFileName(file.name);
-
-    try {
-      const rows = await readClubImportFile(file);
-
-      const mapped = rows.map((row, index) => {
-        const personName = clubImportValue(row, [
-          "name",
-          "coach name",
-          "mentor name",
-          "coach",
-          "mentor",
-        ]);
-
-        const email = String(
-          clubImportValue(row, [
-            "email",
-            "coach email",
-            "mentor email",
-          ]) || ""
-        )
-          .trim()
-          .toLowerCase();
-
-        const roleRaw = clubImportValue(row, [
-          "role",
-          "coach role",
-          "mentor role",
-        ]);
-
-        const teamRaw = clubImportValue(row, [
-          "team",
-          "team name",
-          "age group",
-          "squad",
-        ]);
-
-        const role = normaliseCoachImportRole(roleRaw);
-
-        const matchedTeam =
-          (ageGroups || []).find((team) =>
-            teamMatchesImportValue(team, teamRaw)
-          ) ||
-          (selectedTeam?.id ? selectedTeam : null);
-
-        const errors = [];
-
-        if (!personName) errors.push("Name required");
-        if (!email || !email.includes("@")) errors.push("Valid email required");
-
-        if (!role) {
-          errors.push(
-            "Role must be Lead Coach, Coach or Mentor"
-          );
-        }
-
-        if (!matchedTeam) {
-          errors.push("Team not recognised");
-        }
-
-        if (
-          isLeadCoach &&
-          role?.value === "lead_coach"
-        ) {
-          errors.push(
-            "Lead Coaches cannot import another Lead Coach"
-          );
-        }
-
-        if (
-          isLeadCoach &&
-          matchedTeam?.id &&
-          !leadCoachTeamIds.includes(matchedTeam.id)
-        ) {
-          errors.push(
-            "You can only import people for teams you lead"
-          );
-        }
-
-        return {
-          row: index + 2,
-          name: personName,
-          email,
-          role,
-          roleRaw,
-          team: matchedTeam,
-          teamRaw,
-          errors,
-          valid: errors.length === 0,
-          status: errors.length === 0 ? "Ready" : "Needs review",
-        };
-      });
-
-      // A single email should not be imported with mixed roles.
-      const rolesByEmail = new Map();
-
-      mapped.forEach((row) => {
-        if (!row.email || !row.role?.value) return;
-
-        if (!rolesByEmail.has(row.email)) {
-          rolesByEmail.set(row.email, new Set());
-        }
-
-        rolesByEmail.get(row.email).add(row.role.value);
-      });
-
-      mapped.forEach((row) => {
-        const roles = rolesByEmail.get(row.email);
-
-        if (roles && roles.size > 1) {
-          if (!row.errors.includes("Mixed roles for the same email")) {
-            row.errors.push("Mixed roles for the same email");
-          }
-
-          row.valid = false;
-          row.status = "Needs review";
-        }
-      });
-
-      setCoachImportRows(mapped);
-    } catch (error) {
-      setCoachImportRows([]);
-      setMessage(
-        error?.message ||
-          "Could not read the coach / mentor import file."
-      );
-    }
-  }
-
-  async function sendCoachImportInvitations() {
-    if (!canInvite || !club?.id) return;
-
-    const readyRows = coachImportRows.filter(
-      (row) => row.valid && row.status !== "Sent"
-    );
-
-    if (!readyRows.length) {
-      setMessage("There are no ready coach / mentor invitations to send.");
-      return;
-    }
-
-    setCoachImportSending(true);
-    setMessage("");
-
-    // Combine the same person + same role across multiple teams
-    // into one invitation with multiple teamIds.
-    const grouped = new Map();
-
-    readyRows.forEach((row) => {
-      const key = `${row.email}::${row.role.value}`;
-
-      if (!grouped.has(key)) {
-        grouped.set(key, {
-          name: row.name,
-          email: row.email,
-          inviteType: row.role.value,
-          teamIds: [],
-          sourceRows: [],
-        });
-      }
-
-      const group = grouped.get(key);
-
-      if (
-        row.team?.id &&
-        !group.teamIds.includes(row.team.id)
-      ) {
-        group.teamIds.push(row.team.id);
-      }
-
-      group.sourceRows.push(row.row);
-    });
-
-    let sentCount = 0;
-    let failedCount = 0;
-    const sentSourceRows = new Set();
-
-    for (const group of grouped.values()) {
-      const body = {
-        clubId: club.id,
-        name: group.name,
-        email: group.email,
-        inviteType: group.inviteType,
-        teamIds: group.teamIds,
-        childIds: [],
-      };
-
-      const { data, error } = await supabase.functions.invoke(
-        "send-spraoi-invite",
-        { body }
-      );
-
-      if (error || data?.ok === false) {
-        failedCount += 1;
-        continue;
-      }
-
-      sentCount += 1;
-
-      group.sourceRows.forEach((rowNumber) =>
-        sentSourceRows.add(rowNumber)
-      );
-    }
-
-    setCoachImportRows((current) =>
-      current.map((row) =>
-        sentSourceRows.has(row.row)
-          ? { ...row, status: "Sent" }
-          : row
-      )
-    );
-
-    if (failedCount) {
-      setMessage(
-        `${sentCount} invitation${
-          sentCount === 1 ? "" : "s"
-        } sent. ${failedCount} could not be sent.`
-      );
-    } else {
-      setMessage(
-        `${sentCount} coach / mentor invitation${
-          sentCount === 1 ? "" : "s"
-        } sent.`
-      );
-    }
-
-    await loadPeopleData();
-    setCoachImportSending(false);
-  }
 
   async function sendInvitation() {
     if (!canInvite || !club?.id) return;
@@ -5932,14 +5024,21 @@ function ClubCoachesCoreScreen({ mode = "coaches", peopleTeamId = "all", club, a
   );
 
   return (
-    <>
-      {mode === "invitations" && canInvite && (
+    <ClubPage
+      title="People"
+      sub={
+        isLeadCoach
+          ? "Invite Coach/Mentors to the teams you lead"
+          : "Manage coaches, parents and invitations for your club"
+      }
+    >
+      {canInvite && (
         <ClubCard style={{ marginBottom: 15 }}>
           <div
             style={{
               fontFamily: F.display,
               fontSize: 17,
-              fontWeight: 900,
+              fontWeight: 800,
               color: P.ink,
             }}
           >
@@ -6102,7 +5201,7 @@ function ClubCoachesCoreScreen({ mode = "coaches", peopleTeamId = "all", club, a
                 style={{
                   fontFamily: F.body,
                   fontSize: 10,
-                  fontWeight: 900,
+                  fontWeight: 800,
                   color: P.ink,
                   marginBottom: 8,
                 }}
@@ -6180,9 +5279,9 @@ function ClubCoachesCoreScreen({ mode = "coaches", peopleTeamId = "all", club, a
             }}
           >
             <Btn
-              label={saving ? "Sendingâ€¦" : "Send Invitation"}
+              label={saving ? "Sending…" : "Send Invitation"}
               onClick={sendInvitation}
-              style={{ background: CLUB_RED }}
+             
             />
 
             {message && (
@@ -6205,13 +5304,12 @@ function ClubCoachesCoreScreen({ mode = "coaches", peopleTeamId = "all", club, a
         </ClubCard>
       )}
 
-      {mode === "invitations" && (
-        <ClubCard style={{ marginBottom: 15 }}>
+      <ClubCard style={{ marginBottom: 15 }}>
         <div
           style={{
             fontFamily: F.display,
             fontSize: 16,
-            fontWeight: 900,
+            fontWeight: 800,
             color: P.ink,
             marginBottom: 4,
           }}
@@ -6320,15 +5418,13 @@ function ClubCoachesCoreScreen({ mode = "coaches", peopleTeamId = "all", club, a
           </div>
         )}
       </ClubCard>
-      )}
 
-      {mode === "coaches" && (
-        <ClubCard style={{ marginBottom: 15 }}>
+      <ClubCard style={{ marginBottom: 15 }}>
         <div
           style={{
             fontFamily: F.display,
             fontSize: 16,
-            fontWeight: 900,
+            fontWeight: 800,
             color: P.ink,
             marginBottom: 12,
           }}
@@ -6357,21 +5453,6 @@ function ClubCoachesCoreScreen({ mode = "coaches", peopleTeamId = "all", club, a
               : assignments;
 
             if (isLeadCoach && visibleAssignments.length === 0) return null;
-
-            if (
-              peopleTeamId !== "all" &&
-              !visibleAssignments.some(
-                (assignment) =>
-                  String(
-                    assignment.age_group_id ||
-                    assignment.team_id ||
-                    assignment.ageGroupId ||
-                    ""
-                  ) === String(peopleTeamId)
-              )
-            ) {
-              return null;
-            }
 
             return (
               <div
@@ -6467,7 +5548,7 @@ function ClubCoachesCoreScreen({ mode = "coaches", peopleTeamId = "all", club, a
                             fontWeight: 800,
                           }}
                         >
-                          {teamDisplayName(row.team)} Â·{" "}
+                          {teamDisplayName(row.team)} ·{" "}
                           {row.role === "lead_coach"
                             ? "Lead Coach"
                             : "Coach/Mentor"}
@@ -6490,244 +5571,14 @@ function ClubCoachesCoreScreen({ mode = "coaches", peopleTeamId = "all", club, a
           })
         )}
       </ClubCard>
-      )}
 
-      {mode === "coaches" && canInvite && (
-        <ClubCard style={{ marginBottom: 15 }}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: 12,
-              flexWrap: "wrap",
-            }}
-          >
-            <div>
-              <div
-                style={{
-                  fontFamily: F.display,
-                  fontSize: 16,
-                  fontWeight: 900,
-                  color: P.ink,
-                }}
-              >
-                Import Coaches & Mentors
-              </div>
-
-              <div
-                style={{
-                  fontFamily: F.body,
-                  fontSize: 10,
-                  color: P.muted,
-                  marginTop: 4,
-                }}
-              >
-                Upload ClubZap CSV or Excel. We will look for Child/Player Name, Team, Parent Name, Parent Email and Phone. with columns: Name, Email, Role, Team.
-              </div>
-            </div>
-
-            <label
-              style={{
-                height: 38,
-                padding: "0 14px",
-                borderRadius: 10,
-                background: CLUB_RED,
-                color: "#fff",
-                display: "flex",
-                alignItems: "center",
-                fontFamily: F.body,
-                fontSize: 10,
-                fontWeight: 900,
-                cursor: "pointer",
-              }}
-            >
-              Choose File
-              <input
-                type="file"
-                accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-
-                  if (file) {
-                    chooseCoachImportFile(file);
-                  }
-
-                  event.target.value = "";
-                }}
-                style={{ display: "none" }}
-              />
-            </label>
-          </div>
-
-          {coachImportFileName && (
-            <div
-              style={{
-                marginTop: 10,
-                fontFamily: F.body,
-                fontSize: 10,
-                color: P.muted,
-              }}
-            >
-              File: <strong>{coachImportFileName}</strong>
-            </div>
-          )}
-
-          {coachImportRows.length > 0 && (
-            <>
-              <div
-                style={{
-                  marginTop: 14,
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 12,
-                  flexWrap: "wrap",
-                }}
-              >
-                <div
-                  style={{
-                    fontFamily: F.body,
-                    fontSize: 10,
-                    color: P.muted,
-                  }}
-                >
-                  {
-                    coachImportRows.filter((row) => row.valid).length
-                  } ready ?{" "}
-                  {
-                    coachImportRows.filter((row) => !row.valid).length
-                  } need review
-                </div>
-
-                <Btn
-                  label={
-                    coachImportSending
-                      ? "Sending?"
-                      : "Send All Ready Invitations"
-                  }
-                  onClick={sendCoachImportInvitations}
-                  style={{ background: CLUB_RED }}
-                />
-              </div>
-
-              <div
-                style={{
-                  overflowX: "auto",
-                  marginTop: 12,
-                }}
-              >
-                <table
-                  style={{
-                    width: "100%",
-                    borderCollapse: "collapse",
-                    minWidth: 720,
-                  }}
-                >
-                  <thead>
-                    <tr>
-                      {[
-                        "Name",
-                        "Email",
-                        "Role",
-                        "Team",
-                        "Status",
-                      ].map((heading) => (
-                        <th
-                          key={heading}
-                          style={{
-                            textAlign: "left",
-                            padding: "9px 8px",
-                            borderBottom: `1px solid ${P.line}`,
-                            fontFamily: F.body,
-                            fontSize: 9,
-                            color: P.muted,
-                            textTransform: "uppercase",
-                          }}
-                        >
-                          {heading}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {coachImportRows.map((row) => (
-                      <tr key={row.row}>
-                        <td style={td}>{row.name || "?"}</td>
-                        <td style={td}>{row.email || "?"}</td>
-                        <td style={td}>
-                          {row.role?.label || row.roleRaw || "?"}
-                        </td>
-                        <td style={td}>
-                          {row.team
-                            ? teamDisplayName(row.team)
-                            : row.teamRaw || "?"}
-                        </td>
-                        <td style={td}>
-                          <span
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              minHeight: 24,
-                              padding: "3px 8px",
-                              borderRadius: 999,
-                              background:
-                                row.status === "Sent"
-                                  ? "#dcfce7"
-                                  : row.valid
-                                    ? CLUB_SOFT
-                                    : "#fff7ed",
-                              color:
-                                row.status === "Sent"
-                                  ? "#15803d"
-                                  : row.valid
-                                    ? CLUB_RED
-                                    : "#b45309",
-                              fontFamily: F.body,
-                              fontSize: 9,
-                              fontWeight: 900,
-                            }}
-                            title={
-                              row.errors.length
-                                ? row.errors.join("; ")
-                                : ""
-                            }
-                          >
-                            {row.status}
-                          </span>
-
-                          {row.errors.length > 0 && (
-                            <div
-                              style={{
-                                marginTop: 4,
-                                fontFamily: F.body,
-                                fontSize: 9,
-                                color: P.coral,
-                              }}
-                            >
-                              {row.errors.join(" ? ")}
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-        </ClubCard>
-      )}
-
-
-      {mode === "invitations" && previousInvitations.length > 0 && (
+      {previousInvitations.length > 0 && (
         <ClubCard>
           <div
             style={{
               fontFamily: F.display,
               fontSize: 15,
-              fontWeight: 900,
+              fontWeight: 800,
               color: P.ink,
               marginBottom: 10,
             }}
@@ -6753,14 +5604,14 @@ function ClubCoachesCoreScreen({ mode = "coaches", peopleTeamId = "all", club, a
                 <div>
                   <strong>{invite.name || invite.email}</strong>
                   <span style={{ color: P.muted }}>
-                    {" Â· "}
+                    {" · "}
                     {inviteTypeLabel(invite.invite_type)}
                   </span>
                 </div>
 
                 <span
                   style={{
-                    fontWeight: 900,
+                    fontWeight: 800,
                     textTransform: "capitalize",
                     color:
                       invite.status === "accepted"
@@ -6799,160 +5650,9 @@ function ClubCoachesCoreScreen({ mode = "coaches", peopleTeamId = "all", club, a
           }
         }
       `}</style>
-    </>
-  );
-}
-
-
-function ClubCoachesScreen(props) {
-  const [peopleTab, setPeopleTab] = useState("coaches");
-  const [peopleTeamId, setPeopleTeamId] = useState("all");
-
-  const peopleSelectedTeam =
-    peopleTeamId === "all"
-      ? null
-      : (props.ageGroups || []).find(
-          (team) => String(team.id) === String(peopleTeamId)
-        ) || null;
-
-  const tabs = [
-    ["coaches", "Coaches & Mentors"],
-    ["parents", "Parents & Children"],
-    ["invitations", "Invitations"],
-  ];
-
-  return (
-    <ClubPage
-      title="People"
-      sub="Manage coaches, mentors, parents, children and invitations for your club"
-    >
-      <div
-        style={{
-          display: "flex",
-          gap: 7,
-          overflowX: "auto",
-          marginBottom: 14,
-          paddingBottom: 10,
-          borderBottom: `1px solid ${P.line}`,
-        }}
-      >
-        {tabs.map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setPeopleTab(id)}
-            style={{
-              whiteSpace: "nowrap",
-              height: 36,
-              borderRadius: 9,
-              padding: "0 13px",
-              border: `1px solid ${peopleTab === id ? CLUB_RED : P.line}`,
-              background: peopleTab === id ? CLUB_SOFT : P.white,
-              color: peopleTab === id ? CLUB_RED : P.ink,
-              fontFamily: F.body,
-              fontSize: 10,
-              fontWeight: 900,
-              cursor: "pointer",
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          flexWrap: "wrap",
-          marginBottom: 14,
-        }}
-      >
-        <span
-          style={{
-            fontFamily: F.body,
-            fontSize: 10,
-            fontWeight: 900,
-            color: P.muted,
-            textTransform: "uppercase",
-            letterSpacing: ".04em",
-          }}
-        >
-          Team
-        </span>
-
-        <select
-          value={peopleTeamId}
-          onChange={(e) => setPeopleTeamId(e.target.value)}
-          style={{
-            minWidth: 220,
-            height: 38,
-            borderRadius: 10,
-            border: `1px solid ${P.line}`,
-            background: P.white,
-            color: P.ink,
-            padding: "0 12px",
-            fontFamily: F.body,
-            fontSize: 11,
-            fontWeight: 800,
-            outline: "none",
-          }}
-        >
-          <option value="all">All Teams</option>
-          {(props.ageGroups || []).map((team) => (
-            <option key={team.id} value={team.id}>
-              {team.label || team.name || "Team"}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {peopleTab === "coaches" && (
-        <ClubCoachesCoreScreen
-          {...props}
-          selectedTeam={peopleSelectedTeam}
-          peopleTeamId={peopleTeamId}
-          mode="coaches"
-        />
-      )}
-
-      {peopleTab === "parents" && (
-        <ClubPlayersParentsPanel
-          club={props.club}
-          ageGroups={props.ageGroups}
-          selectedTeam={peopleSelectedTeam}
-        />
-      )}
-
-      {peopleTab === "invitations" && (
-        <ClubCoachesCoreScreen
-          {...props}
-          selectedTeam={peopleSelectedTeam}
-          peopleTeamId={peopleTeamId}
-          mode="invitations"
-        />
-      )}
     </ClubPage>
   );
 }
-
-
-function ClubSchedulingPage({ club, ageGroups, currentUserId }) {
-  return (
-    <ClubPage
-      title="Facilities & Slots"
-      sub="Manage club facilities, recurring training slots and weekly pitch allocations."
-    >
-      <ClubScheduling
-        club={club}
-        ageGroups={ageGroups}
-        currentUserId={currentUserId}
-      />
-    </ClubPage>
-  );
-}
-
 
 function ClubComplianceScreen({ club, coaches, userRole }) {
   const canManage = ["super_admin", "admin", "club_admin"].includes(userRole?.role);
@@ -7180,21 +5880,21 @@ function ClubComplianceScreen({ club, coaches, userRole }) {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 12, marginBottom: 16 }} className="club-compliance-stats">
         <ClubCard style={{ padding: 15 }}>
           <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 800, color: P.muted, textTransform: "uppercase" }}>Compliance records</div>
-          <div style={{ fontFamily: F.display, fontSize: 27, fontWeight: 900, color: CLUB_RED, marginTop: 4 }}>{certs.length}</div>
+          <div style={{ fontFamily: F.display, fontSize: 27, fontWeight: 800, color: CLUB_RED, marginTop: 4 }}>{certs.length}</div>
         </ClubCard>
         <ClubCard style={{ padding: 15 }}>
           <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 800, color: P.muted, textTransform: "uppercase" }}>6-month alerts</div>
-          <div style={{ fontFamily: F.display, fontSize: 27, fontWeight: 900, color: "#b26a00", marginTop: 4 }}>{alerts.filter((x) => x.status.days >= 0).length}</div>
+          <div style={{ fontFamily: F.display, fontSize: 27, fontWeight: 800, color: "#b26a00", marginTop: 4 }}>{alerts.filter((x) => x.status.days >= 0).length}</div>
         </ClubCard>
         <ClubCard style={{ padding: 15 }}>
           <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 800, color: P.muted, textTransform: "uppercase" }}>Expired</div>
-          <div style={{ fontFamily: F.display, fontSize: 27, fontWeight: 900, color: "#a61b1b", marginTop: 4 }}>{alerts.filter((x) => x.status.days < 0).length}</div>
+          <div style={{ fontFamily: F.display, fontSize: 27, fontWeight: 800, color: "#a61b1b", marginTop: 4 }}>{alerts.filter((x) => x.status.days < 0).length}</div>
         </ClubCard>
       </div>
 
       {alerts.length > 0 && (
         <ClubCard style={{ marginBottom: 16, border: "1px solid #efd38c", background: "#fffdf6" }}>
-          <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink, marginBottom: 4 }}>Notifications</div>
+          <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink, marginBottom: 4 }}>Notifications</div>
           <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginBottom: 12 }}>In-app alerts appear automatically from 6 months before expiry. Expired and 90-day items are highlighted more strongly.</div>
           <div style={{ display: "grid", gap: 8 }}>
             {alerts.slice(0, 8).map(({ cert, status }) => {
@@ -7202,10 +5902,10 @@ function ClubComplianceScreen({ club, coaches, userRole }) {
               return (
                 <div key={cert.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "9px 11px", borderRadius: 10, background: tone.background, border: `1px solid ${tone.border}` }}>
                   <div>
-                    <div style={{ fontFamily: F.body, fontSize: 11, fontWeight: 800, color: P.ink }}>{cert.coach?.name || "Coach"} Â· {cert.certification_type}</div>
+                    <div style={{ fontFamily: F.body, fontSize: 11, fontWeight: 800, color: P.ink }}>{cert.coach?.name || "Coach"} · {cert.certification_type}</div>
                     <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted, marginTop: 2 }}>Expiry: {cert.expiry_date}</div>
                   </div>
-                  <span style={{ fontFamily: F.body, fontSize: 9, fontWeight: 900, color: tone.color }}>{status.label}</span>
+                  <span style={{ fontFamily: F.body, fontSize: 9, fontWeight: 800, color: tone.color }}>{status.label}</span>
                 </div>
               );
             })}
@@ -7217,7 +5917,7 @@ function ClubComplianceScreen({ club, coaches, userRole }) {
         <ClubCard style={{ marginBottom: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "flex-start", marginBottom: 12 }}>
             <div>
-              <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink }}>Bulk import</div>
+              <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink }}>Bulk import</div>
               <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 4 }}>For larger certification lists: download the template, fill it in, upload it, review any errors, then confirm.</div>
             </div>
             <Btn label="Download CSV Template" variant="ghost" onClick={downloadComplianceTemplate} />
@@ -7235,12 +5935,12 @@ function ClubComplianceScreen({ club, coaches, userRole }) {
             <div style={{ marginTop: 13 }}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", marginBottom: 8 }}>
                 <div style={{ fontFamily: F.body, fontSize: 10, fontWeight: 800, color: P.ink }}>
-                  Preview Â· {importRows.filter((r) => r.valid).length} ready Â· {importRows.filter((r) => !r.valid).length} need attention
+                  Preview · {importRows.filter((r) => r.valid).length} ready · {importRows.filter((r) => !r.valid).length} need attention
                 </div>
                 <Btn
-                  label={importing ? "Importingâ€¦" : `Import ${importRows.filter((r) => r.valid).length} Valid Rows`}
+                  label={importing ? "Importing…" : `Import ${importRows.filter((r) => r.valid).length} Valid Rows`}
                   onClick={confirmComplianceImport}
-                  style={{ background: CLUB_RED }}
+                 
                 />
               </div>
 
@@ -7251,7 +5951,7 @@ function ClubComplianceScreen({ club, coaches, userRole }) {
                     <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 700, color: P.ink }}>{row.data.coach_email}</div>
                     <div style={{ fontFamily: F.body, fontSize: 9, color: P.ink }}>{row.data.certification_type}</div>
                     <div style={{ fontFamily: F.body, fontSize: 9, color: P.ink }}>{row.data.expiry_date}</div>
-                    <div style={{ fontFamily: F.body, fontSize: 8, color: row.valid ? "#1f6b32" : "#a61b1b", fontWeight: 800 }}>{row.valid ? "Ready" : row.errors.join(" Â· ")}</div>
+                    <div style={{ fontFamily: F.body, fontSize: 8, color: row.valid ? "#1f6b32" : "#a61b1b", fontWeight: 800 }}>{row.valid ? "Ready" : row.errors.join(" · ")}</div>
                   </div>
                 ))}
               </div>
@@ -7262,13 +5962,13 @@ function ClubComplianceScreen({ club, coaches, userRole }) {
 
       {canManage && (
         <ClubCard style={{ marginBottom: 16 }}>
-          <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink, marginBottom: 4 }}>Add certification</div>
+          <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink, marginBottom: 4 }}>Add certification</div>
           <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginBottom: 12 }}>Add Safeguarding, Garda Vetting, coaching awards, First Aid or another time-limited requirement.</div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr 1fr", gap: 8, marginBottom: 8 }} className="club-cert-grid">
             <select value={coachId} onChange={(e) => setCoachId(e.target.value)} style={{ padding: 9, borderRadius: 8, border: `1px solid ${P.line}` }}>
               <option value="">Choose coach</option>
-              {(coaches || []).map((coach) => <option key={coach.id} value={coach.id}>{coach.name} {coach.email ? `Â· ${coach.email}` : ""}</option>)}
+              {(coaches || []).map((coach) => <option key={coach.id} value={coach.id}>{coach.name} {coach.email ? `· ${coach.email}` : ""}</option>)}
             </select>
             <select value={certType} onChange={(e) => setCertType(e.target.value)} style={{ padding: 9, borderRadius: 8, border: `1px solid ${P.line}` }}>
               <option>Safeguarding</option>
@@ -7286,13 +5986,13 @@ function ClubComplianceScreen({ club, coaches, userRole }) {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr auto", gap: 8 }} className="club-cert-grid-bottom">
             <input value={certificateNumber} onChange={(e) => setCertificateNumber(e.target.value)} placeholder="Certificate / reference number" style={{ padding: 9, borderRadius: 8, border: `1px solid ${P.line}` }} />
             <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes (optional)" style={{ padding: 9, borderRadius: 8, border: `1px solid ${P.line}` }} />
-            <Btn label={saving ? "Savingâ€¦" : "Add Certification"} onClick={addCertification} style={{ background: CLUB_RED }} />
+            <Btn label={saving ? "Saving…" : "Add Certification"} onClick={addCertification} />
           </div>
         </ClubCard>
       )}
 
       <ClubCard>
-        <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink, marginBottom: 12 }}>Certification register</div>
+        <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink, marginBottom: 12 }}>Certification register</div>
         {certs.length === 0 ? (
           <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted }}>No certification records added yet.</div>
         ) : certs.map((cert) => {
@@ -7310,7 +6010,7 @@ function ClubComplianceScreen({ club, coaches, userRole }) {
               </div>
               <div>
                 <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted }}>Expires {cert.expiry_date || "—"}</div>
-                <span style={{ display: "inline-block", marginTop: 3, padding: "3px 7px", borderRadius: 999, background: tone.background, border: `1px solid ${tone.border}`, color: tone.color, fontFamily: F.body, fontSize: 8, fontWeight: 900 }}>{status.label}</span>
+                <span style={{ display: "inline-block", marginTop: 3, padding: "3px 7px", borderRadius: 999, background: tone.background, border: `1px solid ${tone.border}`, color: tone.color, fontFamily: F.body, fontSize: 8, fontWeight: 800 }}>{status.label}</span>
               </div>
               {canManage && <Btn label="Remove" variant="ghost" style={{ color: P.coral }} onClick={() => removeCertification(cert)} />}
             </div>
@@ -7421,8 +6121,8 @@ function ClubPermissionsScreen({ club, userRole, ageGroups = [] }) {
       <TopBar title="Roles & Permissions" sub="Spraoi platform access" />
       <div style={{ padding: "20px 28px" }}>
         <div style={{ background: P.white, borderRadius: 14, padding: "16px 18px", border: `1px solid ${P.line}`, boxShadow: Sh.card, marginBottom: 20 }}>
-          <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 900, color: P.muted, textTransform: "uppercase", letterSpacing: ".08em" }}>Your platform role</div>
-          <div style={{ fontFamily: F.display, fontSize: 22, fontWeight: 900, color: P.ink, marginTop: 3 }}>{displayRoleLabel(userRole?.role)}</div>
+          <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 800, color: P.muted, textTransform: "uppercase", letterSpacing: ".08em" }}>Your platform role</div>
+          <div style={{ fontFamily: F.display, fontSize: 22, fontWeight: 800, color: P.ink, marginTop: 3 }}>{displayRoleLabel(userRole?.role)}</div>
         </div>
 
         <div style={{ background: P.white, borderRadius: 14, padding: 18, border: `1px solid ${P.line}`, boxShadow: Sh.card, marginBottom: 20 }}>
@@ -7449,7 +6149,7 @@ function ClubPermissionsScreen({ club, userRole, ageGroups = [] }) {
         <div style={{ background: P.white, borderRadius: 14, padding: 18, border: `1px solid ${P.line}`, boxShadow: Sh.card }}>
           <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 800, color: P.ink, marginBottom: 12 }}>Users & Roles</div>
           {error && <div style={{ padding: 10, borderRadius: 8, background: "#fff1f1", color: "#a91f1f", fontFamily: F.body, fontSize: 10, marginBottom: 10 }}>{error}</div>}
-          {loading ? <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted }}>Loadingâ€¦</div> :
+          {loading ? <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted }}>Loading…</div> :
             users.map((u) => <div key={u.id} onClick={() => startEdit(u)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 4px", borderTop: `1px solid ${P.line}`, cursor: isSuperAdmin ? "pointer" : "default" }}>
               <div style={{ flex: 1 }}>
                 <div style={{ fontFamily: F.body, fontSize: 12, fontWeight: 800, color: P.ink }}>{u.user_email || "No email"}</div>
@@ -7460,7 +6160,7 @@ function ClubPermissionsScreen({ club, userRole, ageGroups = [] }) {
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginTop: 5 }}>
                         {assignments.map((row) => (
                           <span key={row.id} style={{ padding: "3px 7px", borderRadius: 999, background: P.soft, border: `1px solid ${P.line}`, fontFamily: F.body, fontSize: 9, color: P.ink, fontWeight: 800 }}>
-                            {teamDisplayName(row.team)} Â· {displayRoleLabel(row.role)}
+                            {teamDisplayName(row.team)} · {displayRoleLabel(row.role)}
                           </span>
                         ))}
                       </div>
@@ -7474,7 +6174,7 @@ function ClubPermissionsScreen({ club, userRole, ageGroups = [] }) {
                   return <div style={{ fontFamily: F.body, fontSize: 9, color: P.muted, marginTop: 3 }}>No exact team assignment</div>;
                 })()}
               </div>
-              <span style={{ padding: "4px 9px", borderRadius: 999, background: CLUB_SOFT, color: CLUB_RED, fontFamily: F.body, fontSize: 9, fontWeight: 900 }}>{displayRoleLabel(u.role)}</span>
+              <span style={{ padding: "4px 9px", borderRadius: 999, background: CLUB_SOFT, color: CLUB_RED, fontFamily: F.body, fontSize: 9, fontWeight: 800 }}>{displayRoleLabel(u.role)}</span>
             </div>)
           }
         </div>
@@ -7482,7 +6182,7 @@ function ClubPermissionsScreen({ club, userRole, ageGroups = [] }) {
         {editingUser && isSuperAdmin && (
           <div onClick={() => setEditingUser(null)} style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,.5)", display: "grid", placeItems: "center", padding: 16 }}>
             <div onClick={(e) => e.stopPropagation()} style={{ width: "min(420px, calc(100vw - 32px))", background: P.white, borderRadius: 16, padding: 24, boxShadow: Sh.lift }}>
-              <div style={{ fontFamily: F.display, fontSize: 17, fontWeight: 900, color: P.ink, marginBottom: 5 }}>Edit User Role</div>
+              <div style={{ fontFamily: F.display, fontSize: 17, fontWeight: 800, color: P.ink, marginBottom: 5 }}>Edit User Role</div>
               <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginBottom: 16 }}>{editingUser.user_email}</div>
               <select value={editRole} onChange={(e) => setEditRole(e.target.value)} style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 12, marginBottom: 16 }}>
                 {roles.map((r) => <option key={r} value={r}>{displayRoleLabel(r)}</option>)}
@@ -7703,7 +6403,7 @@ const previewPill = {
   color: "#fff",
   fontFamily: F.body,
   fontSize: 8,
-  fontWeight: 900,
+  fontWeight: 800,
   backdropFilter: "blur(8px)",
 };
 
@@ -7713,15 +6413,15 @@ function AcademyPhonePreview({ planSessions = [], extras = [], skills = [], over
   const hurling = recommendations.filter((item) => item.code === "hurling");
   const grouped = { steps: [], exercises: [], runs: [], bonus: [], recovery: [] };
   extras.forEach((extra) => grouped[academyExtraGroup(extra)].push(extra));
-  const section = (title, items, color, icon, render) => items.length ? <div style={{ background:"#fff",border:`1px solid ${color}33`,borderRadius:14,padding:11,marginTop:9 }}><div style={{ display:"flex",alignItems:"center",gap:7,fontFamily:F.body,fontSize:10,fontWeight:900,color,textTransform:"uppercase" }}><span>{icon}</span>{title}</div><div style={{ display:"grid",gap:7,marginTop:8 }}>{items.map(render)}</div></div> : null;
-  const taskRow=(item)=><div key={item.id} style={{ display:"flex",alignItems:"center",gap:8,padding:"8px 9px",borderRadius:10,background:"#f8fafc" }}><div style={{flex:1,minWidth:0}}><div style={{fontFamily:F.body,fontSize:10,fontWeight:900,color:P.ink}}>{item.title}</div><div style={{fontFamily:F.body,fontSize:8,color:P.muted,marginTop:2}}>{item.target || item.description || item.instruction || "Complete this mission"}</div></div><span style={{fontFamily:F.body,fontSize:8,fontWeight:900,color:"#b45309"}}>+{item.xp || item.xp_reward || 10} XP</span></div>;
-  const skillRow=(item)=><div key={item.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 9px",borderRadius:10,background:"#f8fafc"}}><div style={{width:32,height:32,borderRadius:9,background:"#e0f2fe",display:"grid",placeItems:"center"}}>â–¶</div><div style={{flex:1,minWidth:0}}><div style={{fontFamily:F.body,fontSize:10,fontWeight:900,color:P.ink}}>{item.matchedSkill?.name || "Choose weekly video"}</div><div style={{fontFamily:F.body,fontSize:8,color:P.muted,marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>Based on {item.sourceDrills.length} Coach drill{item.sourceDrills.length===1?"":"s"}</div></div><span style={{fontFamily:F.body,fontSize:8,fontWeight:900,color:"#b45309"}}>+20 XP</span></div>;
+  const section = (title, items, color, icon, render) => items.length ? <div style={{ background:"#fff",border:`1px solid ${color}33`,borderRadius:14,padding:11,marginTop:9 }}><div style={{ display:"flex",alignItems:"center",gap:7,fontFamily:F.body,fontSize:10,fontWeight:800,color,textTransform:"uppercase" }}><span>{icon}</span>{title}</div><div style={{ display:"grid",gap:7,marginTop:8 }}>{items.map(render)}</div></div> : null;
+  const taskRow=(item)=><div key={item.id} style={{ display:"flex",alignItems:"center",gap:8,padding:"8px 9px",borderRadius:10,background:"#f8fafc" }}><div style={{flex:1,minWidth:0}}><div style={{fontFamily:F.body,fontSize:10,fontWeight:800,color:P.ink}}>{item.title}</div><div style={{fontFamily:F.body,fontSize:8,color:P.muted,marginTop:2}}>{item.target || item.description || item.instruction || "Complete this mission"}</div></div><span style={{fontFamily:F.body,fontSize:8,fontWeight:800,color:"#b45309"}}>+{item.xp || item.xp_reward || 10} XP</span></div>;
+  const skillRow=(item)=><div key={item.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 9px",borderRadius:10,background:"#f8fafc"}}><div style={{width:32,height:32,borderRadius:9,background:"#e0f2fe",display:"grid",placeItems:"center"}}>▶</div><div style={{flex:1,minWidth:0}}><div style={{fontFamily:F.body,fontSize:10,fontWeight:800,color:P.ink}}>{item.matchedSkill?.name || "Choose weekly video"}</div><div style={{fontFamily:F.body,fontSize:8,color:P.muted,marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>Based on {item.sourceDrills.length} Coach drill{item.sourceDrills.length===1?"":"s"}</div></div><span style={{fontFamily:F.body,fontSize:8,fontWeight:800,color:"#b45309"}}>+20 XP</span></div>;
   const visibleCount = football.length+hurling.length+Object.values(grouped).reduce((sum,items)=>sum+items.length,0);
-  return <div style={{ width: compact ? 300 : "min(390px,100%)", maxHeight: compact ? 600 : "none", overflow:"hidden", background:"#fff",borderRadius:compact?26:32,border:compact?"6px solid #16324a":"8px solid #16324a",boxShadow:"0 22px 52px rgba(7,89,133,.2)" }}><div style={{background:"linear-gradient(135deg,#38bdf8,#0284c7)",padding:compact?"16px 14px":"22px 18px",color:"#fff",position:"relative",overflow:"hidden"}}><img src="/spraoi-academy-icon.png" alt="" style={{position:"absolute",right:8,bottom:-8,width:compact?68:88,height:compact?68:88,objectFit:"contain",background:"#fff",borderRadius:18,padding:6}}/><div style={{fontFamily:F.body,fontSize:8,fontWeight:900,opacity:.85,textTransform:"uppercase"}}>Club Spraoi Academy</div><div style={{fontFamily:F.display,fontSize:compact?18:24,fontWeight:900,marginTop:3,maxWidth:"70%"}}>Your weekly adventure</div><div style={{display:"flex",gap:6,marginTop:11}}><span style={previewPill}>â­ {recommendations.length*20+extras.reduce((s,x)=>s+Number(x.xp||x.xp_reward||0),0)} XP</span><span style={previewPill}>ðŸ… Badges</span></div></div><div style={{padding:compact?10:15,background:"#f3f9fd",maxHeight:compact?460:"none",overflowY:"auto"}}>{visibleCount===0?<div style={{padding:18,textAlign:"center",fontFamily:F.body,fontSize:10,color:P.muted}}>Add weekly content to see the child experience here.</div>:<>{section("Step Goals",grouped.steps,"#0f9f6e","ðŸ‘Ÿ",taskRow)}{section("Exercises",grouped.exercises,"#7c3aed","ðŸ’ª",taskRow)}{section("Run Challenge",grouped.runs,"#e65100","ðŸƒ",taskRow)}{section("Football Skills",football,"#2563eb","âš½",skillRow)}{section(selectedTeam?.gender === "girls" ? "Camogie Skills" : "Hurling Skills",hurling,"#dc2626","ðŸ‘",skillRow)}{section("Bonus",grouped.bonus,"#d97706","âœ¨",taskRow)}{section("Rest & Recovery",grouped.recovery,"#0f766e","ðŸŒ™",taskRow)}</>}<div style={{marginTop:10,padding:9,borderRadius:11,background:published?"#dcfce7":"#fff7ed",color:published?"#15803d":"#b45309",fontFamily:F.body,fontSize:8,fontWeight:900,textAlign:"center"}}>{published?"âœ“ Published to children":"Preview mode Â· not published"}</div></div></div>;
+  return <div style={{ width: compact ? 300 : "min(390px,100%)", maxHeight: compact ? 600 : "none", overflow:"hidden", background:"#fff",borderRadius:compact?26:32,border:compact?"6px solid #16324a":"8px solid #16324a",boxShadow:"0 22px 52px rgba(7,89,133,.2)" }}><div style={{background:"linear-gradient(135deg,#38bdf8,#0284c7)",padding:compact?"16px 14px":"22px 18px",color:"#fff",position:"relative",overflow:"hidden"}}><img src="/spraoi-academy-icon.png" alt="" style={{position:"absolute",right:8,bottom:-8,width:compact?68:88,height:compact?68:88,objectFit:"contain",background:"#fff",borderRadius:18,padding:6}}/><div style={{fontFamily:F.body,fontSize:8,fontWeight:800,opacity:.85,textTransform:"uppercase"}}>Club Spraoi Academy</div><div style={{fontFamily:F.display,fontSize:compact?18:24,fontWeight:800,marginTop:3,maxWidth:"70%"}}>Your weekly adventure</div><div style={{display:"flex",gap:6,marginTop:11}}><span style={previewPill}>⭐ {recommendations.length*20+extras.reduce((s,x)=>s+Number(x.xp||x.xp_reward||0),0)} XP</span><span style={previewPill}>🏅 Badges</span></div></div><div style={{padding:compact?10:15,background:"#f3f9fd",maxHeight:compact?460:"none",overflowY:"auto"}}>{visibleCount===0?<div style={{padding:18,textAlign:"center",fontFamily:F.body,fontSize:10,color:P.muted}}>Add weekly content to see the child experience here.</div>:<>{section("Step Goals",grouped.steps,"#0f9f6e","👟",taskRow)}{section("Exercises",grouped.exercises,"#7c3aed","💪",taskRow)}{section("Run Challenge",grouped.runs,"#D89A00","🏃",taskRow)}{section("Football Skills",football,"#2563eb","⚽",skillRow)}{section(selectedTeam?.gender === "girls" ? "Camogie Skills" : "Hurling Skills",hurling,"#dc2626","🏑",skillRow)}{section("Bonus",grouped.bonus,"#d97706","✨",taskRow)}{section("Rest & Recovery",grouped.recovery,"#0f766e","🌙",taskRow)}</>}<div style={{marginTop:10,padding:9,borderRadius:11,background:published?"#dcfce7":"#fff7ed",color:published?"#15803d":"#b45309",fontFamily:F.body,fontSize:8,fontWeight:800,textAlign:"center"}}>{published?"✓ Published to children":"Preview mode · not published"}</div></div></div>;
 }
 
 function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras = [], skills = [], overrides = {}, published = false, onSetOverride, onNav }) {
-  const academyBlue = "#0277bd";
+  const academyBlue = "#2563EB";
   const academyDark = "#075985";
   const academySoft = "#eef8ff";
   const teamName = selectedTeam
@@ -7763,10 +6463,10 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
         <div>
           <div style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted }}>{label}</div>
-          <div style={{ fontFamily: F.display, fontSize: 27, lineHeight: 1.15, fontWeight: 900, color: P.ink, marginTop: 8 }}>{value}</div>
+          <div style={{ fontFamily: F.display, fontSize: 27, lineHeight: 1.15, fontWeight: 800, color: P.ink, marginTop: 8 }}>{value}</div>
         </div>
-        <div style={{ width: 34, height: 34, borderRadius: 10, background: `${accent}12`, color: accent, display: "grid", placeItems: "center", fontSize: 15, fontWeight: 900 }}>
-          {icon}
+        <div className="spraoi-card-icon-chip" style={{ "--card-accent": accent }}>
+          {typeof icon === "string" && icon.startsWith("/") ? <img className="spraoi-card-icon" src={icon} alt="" aria-hidden="true" /> : <span className="spraoi-card-icon-fallback" style={{ "--card-accent": accent }}>{icon}</span>}
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 9, minHeight: 16 }}>
@@ -7778,9 +6478,9 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
 
   return (
     <div style={{ flex: 1, minWidth: 0, overflow: "auto", background: "#f7f9fc" }}>
-      <TopBar title="Academy Admin" sub={`${teamName} Â· ${weekLabel}`}>
-        <Btn label="Child Preview" variant="ghost" icon="â—‰" onClick={() => onNav("academy-preview")} />
-        <Btn label="Manage Weekly Content" variant="primary" icon="ï¼‹" onClick={() => onNav("academy-content")} style={{ background: academyBlue, boxShadow: "0 5px 16px rgba(2,119,189,.22)" }} />
+      <TopBar title="Academy Admin" sub={`${teamName} · ${weekLabel}`}>
+        <Btn label="Child Preview" variant="ghost" icon="◉" onClick={() => onNav("academy-preview")} />
+        <Btn label="Manage Weekly Content" variant="primary" onClick={() => onNav("academy-content")} style={{ background: academyBlue, boxShadow: "0 5px 16px rgba(2,119,189,.22)" }} />
       </TopBar>
 
       <div style={{ padding: "22px 24px 32px", maxWidth: 1500, width: "100%", boxSizing: "border-box", margin: "0 auto" }}>
@@ -7797,18 +6497,18 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
                 <span style={{ width: 6, height: 6, borderRadius: "50%", background: hasPlan ? "#86efac" : "#fbbf24" }} />
                 {hasPlan ? "Coach plan connected" : "Action required"}
               </div>
-              <h2 style={{ fontFamily: F.display, fontSize: 25, lineHeight: 1.15, fontWeight: 900, letterSpacing: "-.025em", margin: "13px 0 7px" }}>
-                {hasSkills ? `${weeklyRecommendations.length} primary ${weeklyRecommendations.length === 1 ? "skill is" : "skills are"} ready for Academy` : "Prepare this weekâ€™s Academy experience"}
+              <h2 style={{ fontFamily: F.display, fontSize: 25, lineHeight: 1.15, fontWeight: 800, letterSpacing: "-.025em", margin: "13px 0 7px" }}>
+                {hasSkills ? `${weeklyRecommendations.length} primary ${weeklyRecommendations.length === 1 ? "skill is" : "skills are"} ready for Academy` : "Prepare this week’s Academy experience"}
               </h2>
               <p style={{ fontFamily: F.body, fontSize: 12, lineHeight: 1.6, color: "#4c7187", margin: 0 }}>
                 {hasSkills
                   ? "Review the child-friendly practices generated from the Coach plan, make any edits, then publish them to parents and players."
-                  : "Academy imports the selected teamâ€™s saved Coach plan automatically. Add bonus activities here when the weekly foundations are ready."}
+                  : "Academy imports the selected team’s saved Coach plan automatically. Add bonus activities here when the weekly foundations are ready."}
               </p>
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button onClick={() => onNav("academy-content")} style={{ height: 38, padding: "0 15px", borderRadius: 10, border: "none", background: P.white, color: academyDark, fontFamily: F.body, fontSize: 11, fontWeight: 800, cursor: "pointer", boxShadow: "0 6px 16px rgba(0,0,0,.12)" }}>
-                Review Weekly Content â†’
+                Review Weekly Content →
               </button>
             </div>
           </div>
@@ -7816,9 +6516,9 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 18 }}>
           <MetricCard label="Academy players" value="24" detail="in this squad" accent={academyBlue} icon="P" onClick={() => onNav("academy-players")} />
-          <MetricCard label="Parents linked" value="19" detail="5 invitations pending" trend={{ label: "79% linked", color: "#0369a1", bg: "#e0f2fe" }} accent="#0ea5e9" icon="â†—" onClick={() => onNav("academy-parents")} />
-          <MetricCard label="Active this week" value="17" detail="of 24 players" trend={{ label: "+8%", color: "#15803d", bg: "#dcfce7" }} accent={P.green} icon="âœ“" onClick={() => onNav("academy-engagement")} />
-          <MetricCard label="Completion rate" value="68%" detail="across published practices" trend={{ label: "+12%", color: "#15803d", bg: "#dcfce7" }} accent={P.orange} icon="â—’" onClick={() => onNav("academy-engagement")} />
+          <MetricCard label="Parents linked" value="19" detail="5 invitations pending" trend={{ label: "79% linked", color: "#0369a1", bg: "#e0f2fe" }} accent="#0ea5e9" icon="↗" onClick={() => onNav("academy-parents")} />
+          <MetricCard label="Active this week" value="17" detail="of 24 players" trend={{ label: "+8%", color: "#15803d", bg: "#dcfce7" }} accent={P.green} icon="✓" onClick={() => onNav("academy-engagement")} />
+          <MetricCard label="Completion rate" value="68%" detail="across published practices" trend={{ label: "+12%", color: "#15803d", bg: "#dcfce7" }} accent={P.orange} icon="◒" onClick={() => onNav("academy-engagement")} />
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.65fr) minmax(300px, .85fr)", gap: 18, alignItems: "start" }}>
@@ -7826,10 +6526,10 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
             <section style={{ background: P.white, borderRadius: 16, border: `1px solid ${P.line}`, boxShadow: Sh.card, overflow: "hidden" }}>
               <div style={{ padding: "17px 18px", borderBottom: `1px solid ${P.line}`, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
                 <div>
-                  <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink }}>Suggested Weekly Videos</div>
+                  <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink }}>Suggested Weekly Videos</div>
                   <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 2 }}>One Football and one Hurling/Camogie video can be chosen from {sessionCount} connected Coach {sessionCount === 1 ? "session" : "sessions"}</div>
                 </div>
-                <button onClick={() => onNav("academy-content")} style={{ border: "none", background: "transparent", color: academyBlue, fontFamily: F.body, fontSize: 11, fontWeight: 800, cursor: "pointer" }}>View all â†’</button>
+                <button onClick={() => onNav("academy-content")} style={{ border: "none", background: "transparent", color: academyBlue, fontFamily: F.body, fontSize: 11, fontWeight: 800, cursor: "pointer" }}>View all →</button>
               </div>
 
               {weeklyRecommendations.length > 0 ? (
@@ -7844,10 +6544,10 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
                     const previewSkill = options[previewIndex] || rec.matchedSkill;
                     const isPreviewSelected = Boolean(overrides?.[rec.code] && overrides[rec.code] === previewSkill?.id);
                     return <div key={rec.code} style={{ display: "grid", gridTemplateColumns: "42px minmax(0, 1fr) auto", gap: 12, alignItems: "center", padding: "14px 18px", borderBottom: index < weeklyRecommendations.length - 1 ? `1px solid ${P.line}` : "none" }}>
-                      <div style={{ width: 40, height: 40, borderRadius: 11, background: bg, display: "grid", placeItems: "center", fontSize: 20 }}>{rec.code === "football" ? "âš½" : "ðŸ‘"}</div>
+                      <div style={{ width: 40, height: 40, borderRadius: 11, background: bg, display: "grid", placeItems: "center", fontSize: 20 }}>{rec.code === "football" ? "⚽" : "🏑"}</div>
                       <div style={{ minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
-                          <span style={{ fontFamily: F.body, fontSize: 9, lineHeight: 1, fontWeight: 900, color, textTransform: "uppercase", letterSpacing: ".06em" }}>{rec.label}</span>
+                          <span style={{ fontFamily: F.body, fontSize: 9, lineHeight: 1, fontWeight: 800, color, textTransform: "uppercase", letterSpacing: ".06em" }}>{rec.label}</span>
                           <span style={{ width: 3, height: 3, borderRadius: "50%", background: P.line }} />
                           <span style={{ fontFamily: F.body, fontSize: 9, color: P.muted }}>Based on {rec.sourceDrills.length} Coach drill{rec.sourceDrills.length===1?"":"s"}</span>
                         </div>
@@ -7856,18 +6556,18 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap:"wrap", justifyContent:"flex-end" }}>
                         <span style={{ padding: "5px 8px", borderRadius: 999, background: selected ? "#dcfce7" : "#fff7ed", color: selected ? "#15803d" : "#c2410c", fontFamily: F.body, fontSize: 9, fontWeight: 800 }}>{isPreviewSelected ? "Selected" : "Suggested"}</span>
-                        <div className="academy-match-actions" style={{display:"flex",gap:6,flexWrap:"wrap"}}><button onClick={()=>setPreviewIndexes((current)=>({...current,[rec.code]:Math.max(0,previewIndex-1)}))} disabled={previewIndex===0} style={{height:30,borderRadius:8,border:`1px solid ${P.line}`,background:"#fff",color:previewIndex===0?P.muted:academyBlue,padding:"0 10px",fontFamily:F.body,fontSize:9,fontWeight:900,cursor:previewIndex===0?"default":"pointer"}}>Previous</button><button onClick={()=>setPreviewIndexes((current)=>({...current,[rec.code]:Math.min(options.length-1,previewIndex+1)}))} disabled={previewIndex>=options.length-1} style={{height:30,borderRadius:8,border:`1px solid ${P.line}`,background:"#fff",color:previewIndex>=options.length-1?P.muted:academyBlue,padding:"0 10px",fontFamily:F.body,fontSize:9,fontWeight:900,cursor:previewIndex>=options.length-1?"default":"pointer"}}>Next suggestion</button>{previewSkill?.id && !isPreviewSelected && <button onClick={() => onSetOverride?.(rec.code, previewSkill.id)} style={{height:30,borderRadius:8,border:0,background:academyBlue,color:"#fff",padding:"0 10px",fontFamily:F.body,fontSize:9,fontWeight:900,cursor:"pointer"}}>Use this video</button>}<span style={{alignSelf:"center",fontFamily:F.body,fontSize:9,color:P.muted}}>Suggestion {options.length?previewIndex+1:0} of {options.length}</span></div>
-                        <button onClick={() => onNav("academy-content")} aria-label={`Review ${rec.label}`} style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${P.line}`, background: P.white, color: P.muted, cursor: "pointer" }}>{"\u203A"}</button>
+                        <div className="academy-match-actions" style={{display:"flex",gap:6,flexWrap:"wrap"}}><button onClick={()=>setPreviewIndexes((current)=>({...current,[rec.code]:Math.max(0,previewIndex-1)}))} disabled={previewIndex===0} style={{height:30,borderRadius:8,border:`1px solid ${P.line}`,background:"#fff",color:previewIndex===0?P.muted:academyBlue,padding:"0 10px",fontFamily:F.body,fontSize:9,fontWeight:800,cursor:previewIndex===0?"default":"pointer"}}>Previous</button><button onClick={()=>setPreviewIndexes((current)=>({...current,[rec.code]:Math.min(options.length-1,previewIndex+1)}))} disabled={previewIndex>=options.length-1} style={{height:30,borderRadius:8,border:`1px solid ${P.line}`,background:"#fff",color:previewIndex>=options.length-1?P.muted:academyBlue,padding:"0 10px",fontFamily:F.body,fontSize:9,fontWeight:800,cursor:previewIndex>=options.length-1?"default":"pointer"}}>Next suggestion</button>{previewSkill?.id && !isPreviewSelected && <button onClick={() => onSetOverride?.(rec.code, previewSkill.id)} style={{height:30,borderRadius:8,border:0,background:academyBlue,color:"#fff",padding:"0 10px",fontFamily:F.body,fontSize:9,fontWeight:800,cursor:"pointer"}}>Use this video</button>}<span style={{alignSelf:"center",fontFamily:F.body,fontSize:9,color:P.muted}}>Suggestion {options.length?previewIndex+1:0} of {options.length}</span></div>
+                        <button onClick={() => onNav("academy-content")} aria-label={`Review ${rec.label}`} style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${P.line}`, background: P.white, color: P.muted, cursor: "pointer" }}>›</button>
                       </div>
                     </div>
                   })}
                 </div>
               ) : (
                 <div style={{ padding: "28px 18px", textAlign: "center" }}>
-                  <div style={{ width: 46, height: 46, borderRadius: 13, background: academySoft, color: academyBlue, display: "grid", placeItems: "center", fontSize: 20, margin: "0 auto 11px" }}>ï¼‹</div>
+                  <div style={{ width: 46, height: 46, borderRadius: 13, background: academySoft, color: academyBlue, display: "grid", placeItems: "center", fontSize: 20, margin: "0 auto 11px" }}>＋</div>
                   <div style={{ fontFamily: F.body, fontSize: 13, fontWeight: 800, color: P.ink }}>No skills imported yet</div>
-                  <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 4 }}>Select this weekâ€™s primary skills in Coach Planner.</div>
-                  <div style={{ marginTop: 12, fontFamily: F.body, fontSize: 10, color: academyBlue, fontWeight: 800 }}>Waiting for the selected teamâ€™s saved Coach plan</div>
+                  <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 4 }}>Select this week’s primary skills in Coach Planner.</div>
+                  <div style={{ marginTop: 12, fontFamily: F.body, fontSize: 10, color: academyBlue, fontWeight: 800 }}>Waiting for the selected team’s saved Coach plan</div>
                 </div>
               )}
             </section>
@@ -7875,10 +6575,10 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
             <section style={{ background: P.white, borderRadius: 16, border: `1px solid ${P.line}`, boxShadow: Sh.card, padding: 18 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 14, marginBottom: 18 }}>
                 <div>
-                  <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink }}>Weekly engagement</div>
+                  <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink }}>Weekly engagement</div>
                   <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 2 }}>Player activity over the last seven days</div>
                 </div>
-                <button onClick={() => onNav("academy-engagement")} style={{ border: "none", background: "transparent", color: academyBlue, fontFamily: F.body, fontSize: 11, fontWeight: 800, cursor: "pointer" }}>Open engagement â†’</button>
+                <button onClick={() => onNav("academy-engagement")} style={{ border: "none", background: "transparent", color: academyBlue, fontFamily: F.body, fontSize: 11, fontWeight: 800, cursor: "pointer" }}>Open engagement →</button>
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(34px, 1fr))", gap: 10, alignItems: "end", height: 150, padding: "0 4px", borderBottom: `1px solid ${P.line}` }}>
@@ -7890,9 +6590,9 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
                 ))}
               </div>
               <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginTop: 14 }}>
-                <div><span style={{ fontFamily: F.display, fontSize: 17, fontWeight: 900, color: P.ink }}>41</span><span style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginLeft: 5 }}>practice opens</span></div>
-                <div><span style={{ fontFamily: F.display, fontSize: 17, fontWeight: 900, color: P.ink }}>29</span><span style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginLeft: 5 }}>completions</span></div>
-                <div><span style={{ fontFamily: F.display, fontSize: 17, fontWeight: 900, color: P.ink }}>8</span><span style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginLeft: 5 }}>active streaks</span></div>
+                <div><span style={{ fontFamily: F.display, fontSize: 17, fontWeight: 800, color: P.ink }}>41</span><span style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginLeft: 5 }}>practice opens</span></div>
+                <div><span style={{ fontFamily: F.display, fontSize: 17, fontWeight: 800, color: P.ink }}>29</span><span style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginLeft: 5 }}>completions</span></div>
+                <div><span style={{ fontFamily: F.display, fontSize: 17, fontWeight: 800, color: P.ink }}>8</span><span style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginLeft: 5 }}>active streaks</span></div>
               </div>
             </section>
           </div>
@@ -7901,17 +6601,17 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
             <section style={{ background: P.white, borderRadius: 16, border: `1px solid ${P.line}`, boxShadow: Sh.card, padding: 18 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
-                  <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink }}>Publish readiness</div>
+                  <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink }}>Publish readiness</div>
                   <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 2 }}>{completedSetupSteps} of {setupSteps.length} steps complete</div>
                 </div>
                 <div style={{ width: 46, height: 46, borderRadius: "50%", background: `conic-gradient(${academyBlue} ${setupProgress * 3.6}deg, #e8edf3 0deg)`, display: "grid", placeItems: "center" }}>
-                  <div style={{ width: 36, height: 36, borderRadius: "50%", background: P.white, display: "grid", placeItems: "center", fontFamily: F.body, fontSize: 10, fontWeight: 900, color: academyDark }}>{setupProgress}%</div>
+                  <div style={{ width: 36, height: 36, borderRadius: "50%", background: P.white, display: "grid", placeItems: "center", fontFamily: F.body, fontSize: 10, fontWeight: 800, color: academyDark }}>{setupProgress}%</div>
                 </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 11, marginTop: 18 }}>
                 {setupSteps.map((step, index) => (
                   <div key={step.label} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <div style={{ width: 20, height: 20, flexShrink: 0, borderRadius: "50%", display: "grid", placeItems: "center", background: step.complete ? "#dcfce7" : "#f1f5f9", color: step.complete ? "#15803d" : "#94a3b8", fontFamily: F.body, fontSize: 10, fontWeight: 900 }}>{step.complete ? "âœ“" : index + 1}</div>
+                    <div style={{ width: 20, height: 20, flexShrink: 0, borderRadius: "50%", display: "grid", placeItems: "center", background: step.complete ? "#dcfce7" : "#f1f5f9", color: step.complete ? "#15803d" : "#94a3b8", fontFamily: F.body, fontSize: 10, fontWeight: 800 }}>{step.complete ? "✓" : index + 1}</div>
                     <div style={{ fontFamily: F.body, fontSize: 11, fontWeight: step.complete ? 600 : 700, color: step.complete ? P.muted : P.ink, textDecoration: step.complete ? "line-through" : "none" }}>{step.label}</div>
                   </div>
                 ))}
@@ -7922,10 +6622,10 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
             <section style={{ background: P.white, borderRadius: 16, border: `1px solid ${P.line}`, boxShadow: Sh.card, padding: 18 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
                 <div>
-                  <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink }}>Parent access</div>
+                  <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink }}>Parent access</div>
                   <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 2 }}>5 invitations still need attention</div>
                 </div>
-                <div style={{ width: 36, height: 36, borderRadius: 11, background: "#ecfeff", color: "#0891b2", display: "grid", placeItems: "center", fontWeight: 900 }}>@</div>
+                <div style={{ width: 36, height: 36, borderRadius: 11, background: "#ecfeff", color: "#0891b2", display: "grid", placeItems: "center", fontWeight: 800 }}>@</div>
               </div>
               <div style={{ marginTop: 15, height: 7, borderRadius: 999, background: "#e8edf3", overflow: "hidden" }}><div style={{ width: "79%", height: "100%", borderRadius: 999, background: "linear-gradient(90deg, #0284c7, #22d3ee)" }} /></div>
               <div style={{ display: "flex", justifyContent: "space-between", marginTop: 7 }}>
@@ -7936,7 +6636,7 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
             </section>
 
             <section style={{ background: academySoft, borderRadius: 16, border: "1px solid #cfeeff", padding: 16 }}>
-              <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:12 }}><div><div style={{ fontFamily:F.display,fontSize:16,fontWeight:900,color:academyDark }}>Live child preview</div><div style={{fontFamily:F.body,fontSize:10,color:"#477084",marginTop:2}}>Only sections with content are shown.</div></div><button onClick={()=>onNav("academy-preview")} style={{border:0,background:"transparent",color:academyBlue,fontFamily:F.body,fontSize:10,fontWeight:900,cursor:"pointer"}}>Open full â†’</button></div>
+              <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:12 }}><div><div style={{ fontFamily:F.display,fontSize:16,fontWeight:800,color:academyDark }}>Live child preview</div><div style={{fontFamily:F.body,fontSize:10,color:"#477084",marginTop:2}}>Only sections with content are shown.</div></div><button onClick={()=>onNav("academy-preview")} style={{border:0,background:"transparent",color:academyBlue,fontFamily:F.body,fontSize:10,fontWeight:800,cursor:"pointer"}}>Open full →</button></div>
               <div style={{display:"grid",placeItems:"center"}}><AcademyPhonePreview planSessions={planSessions} extras={extras} skills={skills} overrides={overrides} published={published} compact selectedTeam={selectedTeam} /></div>
             </section>
           </div>
@@ -7946,18 +6646,18 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
   );
 }
 
-const ACADEMY_BLUE = "#0277bd";
+const ACADEMY_BLUE = "#2563EB";
 const ACADEMY_DARK = "#075985";
 const ACADEMY_SOFT = "#eef8ff";
 const ACADEMY_TEMPLATES = [
-  { type: "steps", icon: "ðŸ‘Ÿ", title: "Step goal", instruction: "Reach your step target this week.", xp: 20, target: "20,000 steps" },
-  { type: "run", icon: "ðŸƒ", title: "Run challenge", instruction: "Complete a steady run with an adult.", xp: 25, target: "2 km" },
-  { type: "exercise", icon: "â­", title: "Star jumps", instruction: "Complete 3 sets with a short rest.", xp: 10, target: "3 Ã— 20" },
-  { type: "exercise", icon: "ðŸ¦µ", title: "Lunges", instruction: "Keep your chest tall and alternate legs.", xp: 10, target: "20 each side" },
-  { type: "exercise", icon: "â¬‡", title: "Squats", instruction: "Sit back, keep your knees tracking forward.", xp: 10, target: "3 Ã— 15" },
-  { type: "skill", icon: "ðŸŽ¯", title: "Skill repetitions", instruction: "Practise this weekâ€™s key skill at home.", xp: 20, target: "50 repetitions" },
-  { type: "club", icon: "ðŸ‘", title: "Friday Night Hurling", instruction: "Attend the club session and check in.", xp: 30, target: "Attend" },
-  { type: "club", icon: "ðŸ“…", title: "Club activity", instruction: "Take part in this weekâ€™s bonus club activity.", xp: 20, target: "Attend" },
+  { type: "steps", icon: "👟", title: "Step goal", instruction: "Reach your step target this week.", xp: 20, target: "20,000 steps" },
+  { type: "run", icon: "🏃", title: "Run challenge", instruction: "Complete a steady run with an adult.", xp: 25, target: "2 km" },
+  { type: "exercise", icon: "⭐", title: "Star jumps", instruction: "Complete 3 sets with a short rest.", xp: 10, target: "3 × 20" },
+  { type: "exercise", icon: "🦵", title: "Lunges", instruction: "Keep your chest tall and alternate legs.", xp: 10, target: "20 each side" },
+  { type: "exercise", icon: "⬇", title: "Squats", instruction: "Sit back, keep your knees tracking forward.", xp: 10, target: "3 × 15" },
+  { type: "skill", icon: "🎯", title: "Skill repetitions", instruction: "Practise this week’s key skill at home.", xp: 20, target: "50 repetitions" },
+  { type: "club", icon: "🏑", title: "Friday Night Hurling", instruction: "Attend the club session and check in.", xp: 30, target: "Attend" },
+  { type: "club", icon: "📅", title: "Club activity", instruction: "Take part in this week’s bonus club activity.", xp: 20, target: "Attend" },
 ];
 
 function AcademyPageHeader({ title, sub, actions }) {
@@ -7965,7 +6665,7 @@ function AcademyPageHeader({ title, sub, actions }) {
     <div style={{ background: "linear-gradient(135deg,#f8fcff 0%,#e9f6ff 100%)", borderBottom: "1px solid #cfeeff", padding: "18px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18, flexWrap: "wrap" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 13 }}>
         <div style={{ width: 64, height: 64, borderRadius: 20, background: "#fff", border: "1px solid rgba(15,23,42,.08)", display: "grid", placeItems: "center", boxShadow: "0 10px 26px rgba(2,119,189,.12)" }}><img src="/spraoi-academy-icon.png" alt="Academy" style={{ width: 48, height: 48, objectFit: "contain" }} /></div>
-        <div><div style={{ fontFamily: F.display, fontSize: 23, fontWeight: 900, color: ACADEMY_DARK }}>{title}</div><div style={{ fontFamily: F.body, fontSize: 12, color: "#4c7187", marginTop: 2 }}>{sub}</div></div>
+        <div><div style={{ fontFamily: F.display, fontSize: 21, fontWeight: 700, color: ACADEMY_DARK }}>{title}</div><div style={{ fontFamily: F.body, fontSize: 12, color: "#4c7187", marginTop: 2 }}>{sub}</div></div>
       </div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{actions}</div>
     </div>
@@ -7973,7 +6673,7 @@ function AcademyPageHeader({ title, sub, actions }) {
 }
 
 function AcademyCard({ children, style }) { return <div style={{ background: P.white, border: `1px solid ${P.line}`, borderRadius: 16, padding: 18, boxShadow: Sh.card, ...style }}>{children}</div>; }
-function AcademyBadge({ children, color = ACADEMY_BLUE, bg = ACADEMY_SOFT }) { return <span style={{ display: "inline-flex", alignItems: "center", padding: "5px 8px", borderRadius: 999, background: bg, color, fontFamily: F.body, fontSize: 9, fontWeight: 900, letterSpacing: ".04em", textTransform: "uppercase" }}>{children}</span>; }
+function AcademyBadge({ children, color = ACADEMY_BLUE, bg = ACADEMY_SOFT }) { return <span style={{ display: "inline-flex", alignItems: "center", padding: "5px 8px", borderRadius: 999, background: bg, color, fontFamily: F.body, fontSize: 9, fontWeight: 800, letterSpacing: ".04em", textTransform: "uppercase" }}>{children}</span>; }
 
 function getFoundationActivities(planSessions) {
   const rows = [];
@@ -8025,51 +6725,51 @@ function AcademyWeeklyContent({ selectedTeam, weeklyPlan, planSessions, extras, 
   const canPublish = validation.every(x => x.ok);
   const requestPublish = () => { if (published) onPublish?.(); else setPublishReview(true); };
   const groups = [
-    { key:"steps", label:"Step Goals", icon:"ðŸ‘Ÿ", color:"#0f9f6e", test:x=>(x.type||x.activity_type)==="steps" },
-    { key:"exercise", label:"Exercises", icon:"ðŸ’ª", color:"#7c3aed", test:x=>(x.type||x.activity_type)==="exercise" },
-    { key:"run", label:"Run Challenge", icon:"ðŸƒ", color:"#e65100", test:x=>(x.type||x.activity_type)==="run" },
-    { key:"skill", label:"Extra Skill Practice", icon:"ðŸŽ¯", color:"#2563eb", test:x=>(x.type||x.activity_type)==="skill" },
-    { key:"club", label:"Bonus & Club Activities", icon:"âœ¨", color:"#d97706", test:x=>(x.type||x.activity_type)==="club" },
-    { key:"recovery", label:"Rest & Recovery", icon:"ðŸŒ™", color:"#0f766e", test:x=>(x.type||x.activity_type)==="recovery" },
+    { key:"steps", label:"Step Goals", icon:"👟", color:"#0f9f6e", test:x=>(x.type||x.activity_type)==="steps" },
+    { key:"exercise", label:"Exercises", icon:"💪", color:"#7c3aed", test:x=>(x.type||x.activity_type)==="exercise" },
+    { key:"run", label:"Run Challenge", icon:"🏃", color:"#D89A00", test:x=>(x.type||x.activity_type)==="run" },
+    { key:"skill", label:"Extra Skill Practice", icon:"🎯", color:"#2563eb", test:x=>(x.type||x.activity_type)==="skill" },
+    { key:"club", label:"Bonus & Club Activities", icon:"✨", color:"#d97706", test:x=>(x.type||x.activity_type)==="club" },
+    { key:"recovery", label:"Rest & Recovery", icon:"🌙", color:"#0f766e", test:x=>(x.type||x.activity_type)==="recovery" },
   ];
   return <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
-    <AcademyPageHeader title="Weekly Content" sub={`${selectedTeam?.label || "Selected team"} Â· Build, review and publish the child experience`} actions={<Btn label={published ? "Unpublish week" : "Review & publish"} variant="primary" icon={published ? "â†“" : "â†‘"} onClick={requestPublish} style={{ background: published ? P.green : ACADEMY_BLUE }} />} />
+    <AcademyPageHeader title="Weekly Content" sub={`${selectedTeam?.label || "Selected team"} · Build, review and publish the child experience`} actions={<Btn label={published ? "Unpublish week" : "Review & publish"} variant="primary" icon={published ? "↓" : "↑"} onClick={requestPublish} style={{ background: published ? P.green : ACADEMY_BLUE }} />} />
     <div style={{ padding: 24, maxWidth: 1240, margin: "0 auto" }}>
       <AcademyCard style={{ marginBottom: 16, borderColor: "#b9e3f8" }}>
-        <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><div><AcademyBadge>Weekly readiness</AcademyBadge><div style={{fontFamily:F.display,fontSize:18,fontWeight:900,color:P.ink,marginTop:8}}>{published?"This week is live":"Complete the checks before publishing"}</div></div><div style={{display:"flex",gap:7,flexWrap:"wrap"}}>{validation.map(v=><AcademyBadge key={v.label} color={v.ok?"#15803d":"#b45309"} bg={v.ok?"#dcfce7":"#fff7ed"}>{v.ok?"âœ“":"!"} {v.label}</AcademyBadge>)}</div></div>
+        <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><div><AcademyBadge>Weekly readiness</AcademyBadge><div style={{fontFamily:F.display,fontSize:18,fontWeight:800,color:P.ink,marginTop:8}}>{published?"This week is live":"Complete the checks before publishing"}</div></div><div style={{display:"flex",gap:7,flexWrap:"wrap"}}>{validation.map(v=><AcademyBadge key={v.label} color={v.ok?"#15803d":"#b45309"} bg={v.ok?"#dcfce7":"#fff7ed"}>{v.ok?"✓":"!"} {v.label}</AcademyBadge>)}</div></div>
       </AcademyCard>
       <AcademyCard style={{ marginBottom: 16, borderColor: "#b9e3f8" }}>
-        <div><AcademyBadge>Suggested weekly videos</AcademyBadge><div style={{fontFamily:F.display,fontSize:18,fontWeight:900,color:P.ink,marginTop:8}}>One video per code</div><div style={{fontFamily:F.body,fontSize:11,color:P.muted,marginTop:4}}>Browse suggestions, then explicitly select the Football and {selectedTeam?.gender === "girls" ? "Camogie" : "Hurling"} videos for this week.</div></div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:14,marginTop:16}}>{recommendations.map(rec=>{const options=rec.alternatives?.length?rec.alternatives:(rec.matchedSkill?[rec.matchedSkill]:[]);const idx=Math.min(previewIndexes[rec.code]??Math.max(0,options.findIndex(x=>x.id===rec.matchedSkill?.id)),Math.max(0,options.length-1));const skill=options[idx]||rec.matchedSkill;const selected=overrides?.[rec.code]===skill?.id;return <div key={rec.code} style={{border:`1px solid ${selected?"#86efac":"#bae6fd"}`,borderRadius:16,padding:15,background:"#fff"}}><div style={{display:"flex",justifyContent:"space-between",gap:8}}><AcademyBadge color={rec.code==="football"?"#1d4ed8":"#b91c1c"} bg={rec.code==="football"?"#dbeafe":"#fee2e2"}>{rec.label}</AcademyBadge><AcademyBadge color={selected?"#15803d":"#0369a1"} bg={selected?"#dcfce7":"#e0f2fe"}>{selected?"Selected":"Suggestion"}</AcademyBadge></div><div style={{fontFamily:F.display,fontSize:18,fontWeight:900,color:P.ink,marginTop:10}}>{skill?.name||"No match available"}</div>{skill?.video_url&&<div style={{borderRadius:11,overflow:"hidden",background:"#071827",marginTop:10}}><iframe title={skill.name} src={skill.video_url.replace("watch?v=","embed/").split("&")[0]} style={{width:"100%",height:180,border:0,display:"block"}} allowFullScreen /></div>}<div className="academy-match-actions" style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:7,marginTop:10}}><button disabled={idx===0} onClick={()=>setPreviewIndexes(p=>({...p,[rec.code]:Math.max(0,idx-1)}))} style={smallAction(idx===0)}>Previous</button><button disabled={idx>=options.length-1} onClick={()=>setPreviewIndexes(p=>({...p,[rec.code]:Math.min(options.length-1,idx+1)}))} style={smallAction(idx>=options.length-1)}>Next suggestion</button><button disabled={!skill?.id||selected} onClick={()=>skill?.id&&onSetOverride?.(rec.code,skill.id)} style={{...smallAction(false),background:selected?"#dcfce7":ACADEMY_BLUE,color:selected?"#15803d":"#fff",border:0}}>{selected?"Selected":"Use this video"}</button></div><div style={{fontFamily:F.body,fontSize:9,color:P.muted,marginTop:7}}>Suggestion {options.length?idx+1:0} of {options.length} Â· based on {rec.sourceDrills.length} Coach activities</div></div>})}</div>
+        <div><AcademyBadge>Suggested weekly videos</AcademyBadge><div style={{fontFamily:F.display,fontSize:18,fontWeight:800,color:P.ink,marginTop:8}}>One video per code</div><div style={{fontFamily:F.body,fontSize:11,color:P.muted,marginTop:4}}>Browse suggestions, then explicitly select the Football and {selectedTeam?.gender === "girls" ? "Camogie" : "Hurling"} videos for this week.</div></div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:14,marginTop:16}}>{recommendations.map(rec=>{const options=rec.alternatives?.length?rec.alternatives:(rec.matchedSkill?[rec.matchedSkill]:[]);const idx=Math.min(previewIndexes[rec.code]??Math.max(0,options.findIndex(x=>x.id===rec.matchedSkill?.id)),Math.max(0,options.length-1));const skill=options[idx]||rec.matchedSkill;const selected=overrides?.[rec.code]===skill?.id;return <div key={rec.code} style={{border:`1px solid ${selected?"#86efac":"#bae6fd"}`,borderRadius:16,padding:15,background:"#fff"}}><div style={{display:"flex",justifyContent:"space-between",gap:8}}><AcademyBadge color={rec.code==="football"?"#1d4ed8":"#b91c1c"} bg={rec.code==="football"?"#dbeafe":"#fee2e2"}>{rec.label}</AcademyBadge><AcademyBadge color={selected?"#15803d":"#0369a1"} bg={selected?"#dcfce7":"#e0f2fe"}>{selected?"Selected":"Suggestion"}</AcademyBadge></div><div style={{fontFamily:F.display,fontSize:18,fontWeight:800,color:P.ink,marginTop:10}}>{skill?.name||"No match available"}</div>{skill?.video_url&&<div style={{borderRadius:11,overflow:"hidden",background:"#071827",marginTop:10}}><iframe title={skill.name} src={skill.video_url.replace("watch?v=","embed/").split("&")[0]} style={{width:"100%",height:180,border:0,display:"block"}} allowFullScreen /></div>}<div className="academy-match-actions" style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:7,marginTop:10}}><button disabled={idx===0} onClick={()=>setPreviewIndexes(p=>({...p,[rec.code]:Math.max(0,idx-1)}))} style={smallAction(idx===0)}>Previous</button><button disabled={idx>=options.length-1} onClick={()=>setPreviewIndexes(p=>({...p,[rec.code]:Math.min(options.length-1,idx+1)}))} style={smallAction(idx>=options.length-1)}>Next suggestion</button><button disabled={!skill?.id||selected} onClick={()=>skill?.id&&onSetOverride?.(rec.code,skill.id)} style={{...smallAction(false),background:selected?"#dcfce7":ACADEMY_BLUE,color:selected?"#15803d":"#fff",border:0}}>{selected?"Selected":"Use this video"}</button></div><div style={{fontFamily:F.body,fontSize:9,color:P.muted,marginTop:7}}>Suggestion {options.length?idx+1:0} of {options.length} · based on {rec.sourceDrills.length} Coach activities</div></div>})}</div>
       </AcademyCard>
       <div className="academy-content-grid" style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(320px,1fr))", gap:16, alignItems:"start" }}>
         <AcademyCard>
-          <div style={{fontFamily:F.display,fontSize:18,fontWeight:900,color:P.ink}}>{editingId?"Edit activity":"Add an activity"}</div><div style={{fontFamily:F.body,fontSize:11,color:P.muted,marginTop:4}}>Add multiple items to a section; they will appear together on one child card.</div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(125px,1fr))",gap:8,marginTop:13}}>{ACADEMY_TEMPLATES.map(t=><button key={t.title} onClick={()=>applyTemplate(t)} style={{border:`1px solid ${P.line}`,borderRadius:12,background:P.white,padding:10,cursor:"pointer",textAlign:"left"}}><div style={{fontSize:20}}>{t.icon}</div><div style={{fontFamily:F.body,fontSize:10,fontWeight:900,color:P.ink,marginTop:4}}>{t.title}</div><div style={{fontFamily:F.body,fontSize:9,color:ACADEMY_BLUE}}>{t.xp} XP</div></button>)}</div>
+          <div style={{fontFamily:F.display,fontSize:18,fontWeight:800,color:P.ink}}>{editingId?"Edit activity":"Add an activity"}</div><div style={{fontFamily:F.body,fontSize:11,color:P.muted,marginTop:4}}>Add multiple items to a section; they will appear together on one child card.</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(125px,1fr))",gap:8,marginTop:13}}>{ACADEMY_TEMPLATES.map(t=><button key={t.title} onClick={()=>applyTemplate(t)} style={{border:`1px solid ${P.line}`,borderRadius:12,background:P.white,padding:10,cursor:"pointer",textAlign:"left"}}><div style={{fontSize:20}}>{t.icon}</div><div style={{fontFamily:F.body,fontSize:10,fontWeight:800,color:P.ink,marginTop:4}}>{t.title}</div><div style={{fontFamily:F.body,fontSize:9,color:ACADEMY_BLUE}}>{t.xp} XP</div></button>)}</div>
           <div className="academy-form-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:10,marginTop:15}}><label style={{gridColumn:"1/-1"}}><span style={labelStyle}>Activity name</span><input value={draft.title} onChange={e=>setDraft({...draft,title:e.target.value})} style={inputStyle}/></label><label style={{gridColumn:"1/-1"}}><span style={labelStyle}>Child instructions</span><textarea value={draft.instruction} onChange={e=>setDraft({...draft,instruction:e.target.value})} style={{...inputStyle,minHeight:72,paddingTop:9}}/></label><label><span style={labelStyle}>Target</span><input value={draft.target} onChange={e=>setDraft({...draft,target:e.target.value})} style={inputStyle}/></label><label><span style={labelStyle}>XP</span><input type="number" min="0" value={draft.xp} onChange={e=>setDraft({...draft,xp:Number(e.target.value)})} style={inputStyle}/></label><label><span style={labelStyle}>Section</span><select value={draft.type} onChange={e=>setDraft({...draft,type:e.target.value})} style={inputStyle}><option value="steps">Step Goals</option><option value="exercise">Exercises</option><option value="run">Run Challenge</option><option value="skill">Extra Skill Practice</option><option value="club">Bonus & Club Activity</option><option value="recovery">Rest & Recovery</option></select></label><label style={{display:"flex",alignItems:"center",gap:8,marginTop:22,fontFamily:F.body,fontSize:11}}><input type="checkbox" checked={draft.required} onChange={e=>setDraft({...draft,required:e.target.checked})}/> Required</label></div>
-          <div style={{display:"flex",gap:8,marginTop:13}}><button onClick={saveDraft} style={{height:38,border:0,borderRadius:10,background:ACADEMY_BLUE,color:"#fff",padding:"0 15px",fontFamily:F.body,fontSize:11,fontWeight:900,cursor:"pointer"}}>{editingId?"Save changes":"ï¼‹ Add to week"}</button>{editingId&&<button onClick={resetDraft} style={{height:38,border:`1px solid ${P.line}`,borderRadius:10,background:"#fff",padding:"0 15px",fontFamily:F.body,fontSize:11,fontWeight:900,cursor:"pointer"}}>Cancel</button>}</div>
+          <div style={{display:"flex",gap:8,marginTop:13}}><button onClick={saveDraft} style={{height:38,border:0,borderRadius:10,background:ACADEMY_BLUE,color:"#fff",padding:"0 15px",fontFamily:F.body,fontSize:11,fontWeight:800,cursor:"pointer"}}>{editingId?"Save changes":"＋ Add to week"}</button>{editingId&&<button onClick={resetDraft} style={{height:38,border:`1px solid ${P.line}`,borderRadius:10,background:"#fff",padding:"0 15px",fontFamily:F.body,fontSize:11,fontWeight:800,cursor:"pointer"}}>Cancel</button>}</div>
         </AcademyCard>
-        <div style={{display:"grid",gap:12}}>{groups.map(group=>{const items=extras.filter(group.test);if(!items.length)return null;return <AcademyCard key={group.key} style={{borderTop:`4px solid ${group.color}`}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{fontFamily:F.display,fontSize:16,fontWeight:900,color:P.ink}}>{group.icon} {group.label}</div><AcademyBadge>{items.length}</AcademyBadge></div><div style={{display:"grid",gap:8,marginTop:10}}>{items.map((x,i)=><div key={x.id} style={{border:`1px solid ${P.line}`,borderRadius:11,padding:11,background:"#fff"}}><div style={{display:"flex",justifyContent:"space-between",gap:8}}><div><div style={{fontFamily:F.body,fontSize:11,fontWeight:900,color:P.ink}}>{x.title}</div><div style={{fontFamily:F.body,fontSize:9,color:P.muted,marginTop:2}}>{x.target||x.instruction||x.description}</div></div><div style={{display:"flex",gap:3}}><button title="Move up" disabled={i===0} onClick={()=>onMoveExtra?.(x.id,-1,group.test)} style={iconAction(i===0)}>â†‘</button><button title="Move down" disabled={i===items.length-1} onClick={()=>onMoveExtra?.(x.id,1,group.test)} style={iconAction(i===items.length-1)}>â†“</button><button title="Edit" onClick={()=>beginEdit(x)} style={iconAction(false)}>âœŽ</button><button title="Remove" onClick={()=>onRemoveExtra(x.id)} style={{...iconAction(false),color:"#dc2626"}}>Ã—</button></div></div><div style={{display:"flex",gap:6,marginTop:7}}><AcademyBadge color="#b45309" bg="#fff7ed">{x.xp||x.xp_reward||0} XP</AcademyBadge>{x.required&&<AcademyBadge color="#b91c1c" bg="#fef2f2">Required</AcademyBadge>}</div></div>)}</div></AcademyCard>})}</div>
+        <div style={{display:"grid",gap:12}}>{groups.map(group=>{const items=extras.filter(group.test);if(!items.length)return null;return <AcademyCard key={group.key} style={{borderTop:`4px solid ${group.color}`}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div style={{fontFamily:F.display,fontSize:16,fontWeight:800,color:P.ink}}>{group.icon} {group.label}</div><AcademyBadge>{items.length}</AcademyBadge></div><div style={{display:"grid",gap:8,marginTop:10}}>{items.map((x,i)=><div key={x.id} style={{border:`1px solid ${P.line}`,borderRadius:11,padding:11,background:"#fff"}}><div style={{display:"flex",justifyContent:"space-between",gap:8}}><div><div style={{fontFamily:F.body,fontSize:11,fontWeight:800,color:P.ink}}>{x.title}</div><div style={{fontFamily:F.body,fontSize:9,color:P.muted,marginTop:2}}>{x.target||x.instruction||x.description}</div></div><div style={{display:"flex",gap:3}}><button title="Move up" disabled={i===0} onClick={()=>onMoveExtra?.(x.id,-1,group.test)} style={iconAction(i===0)}>↑</button><button title="Move down" disabled={i===items.length-1} onClick={()=>onMoveExtra?.(x.id,1,group.test)} style={iconAction(i===items.length-1)}>↓</button><button title="Edit" onClick={()=>beginEdit(x)} style={iconAction(false)}>✎</button><button title="Remove" onClick={()=>onRemoveExtra(x.id)} style={{...iconAction(false),color:"#dc2626"}}>×</button></div></div><div style={{display:"flex",gap:6,marginTop:7}}><AcademyBadge color="#b45309" bg="#fff7ed">{x.xp||x.xp_reward||0} XP</AcademyBadge>{x.required&&<AcademyBadge color="#b91c1c" bg="#fef2f2">Required</AcademyBadge>}</div></div>)}</div></AcademyCard>})}</div>
       </div>
     </div>
-    {publishReview&&<div style={{position:"fixed",inset:0,zIndex:5000,background:"rgba(15,23,42,.55)",display:"grid",placeItems:"center",padding:18}}><div style={{width:"min(520px,100%)",background:"#fff",borderRadius:20,padding:22,boxShadow:"0 30px 80px rgba(15,23,42,.3)"}}><div style={{fontFamily:F.display,fontSize:22,fontWeight:900,color:P.ink}}>Review before publishing</div><div style={{fontFamily:F.body,fontSize:11,color:P.muted,marginTop:5}}>Only published content is visible in the child app for {selectedTeam?.label||"this team"}.</div><div style={{display:"grid",gap:8,marginTop:16}}>{validation.map(v=><div key={v.label} style={{display:"flex",justifyContent:"space-between",padding:10,borderRadius:10,background:v.ok?"#f0fdf4":"#fff7ed",fontFamily:F.body,fontSize:11,fontWeight:800,color:v.ok?"#15803d":"#b45309"}}><span>{v.label}</span><span>{v.ok?"Ready":"Needs attention"}</span></div>)}</div><div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:18,flexWrap:"wrap"}}><button onClick={()=>setPublishReview(false)} style={modalButton(false)}>Keep editing</button><button disabled={!canPublish} onClick={()=>{if(canPublish){onPublish?.();setPublishReview(false)}}} style={{...modalButton(true),opacity:canPublish?1:.45,cursor:canPublish?"pointer":"default"}}>Publish to children</button></div></div></div>}
+    {publishReview&&<div style={{position:"fixed",inset:0,zIndex:5000,background:"rgba(15,23,42,.55)",display:"grid",placeItems:"center",padding:18}}><div style={{width:"min(520px,100%)",background:"#fff",borderRadius:20,padding:22,boxShadow:"0 30px 80px rgba(15,23,42,.3)"}}><div style={{fontFamily:F.display,fontSize:22,fontWeight:800,color:P.ink}}>Review before publishing</div><div style={{fontFamily:F.body,fontSize:11,color:P.muted,marginTop:5}}>Only published content is visible in the child app for {selectedTeam?.label||"this team"}.</div><div style={{display:"grid",gap:8,marginTop:16}}>{validation.map(v=><div key={v.label} style={{display:"flex",justifyContent:"space-between",padding:10,borderRadius:10,background:v.ok?"#f0fdf4":"#fff7ed",fontFamily:F.body,fontSize:11,fontWeight:800,color:v.ok?"#15803d":"#b45309"}}><span>{v.label}</span><span>{v.ok?"Ready":"Needs attention"}</span></div>)}</div><div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:18,flexWrap:"wrap"}}><button onClick={()=>setPublishReview(false)} style={modalButton(false)}>Keep editing</button><button disabled={!canPublish} onClick={()=>{if(canPublish){onPublish?.();setPublishReview(false)}}} style={{...modalButton(true),opacity:canPublish?1:.45,cursor:canPublish?"pointer":"default"}}>Publish to children</button></div></div></div>}
   </div>;
 }
-const smallAction=(disabled)=>({height:36,border:`1px solid ${P.line}`,borderRadius:9,background:"#fff",color:disabled?P.muted:ACADEMY_BLUE,fontFamily:F.body,fontSize:9,fontWeight:900,cursor:disabled?"default":"pointer"});
-const iconAction=(disabled)=>({width:28,height:28,border:`1px solid ${P.line}`,borderRadius:7,background:"#fff",color:disabled?"#cbd5e1":P.ink,cursor:disabled?"default":"pointer",fontWeight:900});
-const modalButton=(primary)=>({height:38,border:primary?0:`1px solid ${P.line}`,borderRadius:10,background:primary?ACADEMY_BLUE:"#fff",color:primary?"#fff":P.ink,padding:"0 15px",fontFamily:F.body,fontSize:11,fontWeight:900,cursor:"pointer"});
-const labelStyle={display:"block",fontFamily:F.body,fontSize:9,fontWeight:900,color:P.muted,textTransform:"uppercase",letterSpacing:".07em",marginBottom:5};
+const smallAction=(disabled)=>({height:36,border:`1px solid ${P.line}`,borderRadius:9,background:"#fff",color:disabled?P.muted:ACADEMY_BLUE,fontFamily:F.body,fontSize:9,fontWeight:800,cursor:disabled?"default":"pointer"});
+const iconAction=(disabled)=>({width:28,height:28,border:`1px solid ${P.line}`,borderRadius:7,background:"#fff",color:disabled?"#cbd5e1":P.ink,cursor:disabled?"default":"pointer",fontWeight:800});
+const modalButton=(primary)=>({height:38,border:primary?0:`1px solid ${P.line}`,borderRadius:10,background:primary?ACADEMY_BLUE:"#fff",color:primary?"#fff":P.ink,padding:"0 15px",fontFamily:F.body,fontSize:11,fontWeight:800,cursor:"pointer"});
+const labelStyle={display:"block",fontFamily:F.body,fontSize:9,fontWeight:800,color:P.muted,textTransform:"uppercase",letterSpacing:".07em",marginBottom:5};
 const inputStyle={width:"100%",height:38,border:`1px solid ${P.line}`,borderRadius:9,padding:"0 10px",boxSizing:"border-box",fontFamily:F.body,fontSize:11,color:P.ink,background:P.white,outline:"none"};
 
-function AcademyPlayers({ selectedTeam }) { const players=Array.from({length:12},(_,i)=>({id:i,name:["Aoife Murphy","Cian Byrne","Saoirse Kelly","Rory Walsh","Niamh Doyle","OisÃ­n Ryan","Emma Nolan","Darragh Flynn","Lucy Brennan","Conor Murray","Mia O'Brien","Sean Gallagher"][i],xp:420-i*21,streak:(i%5)+1})); return <div style={{flex:1,overflow:"auto",background:P.soft}}><AcademyPageHeader title="Players" sub={`${selectedTeam?.label||"Team"} Â· Academy profiles and progress`} /><div style={{padding:24,maxWidth:1180,margin:"0 auto"}}><AcademyCard><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:10}}>{players.map(p=><div key={p.id} style={{border:`1px solid ${P.line}`,borderRadius:13,padding:13,display:"flex",alignItems:"center",gap:11}}><div style={{width:40,height:40,borderRadius:"50%",background:ACADEMY_SOFT,color:ACADEMY_BLUE,display:"grid",placeItems:"center",fontWeight:900}}>{p.name[0]}</div><div style={{flex:1}}><div style={{fontFamily:F.body,fontSize:12,fontWeight:900,color:P.ink}}>{p.name}</div><div style={{fontFamily:F.body,fontSize:10,color:P.muted,marginTop:2}}>{p.xp} XP Â· {p.streak} day streak</div></div><span style={{fontSize:17}}>ðŸ”¥</span></div>)}</div></AcademyCard></div></div>; }
+function AcademyPlayers({ selectedTeam }) { const players=Array.from({length:12},(_,i)=>({id:i,name:["Aoife Murphy","Cian Byrne","Saoirse Kelly","Rory Walsh","Niamh Doyle","Oisín Ryan","Emma Nolan","Darragh Flynn","Lucy Brennan","Conor Murray","Mia O'Brien","Sean Gallagher"][i],xp:420-i*21,streak:(i%5)+1})); return <div style={{flex:1,overflow:"auto",background:P.soft}}><AcademyPageHeader title="Players" sub={`${selectedTeam?.label||"Team"} · Academy profiles and progress`} /><div style={{padding:24,maxWidth:1180,margin:"0 auto"}}><AcademyCard><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:10}}>{players.map(p=><div key={p.id} style={{border:`1px solid ${P.line}`,borderRadius:13,padding:13,display:"flex",alignItems:"center",gap:11}}><div style={{width:40,height:40,borderRadius:"50%",background:ACADEMY_SOFT,color:ACADEMY_BLUE,display:"grid",placeItems:"center",fontWeight:800}}>{p.name[0]}</div><div style={{flex:1}}><div style={{fontFamily:F.body,fontSize:12,fontWeight:800,color:P.ink}}>{p.name}</div><div style={{fontFamily:F.body,fontSize:10,color:P.muted,marginTop:2}}>{p.xp} XP · {p.streak} day streak</div></div><span style={{fontSize:17}}>🔥</span></div>)}</div></AcademyCard></div></div>; }
 
 function AcademyParents({ selectedTeam, parentRows, setParentRows }) {
   const [teamLink] = useState(()=>`${window.location.origin}/academy/join/${selectedTeam?.id||"club-spraoi"}`);
   const parseFile = (file) => { const r=new FileReader(); r.onload=()=>{ const lines=String(r.result||"").split(/\r?\n/).filter(Boolean); const headers=lines.shift()?.split(",").map(h=>h.trim().toLowerCase())||[]; const find=(names)=>headers.findIndex(h=>names.includes(h)); const pi=find(["parent name","parent","guardian name"]), ei=find(["parent email","email","guardian email"]), ci=find(["child name","child","player name"]); const rows=lines.map((l,i)=>{const c=l.split(",").map(x=>x.trim());return{id:`upload-${Date.now()}-${i}`,parent:c[pi]||"",email:c[ei]||"",child:c[ci]||"",status:c[ei]&&c[ci]?"Ready":"Needs review",link:`${teamLink}?invite=${i+1}`}}); setParentRows(rows); }; r.readAsText(file); };
   const copy=(text)=>navigator.clipboard?.writeText(text);
-  return <div style={{flex:1,overflow:"auto",background:P.soft}}><AcademyPageHeader title="Parent Access" sub={`${selectedTeam?.label||"Team"} Â· Upload families and send child-app invitations`} actions={<Btn label="Copy team link" variant="primary" icon="â§‰" onClick={()=>copy(teamLink)} style={{background:ACADEMY_BLUE}}/>}/><div style={{padding:24,maxWidth:1180,margin:"0 auto",display:"grid",gap:16}}>
-    <AcademyCard><div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:16,alignItems:"center"}}><div><div style={{fontFamily:F.display,fontSize:18,fontWeight:900,color:P.ink}}>Upload parent and child list</div><div style={{fontFamily:F.body,fontSize:11,color:P.muted,marginTop:4}}>CSV columns: Parent Name, Parent Email, Child Name. One parent can appear on multiple rows for multiple children.</div></div><label style={{height:38,padding:"0 14px",borderRadius:10,background:ACADEMY_BLUE,color:"#fff",display:"flex",alignItems:"center",fontFamily:F.body,fontSize:11,fontWeight:900,cursor:"pointer"}}>Upload CSV<input type="file" accept=".csv,text/csv" onChange={(e)=>e.target.files?.[0]&&parseFile(e.target.files[0])} style={{display:"none"}}/></label></div></AcademyCard>
-    <AcademyCard><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap"}}><div><div style={{fontFamily:F.display,fontSize:17,fontWeight:900,color:P.ink}}>Invitation review</div><div style={{fontFamily:F.body,fontSize:10,color:P.muted,marginTop:3}}>{parentRows.length} family links prepared</div></div><button onClick={()=>setParentRows(rows=>rows.map(r=>({...r,status:r.email&&r.child?"Sent":r.status})))} style={{height:36,border:0,borderRadius:9,background:parentRows.length?ACADEMY_BLUE:"#cbd5e1",color:"#fff",padding:"0 13px",fontFamily:F.body,fontSize:10,fontWeight:900,cursor:parentRows.length?"pointer":"default"}}>Send all ready invitations</button></div>
+  return <div style={{flex:1,overflow:"auto",background:P.soft}}><AcademyPageHeader title="Parent Access" sub={`${selectedTeam?.label||"Team"} · Upload families and send child-app invitations`} actions={<Btn label="Copy team link" variant="primary" icon="⧉" onClick={()=>copy(teamLink)} style={{background:ACADEMY_BLUE}}/>}/><div style={{padding:24,maxWidth:1180,margin:"0 auto",display:"grid",gap:16}}>
+    <AcademyCard><div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:16,alignItems:"center"}}><div><div style={{fontFamily:F.display,fontSize:18,fontWeight:800,color:P.ink}}>Upload parent and child list</div><div style={{fontFamily:F.body,fontSize:11,color:P.muted,marginTop:4}}>CSV columns: Parent Name, Parent Email, Child Name. One parent can appear on multiple rows for multiple children.</div></div><label style={{height:38,padding:"0 14px",borderRadius:10,background:ACADEMY_BLUE,color:"#fff",display:"flex",alignItems:"center",fontFamily:F.body,fontSize:11,fontWeight:800,cursor:"pointer"}}>Upload CSV<input type="file" accept=".csv,text/csv" onChange={(e)=>e.target.files?.[0]&&parseFile(e.target.files[0])} style={{display:"none"}}/></label></div></AcademyCard>
+    <AcademyCard><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap"}}><div><div style={{fontFamily:F.display,fontSize:17,fontWeight:800,color:P.ink}}>Invitation review</div><div style={{fontFamily:F.body,fontSize:10,color:P.muted,marginTop:3}}>{parentRows.length} family links prepared</div></div><button onClick={()=>setParentRows(rows=>rows.map(r=>({...r,status:r.email&&r.child?"Sent":r.status})))} style={{height:36,border:0,borderRadius:9,background:parentRows.length?ACADEMY_BLUE:"#cbd5e1",color:"#fff",padding:"0 13px",fontFamily:F.body,fontSize:10,fontWeight:800,cursor:parentRows.length?"pointer":"default"}}>Send all ready invitations</button></div>
     <div style={{overflowX:"auto",marginTop:14}}><table style={{width:"100%",borderCollapse:"collapse",minWidth:720}}><thead><tr>{["Parent","Email","Child","Status","App link"].map(h=><th key={h} style={{textAlign:"left",padding:"9px 8px",borderBottom:`1px solid ${P.line}`,fontFamily:F.body,fontSize:9,color:P.muted,textTransform:"uppercase"}}>{h}</th>)}</tr></thead><tbody>{parentRows.length===0?<tr><td colSpan="5" style={{padding:22,textAlign:"center",fontFamily:F.body,fontSize:11,color:P.muted}}>Upload a CSV to review parent-child links.</td></tr>:parentRows.map(r=><tr key={r.id}><td style={td}>{r.parent}</td><td style={td}>{r.email}</td><td style={td}>{r.child}</td><td style={td}><AcademyBadge color={r.status==="Sent"?"#15803d":r.status==="Ready"?ACADEMY_BLUE:"#b45309"} bg={r.status==="Sent"?"#dcfce7":r.status==="Ready"?ACADEMY_SOFT:"#fff7ed"}>{r.status}</AcademyBadge></td><td style={td}><button onClick={()=>copy(r.link)} style={{border:`1px solid ${P.line}`,background:P.white,borderRadius:8,padding:"6px 9px",fontFamily:F.body,fontSize:9,fontWeight:800,cursor:"pointer"}}>Copy link</button></td></tr>)}</tbody></table></div></AcademyCard>
   </div></div>;
 }
@@ -8079,9 +6779,9 @@ function AcademyPreview({ planSessions, extras, skills = [], overrides = {}, pub
 }
 
 
-function AcademyEngagement() { return <div style={{flex:1,overflow:"auto",background:P.soft}}><AcademyPageHeader title="Engagement" sub="Completion, activity and invitation health" /><div style={{padding:24,maxWidth:1180,margin:"0 auto",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(210px,1fr))",gap:12}}><MetricCard label="Active children" value="17" detail="of 24 this week" accent={ACADEMY_BLUE} icon="âœ“"/><MetricCard label="Completion" value="68%" detail="across all missions" accent="#0ea5e9" icon="â—’"/><MetricCard label="XP earned" value="4,820" detail="this week" accent="#7c3aed" icon="â˜…"/><MetricCard label="Parent opens" value="83%" detail="invitation and app links" accent="#16a34a" icon="â†—"/></div></div>; }
+function AcademyEngagement() { return <div style={{flex:1,overflow:"auto",background:P.soft}}><AcademyPageHeader title="Engagement" sub="Completion, activity and invitation health" /><div style={{padding:24,maxWidth:1180,margin:"0 auto",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(210px,1fr))",gap:12}}><MetricCard label="Active children" value="17" detail="of 24 this week" accent={ACADEMY_BLUE} icon="✓"/><MetricCard label="Completion" value="68%" detail="across all missions" accent="#0ea5e9" icon="◒"/><MetricCard label="XP earned" value="4,820" detail="this week" accent="#7c3aed" icon="★"/><MetricCard label="Parent opens" value="83%" detail="invitation and app links" accent="#16a34a" icon="↗"/></div></div>; }
 
-function AcademySettings({ published }) { return <div style={{flex:1,overflow:"auto",background:P.soft}}><AcademyPageHeader title="Settings" sub="Publishing, XP, privacy and parent access defaults" /><div style={{padding:24,maxWidth:900,margin:"0 auto",display:"grid",gap:12}}>{[["Publishing","Only published weeks are visible in the child app.",published?"Published":"Draft"],["Leaderboard privacy","Use first name plus surname initial by default.","Enabled"],["Default XP","Coach foundations receive 20 XP unless changed.","20 XP"],["Parent claiming","Parents can link multiple children using one account.","Enabled"]].map(x=><AcademyCard key={x[0]}><div style={{display:"flex",justifyContent:"space-between",gap:16,alignItems:"center"}}><div><div style={{fontFamily:F.body,fontSize:12,fontWeight:900,color:P.ink}}>{x[0]}</div><div style={{fontFamily:F.body,fontSize:10,color:P.muted,marginTop:3}}>{x[1]}</div></div><AcademyBadge>{x[2]}</AcademyBadge></div></AcademyCard>)}</div></div>; }
+function AcademySettings({ published }) { return <div style={{flex:1,overflow:"auto",background:P.soft}}><AcademyPageHeader title="Settings" sub="Publishing, XP, privacy and parent access defaults" /><div style={{padding:24,maxWidth:900,margin:"0 auto",display:"grid",gap:12}}>{[["Publishing","Only published weeks are visible in the child app.",published?"Published":"Draft"],["Leaderboard privacy","Use first name plus surname initial by default.","Enabled"],["Default XP","Coach foundations receive 20 XP unless changed.","20 XP"],["Parent claiming","Parents can link multiple children using one account.","Enabled"]].map(x=><AcademyCard key={x[0]}><div style={{display:"flex",justifyContent:"space-between",gap:16,alignItems:"center"}}><div><div style={{fontFamily:F.body,fontSize:12,fontWeight:800,color:P.ink}}>{x[0]}</div><div style={{fontFamily:F.body,fontSize:10,color:P.muted,marginTop:3}}>{x[1]}</div></div><AcademyBadge>{x[2]}</AcademyBadge></div></AcademyCard>)}</div></div>; }
 
 function AcademySectionScreen({ screen, selectedTeam, weeklyPlan, planSessions, extras, skills, overrides, onSetOverride, onAddExtra, onUpdateExtra, onRemoveExtra, onMoveExtra, published, onPublish, parentRows, setParentRows }) {
   if (screen === "academy-content") return <AcademyWeeklyContent selectedTeam={selectedTeam} weeklyPlan={weeklyPlan} planSessions={planSessions} extras={extras} skills={skills} overrides={overrides} onSetOverride={onSetOverride} onAddExtra={onAddExtra} onUpdateExtra={onUpdateExtra} onRemoveExtra={onRemoveExtra} onMoveExtra={onMoveExtra} published={published} onPublish={onPublish}/>;
@@ -8094,7 +6794,7 @@ function AcademySectionScreen({ screen, selectedTeam, weeklyPlan, planSessions, 
 }
 
 /* ============================================================
-   MODULE PLACEHOLDER â€” for modules not yet built
+   MODULE PLACEHOLDER — for modules not yet built
    ============================================================ */
 function ModulePlaceholder({ module, screen, club }) {
   const screenLabel = module.nav.find((n) => n.id === screen)?.label || screen;
@@ -8103,13 +6803,13 @@ function ModulePlaceholder({ module, screen, club }) {
   if (module.label === "Club") {
     return (
       <div style={{ flex: 1, minHeight: "100vh", overflow: "auto", background: `linear-gradient(180deg, ${module.color}12 0%, ${P.soft} 380px)` }}>
-        <TopBar title={screenLabel} sub={`Club Â· ${clubName}`} />
+        <TopBar title={screenLabel} sub={`Club · ${clubName}`} />
         <div style={{ minHeight: "calc(100vh - 92px)", display: "grid", placeItems: "center", padding: "44px 24px" }}>
           <div style={{ width: "min(780px, 100%)", textAlign: "center", padding: "68px 38px", borderRadius: 30, background: `linear-gradient(145deg, ${module.color}18 0%, ${module.color}40 100%)`, border: `2px solid ${module.color}42`, boxShadow: "0 20px 54px rgba(16,36,62,.11)" }}>
             <div style={{ width: 118, height: 118, borderRadius: 32, margin: "0 auto 26px", background: "#fff", display: "grid", placeItems: "center", boxShadow: "0 14px 34px rgba(16,36,62,.15)" }}>
               <img src={module.icon} alt="" style={{ width: 82, height: 82, objectFit: "contain" }} />
             </div>
-            <div style={{ display: "inline-block", padding: "8px 16px", borderRadius: 999, background: module.color, color: "#fff", fontFamily: F.body, fontSize: 12, fontWeight: 900, letterSpacing: ".12em", textTransform: "uppercase", marginBottom: 20 }}>Spraoi Club</div>
+            <div style={{ display: "inline-block", padding: "8px 16px", borderRadius: 999, background: module.color, color: "#fff", fontFamily: F.body, fontSize: 12, fontWeight: 800, letterSpacing: ".12em", textTransform: "uppercase", marginBottom: 20 }}>Spraoi Club</div>
             <div style={{ fontFamily: F.display, fontSize: "clamp(44px, 7vw, 78px)", lineHeight: .94, fontWeight: 1000, letterSpacing: "-.05em", color: P.ink }}>COMING SOON</div>
             <div style={{ margin: "22px auto 0", maxWidth: 540, fontFamily: F.body, fontSize: 15, lineHeight: 1.65, color: P.muted }}>{screenLabel} is planned for the Club module and is coming soon.</div>
           </div>
@@ -8120,12 +6820,12 @@ function ModulePlaceholder({ module, screen, club }) {
 
   return (
     <div style={{ flex: 1, overflow: "auto", background: `linear-gradient(180deg, ${module.color}0d 0%, ${P.soft} 320px)` }}>
-      <TopBar title={screenLabel} sub={`${module.label} Â· ${clubName}`} />
+      <TopBar title={screenLabel} sub={`${module.label} · ${clubName}`} />
       <div style={{ padding: "28px", maxWidth: 1180, margin: "0 auto" }}>
         <div style={{ borderRadius: 22, padding: "28px 30px", background: `linear-gradient(135deg, ${module.color} 0%, ${module.color}c9 100%)`, color: module.id === "connect" ? "#332800" : "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 24, boxShadow: `0 18px 40px ${module.color}30`, marginBottom: 22 }}>
           <div style={{ maxWidth: 650 }}>
-            <div style={{ fontFamily: F.body, fontSize: 10, fontWeight: 900, letterSpacing: ".14em", textTransform: "uppercase", opacity: .72, marginBottom: 8 }}>{module.label} module</div>
-            <div style={{ fontFamily: F.display, fontSize: 30, fontWeight: 900, lineHeight: 1.05, marginBottom: 8 }}>{screenLabel}</div>
+            <div style={{ fontFamily: F.body, fontSize: 10, fontWeight: 800, letterSpacing: ".14em", textTransform: "uppercase", opacity: .72, marginBottom: 8 }}>{module.label} module</div>
+            <div style={{ fontFamily: F.display, fontSize: 30, fontWeight: 800, lineHeight: 1.05, marginBottom: 8 }}>{screenLabel}</div>
             <div style={{ fontFamily: F.body, fontSize: 14, lineHeight: 1.55, opacity: .88 }}>{module.tagline}</div>
           </div>
           <div style={{ width: 120, height: 120, borderRadius: 30, background: "#fff", border: "1px solid rgba(15,23,42,.08)", display: "grid", placeItems: "center", flexShrink: 0, boxShadow: "0 16px 34px rgba(15,23,42,.16)" }}>
@@ -8135,8 +6835,8 @@ function ModulePlaceholder({ module, screen, club }) {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
           {module.nav.slice(0, 4).map((item, index) => (
             <div key={item.id} style={{ background: P.white, border: `1px solid ${P.line}`, borderRadius: 16, padding: 18, boxShadow: Sh.card }}>
-              <div style={{ width: 38, height: 38, borderRadius: 11, display: "grid", placeItems: "center", background: `${module.color}12`, color: module.color, fontSize: 18, fontWeight: 900, marginBottom: 13 }}>{item.icon}</div>
-              <div style={{ fontFamily: F.display, fontWeight: 900, fontSize: 15, color: P.ink }}>{item.label}</div>
+              <div style={{ width: 38, height: 38, borderRadius: 11, display: "grid", placeItems: "center", background: `${module.color}12`, color: module.color, fontSize: 18, fontWeight: 800, marginBottom: 13 }}>{item.icon}</div>
+              <div style={{ fontFamily: F.display, fontWeight: 800, fontSize: 15, color: P.ink }}>{item.label}</div>
               <div style={{ fontFamily: F.body, color: P.muted, fontSize: 11, lineHeight: 1.5, marginTop: 5 }}>{index === 0 ? "Your overview and priority actions will live here." : "This connected workspace is ready for the next build phase."}</div>
             </div>
           ))}
@@ -8155,9 +6855,9 @@ function AccessDeniedScreen({ module, club }) {
         <div style={{ maxWidth: 540, width: "100%", background: P.white, borderRadius: 22, padding: 34, textAlign: "center", border: `1px solid ${P.line}`, boxShadow: Sh.lift }}>
           <div style={{ width: 100, height: 100, borderRadius: 26, background: "#fff", border: "1px solid rgba(15,23,42,.08)", display: "grid", placeItems: "center", margin: "0 auto 18px", position: "relative", boxShadow: "0 14px 30px rgba(15,23,42,.12)" }}>
             <img src={module.icon} alt="" style={{ width: 70, height: 70, objectFit: "contain", filter: "grayscale(.3)" }} />
-            <span style={{ position: "absolute", right: -3, bottom: -3, width: 30, height: 30, borderRadius: "50%", background: P.navy, color: "#fff", display: "grid", placeItems: "center", fontSize: 13 }}>ðŸ”’</span>
+            <span style={{ position: "absolute", right: -3, bottom: -3, width: 30, height: 30, borderRadius: "50%", background: P.navy, color: "#fff", display: "grid", placeItems: "center", fontSize: 13 }}>🔒</span>
           </div>
-          <h2 style={{ fontFamily: F.display, fontSize: 24, fontWeight: 900, color: P.ink, margin: "0 0 8px" }}>{module.label} access required</h2>
+          <h2 style={{ fontFamily: F.display, fontSize: 24, fontWeight: 800, color: P.ink, margin: "0 0 8px" }}>{module.label} access required</h2>
           <p style={{ fontFamily: F.body, color: P.muted, fontSize: 13, lineHeight: 1.65, margin: "0 auto 18px", maxWidth: 420 }}>You can see every Spraoi module so the platform always feels consistent, but your current role does not include access to {module.label}. Please contact your Club Spraoi administrator.</p>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "9px 13px", borderRadius: 10, background: `${module.color}0e`, color: module.color, fontFamily: F.body, fontSize: 11, fontWeight: 800 }}>Administrator approval needed</div>
         </div>
@@ -8167,66 +6867,68 @@ function AccessDeniedScreen({ module, club }) {
 }
 
 /* ============================================================
-   MOBILE BOTTOM NAV â€” shows modules
+   MOBILE BOTTOM NAV — shows modules
    ============================================================ */
 function MobileHeader({ activeModule, setActiveModule, onNav, enabledModules, club, selectedTeam, ageGroups = [], myTeams = [], onSelectTeam, onShowProfile, userInitial }) {
   const [open, setOpen] = useState(false);
   const mod = MODULES[activeModule];
   const clubName = club?.name || "Club Spraoi";
-  const mobileTeams = ageGroups.filter((ag) => (myTeams || []).includes(ag.id));
+  const mobileTeams = myTeams?.length ? ageGroups.filter((ag) => myTeams.includes(ag.id)) : ageGroups;
+  const initial = userInitial || clubName[0];
+
   function openModule(key, module) {
     if (!enabledModules.includes(key)) {
       onNav(`access-denied-${key}`);
       setOpen(false);
       return;
     }
-    const target = readModuleScreen(key, module.nav[0].id);
     if (key !== APP_MODULE) {
-      openAdminModule(key, target);
+      openAdminModule(key, module.nav[0].id);
       return;
     }
     setActiveModule(APP_MODULE);
-    onNav(target);
+    onNav(module.nav[0].id);
     setOpen(false);
   }
+
   return (
     <>
-      <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 62, zIndex: 200, padding: "0 12px", background: mod.color, color: "#fff", display: "flex", alignItems: "center", justifyContent: "space-between", boxShadow: `0 5px 18px ${mod.color}35` }}>
-        <button onClick={() => setOpen(true)} style={{ border: "1px solid rgba(15,23,42,.08)", background: "#fff", width: 42, height: 42, borderRadius: 12, display: "grid", placeItems: "center", padding: 0, boxSizing: "border-box", cursor: "pointer", boxShadow: "0 4px 12px rgba(15,23,42,.14)" }}>
-          <img
-            src={activeModule === "club"
-              ? (club?.logo_url || "/spraoi-club-icon.png")
-              : mod.icon}
-            alt={activeModule === "club" ? `${clubName} crest` : mod.label}
-            style={{
-              width: activeModule === "club" ? 36 : 31,
-              height: activeModule === "club" ? 36 : 31,
-              objectFit: "contain",
-              display: "block",
-              margin: "0 auto"
-            }}
-          />
-        </button>
-        <div style={{ minWidth:0, flex:1, padding:"0 10px", display:"flex", alignItems:"center", justifyContent:"center" }}>
-          <div style={{ fontFamily:F.display, fontSize:14, fontWeight:900, color:"#fff", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis", textAlign:"center" }}>{clubName}</div>
+      <div className="spraoi-mobile-app-header" data-module={activeModule}>
+        <div className="spraoi-mobile-app-header-row">
+          <button onClick={() => setOpen(true)} className="spraoi-mobile-club-button" aria-label="Switch module">
+            <img src={club?.logo_url || "/spraoi-club-icon.png"} alt={`${clubName} crest`} />
+          </button>
+
+          <div className="spraoi-mobile-module-name">{mod.label}</div>
+
+          <button onClick={onShowProfile} aria-label="Open profile" className="spraoi-mobile-profile-button">
+            {initial}
+          </button>
         </div>
-        <button onClick={onShowProfile} aria-label="Open profile" style={{ width:42,height:42,borderRadius:12,border:"1px solid rgba(255,255,255,.2)",background:"rgba(255,255,255,.14)",color:"#fff",display:"grid",placeItems:"center",fontFamily:F.display,fontWeight:900,cursor:"pointer" }}>{userInitial || "U"}</button>
+
+        <div className="spraoi-mobile-team-row">
+          <div className="spraoi-mobile-clubwide">Club-wide</div>
+        </div>
       </div>
+
       {open && (
         <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 500, background: "rgba(5,18,34,.62)", padding: 16, display: "flex", alignItems: "flex-start", justifyContent: "center" }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ marginTop: 58, width: "100%", maxWidth: 430, background: P.white, borderRadius: 20, padding: 16, boxShadow: Sh.lift }}>
-            <div style={{ fontFamily: F.display, fontWeight: 900, color: P.ink, fontSize: 18, marginBottom: 12 }}>Switch module</div>
+          <div onClick={(e) => e.stopPropagation()} style={{ marginTop: 82, width: "100%", maxWidth: 430, background: P.white, borderRadius: 20, padding: 16, boxShadow: Sh.lift }}>
+            <div style={{ fontFamily: F.display, fontWeight: 700, color: P.ink, fontSize: 18, marginBottom: 12 }}>Switch module</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
-              {Object.entries(MODULES).filter(([key]) => !["plus","connect"].includes(key)).map(([key, m]) => {
+              {["coach","academy","connect","cup","club"].filter((key) => MODULES[key]).map((key) => {
+                const m = MODULES[key];
                 const unlocked = enabledModules.includes(key);
                 return (
                   <button key={key} onClick={() => openModule(key, m)} style={{ position: "relative", border: `1px solid ${activeModule === key ? m.color : P.line}`, background: activeModule === key ? `${m.color}0d` : P.white, borderRadius: 14, padding: 13, display: "flex", alignItems: "center", gap: 10, textAlign: "left", cursor: "pointer" }}>
-                    <span style={{ width: 46, height: 46, borderRadius: 13, background: "#fff", border: "1px solid rgba(15,23,42,.08)", display: "grid", placeItems: "center", padding: 0, boxSizing: "border-box", flexShrink: 0, boxShadow: "0 3px 10px rgba(15,23,42,.08)" }}><img src={m.icon} alt="" style={{ width: 34, height: 34, objectFit: "contain", display: "block", margin: "0 auto", opacity: unlocked ? 1 : .5, filter: unlocked ? "none" : "grayscale(1)" }} /></span>
+                    <span style={{ width: 46, height: 46, borderRadius: 13, background: "#fff", border: "1px solid rgba(15,23,42,.08)", display: "grid", placeItems: "center", padding: 0, boxSizing: "border-box", flexShrink: 0, boxShadow: "0 3px 10px rgba(15,23,42,.08)" }}>
+                      <img src={m.icon} alt="" style={{ width: 34, height: 34, objectFit: "contain", display: "block", opacity: unlocked ? 1 : .5, filter: unlocked ? "none" : "grayscale(1)" }} />
+                    </span>
                     <div>
-                      <div style={{ fontFamily: F.display, fontWeight: 900, color: P.ink, fontSize: 13 }}>{m.label}</div>
+                      <div style={{ fontFamily: F.display, fontWeight: 700, color: P.ink, fontSize: 13 }}>{m.label}</div>
                       <div style={{ fontFamily: F.body, color: unlocked ? P.muted : m.color, fontSize: 9 }}>{unlocked ? "Open module" : "Access required"}</div>
                     </div>
-                    {!unlocked && <span style={{ position: "absolute", top: 8, right: 8, fontSize: 10 }}>ðŸ”’</span>}
+                    {!unlocked && <span style={{ position: "absolute", top: 8, right: 8, fontSize: 10 }}>🔒</span>}
                   </button>
                 );
               })}
@@ -8246,13 +6948,13 @@ function MobileNav({ activeModule, screen, onNav, enabledModules }) {
     { id: "club-dashboard", label: "Dashboard" },
     { id: "club-teams", label: "Teams" },
     { id: "club-coaches", label: "People" },
-    { id: "club-setup", label: "Club Setup" },
+    { id: "club-scheduling", label: "Facilities" }
   ];
 
   const moreItems = [
-    { id: "club-scheduling", label: "Facilities & Slots" },
+    { id: "club-setup", label: "Club Setup" },
     { id: "club-compliance", label: "Compliance" },
-    { id: "club-permissions", label: "Roles & Permissions" },
+    { id: "club-permissions", label: "Roles & Permissions" }
   ];
 
   const moreActive = moreItems.some((item) => item.id === screen);
@@ -8261,65 +6963,19 @@ function MobileNav({ activeModule, screen, onNav, enabledModules }) {
     <>
       {showMore && (
         <>
-          <div
-            onClick={() => setShowMore(false)}
-            style={{
-              position: "fixed",
-              inset: 0,
-              background: "rgba(15,35,60,.28)",
-              zIndex: 198
-            }}
-          />
-
-          <div
-            style={{
-              position: "fixed",
-              left: 12,
-              right: 12,
-              bottom: "calc(72px + env(safe-area-inset-bottom, 0px))",
-              zIndex: 199,
-              background: "#fff",
-              borderRadius: 18,
-              border: `1px solid ${P.line}`,
-              boxShadow: "0 18px 50px rgba(15,35,60,.20)",
-              padding: 10
-            }}
-          >
-            <div style={{
-              fontFamily: F.display,
-              fontSize: 14,
-              fontWeight: 900,
-              color: P.ink,
-              padding: "7px 8px 10px"
-            }}>
-              More Club tools
-            </div>
-
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(2,minmax(0,1fr))",
-              gap: 8
-            }}>
+          <div onClick={() => setShowMore(false)} style={{ position: "fixed", inset: 0, background: "rgba(15,35,60,.28)", zIndex: 198 }} />
+          <div className="spraoi-mobile-more-sheet">
+            <div className="spraoi-mobile-more-title">More {module.label} tools</div>
+            <div className="spraoi-mobile-more-grid">
               {moreItems.map((item) => {
                 const isActive = screen === item.id;
                 return (
                   <button
                     key={item.id}
-                    onClick={() => {
-                      setShowMore(false);
-                      onNav(item.id);
-                    }}
-                    style={{
-                      border: `1px solid ${isActive ? module.color : P.line}`,
-                      background: isActive ? `${module.color}0d` : "#fff",
-                      borderRadius: 12,
-                      padding: 12,
-                      color: isActive ? module.color : P.ink,
-                      fontFamily: F.body,
-                      fontSize: 11,
-                      fontWeight: 800,
-                      cursor: "pointer"
-                    }}
+                    onClick={() => { setShowMore(false); onNav(item.id); }}
+                    className="spraoi-mobile-more-button"
+                    data-active={isActive}
+                    style={{ "--module-color": module.color }}
                   >
                     {item.label}
                   </button>
@@ -8330,95 +6986,36 @@ function MobileNav({ activeModule, screen, onNav, enabledModules }) {
         </>
       )}
 
-      <div style={{
-        position: "fixed",
-        bottom: 0,
-        left: 0,
-        right: 0,
-        background: "#fff",
-        borderTop: `1px solid ${P.line}`,
-        display: "flex",
-        padding: "6px 4px calc(env(safe-area-inset-bottom, 0px) + 5px)",
-        zIndex: 200,
-        boxShadow: "0 -7px 24px rgba(15,35,60,.08)"
-      }}>
+      <div className="spraoi-mobile-bottom-nav" style={{ "--module-color": module.color }}>
         {items.map((item) => {
           const isActive = screen === item.id;
           return (
             <button
               key={item.id}
+              aria-label={item.label}
+              title={item.label}
               onClick={() => onNav(item.id)}
-              style={{
-                flex: 1,
-                minWidth: 0,
-                background: "none",
-                border: "none",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 2,
-                cursor: "pointer",
-                color: isActive ? module.color : P.muted,
-                padding: "3px 1px"
-              }}
+              className="spraoi-mobile-bottom-nav-button"
+              data-active={isActive}
             >
-              <span style={{
-                width: 28,
-                height: 24,
-                borderRadius: 8,
-                display: "grid",
-                placeItems: "center",
-                background: isActive ? `${module.color}12` : "transparent"
-              }}>
-                <SpraoiNavIcon name={item.id} size={16} />
+              <span className="spraoi-mobile-bottom-nav-chip">
+                <img src={secondaryNavAsset(activeModule, item.id)} alt="" aria-hidden="true" className="spraoi-mobile-bottom-nav-icon" />
               </span>
-
-              <span style={{
-                fontSize: 8,
-                lineHeight: 1.1,
-                fontWeight: isActive ? 900 : 600,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                maxWidth: "100%"
-              }}>
-                {item.label}
-              </span>
+              <span className="spraoi-mobile-bottom-nav-label">{item.label}</span>
             </button>
           );
         })}
 
         <button
           onClick={() => setShowMore((value) => !value)}
-          aria-label="More Club sections"
-          style={{
-            flex: 1,
-            minWidth: 0,
-            background: "none",
-            border: "none",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            gap: 2,
-            cursor: "pointer",
-            color: moreActive || showMore ? module.color : P.muted,
-            padding: "3px 1px"
-          }}
+          aria-label="More sections"
+          className="spraoi-mobile-bottom-nav-button"
+          data-active={moreActive || showMore}
         >
-          <span style={{
-            width: 28,
-            height: 24,
-            borderRadius: 8,
-            display: "grid",
-            placeItems: "center",
-            background: moreActive || showMore ? `${module.color}12` : "transparent",
-            fontWeight: 900
-          }}>
-            â€¢â€¢â€¢
+          <span className="spraoi-mobile-bottom-nav-chip">
+            <img src="/icons/global/more.png" alt="" aria-hidden="true" className="spraoi-mobile-bottom-nav-icon" />
           </span>
-          <span style={{fontSize:8,fontWeight:moreActive ? 900 : 600}}>
-            More
-          </span>
+          <span className="spraoi-mobile-bottom-nav-label">More</span>
         </button>
       </div>
     </>
@@ -8446,7 +7043,9 @@ export function ClubModule({
       {screen === "club-coaches" && <ClubCoachesScreen club={club} ageGroups={ageGroups} coaches={coaches} selectedTeam={selectedTeam} onReloadCoaches={onReloadCoaches} userRole={userRole} currentUserId={currentUserId} />}
       {screen === "club-compliance" && <ClubComplianceScreen club={club} coaches={coaches} userRole={userRole} />}
       {screen === "club-permissions" && <ClubPermissionsScreen club={club} userRole={userRole} ageGroups={ageGroups} />}
-      {screen === "club-scheduling" && <ClubSchedulingPage club={club} ageGroups={ageGroups} currentUserId={session?.user?.id} />}
+      {screen === "club-scheduling" && <ClubPage title="Facilities & Slots" sub="Manage facilities, recurring training slots and weekly pitch allocations.">
+        <ClubScheduling club={club} ageGroups={ageGroups} currentUserId={currentUserId || ""} hideHeader />
+      </ClubPage>}
     </>
   );
 }
@@ -8592,7 +7191,7 @@ function SpraoiInviteAcceptance({ token, session }) {
           fontFamily: F.body,
         }}
       >
-        <div style={{ color: "#fff" }}>Loading invitationâ€¦</div>
+        <div style={{ color: "#fff" }}>Loading invitation…</div>
       </div>
     );
   }
@@ -8632,7 +7231,7 @@ function SpraoiInviteAcceptance({ token, session }) {
             style={{
               fontFamily: F.display,
               fontSize: 24,
-              fontWeight: 900,
+              fontWeight: 800,
               color: P.ink,
             }}
           >
@@ -8650,7 +7249,7 @@ function SpraoiInviteAcceptance({ token, session }) {
                 }}
               >
                 {invitation.name || invitation.email}
-                {" Â· "}
+                {" · "}
                 {invitation.clubs?.name || "Spraoi Sports"}
               </div>
 
@@ -8662,7 +7261,7 @@ function SpraoiInviteAcceptance({ token, session }) {
                   borderRadius: 999,
                   background: CLUB_SOFT,
                   color: CLUB_RED,
-                  fontWeight: 900,
+                  fontWeight: 800,
                   fontSize: 10,
                 }}
               >
@@ -8693,7 +7292,7 @@ function SpraoiInviteAcceptance({ token, session }) {
                 style={{
                   marginTop: 20,
                   fontFamily: F.display,
-                  fontWeight: 900,
+                  fontWeight: 800,
                   fontSize: 16,
                   color: P.ink,
                 }}
@@ -8709,7 +7308,7 @@ function SpraoiInviteAcceptance({ token, session }) {
                   color: P.muted,
                 }}
               >
-                Version {LEGAL_POLICY_VERSION} Â· Effective {LEGAL_EFFECTIVE_DATE}
+                Version {LEGAL_POLICY_VERSION} · Effective {LEGAL_EFFECTIVE_DATE}
               </div>
 
               <div style={{ display: "grid", gap: 8 }}>
@@ -8788,7 +7387,7 @@ function SpraoiInviteAcceptance({ token, session }) {
                               key={`${policy.key}-${index}`}
                               style={{ marginBottom: 12 }}
                             >
-                              <div style={{ fontWeight: 900 }}>
+                              <div style={{ fontWeight: 800 }}>
                                 {section.heading}
                               </div>
 
@@ -8855,12 +7454,12 @@ function SpraoiInviteAcceptance({ token, session }) {
                   color: "#fff",
                   fontFamily: F.body,
                   fontSize: 12,
-                  fontWeight: 900,
+                  fontWeight: 800,
                   cursor: canAccept ? "pointer" : "default",
                   opacity: canAccept && !accepting ? 1 : 0.45,
                 }}
               >
-                {accepting ? "Acceptingâ€¦" : "Accept Invitation"}
+                {accepting ? "Accepting…" : "Accept Invitation"}
               </button>
             </>
           )}
@@ -8913,41 +7512,28 @@ export default function App() {
     "";
 
   const userInitial = (() => {
-    const raw = String(userDisplayName || "").trim();
+    const value = String(userDisplayName || "U").trim();
 
-    if (!raw) return "U";
+    if (!value) return "U";
 
-    // Proper name: Elaine Archbold -> EA
-    const nameParts = raw
-      .split(/\s+/)
-      .map((part) => part.trim())
-      .filter(Boolean);
+    if (value.includes("@")) {
+      const local = value
+        .split("@")[0]
+        .replace(/[._-]+/g, " ")
+        .trim();
 
-    if (nameParts.length >= 2) {
-      return (
-        nameParts[0].charAt(0) +
-        nameParts[nameParts.length - 1].charAt(0)
-      ).toUpperCase();
+      const parts = local.split(/\s+/).filter(Boolean);
+
+      return parts.length > 1
+        ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+        : local.slice(0, 2).toUpperCase();
     }
 
-    // Email fallback:
-    // elaine.archbold@example.com -> EA
-    if (raw.includes("@")) {
-      const local = raw.split("@")[0];
+    const parts = value.split(/\s+/).filter(Boolean);
 
-      const emailParts = local
-        .split(/[._-]+/)
-        .filter(Boolean);
-
-      if (emailParts.length >= 2) {
-        return (
-          emailParts[0].charAt(0) +
-          emailParts[emailParts.length - 1].charAt(0)
-        ).toUpperCase();
-      }
-    }
-
-    return raw.slice(0, 2).toUpperCase();
+    return parts.length > 1
+      ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+      : value.slice(0, 2).toUpperCase();
   })();
   const [authLoading, setAuthLoading] = useState(true);
   const [authError, setAuthError] = useState("");
@@ -8971,7 +7557,7 @@ export default function App() {
   const [userRole, setUserRole] = useState(null); // { role, club_id, modules }
   const [enabledModules, setEnabledModules] = useState([]);
 
-  // App state â€” this standalone build owns CLUB only.
+  // App state — this standalone build owns CLUB only.
   // Other module buttons return to the single Admin shell, which renders the canonical module.
   const [screen, setScreen] = useState(() => readModuleScreen(APP_MODULE, MODULES[APP_MODULE]?.nav?.[0]?.id || "club-dashboard"));
   const [activeModule, setActiveModule] = useState(APP_MODULE);
@@ -9458,7 +8044,7 @@ export default function App() {
       age_group_id: selectedTeam.id,
       club_id: club.id,
       title: extra.title,
-      description: [extra.target, extra.instruction].filter(Boolean).join(" Â· ") || null,
+      description: [extra.target, extra.instruction].filter(Boolean).join(" · ") || null,
       xp_reward: Number(extra.xp) || 5,
       sort_order: academyExtras.length,
       activity_type: extra.type || "exercise",
@@ -9481,7 +8067,7 @@ export default function App() {
     if (!String(id).startsWith("local-")) {
       const { error } = await supabase.from("journey_exercises").update({
         title: changes.title,
-        description: [changes.target, changes.instruction].filter(Boolean).join(" Â· ") || null,
+        description: [changes.target, changes.instruction].filter(Boolean).join(" · ") || null,
         xp_reward: Number(changes.xp) || 0,
         activity_type: changes.type || "exercise",
         required: Boolean(changes.required),
@@ -9533,7 +8119,7 @@ export default function App() {
     );
   }
 
-  // Public share view â€” no login required
+  // Public share view — no login required
   if (shareToken) {
     if (!sharedSession && shareLoading) {
       supabase.from("weekly_plans").select("*, hurling_skill:skills!weekly_plans_hurling_focus_skill_id_fkey(name), sessions(*, session_activities(*, activity:activities(*, skill:skills!activities_skill_id_fkey(name, category)), coach:coaches(name)))").eq("share_token", shareToken).single().then(({ data }) => { setSharedSession(data); setShareLoading(false); });
@@ -9551,15 +8137,15 @@ export default function App() {
         <div style={{ maxWidth: 580, margin: "0 auto", padding: "20px 16px" }}>
           <div style={{ background: `linear-gradient(135deg, ${P.p700}, ${P.p900})`, borderRadius: 14, padding: 20, color: "#fff", marginBottom: 16 }}>
             <div style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, textTransform: "uppercase", opacity: 0.6 }}>Training Session</div>
-            <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 900, marginTop: 4 }}>{sharedSession.hurling_skill?.name || "Session Plan"}</div>
+            <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 800, marginTop: 4 }}>{sharedSession.hurling_skill?.name || "Session Plan"}</div>
             {sess?.session_date && <div style={{ fontFamily: F.body, fontSize: 12, opacity: 0.8, marginTop: 4 }}>{new Date(sess.session_date + "T12:00:00").toLocaleDateString("en-IE", { weekday: "long", day: "numeric", month: "short", year: "numeric" })}</div>}
-            <div style={{ fontFamily: F.body, fontSize: 11, opacity: 0.7, marginTop: 2 }}>{sess?.total_duration_mins || "?"}min Â· {activities.length} drills</div>
+            <div style={{ fontFamily: F.body, fontSize: 11, opacity: 0.7, marginTop: 2 }}>{sess?.total_duration_mins || "?"}min · {activities.length} drills</div>
           </div>
           {sharedSession.coach_notes && <div style={{ background: P.cream, borderRadius: 10, padding: 12, marginBottom: 14, fontFamily: F.body, fontSize: 12, color: P.ink, lineHeight: 1.5 }}><strong style={{ color: P.orange }}>Notes:</strong> {sharedSession.coach_notes}</div>}
           {phases && phases.filter((p) => p.type !== "stations" && p.duration).map((p, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", marginBottom: 4, background: P.white, borderRadius: 8, border: `1px solid ${P.line}`, flexWrap: "wrap" }}>
               <span style={{ width: 8, height: 8, borderRadius: "50%", background: p.type === "warmup" ? P.orange : p.type === "cooldown" ? "#29b6f6" : P.green }} />
-              <span style={{ fontFamily: F.body, fontSize: 12, fontWeight: 700, color: P.ink }}>{p.label} â€” {p.duration}min</span>
+              <span style={{ fontFamily: F.body, fontSize: 12, fontWeight: 700, color: P.ink }}>{p.label} — {p.duration}min</span>
               {p.coachName && <span style={{ fontFamily: F.body, fontSize: 10, color: P.p600, marginLeft: "auto" }}>{p.coachName}</span>}
               {p.notes && <div style={{ width: "100%", fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 4, paddingLeft: 16 }}>{p.notes}</div>}
             </div>
@@ -9571,12 +8157,12 @@ export default function App() {
             return (
               <div key={sa.id} style={{ background: P.white, borderRadius: 12, border: `1px solid ${P.line}`, padding: 14, marginBottom: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                  <span style={{ fontFamily: F.display, fontSize: 14, fontWeight: 900, color: P.p600 }}>{i + 1}</span>
+                  <span style={{ fontFamily: F.display, fontSize: 14, fontWeight: 800, color: P.p600 }}>{i + 1}</span>
                   <div style={{ width: 28, height: 28, borderRadius: 7, background: sportIcon.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, position: "relative" }}>
                     <img src={sportIcon.icon} alt="" style={{ width: 16, height: 16, objectFit: "contain", filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.2))" }} />
                     {catIcon && <img src={catIcon.icon} alt="" style={{ position: "absolute", bottom: -2, right: -2, width: 10, height: 10, objectFit: "contain", background: "#fff", borderRadius: 2, padding: 1 }} />}
                   </div>
-                  <div style={{ flex: 1 }}><div style={{ fontFamily: F.body, fontSize: 13, fontWeight: 700, color: P.ink }}>{act.title}</div><div style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>{act.skill?.name || ""} Â· {act.duration_mins || "?"}min</div></div>
+                  <div style={{ flex: 1 }}><div style={{ fontFamily: F.body, fontSize: 13, fontWeight: 700, color: P.ink }}>{act.title}</div><div style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>{act.skill?.name || ""} · {act.duration_mins || "?"}min</div></div>
                   {sa.coach && <span style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, color: P.p600 }}>{sa.coach.name}</span>}
                 </div>
                 {df && <img src={`/diagrams/${df}`} alt="" style={{ width: "100%", borderRadius: 8, marginBottom: 8 }} />}
@@ -9588,7 +8174,7 @@ export default function App() {
               </div>
             );
           })}
-          <div style={{ textAlign: "center", padding: "16px 0", fontFamily: F.body, fontSize: 10, color: P.muted }}>Spraoi Sports Â· spraoisports.com</div>
+          <div style={{ textAlign: "center", padding: "16px 0", fontFamily: F.body, fontSize: 10, color: P.muted }}>Spraoi Sports · spraoisports.com</div>
         </div>
       </div>
     );
@@ -9641,7 +8227,7 @@ export default function App() {
               style={{
                 fontFamily: F.display,
                 fontSize: 20,
-                fontWeight: 900,
+                fontWeight: 800,
                 color: P.ink,
               }}
             >
@@ -9989,10 +8575,10 @@ export default function App() {
     );
   }
 
-  // Team setup â€” show selection screen if no teams assigned
+  // Team setup — show selection screen if no teams assigned
   if (!selectedTeam && ageGroups.length > 0) {
     if (myTeams.length === 0) {
-      // No teams assigned â€” show selection screen
+      // No teams assigned — show selection screen
       const labels = [...new Set(ageGroups.map((ag) => ag.label))].sort((a, b) => parseInt(a.replace("U", "")) - parseInt(b.replace("U", "")));
       return (
         <div style={{ minHeight: "100vh", background: P.navy, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F.body, padding: 16 }}>
@@ -10035,7 +8621,7 @@ export default function App() {
         </div>
       );
     }
-    // Has teams â€” auto-select the first one
+    // Has teams — auto-select the first one
     const firstTeam = ageGroups.find((ag) => myTeams.includes(ag.id));
     if (firstTeam) selectTeam(firstTeam);
     return null;
@@ -10069,10 +8655,10 @@ export default function App() {
   const showMobile = isMobile;
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", width: "100%", fontFamily: F.body, paddingTop: showMobile ? 62 : 0, paddingBottom: showMobile ? 68 : 0, boxSizing: "border-box" }}>
+    <div style={{ display: "flex", minHeight: "100vh", width: "100%", fontFamily: F.body, paddingTop: showMobile ? 116 : 0, paddingBottom: showMobile ? 78 : 0, boxSizing: "border-box" }}>
       {showMobile && <MobileHeader activeModule={activeModule} setActiveModule={setActiveModule} onNav={setScreen} enabledModules={enabledModules} club={club} selectedTeam={selectedTeam} ageGroups={ageGroups} myTeams={myTeams} onSelectTeam={selectTeam} onShowProfile={()=>setShowProfile(true)} userInitial={userInitial} />}
 
-      {/* Sidebar â€” desktop only */}
+      {/* Sidebar — desktop only */}
       {!showMobile && <Sidebar activeModule={activeModule} setActiveModule={setActiveModule} activeScreen={screen} onNav={setScreen} club={club} selectedTeam={selectedTeam} onSelectTeam={selectTeam} enabledModules={enabledModules} onLogout={logout} ageGroups={ageGroups} myTeams={myTeams} onShowProfile={() => setShowProfile(true)} userInitial={userInitial} />}
 
       {/* COACH screens */}
@@ -10091,7 +8677,9 @@ export default function App() {
       {screen === "club-coaches" && <ClubCoachesScreen club={club} ageGroups={ageGroups} coaches={coaches} selectedTeam={selectedTeam} onReloadCoaches={() => loadCoaches(club?.id)} userRole={userRole} currentUserId={session?.user?.id} />}
       {screen === "club-compliance" && <ClubComplianceScreen club={club} coaches={coaches} userRole={userRole} />}
       {screen === "club-permissions" && <ClubPermissionsScreen club={club} userRole={userRole} ageGroups={ageGroups} />}
-      {screen === "club-scheduling" && <ClubSchedulingPage club={club} ageGroups={ageGroups} currentUserId={session?.user?.id} />}
+      {screen === "club-scheduling" && <ClubPage title="Facilities & Slots" sub="Manage facilities, recurring training slots and weekly pitch allocations.">
+        <ClubScheduling club={club} ageGroups={ageGroups} currentUserId={session?.user?.id || ""} hideHeader />
+      </ClubPage>}
 
       {/* CUP screens */}
       {screen.startsWith("cup-") && <ModulePlaceholder module={MODULES.cup} screen={screen} club={club} />}
@@ -10127,18 +8715,18 @@ export default function App() {
         <div onClick={() => setShowProfile(false)} style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: P.white, borderRadius: 18, maxWidth: 420, width: "100%", maxHeight: "80vh", overflowY: "auto", boxShadow: Sh.lift }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", borderBottom: `1px solid ${P.line}` }}>
-              <div style={{ fontFamily: F.display, fontSize: 17, fontWeight: 900, color: P.ink }}>Profile</div>
-              <button onClick={() => setShowProfile(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: P.muted }}>Ã—</button>
+              <div style={{ fontFamily: F.display, fontSize: 17, fontWeight: 800, color: P.ink }}>Profile</div>
+              <button onClick={() => setShowProfile(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: P.muted }}>×</button>
             </div>
             <div style={{ padding: 20 }}>
               {/* User info */}
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-                <div style={{ width: 48, height: 48, borderRadius: "50%", background: `${P.p600}20`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F.display, fontSize: 18, fontWeight: 900, color: P.p600 }}>
+                <div style={{ width: 48, height: 48, borderRadius: "50%", background: `${P.p600}20`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F.display, fontSize: 18, fontWeight: 800, color: P.p600 }}>
                   {session?.user?.email?.[0]?.toUpperCase() || "C"}
                 </div>
                 <div>
                   <div style={{ fontFamily: F.body, fontSize: 14, fontWeight: 700, color: P.ink }}>{session?.user?.email || "Coach"}</div>
-                  <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted }}>{userRole?.role?.replace("_", " ") || "Coach"} Â· {club?.name}</div>
+                  <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted }}>{userRole?.role?.replace("_", " ") || "Coach"} · {club?.name}</div>
                 </div>
               </div>
 
@@ -10151,19 +8739,19 @@ export default function App() {
                       <span style={{ fontFamily: F.body, fontSize: 11, fontWeight: 600, color: P.ink }}>{teamDisplayName(ag)}</span>
                       {permissions.canManageTeamStaff && <button onClick={async () => {
                         await removeProfileTeam(ag.id);
-                      }} title="Remove team" style={{ background: "none", border: "none", color: P.coral, cursor: "pointer", fontSize: 12, padding: 0 }}>Ã—</button>}
+                      }} title="Remove team" style={{ background: "none", border: "none", color: P.coral, cursor: "pointer", fontSize: 12, padding: 0 }}>×</button>}
                     </div>
                   ))}
                   {myTeams.length === 0 && <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted }}>No teams selected yet</div>}
                 </div>
-                {/* Add more teams â€” only users with team-management permission */}
+                {/* Add more teams — only users with team-management permission */}
                 {permissions.canManageTeamStaff && <select onChange={async (e) => {
                   const agId = e.target.value;
                   if (!agId || myTeams.includes(agId)) return;
                   await addProfileTeam(agId);
                   e.target.value = "";
                 }} style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 8, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 12, color: P.muted }}>
-                  <option value="">+ Add another team...</option>
+                  <option value="">Add another team...</option>
                   {ageGroups.filter((ag) => !myTeams.includes(ag.id)).sort((a, b) => parseInt(a.label.replace("U", "")) - parseInt(b.label.replace("U", ""))).map((ag) => (
                     <option key={ag.id} value={ag.id}>{teamDisplayName(ag)}</option>
                   ))}
@@ -10183,8 +8771,8 @@ export default function App() {
       {shareUrl && (
         <div onClick={() => setShareUrl(null)} style={{ position: "fixed", inset: 0, zIndex: 99999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: P.white, borderRadius: 16, maxWidth: 400, width: "100%", padding: 24, boxShadow: Sh.lift, textAlign: "center" }}>
-            <div style={{ fontSize: 32, marginBottom: 10 }}>ðŸ”—</div>
-            <div style={{ fontFamily: F.display, fontSize: 17, fontWeight: 900, color: P.ink, marginBottom: 6 }}>Link Copied!</div>
+            <div style={{ fontSize: 32, marginBottom: 10 }}>🔗</div>
+            <div style={{ fontFamily: F.display, fontSize: 17, fontWeight: 800, color: P.ink, marginBottom: 6 }}>Link Copied!</div>
             <div style={{ fontFamily: F.body, fontSize: 12, color: P.muted, marginBottom: 14 }}>Share this link with your coaches. They can view the full session without an account.</div>
             <div style={{ background: P.soft, borderRadius: 8, padding: "10px 12px", marginBottom: 16, wordBreak: "break-all", fontFamily: F.body, fontSize: 11, color: P.ink, textAlign: "left" }}>{shareUrl}</div>
             <div style={{ display: "flex", gap: 8 }}>
@@ -10203,19 +8791,19 @@ export default function App() {
             {/* Header */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", borderBottom: `1px solid ${P.line}`, position: "sticky", top: 0, background: P.white, borderRadius: "18px 18px 0 0", zIndex: 1 }}>
               <div>
-                <div style={{ fontFamily: F.display, fontSize: 17, fontWeight: 900, color: P.ink }}>Session Details</div>
+                <div style={{ fontFamily: F.display, fontSize: 17, fontWeight: 800, color: P.ink }}>Session Details</div>
                 <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted }}>
                   {sessionDetail.session_date ? new Date(sessionDetail.session_date).toLocaleDateString("en-IE", { weekday: "long", day: "numeric", month: "short" }) : ""}
-                  {sessionDetail.plan?.hurling_skill?.name ? ` Â· ${sessionDetail.plan.hurling_skill.matchedSkill?.name || "Needs review"}` : ""}
+                  {sessionDetail.plan?.hurling_skill?.name ? ` · ${sessionDetail.plan.hurling_skill.matchedSkill?.name || "Needs review"}` : ""}
                 </div>
               </div>
               <div style={{ display: "flex", gap: 6 }}>
                 <button onClick={() => setPitchView(!pitchView)} style={{ padding: "6px 12px", borderRadius: 8, border: `1.5px solid ${pitchView ? "#43a047" : P.line}`, background: pitchView ? "#e8f5e9" : P.white, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: pitchView ? "#2e7d32" : P.muted, cursor: "pointer" }}>
-                  {pitchView ? "â—ˆ List" : "â—ˆ Pitch"}
+                  {pitchView ? "◈ List" : "◈ Pitch"}
                 </button>
                 <button onClick={() => { setSessionDetail(null); editSession(sessionDetail); }} style={{ padding: "6px 12px", borderRadius: 8, border: `1.5px solid ${P.p600}`, background: P.white, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.p600, cursor: "pointer" }}>Edit</button>
                 <button onClick={shareSessionImage} data-share-btn style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: P.p600, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: "#fff", cursor: "pointer" }}>Share</button>
-                <button onClick={() => setSessionDetail(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: P.muted }}>Ã—</button>
+                <button onClick={() => setSessionDetail(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: P.muted }}>×</button>
               </div>
             </div>
 
@@ -10225,10 +8813,10 @@ export default function App() {
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
                 <img src="/spraoi-logo-white.png" alt="" style={{ width: 80, height: "auto", display: "none" }} />
                 <div>
-                  <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 900, color: P.ink }}>
+                  <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink }}>
                     {sessionDetail.session_date ? new Date(sessionDetail.session_date + "T12:00:00").toLocaleDateString("en-IE", { weekday: "long", day: "numeric", month: "short", year: "numeric" }) : "Training Session"}
                   </div>
-                  <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted }}>{selectedTeam ? teamDisplayName(selectedTeam) : "Team"} Â· {sessionDetail.total_duration_mins}min Â· {sessionDetail.session_activities?.length || 0} drills</div>
+                  <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted }}>{selectedTeam ? teamDisplayName(selectedTeam) : "Team"} · {sessionDetail.total_duration_mins}min · {sessionDetail.session_activities?.length || 0} drills</div>
                 </div>
               </div>
 
@@ -10257,17 +8845,17 @@ export default function App() {
               })()}
 
               {!pitchView ? (
-                /* List view â€” text only for easy reading */
+                /* List view — text only for easy reading */
                 <div>
                   {sessionDetail.session_activities?.sort((a, b) => a.sort_order - b.sort_order).map((sa, i) => {
                     const act = sa.activity || {};
                     return (
                       <div key={sa.id} style={{ padding: "12px 0", borderBottom: `1px solid ${P.line}` }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-                          <span style={{ fontFamily: F.display, fontSize: 14, fontWeight: 900, color: P.p600, width: 22 }}>{i + 1}</span>
+                          <span style={{ fontFamily: F.display, fontSize: 14, fontWeight: 800, color: P.p600, width: 22 }}>{i + 1}</span>
                           <div style={{ flex: 1 }}>
                             <div style={{ fontFamily: F.body, fontSize: 13, fontWeight: 700, color: P.ink }}>{act.title}</div>
-                            <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>{act.skill?.name || ""} Â· {act.duration_mins || "?"}min</div>
+                            <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>{act.skill?.name || ""} · {act.duration_mins || "?"}min</div>
                           </div>
                           {sa.coach && <span style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, color: P.p600 }}>{sa.coach.name}</span>}
                         </div>
@@ -10298,7 +8886,7 @@ export default function App() {
                     return (
                       <div key={sa.id} style={{ borderRadius: 10, overflow: "hidden", border: `1.5px solid ${P.line}` }}>
                         <div style={{ background: P.p600, padding: "6px 10px", display: "flex", alignItems: "center", gap: 6 }}>
-                          <span style={{ fontFamily: F.display, fontSize: 12, fontWeight: 900, color: "#fff" }}>{i + 1}</span>
+                          <span style={{ fontFamily: F.display, fontSize: 12, fontWeight: 800, color: "#fff" }}>{i + 1}</span>
                           <span style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, color: "#fff", opacity: 0.9 }}>{sa.activity?.title?.substring(0, 20)}</span>
                         </div>
                         {sa.coach && <div style={{ background: P.p50, padding: "3px 10px", fontFamily: F.body, fontSize: 10, fontWeight: 700, color: P.p600 }}>{sa.coach.name}</div>}
@@ -10326,6 +8914,3 @@ export default function App() {
     </div>
   );
 }
-
-
-

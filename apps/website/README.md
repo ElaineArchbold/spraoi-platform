@@ -1,21 +1,20 @@
-# Spraoi Sports v1 package
+# Spraoi Sports website refresh
 
-## Included
-- Brand & Design System v1.0 (DOCX and PDF)
-- Coach + Journey Implementation Specification v1.0 (DOCX and PDF)
-- Approved logo and icon assets
-- Seed Skills library
-- Initial Activities and Challenges review batch
-- Empty Videos library
-- Skill Progressions seed
-- Source register for processed activities
-- Starter Supabase SQL schema
+Static landing page designed for Vercel.
 
-## Import order
-1. `libraries/skills.json`
-2. `libraries/activities_batch_001.json`
-3. `libraries/challenges_batch_001.json`
-4. `libraries/videos.json`
-5. `libraries/skill_progressions.json`
+## Preview locally
+Open `index.html` with VS Code Live Server.
 
-The five activities in Batch 001 are the first review batch, not the complete 7-12 hurling library. Remaining supplied URLs should be processed in subsequent batches after this standard is approved.
+## Contact form
+Configure these Vercel environment variables:
+- `RESEND_API_KEY`
+- `CONTACT_EMAIL`
+- `FROM_EMAIL`
+
+## What changed
+- New platform positioning around Coach, Academy, Connect, Cup, Club and the Spraoi parent/child app.
+- New premium SaaS visual direction using Manrope + Inter.
+- Current module colours and connected workflow.
+- Product screenshots and mobile app concepts.
+- Updated RBAC / role positioning.
+- Added drill/video library and strength & conditioning messaging.

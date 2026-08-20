@@ -1,66 +1,95 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
+import CoachApp from "../../coach/src/App.jsx";
+import AcademyApp from "../../academy/src/App.jsx";
+import ConnectApp from "../../connect/src/App.jsx";
+import CupApp from "../../cup/src/App.jsx";
+import ClubApp from "../../club/src/App.jsx";
 
-const DEV_MODULE_URLS = {
-  club: "http://localhost:5174",
-  academy: "http://localhost:5176",
-  cup: "http://localhost:5177",
-  coach: "http://localhost:5179",
+const MODULE_ORDER = ["coach", "academy", "connect", "cup", "club"];
+const DEFAULT_SCREEN = {
+  coach: "coach-dashboard",
+  academy: "academy-dashboard",
+  connect: "connect-dashboard",
+  cup: "cup-dashboard",
+  club: "club-dashboard",
 };
-
-const PROD_MODULE_PATHS = {
-  club: "/club/",
-  academy: "/academy/",
-  cup: "/cup/",
-  coach: "/coach/",
-};
-
-const VALID_MODULES = new Set(Object.keys(PROD_MODULE_PATHS));
-
-function isLocalDevelopment() {
-  return (
-    window.location.hostname === "localhost" ||
-    window.location.hostname === "127.0.0.1"
-  );
-}
 
 function requestedModule() {
   const params = new URLSearchParams(window.location.search);
-  const fromUrl = String(params.get("module") || "").toLowerCase();
-
-  if (VALID_MODULES.has(fromUrl)) return fromUrl;
-
-  // Admin is routing infrastructure only.
-  // With no explicit module, enter through Club.
-  return "club";
+  const moduleId = String(params.get("module") || "coach").toLowerCase();
+  return MODULE_ORDER.includes(moduleId) ? moduleId : "coach";
 }
 
 export default function App() {
+  const initial = useMemo(() => requestedModule(), []);
+  const [activeModule, setActiveModule] = useState(initial);
+  const [mounted, setMounted] = useState(() => new Set([initial]));
+
   useEffect(() => {
-    const moduleId = requestedModule();
-    const params = new URLSearchParams(window.location.search);
+    window.__SPRAOI_ADMIN_SHELL__ = true;
 
-    const target = isLocalDevelopment()
-      ? new URL(DEV_MODULE_URLS[moduleId])
-      : new URL(PROD_MODULE_PATHS[moduleId], window.location.origin);
+    const switchModule = (moduleId, screen = null, team = null) => {
+      const key = String(moduleId || "").toLowerCase();
+      if (!MODULE_ORDER.includes(key)) return;
 
-    const screen = params.get("screen");
-    const team = params.get("team");
-    const invite = params.get("invite");
+      setMounted((current) => {
+        const next = new Set(current);
+        next.add(key);
+        return next;
+      });
+      setActiveModule(key);
 
-    if (screen && screen.startsWith(`${moduleId}-`)) {
-      target.searchParams.set("screen", screen);
-    }
+      const url = new URL(window.location.href);
+      url.searchParams.set("module", key);
+      url.searchParams.set("screen", screen || DEFAULT_SCREEN[key]);
+      if (team) url.searchParams.set("team", team);
+      window.history.replaceState({}, "", url);
 
-    if (team) {
-      target.searchParams.set("team", team);
-    }
+      window.dispatchEvent(new CustomEvent("spraoi:shell-screen", {
+        detail: { moduleId: key, screen: screen || DEFAULT_SCREEN[key], team: team || null }
+      }));
+    };
 
-    if (invite) {
-      target.searchParams.set("invite", invite);
-    }
+    const onSwitch = (event) => {
+      const detail = event?.detail || {};
+      switchModule(detail.moduleId, detail.screen, detail.team);
+    };
 
-    window.location.replace(target.toString());
+    const onPopState = () => switchModule(requestedModule());
+
+    window.addEventListener("spraoi:switch-module", onSwitch);
+    window.addEventListener("popstate", onPopState);
+
+    return () => {
+      delete window.__SPRAOI_ADMIN_SHELL__;
+      window.removeEventListener("spraoi:switch-module", onSwitch);
+      window.removeEventListener("popstate", onPopState);
+    };
   }, []);
 
-  return null;
+  const apps = {
+    coach: CoachApp,
+    academy: AcademyApp,
+    connect: ConnectApp,
+    cup: CupApp,
+    club: ClubApp,
+  };
+
+  return (
+    <div style={{ minHeight: "100vh", width: "100%", background: "#f7f9fc" }}>
+      {MODULE_ORDER.map((moduleId) => {
+        if (!mounted.has(moduleId)) return null;
+        const ModuleApp = apps[moduleId];
+        return (
+          <div
+            key={moduleId}
+            aria-hidden={activeModule !== moduleId}
+            style={{ display: activeModule === moduleId ? "block" : "none", minHeight: "100vh" }}
+          >
+            <ModuleApp />
+          </div>
+        );
+      })}
+    </div>
+  );
 }

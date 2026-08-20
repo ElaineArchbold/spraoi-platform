@@ -16,6 +16,7 @@ const modules = [
   { id: "coach", path: join(repoRoot, "apps/coach"), base: "/coach/" },
   { id: "academy", path: join(repoRoot, "apps/academy"), base: "/academy/" },
   { id: "cup", path: join(repoRoot, "apps/cup"), base: "/cup/" },
+  { id: "connect", path: join(repoRoot, "apps/connect"), base: "/connect/" },
 ];
 
 function runVite(appDir, outDir, base) {
@@ -119,3 +120,4 @@ console.log("  /club/     -> Spraoi Club");
 console.log("  /coach/    -> Spraoi Coach");
 console.log("  /academy/  -> Spraoi Academy Admin");
 console.log("  /cup/      -> Spraoi Cup Admin");
+console.log("  /connect/  -> Spraoi Connect");
