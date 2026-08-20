@@ -93,3 +93,5 @@ export default function App() {
     </div>
   );
 }
+
+// trigger admin rebuild for permissions deployment
