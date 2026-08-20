@@ -569,11 +569,11 @@ html, body, button, input, select, textarea {
   border-radius: 15px 15px 0 0;
   background: #D9E1EC;
 }
-body:has(.spraoi-module-sidebar[data-module="coach"]) .spraoi-stat-card::before { background: linear-gradient(90deg,#7C3AED,#A78BFA); }
-body:has(.spraoi-module-sidebar[data-module="academy"]) .spraoi-stat-card::before { background: linear-gradient(90deg,#2563EB,#60A5FA); }
-body:has(.spraoi-module-sidebar[data-module="connect"]) .spraoi-stat-card::before { background: linear-gradient(90deg,#F97316,#FB923C); }
-body:has(.spraoi-module-sidebar[data-module="cup"]) .spraoi-stat-card::before { background: linear-gradient(90deg,#D89A00,#F6C945); }
-body:has(.spraoi-module-sidebar[data-module="club"]) .spraoi-stat-card::before { background: linear-gradient(90deg,#DC2626,#F87171); }
+body[data-spraoi-active-module="coach"] .spraoi-stat-card::before { background: linear-gradient(90deg,#7C3AED,#A78BFA); }
+body[data-spraoi-active-module="academy"] .spraoi-stat-card::before { background: linear-gradient(90deg,#2563EB,#60A5FA); }
+body[data-spraoi-active-module="connect"] .spraoi-stat-card::before { background: linear-gradient(90deg,#F97316,#FB923C); }
+body[data-spraoi-active-module="cup"] .spraoi-stat-card::before { background: linear-gradient(90deg,#D89A00,#F6C945); }
+body[data-spraoi-active-module="club"] .spraoi-stat-card::before { background: linear-gradient(90deg,#DC2626,#F87171); }
 
 
 /* === SPRAOI SAAS SHELL V7 — unified staff mobile shell === */
@@ -847,28 +847,28 @@ body:has(.spraoi-module-sidebar[data-module="club"]) .spraoi-stat-card::before {
 }
 
 /* Module colours for primary actions */
-body:has(.spraoi-module-sidebar[data-module="coach"]) .spraoi-action-button[data-variant="primary"] {
+body[data-spraoi-active-module="coach"] .spraoi-action-button[data-variant="primary"] {
   background: #7C3AED !important;
   color: #fff !important;
   border: 1px solid #7C3AED !important;
 }
-body:has(.spraoi-module-sidebar[data-module="academy"]) .spraoi-action-button[data-variant="primary"] {
+body[data-spraoi-active-module="academy"] .spraoi-action-button[data-variant="primary"] {
   background: #2563EB !important;
   color: #fff !important;
   border: 1px solid #2563EB !important;
 }
-body:has(.spraoi-module-sidebar[data-module="connect"]) .spraoi-action-button[data-variant="primary"],
-body:has(.connect-topbar) .spraoi-action-button[data-variant="primary"] {
+body[data-spraoi-active-module="connect"] .spraoi-action-button[data-variant="primary"],
+body[data-spraoi-active-module="connect"] .spraoi-action-button[data-variant="primary"] {
   background: #F97316 !important;
   color: #fff !important;
   border: 1px solid #F97316 !important;
 }
-body:has(.spraoi-module-sidebar[data-module="cup"]) .spraoi-action-button[data-variant="primary"] {
+body[data-spraoi-active-module="cup"] .spraoi-action-button[data-variant="primary"] {
   background: #D89A00 !important;
   color: #fff !important;
   border: 1px solid #D89A00 !important;
 }
-body:has(.spraoi-module-sidebar[data-module="club"]) .spraoi-action-button[data-variant="primary"] {
+body[data-spraoi-active-module="club"] .spraoi-action-button[data-variant="primary"] {
   background: #DC2626 !important;
   color: #fff !important;
   border: 1px solid #DC2626 !important;
@@ -949,19 +949,19 @@ body:has(.spraoi-module-sidebar[data-module="club"]) .spraoi-action-button[data-
 }
 
 /* Keep icon chips visibly tied to the module palette */
-body:has(.spraoi-module-sidebar[data-module="coach"]) {
+body[data-spraoi-active-module="coach"] {
   --spraoi-current-accent: #7C3AED;
 }
-body:has(.spraoi-module-sidebar[data-module="academy"]) {
+body[data-spraoi-active-module="academy"] {
   --spraoi-current-accent: #2563EB;
 }
-body:has(.spraoi-module-sidebar[data-module="connect"]) {
+body[data-spraoi-active-module="connect"] {
   --spraoi-current-accent: #F97316;
 }
-body:has(.spraoi-module-sidebar[data-module="cup"]) {
+body[data-spraoi-active-module="cup"] {
   --spraoi-current-accent: #D89A00;
 }
-body:has(.spraoi-module-sidebar[data-module="club"]) {
+body[data-spraoi-active-module="club"] {
   --spraoi-current-accent: #DC2626;
 }
 
@@ -1069,10 +1069,10 @@ body:has(.spraoi-module-sidebar[data-module="club"]) {
 
 
 /* === PHASE 12 — dedicated Coach SVG icon library === */
-body:has(.spraoi-module-sidebar[data-module="coach"]) .spraoi-secondary-nav-icon,
-body:has(.spraoi-module-sidebar[data-module="coach"]) .spraoi-card-icon,
-body:has(.spraoi-module-sidebar[data-module="coach"]) .spraoi-action-icon img,
-body:has(.spraoi-module-sidebar[data-module="coach"]) .spraoi-mobile-bottom-nav-icon {
+body[data-spraoi-active-module="coach"] .spraoi-secondary-nav-icon,
+body[data-spraoi-active-module="coach"] .spraoi-card-icon,
+body[data-spraoi-active-module="coach"] .spraoi-action-icon img,
+body[data-spraoi-active-module="coach"] .spraoi-mobile-bottom-nav-icon {
   width: 24px !important;
   height: 24px !important;
   object-fit: contain !important;
@@ -1080,7 +1080,7 @@ body:has(.spraoi-module-sidebar[data-module="coach"]) .spraoi-mobile-bottom-nav-
   filter: none !important;
 }
 
-body:has(.spraoi-module-sidebar[data-module="coach"]) .spraoi-action-icon img {
+body[data-spraoi-active-module="coach"] .spraoi-action-icon img {
   width: 16px !important;
   height: 16px !important;
 }
@@ -1093,22 +1093,22 @@ img[src*="/icons/coach/"] {
 
 
 /* === PHASE 13 — dedicated Academy SVG icon library === */
-body:has(.spraoi-module-sidebar[data-module="academy"]) .spraoi-secondary-nav-icon,
-body:has(.spraoi-module-sidebar[data-module="academy"]) .spraoi-card-icon,
-body:has(.spraoi-module-sidebar[data-module="academy"]) .spraoi-mobile-bottom-nav-icon {
+body[data-spraoi-active-module="academy"] .spraoi-secondary-nav-icon,
+body[data-spraoi-active-module="academy"] .spraoi-card-icon,
+body[data-spraoi-active-module="academy"] .spraoi-mobile-bottom-nav-icon {
   opacity: 1 !important;
   filter: none !important;
   object-fit: contain !important;
 }
-body:has(.spraoi-module-sidebar[data-module="academy"]) .spraoi-secondary-nav-icon {
+body[data-spraoi-active-module="academy"] .spraoi-secondary-nav-icon {
   width: 24px !important;
   height: 24px !important;
 }
-body:has(.spraoi-module-sidebar[data-module="academy"]) .spraoi-card-icon {
+body[data-spraoi-active-module="academy"] .spraoi-card-icon {
   width: 26px !important;
   height: 26px !important;
 }
-body:has(.spraoi-module-sidebar[data-module="academy"]) .spraoi-mobile-bottom-nav-icon {
+body[data-spraoi-active-module="academy"] .spraoi-mobile-bottom-nav-icon {
   width: 21px !important;
   height: 21px !important;
 }
@@ -1193,7 +1193,7 @@ img[src*="/icons/academy/"] {
 }
 
 /* Club-specific SVGs should display with their authored red artwork. */
-body:has(.spraoi-module-sidebar[data-module="club"]) img[src*="/icons/club/"] {
+body[data-spraoi-active-module="club"] img[src*="/icons/club/"] {
   opacity: 1 !important;
   filter: none !important;
   object-fit: contain !important;
@@ -1363,13 +1363,13 @@ body:has(.spraoi-module-sidebar[data-module="club"]) img[src*="/icons/club/"] {
   height: 34px !important;
   object-fit: contain !important;
 }
-body:has(.spraoi-module-sidebar[data-module="coach"]) .spraoi-page-header-icon { background:#F4EFFF !important; border-color:#E7DBFF !important; }
-body:has(.spraoi-module-sidebar[data-module="academy"]) .spraoi-page-header-icon { background:#EEF4FF !important; border-color:#DCE8FF !important; }
-body:has(.spraoi-module-sidebar[data-module="connect"]) .connect-topbar-icon,
-body:has(.spraoi-module-sidebar[data-module="connect"]) .spraoi-page-header-icon { background:#FFF2E8 !important; border-color:#FFE0CA !important; }
-body:has(.spraoi-module-sidebar[data-module="cup"]) .spraoi-page-header-icon { background:#FFF8E4 !important; border-color:#F5E4AF !important; }
-body:has(.spraoi-module-sidebar[data-module="club"]) .spraoi-topbar-icon,
-body:has(.spraoi-module-sidebar[data-module="club"]) .spraoi-page-header-icon { background:#FFF0F1 !important; border-color:#F5DADB !important; }
+body[data-spraoi-active-module="coach"] .spraoi-page-header-icon { background:#F4EFFF !important; border-color:#E7DBFF !important; }
+body[data-spraoi-active-module="academy"] .spraoi-page-header-icon { background:#EEF4FF !important; border-color:#DCE8FF !important; }
+body[data-spraoi-active-module="connect"] .connect-topbar-icon,
+body[data-spraoi-active-module="connect"] .spraoi-page-header-icon { background:#FFF2E8 !important; border-color:#FFE0CA !important; }
+body[data-spraoi-active-module="cup"] .spraoi-page-header-icon { background:#FFF8E4 !important; border-color:#F5E4AF !important; }
+body[data-spraoi-active-module="club"] .spraoi-topbar-icon,
+body[data-spraoi-active-module="club"] .spraoi-page-header-icon { background:#FFF0F1 !important; border-color:#F5DADB !important; }
 
 /* Header CTAs: text-only and exactly the same geometry. */
 .spraoi-page-header-actions > button,
@@ -1586,4 +1586,108 @@ body:has(.spraoi-module-sidebar[data-module="club"]) .spraoi-page-header-icon { 
   background:transparent !important;
   border:0 !important;
   box-shadow:none !important;
+}
+
+/* ============================================================
+   Shared metric-card contract — 2026-08-20
+   Keep Coach / Academy / Connect / Cup / Club dashboard KPIs
+   geometrically identical. Module colour/content may differ only.
+   ============================================================ */
+.spraoi-admin-metric-card,
+.coach-summary-card,
+.spraoi-stat-card {
+  height: 156px !important;
+  min-height: 156px !important;
+  max-height: 156px !important;
+  padding: 16px 18px !important;
+  border: 1px solid #E2E8F0 !important;
+  border-top: 1px solid #E2E8F0 !important;
+  border-radius: 16px !important;
+  background: #fff !important;
+  box-shadow: 0 4px 14px rgba(16,36,62,.05) !important;
+  position: relative !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+/* One rail only: always on the left, never across the top. */
+.spraoi-admin-metric-card::before,
+.coach-summary-card::before,
+.spraoi-stat-card::before {
+  content: "" !important;
+  position: absolute !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: auto !important;
+  width: 3px !important;
+  height: auto !important;
+  border-radius: 16px 0 0 16px !important;
+  background: var(--card-accent,var(--coach-card-accent,#64748B)) !important;
+}
+
+/* Shared card label/value/supporting-copy hierarchy. */
+.spraoi-admin-metric-card .spraoi-admin-metric-label,
+.coach-summary-card .spraoi-admin-metric-label,
+.spraoi-stat-card .spraoi-admin-metric-label {
+  display: block !important;
+  max-width: calc(100% - 50px) !important;
+  margin: 0 0 12px !important;
+  font: 800 11px/1.2 "Inter","Segoe UI",system-ui,sans-serif !important;
+  text-transform: uppercase !important;
+  letter-spacing: .07em !important;
+  color: #64748B !important;
+}
+
+.spraoi-admin-metric-card .spraoi-admin-metric-value,
+.coach-summary-card .spraoi-admin-metric-value,
+.spraoi-stat-card .spraoi-admin-metric-value {
+  font: 700 28px/1.05 "Manrope","Segoe UI",system-ui,sans-serif !important;
+  letter-spacing: -.035em !important;
+  color: #10243E !important;
+}
+
+.spraoi-admin-metric-card .spraoi-admin-metric-copy,
+.coach-summary-card .spraoi-admin-metric-copy,
+.spraoi-stat-card .spraoi-admin-metric-copy {
+  font: 500 11px/1.4 "Inter","Segoe UI",system-ui,sans-serif !important;
+  color: #64748B !important;
+}
+
+/* One icon-chip geometry everywhere. */
+.spraoi-admin-metric-card .spraoi-card-icon-chip,
+.coach-summary-card .spraoi-card-icon-chip,
+.coach-summary-card .coach-card-icon,
+.spraoi-stat-card .spraoi-card-icon-chip {
+  width: 38px !important;
+  height: 38px !important;
+  min-width: 38px !important;
+  min-height: 38px !important;
+  position: absolute !important;
+  top: 14px !important;
+  right: 14px !important;
+  display: grid !important;
+  place-items: center !important;
+  border-radius: 11px !important;
+  background: color-mix(in srgb,var(--card-accent,var(--coach-card-accent,#64748B)) 9%,white) !important;
+  border: 1px solid color-mix(in srgb,var(--card-accent,var(--coach-card-accent,#64748B)) 17%,white) !important;
+  box-shadow: none !important;
+}
+
+.spraoi-admin-metric-card .spraoi-card-icon,
+.coach-summary-card .spraoi-card-icon,
+.coach-summary-card .coach-card-icon img,
+.spraoi-stat-card .spraoi-card-icon {
+  width: 24px !important;
+  height: 24px !important;
+  object-fit: contain !important;
+}
+
+/* Keep four equal KPI columns on desktop where the dashboards expose four cards. */
+@media (min-width: 1000px) {
+  .academy-dashboard-metrics,
+  .connect-grid,
+  .coach-dashboard-metrics {
+    align-items: stretch !important;
+  }
 }
