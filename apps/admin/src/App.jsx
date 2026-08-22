@@ -16,6 +16,13 @@ const DEFAULT_SCREEN = {
 
 function requestedModule() {
   const params = new URLSearchParams(window.location.search);
+
+  // Invitation links authenticate through Supabase and then redirect back to
+  // admin.spraoisports.com with ?invite=<token>. The Club app owns the invite
+  // onboarding/password flow, so it must be mounted before the normal Admin
+  // shell default (Coach) is allowed to render.
+  if (params.get("invite")) return "club";
+
   const moduleId = String(params.get("module") || "coach").toLowerCase();
   return MODULE_ORDER.includes(moduleId) ? moduleId : "coach";
 }

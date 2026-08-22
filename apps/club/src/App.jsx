@@ -4869,7 +4869,16 @@ function ClubCoachesScreen({ club, ageGroups, coaches, selectedTeam, onReloadCoa
     );
 
     if (error) {
-      setMessage("Could not send invitation: " + error.message);
+      let detail = error.message || "Edge Function failed.";
+      try {
+        if (error.context && typeof error.context.json === "function") {
+          const responseBody = await error.context.json();
+          detail = responseBody?.error || responseBody?.message || detail;
+        }
+      } catch (responseError) {
+        console.warn("Could not read invitation error response:", responseError);
+      }
+      setMessage("Could not send invitation: " + detail);
       setSaving(false);
       return;
     }
@@ -7416,6 +7425,14 @@ function SpraoiInviteAcceptance({ token, session }) {
   const [acceptedKeys, setAcceptedKeys] = useState([]);
   const [guardianConfirmed, setGuardianConfirmed] = useState(false);
   const [openPolicyKey, setOpenPolicyKey] = useState(null);
+  const [inviteTeamNames, setInviteTeamNames] = useState([]);
+  const [setupPassword, setSetupPassword] = useState("");
+  const [setupPasswordConfirm, setSetupPasswordConfirm] = useState("");
+  const [showSetupPassword, setShowSetupPassword] = useState(false);
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordSetupComplete, setPasswordSetupComplete] = useState(
+    () => session?.user?.user_metadata?.spraoi_account_setup_required !== true
+  );
 
   useEffect(() => {
     loadInvitation();
@@ -7451,10 +7468,75 @@ function SpraoiInviteAcceptance({ token, session }) {
     }
 
     setInvitation(data);
+
+    const { data: teamLinks } = await supabase
+      .from("spraoi_invitation_teams")
+      .select("age_group_id")
+      .eq("invitation_id", data.id);
+
+    const invitedTeamIds = (teamLinks || []).map((row) => row.age_group_id).filter(Boolean);
+    if (invitedTeamIds.length > 0) {
+      const { data: teams } = await supabase
+        .from("age_groups")
+        .select("id,label")
+        .in("id", invitedTeamIds);
+      setInviteTeamNames((teams || []).map((team) => team.label).filter(Boolean));
+    } else {
+      setInviteTeamNames([]);
+    }
+
+    setPasswordSetupComplete(
+      session?.user?.user_metadata?.spraoi_account_setup_required !== true
+    );
     setLoading(false);
   }
 
   const isParent = invitation?.invite_type === "parent_guardian";
+  const inviteFirstName = String(
+    invitation?.name || session?.user?.user_metadata?.first_name || session?.user?.user_metadata?.name || ""
+  ).trim().split(/\s+/)[0] || "there";
+  const inviteClubName = invitation?.clubs?.name || session?.user?.user_metadata?.club_name || "Spraoi Sports";
+  const inviteTeamText = inviteTeamNames.length > 0
+    ? inviteTeamNames.join(", ")
+    : Array.isArray(session?.user?.user_metadata?.team_names)
+      ? session.user.user_metadata.team_names.join(", ")
+      : "";
+
+  async function createInvitePassword() {
+    setMessage("");
+
+    if (setupPassword.length < 8) {
+      setMessage("Your password must be at least 8 characters.");
+      return;
+    }
+
+    if (setupPassword !== setupPasswordConfirm) {
+      setMessage("The passwords do not match.");
+      return;
+    }
+
+    setSavingPassword(true);
+    const existingMetadata = session?.user?.user_metadata || {};
+    const { error } = await supabase.auth.updateUser({
+      password: setupPassword,
+      data: {
+        ...existingMetadata,
+        spraoi_account_setup_required: false,
+      },
+    });
+
+    if (error) {
+      setMessage("Could not create your password: " + error.message);
+      setSavingPassword(false);
+      return;
+    }
+
+    setPasswordSetupComplete(true);
+    setSetupPassword("");
+    setSetupPasswordConfirm("");
+    setSavingPassword(false);
+    setMessage("Password created. Review the policies below to finish joining Spraoi.");
+  }
 
   const requiredKeys = isParent
     ? ["terms", "privacy", "parent_guardian"]
@@ -7470,6 +7552,7 @@ function SpraoiInviteAcceptance({ token, session }) {
 
   const canAccept =
     invitation?.status === "pending" &&
+    passwordSetupComplete &&
     allPoliciesAccepted &&
     (!isParent || guardianConfirmed);
 
@@ -7593,7 +7676,7 @@ function SpraoiInviteAcceptance({ token, session }) {
               color: P.ink,
             }}
           >
-            Accept your invitation
+            {passwordSetupComplete ? `Welcome back, ${inviteFirstName}` : `Welcome, ${inviteFirstName}`}
           </div>
 
           {invitation && (
@@ -7601,14 +7684,14 @@ function SpraoiInviteAcceptance({ token, session }) {
               <div
                 style={{
                   marginTop: 7,
-                  fontSize: 11,
+                  fontSize: 12,
                   color: P.muted,
-                  lineHeight: 1.5,
+                  lineHeight: 1.55,
                 }}
               >
-                {invitation.name || invitation.email}
-                {" · "}
-                {invitation.clubs?.name || "Spraoi Sports"}
+                You've been invited to join <strong style={{ color: P.ink }}>{inviteClubName}</strong>
+                {inviteTeamText ? <> · <strong style={{ color: P.ink }}>{inviteTeamText}</strong></> : null}
+                {" on Spraoi Sports."}
               </div>
 
               <div
@@ -7629,6 +7712,23 @@ function SpraoiInviteAcceptance({ token, session }) {
                     ? "Lead Coach"
                     : "Coach / Mentor"}
               </div>
+
+              {!passwordSetupComplete && invitation.status === "pending" && (
+                <div style={{ marginTop: 20, padding: 16, borderRadius: 14, background: "#f8fafc", border: `1px solid ${P.line}` }}>
+                  <div style={{ fontFamily: F.display, fontWeight: 800, fontSize: 17, color: P.ink }}>Create your password</div>
+                  <div style={{ marginTop: 5, fontSize: 11, lineHeight: 1.55, color: P.muted }}>
+                    Create a password to finish setting up your Spraoi Sports account. You'll use your email and this password next time you sign in.
+                  </div>
+                  <label style={{ display: "block", marginTop: 14, fontSize: 10, fontWeight: 800, color: P.muted, textTransform: "uppercase", letterSpacing: ".05em" }}>Password</label>
+                  <div style={{ position: "relative", marginTop: 4 }}>
+                    <input type={showSetupPassword ? "text" : "password"} value={setupPassword} onChange={(event) => setSetupPassword(event.target.value)} autoComplete="new-password" placeholder="At least 8 characters" style={{ width: "100%", boxSizing: "border-box", padding: "12px 58px 12px 13px", borderRadius: 10, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 13, background: "#fff" }} />
+                    <button type="button" onClick={() => setShowSetupPassword((current) => !current)} style={{ position: "absolute", right: 9, top: "50%", transform: "translateY(-50%)", border: 0, background: "transparent", fontSize: 10, fontWeight: 800, color: P.muted, cursor: "pointer" }}>{showSetupPassword ? "Hide" : "Show"}</button>
+                  </div>
+                  <label style={{ display: "block", marginTop: 12, fontSize: 10, fontWeight: 800, color: P.muted, textTransform: "uppercase", letterSpacing: ".05em" }}>Confirm password</label>
+                  <input type={showSetupPassword ? "text" : "password"} value={setupPasswordConfirm} onChange={(event) => setSetupPasswordConfirm(event.target.value)} onKeyDown={(event) => event.key === "Enter" && createInvitePassword()} autoComplete="new-password" placeholder="Repeat your password" style={{ width: "100%", boxSizing: "border-box", marginTop: 4, padding: "12px 13px", borderRadius: 10, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 13, background: "#fff" }} />
+                  <button type="button" onClick={createInvitePassword} disabled={savingPassword || !setupPassword || !setupPasswordConfirm} style={{ width: "100%", marginTop: 14, padding: 12, borderRadius: 10, border: 0, background: CLUB_RED, color: "#fff", fontFamily: F.display, fontWeight: 800, cursor: "pointer", opacity: savingPassword || !setupPassword || !setupPasswordConfirm ? .6 : 1 }}>{savingPassword ? "Creating password…" : "Create password & continue"}</button>
+                </div>
+              )}
 
               {invitation.status !== "pending" && (
                 <div
@@ -7657,6 +7757,9 @@ function SpraoiInviteAcceptance({ token, session }) {
               >
                 Required policies
               </div>
+              {!passwordSetupComplete && (
+                <div style={{ marginTop: 5, marginBottom: 8, fontSize: 10, color: P.muted }}>Create your password first, then accept the policies to finish joining.</div>
+              )}
 
               <div
                 style={{
