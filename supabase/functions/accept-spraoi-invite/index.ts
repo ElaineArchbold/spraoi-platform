@@ -84,7 +84,7 @@ export default {
       }
 
       try {
-        const userId = ctx.userClaims?.sub;
+        const userId = ctx.userClaims?.id;
         const userEmail = normaliseEmail(ctx.userClaims?.email);
 
         if (!userId || !userEmail) {
@@ -533,14 +533,19 @@ export default {
           }
 
           // team_staff
+          //
+          // Multi-role installations can contain more than one historical row for
+          // the same user/team. Do not use maybeSingle() here: it throws when more
+          // than one row exists. Reuse the oldest row and keep the new roles[]
+          // column aligned with the legacy scalar role.
           for (const ageGroupId of teamIds) {
-            const { data: existingStaff, error: existingStaffError } =
+            const { data: existingStaffRows, error: existingStaffError } =
               await ctx.supabaseAdmin
                 .from("team_staff")
-                .select("id, status, role")
+                .select("id, status, role, roles, created_at")
                 .eq("user_id", userId)
                 .eq("age_group_id", ageGroupId)
-                .maybeSingle();
+                .order("created_at", { ascending: true });
 
             if (existingStaffError) {
               return json(
@@ -553,6 +558,13 @@ export default {
               );
             }
 
+            const existingStaff = existingStaffRows?.[0] || null;
+            const existingRoles = uniqueStrings([
+              ...(existingStaff?.roles || []),
+              existingStaff?.role,
+              staffRole,
+            ]);
+
             if (existingStaff) {
               const { error: updateStaffError } =
                 await ctx.supabaseAdmin
@@ -562,6 +574,7 @@ export default {
                     coach_id: coachDirectory.id,
                     user_id: userId,
                     role: staffRole,
+                    roles: existingRoles,
                     status: "active",
                   })
                   .eq("id", existingStaff.id);
@@ -586,6 +599,7 @@ export default {
                     coach_id: coachDirectory.id,
                     user_id: userId,
                     role: staffRole,
+                    roles: [staffRole],
                     status: "active",
                   });
 
@@ -601,21 +615,43 @@ export default {
               }
             }
 
-            // Keep legacy coach_assignments in sync because
-            // existing Spraoi modules still read this table.
-            const { error: coachAssignmentError } =
+            // Keep legacy coach_assignments in sync because existing Spraoi
+            // modules still read this table. Avoid upsert/onConflict because older
+            // production schemas may not have the matching unique constraint.
+            const { data: legacyAssignments, error: legacyReadError } =
               await ctx.supabaseAdmin
                 .from("coach_assignments")
-                .upsert(
-                  {
-                    user_id: userId,
-                    club_id: invitation.club_id,
-                    age_group_id: ageGroupId,
-                  },
-                  {
-                    onConflict: "user_id,age_group_id",
-                  },
-                );
+                .select("id")
+                .eq("user_id", userId)
+                .eq("age_group_id", ageGroupId)
+                .limit(1);
+
+            if (legacyReadError) {
+              return json(
+                {
+                  ok: false,
+                  error:
+                    `Could not check coach assignment: ${legacyReadError.message}`,
+                },
+                500,
+              );
+            }
+
+            const legacyAssignment = legacyAssignments?.[0] || null;
+            const legacyPayload = {
+              user_id: userId,
+              club_id: invitation.club_id,
+              age_group_id: ageGroupId,
+            };
+
+            const { error: coachAssignmentError } = legacyAssignment
+              ? await ctx.supabaseAdmin
+                  .from("coach_assignments")
+                  .update(legacyPayload)
+                  .eq("id", legacyAssignment.id)
+              : await ctx.supabaseAdmin
+                  .from("coach_assignments")
+                  .insert(legacyPayload);
 
             if (coachAssignmentError) {
               return json(

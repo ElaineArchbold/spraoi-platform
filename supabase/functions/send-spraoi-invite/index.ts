@@ -116,7 +116,7 @@ export default {
       }
 
       try {
-        const callerId = ctx.userClaims?.sub;
+        const callerId = ctx.userClaims?.id;
         const callerEmail = normaliseEmail(ctx.userClaims?.email);
 
         if (!callerId) {
@@ -134,6 +134,8 @@ export default {
         const inviteType = body.inviteType as InviteType;
         const teamIds = cleanIds(body.teamIds);
         const childIds = cleanIds(body.childIds);
+        const firstName = (name.split(/\s+/).filter(Boolean)[0] || "").trim();
+        let teamNames: string[] = [];
 
         if (!clubId) {
           return json(
@@ -202,12 +204,11 @@ export default {
         // data already used by the platform.
         // ----------------------------------------------------
 
-        const { data: callerRole, error: callerRoleError } =
+        const { data: callerRoles, error: callerRoleError } =
           await ctx.supabaseAdmin
             .from("user_roles")
             .select("role, user_email")
-            .eq("user_email", callerEmail)
-            .maybeSingle();
+            .eq("user_email", callerEmail);
 
         if (callerRoleError) {
           return json(
@@ -219,15 +220,16 @@ export default {
           );
         }
 
-        const role = String(callerRole?.role || "")
-          .trim()
-          .toLowerCase();
+        const roleRows = Array.isArray(callerRoles) ? callerRoles : [];
+        const roles = roleRows
+          .map((row: any) => String(row?.role || "").trim().toLowerCase())
+          .filter(Boolean);
 
-        const canInviteByRole = [
+        const canInviteByRole = roles.some((role: string) => [
           "super_admin",
           "admin",
           "club_admin",
-        ].includes(role);
+        ].includes(role));
 
         if (!canInviteByRole) {
           return json(
@@ -265,7 +267,7 @@ export default {
           const { data: teams, error: teamsError } =
             await ctx.supabaseAdmin
               .from("age_groups")
-              .select("id, club_id")
+              .select("id, club_id, label")
               .in("id", teamIds);
 
           if (teamsError) {
@@ -287,6 +289,11 @@ export default {
           const invalidTeam = teamIds.some(
             (teamId) => !validIds.has(teamId),
           );
+
+          teamNames = (teams || [])
+            .filter((team: any) => team.club_id === clubId)
+            .map((team: any) => String(team.label || "").trim())
+            .filter(Boolean);
 
           if (invalidTeam) {
             return json(
@@ -552,6 +559,7 @@ export default {
             inviteType,
             role: invitationRole,
             teamIds,
+            teamNames,
             childIds,
             message:
               "Invitation created and sign-in email sent to existing Spraoi account.",
@@ -568,6 +576,10 @@ export default {
             {
               data: {
                 name: name || undefined,
+                first_name: firstName || undefined,
+                club_name: club.name || undefined,
+                team_names: teamNames,
+                spraoi_account_setup_required: true,
                 spraoi_invitation_id: invitation.id,
                 spraoi_invitation_token: invitation.token,
                 club_id: clubId,
@@ -612,6 +624,7 @@ export default {
           inviteType,
           role: invitationRole,
           teamIds,
+          teamNames,
           childIds,
           authUserId: authInvite?.user?.id || null,
           message:

@@ -7586,7 +7586,18 @@ function SpraoiInviteAcceptance({ token, session }) {
     );
 
     if (error) {
-      setMessage("Could not accept invitation: " + error.message);
+      let detail = error.message || "Edge Function returned an error.";
+      try {
+        const response = error?.context;
+        if (response?.clone) {
+          const clone = response.clone();
+          const payload = await clone.json();
+          detail = payload?.error || payload?.message || detail;
+        }
+      } catch {
+        // Keep the Supabase client message if the response body is not JSON.
+      }
+      setMessage("Could not accept invitation: " + detail);
       setAccepting(false);
       return;
     }

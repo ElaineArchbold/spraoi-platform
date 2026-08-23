@@ -46,6 +46,7 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId, hi
   const [allocations,setAllocations] = useState([]);
   const [weekStart,setWeekStart] = useState(isoDate(mondayOf()));
   const [message,setMessage] = useState("");
+  const [toast,setToast] = useState("");
   const [busy,setBusy] = useState(false);
   const [facilityName,setFacilityName] = useState("");
   const [teamId,setTeamId] = useState(ageGroups[0]?.id || "");
@@ -64,6 +65,13 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId, hi
   }, [facilities, facilityId]);
 
   useEffect(()=>{ if(club?.id) loadAll(); },[club?.id,weekStart]);
+
+  function showToast(text) {
+    setToast(text);
+    window.clearTimeout(showToast._timer);
+    showToast._timer = window.setTimeout(() => setToast(""), 3500);
+  }
+
   async function loadAll(){
     if (!club?.id) return;
     try {
@@ -230,7 +238,10 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId, hi
     if (error) {
       setMessage(error.message);
     } else {
-      setMessage("Slot added to this week's pitch plan.");
+      const team = ageGroups.find((item) => String(item.id) === String(teamId));
+      const facility = facilities.find((item) => String(item.id) === String(facilityId));
+      setMessage("");
+      showToast(`Slot added: ${teamName(team)} · ${facility?.name || "Pitch"} · ${weekdays[Number(weekday) - 1]} ${startTime}-${endTime}`);
       await loadAll();
     }
 
@@ -240,7 +251,53 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId, hi
   async function addSlot(){
     if(!teamId||!facilityId) {setMessage("Choose a team and facility.");return;}
     const {error}=await supabase.from("recurring_training_slots").insert({club_id:club.id,age_group_id:teamId,facility_id:facilityId,weekday:Number(weekday),start_time:startTime,end_time:endTime,effective_from:isoDate(new Date()),active:true});
-    setMessage(error?error.message:"Recurring training slot added."); if(!error) await loadAll();
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+    const team = ageGroups.find((item) => String(item.id) === String(teamId));
+    const facility = facilities.find((item) => String(item.id) === String(facilityId));
+    setMessage("");
+    showToast(`Recurring slot added: ${teamName(team)} · ${facility?.name || "Pitch"} · ${weekdays[Number(weekday) - 1]} ${startTime}-${endTime}`);
+    await loadAll();
+  }
+  async function removeRecurringSlot(slot){
+    if(!slot?.id) return;
+    const team = ageGroups.find((item) => String(item.id) === String(slot.age_group_id));
+    const confirmed = window.confirm(
+      `Remove the recurring training slot for ${teamName(team)}? Future unpublished weekly drafts generated from this slot will also be cancelled. Published and past allocations will be kept.`
+    );
+    if(!confirmed) return;
+
+    setBusy(true);
+    setMessage("");
+    const now = new Date().toISOString();
+
+    const { error: slotError } = await supabase
+      .from("recurring_training_slots")
+      .update({ active:false, updated_at:now })
+      .eq("id", slot.id);
+
+    if(slotError){
+      setMessage(`Could not remove recurring slot: ${slotError.message}`);
+      setBusy(false);
+      return;
+    }
+
+    const { error: allocationError } = await supabase
+      .from("weekly_training_allocations")
+      .update({ status:"cancelled", updated_at:now })
+      .eq("recurring_slot_id", slot.id)
+      .eq("status", "draft")
+      .gte("starts_at", now);
+
+    setMessage(
+      allocationError
+        ? `Recurring slot removed. Future drafts could not all be cancelled: ${allocationError.message}`
+        : "Recurring slot removed. Future unpublished drafts from this slot were cancelled; published and past allocations were kept."
+    );
+    await loadAll();
+    setBusy(false);
   }
   async function generateWeek(){
     setBusy(true); setMessage("");
@@ -320,6 +377,59 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId, hi
     setBusy(false);
   }
   async function updateAllocation(id,patch){ const {error}=await supabase.from("weekly_training_allocations").update({...patch,updated_at:new Date().toISOString()}).eq("id",id); if(error)setMessage(error.message); await loadAll(); }
+  async function attachAllocationToExistingSession(allocation, event){
+    if(!allocation?.age_group_id || !event?.id) return null;
+    const sessionDate = String(allocation.starts_at || "").slice(0,10);
+    if(!sessionDate) return null;
+
+    const { data: plans, error: planError } = await supabase
+      .from("weekly_plans")
+      .select("id")
+      .eq("age_group_id", allocation.age_group_id);
+    if(planError || !plans?.length) return null;
+
+    const { data: sessionRows, error: sessionError } = await supabase
+      .from("sessions")
+      .select("id,event_id,planned_starts_at,planned_location,created_at")
+      .in("plan_id", plans.map((plan) => plan.id))
+      .eq("session_date", sessionDate)
+      .order("created_at", { ascending:true })
+      .limit(1);
+    if(sessionError || !sessionRows?.length) return null;
+
+    const session = sessionRows[0];
+    const confirmedLocation = allocation.facility?.name || event.location || null;
+    const sessionPatch = { event_id:event.id };
+    if(!session.planned_starts_at) sessionPatch.planned_starts_at = allocation.starts_at;
+    if(!session.planned_location && confirmedLocation) sessionPatch.planned_location = confirmedLocation;
+
+    await supabase.from("sessions").update(sessionPatch).eq("id", session.id);
+    await supabase.from("club_events").update({ session_id:session.id }).eq("id", event.id);
+
+    const { data: draftRows } = await supabase
+      .from("connect_messages")
+      .select("id,body")
+      .eq("club_id", club.id)
+      .eq("age_group_id", allocation.age_group_id)
+      .eq("message_type", "coach_session_draft")
+      .is("sent_at", null)
+      .is("event_id", null)
+      .order("created_at", { ascending:false })
+      .limit(1);
+
+    const draft = draftRows?.[0];
+    if(draft?.id){
+      const start = new Date(allocation.starts_at);
+      const end = allocation.ends_at ? new Date(allocation.ends_at) : null;
+      const timeLabel = `${start.toLocaleTimeString("en-IE", { hour:"2-digit", minute:"2-digit", hour12:false })}${end ? `–${end.toLocaleTimeString("en-IE", { hour:"2-digit", minute:"2-digit", hour12:false })}` : ""}`;
+      const nextBody = String(draft.body || "")
+        .replace(/^Time:.*$/m, `Time: ${timeLabel}`)
+        .replace(/^Location:.*$/m, `Location: ${confirmedLocation || "Location TBC"}`);
+      await supabase.from("connect_messages").update({ event_id:event.id, body:nextBody }).eq("id", draft.id);
+    }
+
+    return session;
+  }
   async function publishWeek(){
     if(!allocations.length){setMessage("Generate the week first.");return;}
     setBusy(true); setMessage(""); const now=new Date().toISOString();
@@ -329,6 +439,9 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId, hi
       const eventPayload={club_id:club.id,age_group_id:a.age_group_id,event_type:"training",title:"Training",facility_id:a.facility_id,location:a.facility?.name||null,starts_at:a.starts_at,ends_at:a.ends_at,status:existingEvent?"changed":"scheduled",source:"club_allocation",training_allocation_id:a.id,created_by:currentUserId};
       const changed=Boolean(existingEvent&&(String(existingEvent.facility_id||"")!==String(a.facility_id||"")||new Date(existingEvent.starts_at).getTime()!==new Date(a.starts_at).getTime()||new Date(existingEvent.ends_at||0).getTime()!==new Date(a.ends_at||0).getTime()));
       const {data:event}=await supabase.from("club_events").upsert(eventPayload,{onConflict:"training_allocation_id"}).select().maybeSingle();
+      if(event?.id){
+        await attachAllocationToExistingSession(a,event);
+      }
       if(changed&&event?.id){
         const {data:kids}=await supabase.from("journey_players").select("parent_user_id").eq("age_group_id",a.age_group_id).not("parent_user_id","is",null);
         const parentIds=[...new Set((kids||[]).map(x=>x.parent_user_id).filter(Boolean))];
@@ -704,6 +817,38 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId, hi
           </div>
         </div>
       </div>
+
+      {toast && (
+        <div
+          role="status"
+          style={{
+            position: "fixed",
+            right: 22,
+            bottom: 22,
+            zIndex: 9999,
+            maxWidth: 430,
+            padding: "14px 16px",
+            borderRadius: 14,
+            background: "#166534",
+            color: "#fff",
+            boxShadow: "0 14px 36px rgba(15, 23, 42, .24)",
+            fontSize: 11,
+            fontWeight: 800,
+            display: "flex",
+            gap: 10,
+            alignItems: "center",
+          }}
+        >
+          <span style={{ fontSize: 17 }}>✓</span>
+          <span>{toast}</span>
+          <button
+            type="button"
+            onClick={() => setToast("")}
+            aria-label="Close notification"
+            style={{ marginLeft: "auto", border: 0, background: "transparent", color: "#fff", cursor: "pointer", fontSize: 16 }}
+          >×</button>
+        </div>
+      )}
 
       {message && (
         <div
@@ -1911,19 +2056,28 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId, hi
                       </div>
                     </div>
 
-                    <span
-                      style={{
-                        padding: "5px 8px",
-                        borderRadius: 999,
-                        background: SOFT,
-                        color: INK,
-                        fontSize: 9,
-                        fontWeight: 800,
-                      }}
-                    >
-                      {slot.facility?.name ||
-                        "No facility"}
-                    </span>
+                    <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
+                      <span
+                        style={{
+                          padding: "5px 8px",
+                          borderRadius: 999,
+                          background: SOFT,
+                          color: INK,
+                          fontSize: 9,
+                          fontWeight: 800,
+                        }}
+                      >
+                        {slot.facility?.name || "No facility"}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => removeRecurringSlot(slot)}
+                        style={{...btn(false), height:30, color:RED, borderColor:"#fecaca"}}
+                      >
+                        Remove recurring slot
+                      </button>
+                    </div>
                   </div>
                 ))
               )}
