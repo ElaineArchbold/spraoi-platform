@@ -4817,6 +4817,7 @@ function ClubCoachesScreen({ club, ageGroups, coaches, selectedTeam, onReloadCoa
   const availableInviteTypes = isAdmin
     ? [
         { value: "lead_coach", label: "Lead Coach" },
+        { value: "team_admin", label: "Team Admin" },
         { value: "coach", label: "Coach / Mentor" },
         { value: "parent_guardian", label: "Parent / Guardian" },
       ]
@@ -4829,7 +4830,7 @@ function ClubCoachesScreen({ club, ageGroups, coaches, selectedTeam, onReloadCoa
   );
 
   async function sendInvitation() {
-    if (!canInvite || !club?.id) return;
+    if (saving || !canInvite || !club?.id) return;
 
     const cleanName = name.trim();
     const cleanEmail = emailValue.trim().toLowerCase();
@@ -5009,6 +5010,7 @@ function ClubCoachesScreen({ club, ageGroups, coaches, selectedTeam, onReloadCoa
 
   function inviteTypeLabel(value) {
     if (value === "lead_coach") return "Lead Coach";
+    if (value === "team_admin") return "Team Admin";
     if (value === "coach") return "Coach / Mentor";
     if (value === "parent_guardian") return "Parent / Guardian";
     return value || "Invitation";
@@ -9412,3 +9414,6 @@ export default function App() {
     </div>
   );
 }
+
+
+

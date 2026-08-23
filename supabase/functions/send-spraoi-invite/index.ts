@@ -3,6 +3,7 @@ import { withSupabase } from "npm:@supabase/server";
 type InviteType =
   | "lead_coach"
   | "coach"
+  | "team_admin"
   | "club_staff"
   | "parent_guardian"
   | "cup_helper";
@@ -21,6 +22,7 @@ type InviteRequest = {
 const ALLOWED_INVITE_TYPES: InviteType[] = [
   "lead_coach",
   "coach",
+  "team_admin",
   "club_staff",
   "parent_guardian",
   "cup_helper",
@@ -29,6 +31,7 @@ const ALLOWED_INVITE_TYPES: InviteType[] = [
 const ROLE_MAP: Record<InviteType, string | null> = {
   lead_coach: "lead_coach",
   coach: "coach_mentor",
+  team_admin: "team_admin",
   club_staff: "club_staff",
   parent_guardian: null,
   cup_helper: "cup_helper",
@@ -169,14 +172,14 @@ export default {
         }
 
         if (
-          ["lead_coach", "coach"].includes(inviteType) &&
+          ["lead_coach", "coach", "team_admin"].includes(inviteType) &&
           teamIds.length === 0
         ) {
           return json(
             {
               ok: false,
               error:
-                "Lead Coaches and Coaches must be assigned to at least one team.",
+                "Lead Coaches, Coaches and Team Admins must be assigned to at least one team.",
             },
             400,
           );
@@ -647,3 +650,4 @@ export default {
     },
   ),
 };
+

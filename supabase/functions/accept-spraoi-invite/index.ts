@@ -445,12 +445,15 @@ export default {
 
         if (
           invitation.invite_type === "lead_coach" ||
-          invitation.invite_type === "coach"
+          invitation.invite_type === "coach" ||
+          invitation.invite_type === "team_admin"
         ) {
           const staffRole =
             invitation.invite_type === "lead_coach"
               ? "lead_coach"
-              : "coach_mentor";
+              : invitation.invite_type === "team_admin"
+                ? "team_admin"
+                : "coach_mentor";
 
           // --------------------------------------------------
           // Keep the Club coaching directory aligned with the
