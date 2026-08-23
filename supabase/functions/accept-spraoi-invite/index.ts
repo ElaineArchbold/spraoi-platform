@@ -542,7 +542,7 @@ export default {
             const { data: existingStaffRows, error: existingStaffError } =
               await ctx.supabaseAdmin
                 .from("team_staff")
-                .select("id, status, role, roles, created_at")
+                .select("id, status, role, created_at")
                 .eq("user_id", userId)
                 .eq("age_group_id", ageGroupId)
                 .order("created_at", { ascending: true });
@@ -559,11 +559,6 @@ export default {
             }
 
             const existingStaff = existingStaffRows?.[0] || null;
-            const existingRoles = uniqueStrings([
-              ...(existingStaff?.roles || []),
-              existingStaff?.role,
-              staffRole,
-            ]);
 
             if (existingStaff) {
               const { error: updateStaffError } =
@@ -574,7 +569,6 @@ export default {
                     coach_id: coachDirectory.id,
                     user_id: userId,
                     role: staffRole,
-                    roles: existingRoles,
                     status: "active",
                   })
                   .eq("id", existingStaff.id);
@@ -599,7 +593,6 @@ export default {
                     coach_id: coachDirectory.id,
                     user_id: userId,
                     role: staffRole,
-                    roles: [staffRole],
                     status: "active",
                   });
 
@@ -941,3 +934,4 @@ export default {
     },
   ),
 };
+
