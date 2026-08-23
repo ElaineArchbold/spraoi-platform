@@ -294,6 +294,38 @@ async function syncConnectSessionDraft({ club, selectedTeam, sessionId, eventId,
 
 function SpraoiNavIcon({ name = "", size = 18 }) {
   const key = String(name || "").toLowerCase();
+
+  if (key.includes("attendance")) {
+    return (
+      <img
+        src="/icons/coach/attendance.svg"
+        alt=""
+        aria-hidden="true"
+        style={{
+          width: size,
+          height: size,
+          objectFit: "contain",
+          display: "block",
+        }}
+      />
+    );
+  }
+
+  if (key.includes("attendance")) {
+    return (
+      <img
+        src="/icons/coach/attendance.svg"
+        alt=""
+        aria-hidden="true"
+        style={{
+          width: size,
+          height: size,
+          objectFit: "contain",
+          display: "block",
+        }}
+      />
+    );
+  }
   const common = { width:size, height:size, viewBox:"0 0 24 24", fill:"none", stroke:"currentColor", strokeWidth:1.9, strokeLinecap:"round", strokeLinejoin:"round", "aria-hidden":true };
   let shape;
   if (key.includes("dashboard")) shape=<><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V20h13v-9.5"/><path d="M9.5 20v-6h5v6"/></>;
@@ -354,6 +386,7 @@ function secondaryNavAsset(moduleKey, id) {
   const maps = {
     coach: {
       "coach-dashboard": "/icons/coach/dashboard.svg",
+      "coach-attendance": "/icons/coach/attendance.svg",
       "coach-planner": "/icons/coach/planner.svg",
       "coach-sessions": "/icons/coach/sessions.svg",
       "coach-drills": "/icons/coach/drills.svg",
@@ -462,7 +495,7 @@ const MODULES = {
   coach: {
     label: "Coach", color: "#7C3AED", icon: "/spraoi-coach-icon.png", tagline: "Plan and deliver better coaching.", nav: [
       { id: "coach-dashboard", icon: "⌂", label: "Dashboard" },
-      { id: "coach-attendance", icon: "✓", label: "Attendance" },
+      { id: "coach-attendance", icon: "/icons/coach/attendance.svg", label: "Attendance" },
       { id: "coach-planner", icon: "◫", label: "Planner" },
       { id: "coach-sessions", icon: "▶", label: "Sessions" },
       { id: "coach-drills", icon: "◇", label: "Drills" },
@@ -2758,13 +2791,1363 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
 }
 
 
-function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavourite, userRole }) {
+
+function normaliseVideoEmbed(url = "") {
+  const value = String(url || "").trim();
+
+  try {
+    const parsed = new URL(value);
+
+    if (
+      parsed.hostname.includes("youtube.com") &&
+      parsed.searchParams.get("v")
+    ) {
+      return `https://www.youtube.com/embed/${parsed.searchParams.get("v")}`;
+    }
+
+    if (parsed.hostname === "youtu.be") {
+      const id = parsed.pathname.replace("/", "");
+      return id ? `https://www.youtube.com/embed/${id}` : "";
+    }
+  } catch {}
+
+  return "";
+}
+
+function VideoLibrary({
+  skills = [],
+  club,
+  userRole,
+  createRequested = 0,
+}) {
+  const canWrite = Boolean(
+    userRole?.capabilities?.canAddDrills ||
+    userRole?.capabilities?.coachWrite ||
+    ["super_admin", "admin", "club_admin", "lead_coach"].includes(
+      String(userRole?.role || "").toLowerCase()
+    )
+  );
+
+  const [videos, setVideos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
+  const [search, setSearch] = useState("");
+  const [sportFilter, setSportFilter] = useState("");
+  const [showEditor, setShowEditor] = useState(false);
+  const [editingVideo, setEditingVideo] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  const emptyForm = () => ({
+    title: "",
+    description: "",
+    sourceType: "external",
+    externalUrl: "",
+    file: null,
+    sport: "football",
+    category: "",
+    difficulty: "foundation",
+    ageGroups: "",
+    tags: "",
+    skillIds: [],
+    primarySkillId: "",
+  });
+
+  const [form, setForm] = useState(emptyForm);
+
+  async function loadVideos() {
+    setLoading(true);
+    setMessage("");
+
+    let query = supabase
+      .from("video_library")
+      .select(`
+        *,
+        video_skills(
+          skill_id,
+          is_primary,
+          skill:skills(
+            id,
+            name,
+            category
+          )
+        )
+      `)
+      .eq("active", true)
+      .order("created_at", { ascending: false });
+
+    if (club?.id) {
+      query = query.or(
+        `club_id.is.null,club_id.eq.${club.id}`
+      );
+    } else {
+      query = query.is("club_id", null);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("Video library load failed", error);
+      setVideos([]);
+      setMessage(error.message);
+    } else {
+      setVideos(data || []);
+    }
+
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    loadVideos();
+  }, [club?.id]);
+
+  useEffect(() => {
+    if (createRequested > 0 && canWrite) {
+      openCreate();
+    }
+  }, [createRequested]);
+
+  function openCreate() {
+    if (!canWrite) return;
+
+    setEditingVideo(null);
+    setForm(emptyForm());
+    setMessage("");
+    setShowEditor(true);
+  }
+
+  function openEdit(video) {
+    if (!canWrite) return;
+
+    const links = video.video_skills || [];
+    const selectedIds = links
+      .map((row) => row.skill_id)
+      .filter(Boolean);
+
+    const primary =
+      links.find((row) => row.is_primary)?.skill_id ||
+      selectedIds[0] ||
+      "";
+
+    setEditingVideo(video);
+
+    setForm({
+      title: video.title || "",
+      description: video.description || "",
+      sourceType: video.source_type || "external",
+      externalUrl: video.external_url || "",
+      file: null,
+      sport: video.sport || "football",
+      category: video.category || "",
+      difficulty: video.difficulty || "foundation",
+      ageGroups: (video.age_groups || []).join(", "),
+      tags: (video.tags || []).join(", "),
+      skillIds: selectedIds,
+      primarySkillId: primary,
+    });
+
+    setMessage("");
+    setShowEditor(true);
+  }
+
+  function toggleSkill(skillId) {
+    setForm((current) => {
+      const exists = current.skillIds.includes(skillId);
+
+      const nextIds = exists
+        ? current.skillIds.filter((id) => id !== skillId)
+        : [...current.skillIds, skillId];
+
+      let primarySkillId = current.primarySkillId;
+
+      if (
+        primarySkillId &&
+        !nextIds.includes(primarySkillId)
+      ) {
+        primarySkillId = nextIds[0] || "";
+      }
+
+      if (!primarySkillId && nextIds.length) {
+        primarySkillId = nextIds[0];
+      }
+
+      return {
+        ...current,
+        skillIds: nextIds,
+        primarySkillId,
+      };
+    });
+  }
+
+  async function saveVideo() {
+    if (!canWrite) return;
+
+    if (!form.title.trim()) {
+      setMessage("Add a video title.");
+      return;
+    }
+
+    if (
+      form.sourceType === "external" &&
+      !form.externalUrl.trim()
+    ) {
+      setMessage("Add the video URL.");
+      return;
+    }
+
+    if (
+      form.sourceType === "upload" &&
+      !editingVideo?.storage_path &&
+      !form.file
+    ) {
+      setMessage("Choose a video file.");
+      return;
+    }
+
+    setSaving(true);
+    setMessage("");
+
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      let storagePath =
+        form.sourceType === "upload"
+          ? editingVideo?.storage_path || null
+          : null;
+
+      if (
+        form.sourceType === "upload" &&
+        form.file
+      ) {
+        const safeName = form.file.name
+          .replace(/[^a-zA-Z0-9._-]/g, "-");
+
+        storagePath = `${
+          user?.id || "user"
+        }/${Date.now()}-${safeName}`;
+
+        const { error: uploadError } =
+          await supabase.storage
+            .from("spraoi-videos")
+            .upload(
+              storagePath,
+              form.file,
+              {
+                cacheControl: "3600",
+                upsert: false,
+              }
+            );
+
+        if (uploadError) {
+          throw uploadError;
+        }
+      }
+
+      const payload = {
+        club_id: club?.id || null,
+        title: form.title.trim(),
+        description:
+          form.description.trim() || null,
+
+        source_type: form.sourceType,
+
+        external_url:
+          form.sourceType === "external"
+            ? form.externalUrl.trim()
+            : null,
+
+        storage_path:
+          form.sourceType === "upload"
+            ? storagePath
+            : null,
+
+        sport: form.sport || null,
+        category: form.category.trim() || null,
+        difficulty: form.difficulty || null,
+
+        age_groups: form.ageGroups
+          .split(",")
+          .map((value) => value.trim())
+          .filter(Boolean),
+
+        tags: form.tags
+          .split(",")
+          .map((value) => value.trim())
+          .filter(Boolean),
+
+        audience: ["coach"],
+
+        created_by:
+          editingVideo?.created_by ||
+          user?.id ||
+          null,
+
+        active: true,
+      };
+
+      let savedVideo;
+
+      if (editingVideo?.id) {
+        const { data, error } = await supabase
+          .from("video_library")
+          .update(payload)
+          .eq("id", editingVideo.id)
+          .select()
+          .single();
+
+        if (error) throw error;
+        savedVideo = data;
+      } else {
+        const { data, error } = await supabase
+          .from("video_library")
+          .insert(payload)
+          .select()
+          .single();
+
+        if (error) throw error;
+        savedVideo = data;
+      }
+
+      if (!savedVideo?.id) {
+        throw new Error("Video record was not saved.");
+      }
+
+      const { error: deleteLinksError } =
+        await supabase
+          .from("video_skills")
+          .delete()
+          .eq("video_id", savedVideo.id);
+
+      if (deleteLinksError) {
+        throw deleteLinksError;
+      }
+
+      if (form.skillIds.length) {
+        const primary =
+          form.skillIds.includes(
+            form.primarySkillId
+          )
+            ? form.primarySkillId
+            : form.skillIds[0];
+
+        const rows = form.skillIds.map(
+          (skillId) => ({
+            video_id: savedVideo.id,
+            skill_id: skillId,
+            is_primary: skillId === primary,
+          })
+        );
+
+        const { error: linkError } =
+          await supabase
+            .from("video_skills")
+            .insert(rows);
+
+        if (linkError) throw linkError;
+      }
+
+      setShowEditor(false);
+      setEditingVideo(null);
+      setForm(emptyForm());
+
+      await loadVideos();
+
+      setMessage(
+        editingVideo
+          ? "Video updated."
+          : "Video added to the library."
+      );
+    } catch (error) {
+      console.error("Video save failed", error);
+      setMessage(
+        error?.message || "Unable to save video."
+      );
+    }
+
+    setSaving(false);
+  }
+
+  async function deleteVideo(video) {
+    if (!canWrite) return;
+
+    const confirmed = window.confirm(
+      `Delete "${video.title}" from the video library?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      if (
+        video.source_type === "upload" &&
+        video.storage_path
+      ) {
+        await supabase.storage
+          .from("spraoi-videos")
+          .remove([video.storage_path]);
+      }
+
+      const { error } = await supabase
+        .from("video_library")
+        .delete()
+        .eq("id", video.id);
+
+      if (error) throw error;
+
+      await loadVideos();
+      setMessage("Video deleted.");
+    } catch (error) {
+      console.error("Video delete failed", error);
+      setMessage(
+        error?.message || "Unable to delete video."
+      );
+    }
+  }
+
+  function videoUrl(video) {
+    if (
+      video.source_type === "upload" &&
+      video.storage_path
+    ) {
+      return supabase.storage
+        .from("spraoi-videos")
+        .getPublicUrl(video.storage_path)
+        .data.publicUrl;
+    }
+
+    return video.external_url || "";
+  }
+
+  const filteredVideos = videos.filter(
+    (video) => {
+      if (
+        sportFilter &&
+        video.sport !== sportFilter
+      ) {
+        return false;
+      }
+
+      if (!search.trim()) return true;
+
+      const q = search.toLowerCase();
+
+      const skillText = (
+        video.video_skills || []
+      )
+        .map((row) => row.skill?.name || "")
+        .join(" ")
+        .toLowerCase();
+
+      return (
+        video.title?.toLowerCase().includes(q) ||
+        video.description
+          ?.toLowerCase()
+          .includes(q) ||
+        video.category
+          ?.toLowerCase()
+          .includes(q) ||
+        (video.tags || [])
+          .join(" ")
+          .toLowerCase()
+          .includes(q) ||
+        skillText.includes(q)
+      );
+    }
+  );
+
+  return (
+    <div style={{ padding: "20px 28px" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          alignItems: "center",
+          flexWrap: "wrap",
+          marginBottom: 16,
+        }}
+      >
+        <input
+          type="text"
+          value={search}
+          onChange={(e) =>
+            setSearch(e.target.value)
+          }
+          placeholder="Search videos, skills or tags..."
+          style={{
+            flex: "1 1 260px",
+            padding: "10px 14px",
+            borderRadius: 10,
+            border: `1.5px solid ${P.line}`,
+            fontFamily: F.body,
+            fontSize: 12,
+            background: P.white,
+          }}
+        />
+
+        <select
+          value={sportFilter}
+          onChange={(e) =>
+            setSportFilter(e.target.value)
+          }
+          style={{
+            padding: "10px 12px",
+            borderRadius: 10,
+            border: `1.5px solid ${P.line}`,
+            background: P.white,
+            fontFamily: F.body,
+            fontSize: 11,
+          }}
+        >
+          <option value="">All sports</option>
+          <option value="football">
+            Football
+          </option>
+          <option value="hurling">
+            Hurling
+          </option>
+          <option value="camogie">
+            Camogie
+          </option>
+          <option value="athletic">
+            Athletic
+          </option>
+        </select>
+
+      </div>
+
+      {message && (
+        <div
+          style={{
+            background: P.white,
+            border: `1px solid ${P.line}`,
+            borderRadius: 10,
+            padding: "9px 12px",
+            marginBottom: 14,
+            fontFamily: F.body,
+            fontSize: 11,
+            color: P.p600,
+          }}
+        >
+          {message}
+        </div>
+      )}
+
+      {loading ? (
+        <div
+          style={{
+            padding: 30,
+            textAlign: "center",
+            color: P.muted,
+            fontFamily: F.body,
+          }}
+        >
+          Loading video library…
+        </div>
+      ) : filteredVideos.length === 0 ? (
+        <div
+          style={{
+            padding: 30,
+            borderRadius: 14,
+            background: P.white,
+            border: `1px solid ${P.line}`,
+            textAlign: "center",
+            color: P.muted,
+            fontFamily: F.body,
+            fontSize: 12,
+          }}
+        >
+          No videos match these filters.
+        </div>
+      ) : (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns:
+              "repeat(auto-fill,minmax(280px,1fr))",
+            gap: 14,
+          }}
+        >
+          {filteredVideos.map((video) => {
+            const url = videoUrl(video);
+            const embed =
+              video.source_type === "external"
+                ? normaliseVideoEmbed(url)
+                : "";
+
+            const primary =
+              (video.video_skills || []).find(
+                (row) => row.is_primary
+              )?.skill;
+
+            const secondary =
+              (video.video_skills || [])
+                .filter((row) => !row.is_primary)
+                .map((row) => row.skill?.name)
+                .filter(Boolean);
+
+            return (
+              <div
+                key={video.id}
+                style={{
+                  background: P.white,
+                  borderRadius: 14,
+                  border: `1px solid ${P.line}`,
+                  overflow: "hidden",
+                  boxShadow: Sh.card,
+                }}
+              >
+                <div
+                  style={{
+                    aspectRatio: "16 / 9",
+                    background: "#071827",
+                  }}
+                >
+                  {video.source_type ===
+                  "upload" ? (
+                    <video
+                      src={url}
+                      controls
+                      preload="metadata"
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "contain",
+                      }}
+                    />
+                  ) : embed ? (
+                    <iframe
+                      title={video.title}
+                      src={embed}
+                      allowFullScreen
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        border: 0,
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        height: "100%",
+                        display: "grid",
+                        placeItems: "center",
+                        padding: 20,
+                        textAlign: "center",
+                      }}
+                    >
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{
+                          color: "#fff",
+                          fontFamily: F.body,
+                          fontSize: 12,
+                          fontWeight: 700,
+                        }}
+                      >
+                        Open video ↗
+                      </a>
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ padding: 14 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      justifyContent:
+                        "space-between",
+                      gap: 8,
+                    }}
+                  >
+                    <div>
+                      <div
+                        style={{
+                          fontFamily: F.display,
+                          fontSize: 15,
+                          fontWeight: 800,
+                          color: P.ink,
+                        }}
+                      >
+                        {video.title}
+                      </div>
+
+                      <div
+                        style={{
+                          marginTop: 4,
+                          fontFamily: F.body,
+                          fontSize: 9,
+                          color: P.muted,
+                          textTransform:
+                            "capitalize",
+                        }}
+                      >
+                        {video.sport || "General"}
+                        {video.category
+                          ? ` · ${video.category.replace(
+                              /_/g,
+                              " "
+                            )}`
+                          : ""}
+                        {video.difficulty
+                          ? ` · ${video.difficulty}`
+                          : ""}
+                      </div>
+                    </div>
+
+                    {canWrite && (
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 4,
+                        }}
+                      >
+                        <button
+                          onClick={() =>
+                            openEdit(video)
+                          }
+                          style={{
+                            border: `1px solid ${P.line}`,
+                            background: P.white,
+                            borderRadius: 7,
+                            padding: "5px 8px",
+                            cursor: "pointer",
+                            fontSize: 10,
+                            fontWeight: 700,
+                            color: P.p600,
+                          }}
+                        >
+                          Edit
+                        </button>
+
+                        <button
+                          onClick={() =>
+                            deleteVideo(video)
+                          }
+                          style={{
+                            border: `1px solid ${P.line}`,
+                            background: P.white,
+                            borderRadius: 7,
+                            padding: "5px 8px",
+                            cursor: "pointer",
+                            fontSize: 10,
+                            color: P.coral,
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {video.description && (
+                    <div
+                      style={{
+                        marginTop: 8,
+                        fontFamily: F.body,
+                        fontSize: 11,
+                        lineHeight: 1.45,
+                        color: P.ink,
+                      }}
+                    >
+                      {video.description}
+                    </div>
+                  )}
+
+                  {primary && (
+                    <div
+                      style={{
+                        marginTop: 9,
+                        fontFamily: F.body,
+                        fontSize: 10,
+                        color: P.p600,
+                        fontWeight: 800,
+                      }}
+                    >
+                      Primary skill:{" "}
+                      {primary.name}
+                    </div>
+                  )}
+
+                  {secondary.length > 0 && (
+                    <div
+                      style={{
+                        marginTop: 4,
+                        fontFamily: F.body,
+                        fontSize: 9,
+                        color: P.muted,
+                      }}
+                    >
+                      Also:{" "}
+                      {secondary.join(", ")}
+                    </div>
+                  )}
+
+                  {(video.tags || []).length >
+                    0 && (
+                    <div
+                      style={{
+                        marginTop: 9,
+                        display: "flex",
+                        gap: 4,
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      {video.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          style={{
+                            padding: "3px 6px",
+                            borderRadius: 5,
+                            background: P.soft,
+                            color: P.muted,
+                            fontFamily: F.body,
+                            fontSize: 8,
+                            fontWeight: 700,
+                          }}
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {showEditor && (
+        <div
+          onClick={() =>
+            !saving && setShowEditor(false)
+          }
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 99999,
+            background: "rgba(0,0,0,.55)",
+            display: "grid",
+            placeItems: "center",
+            padding: 16,
+          }}
+        >
+          <div
+            onClick={(e) =>
+              e.stopPropagation()
+            }
+            style={{
+              width: "min(720px,100%)",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              background: P.white,
+              borderRadius: 18,
+              boxShadow: Sh.lift,
+            }}
+          >
+            <div
+              style={{
+                padding: "16px 18px",
+                borderBottom:
+                  `1px solid ${P.line}`,
+                display: "flex",
+                justifyContent:
+                  "space-between",
+                alignItems: "center",
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: F.display,
+                  fontSize: 18,
+                  fontWeight: 800,
+                  color: P.ink,
+                }}
+              >
+                {editingVideo
+                  ? "Edit Video"
+                  : "Add Video"}
+              </div>
+
+              <button
+                onClick={() =>
+                  setShowEditor(false)
+                }
+                disabled={saving}
+                style={{
+                  border: 0,
+                  background: "transparent",
+                  fontSize: 20,
+                  cursor: "pointer",
+                  color: P.muted,
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div
+              style={{
+                padding: 18,
+                display: "grid",
+                gap: 12,
+              }}
+            >
+              <input
+                value={form.title}
+                onChange={(e) =>
+                  setForm((current) => ({
+                    ...current,
+                    title: e.target.value,
+                  }))
+                }
+                placeholder="Video title"
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  borderRadius: 9,
+                  border:
+                    `1.5px solid ${P.line}`,
+                  fontFamily: F.body,
+                }}
+              />
+
+              <textarea
+                value={form.description}
+                onChange={(e) =>
+                  setForm((current) => ({
+                    ...current,
+                    description:
+                      e.target.value,
+                  }))
+                }
+                rows={3}
+                placeholder="What does this video teach?"
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  borderRadius: 9,
+                  border:
+                    `1.5px solid ${P.line}`,
+                  fontFamily: F.body,
+                  resize: "vertical",
+                }}
+              />
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns:
+                    "1fr 1fr",
+                  gap: 10,
+                }}
+              >
+                <button
+                  onClick={() =>
+                    setForm((current) => ({
+                      ...current,
+                      sourceType:
+                        "external",
+                      file: null,
+                    }))
+                  }
+                  style={{
+                    height: 38,
+                    borderRadius: 9,
+                    border:
+                      `1.5px solid ${
+                        form.sourceType ===
+                        "external"
+                          ? P.p600
+                          : P.line
+                      }`,
+                    background:
+                      form.sourceType ===
+                      "external"
+                        ? P.p50
+                        : P.white,
+                    color:
+                      form.sourceType ===
+                      "external"
+                        ? P.p600
+                        : P.muted,
+                    fontWeight: 800,
+                    cursor: "pointer",
+                  }}
+                >
+                  External URL
+                </button>
+
+                <button
+                  onClick={() =>
+                    setForm((current) => ({
+                      ...current,
+                      sourceType:
+                        "upload",
+                      externalUrl: "",
+                    }))
+                  }
+                  style={{
+                    height: 38,
+                    borderRadius: 9,
+                    border:
+                      `1.5px solid ${
+                        form.sourceType ===
+                        "upload"
+                          ? P.p600
+                          : P.line
+                      }`,
+                    background:
+                      form.sourceType ===
+                      "upload"
+                        ? P.p50
+                        : P.white,
+                    color:
+                      form.sourceType ===
+                      "upload"
+                        ? P.p600
+                        : P.muted,
+                    fontWeight: 800,
+                    cursor: "pointer",
+                  }}
+                >
+                  Upload Video
+                </button>
+              </div>
+
+              {form.sourceType ===
+              "external" ? (
+                <input
+                  value={form.externalUrl}
+                  onChange={(e) =>
+                    setForm((current) => ({
+                      ...current,
+                      externalUrl:
+                        e.target.value,
+                    }))
+                  }
+                  placeholder="https://..."
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: 9,
+                    border:
+                      `1.5px solid ${P.line}`,
+                  }}
+                />
+              ) : (
+                <input
+                  type="file"
+                  accept="video/mp4,video/quicktime,video/webm"
+                  onChange={(e) =>
+                    setForm((current) => ({
+                      ...current,
+                      file:
+                        e.target.files?.[0] ||
+                        null,
+                    }))
+                  }
+                />
+              )}
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns:
+                    "repeat(3,1fr)",
+                  gap: 8,
+                }}
+              >
+                <select
+                  value={form.sport}
+                  onChange={(e) =>
+                    setForm((current) => ({
+                      ...current,
+                      sport: e.target.value,
+                    }))
+                  }
+                >
+                  <option value="football">
+                    Football
+                  </option>
+                  <option value="hurling">
+                    Hurling
+                  </option>
+                  <option value="camogie">
+                    Camogie
+                  </option>
+                  <option value="athletic">
+                    Athletic
+                  </option>
+                </select>
+
+                <input
+                  value={form.category}
+                  onChange={(e) =>
+                    setForm((current) => ({
+                      ...current,
+                      category:
+                        e.target.value,
+                    }))
+                  }
+                  placeholder="Category"
+                />
+
+                <select
+                  value={form.difficulty}
+                  onChange={(e) =>
+                    setForm((current) => ({
+                      ...current,
+                      difficulty:
+                        e.target.value,
+                    }))
+                  }
+                >
+                  <option value="foundation">
+                    Foundation
+                  </option>
+                  <option value="developing">
+                    Developing
+                  </option>
+                  <option value="advanced">
+                    Advanced
+                  </option>
+                </select>
+              </div>
+
+              <input
+                value={form.ageGroups}
+                onChange={(e) =>
+                  setForm((current) => ({
+                    ...current,
+                    ageGroups:
+                      e.target.value,
+                  }))
+                }
+                placeholder="Age groups, e.g. U8, U9, U10"
+              />
+
+              <input
+                value={form.tags}
+                onChange={(e) =>
+                  setForm((current) => ({
+                    ...current,
+                    tags: e.target.value,
+                  }))
+                }
+                placeholder="Tags, separated by commas"
+              />
+
+              <div>
+                <div
+                  style={{
+                    fontFamily: F.body,
+                    fontSize: 10,
+                    fontWeight: 800,
+                    color: P.muted,
+                    marginBottom: 7,
+                    textTransform:
+                      "uppercase",
+                  }}
+                >
+                  Skills
+                </div>
+
+                <div
+                  style={{
+                    maxHeight: 220,
+                    overflowY: "auto",
+                    border:
+                      `1px solid ${P.line}`,
+                    borderRadius: 10,
+                    padding: 8,
+                  }}
+                >
+                  {(skills || [])
+                    .slice()
+                    .sort((a, b) =>
+                      String(
+                        a.name || ""
+                      ).localeCompare(
+                        String(
+                          b.name || ""
+                        )
+                      )
+                    )
+                    .map((skill) => {
+                      const checked =
+                        form.skillIds.includes(
+                          skill.id
+                        );
+
+                      return (
+                        <div
+                          key={skill.id}
+                          style={{
+                            display: "flex",
+                            alignItems:
+                              "center",
+                            gap: 8,
+                            padding: "5px 4px",
+                            borderBottom:
+                              `1px solid ${P.soft}`,
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() =>
+                              toggleSkill(
+                                skill.id
+                              )
+                            }
+                          />
+
+                          <div
+                            style={{
+                              flex: 1,
+                              fontFamily:
+                                F.body,
+                              fontSize: 11,
+                              color: P.ink,
+                            }}
+                          >
+                            {skill.name}
+                          </div>
+
+                          {checked && (
+                            <label
+                              style={{
+                                display:
+                                  "flex",
+                                alignItems:
+                                  "center",
+                                gap: 4,
+                                fontFamily:
+                                  F.body,
+                                fontSize: 9,
+                                color:
+                                  P.muted,
+                              }}
+                            >
+                              <input
+                                type="radio"
+                                name="primary-video-skill"
+                                checked={
+                                  form.primarySkillId ===
+                                  skill.id
+                                }
+                                onChange={() =>
+                                  setForm(
+                                    (
+                                      current
+                                    ) => ({
+                                      ...current,
+                                      primarySkillId:
+                                        skill.id,
+                                    })
+                                  )
+                                }
+                              />
+                              Primary
+                            </label>
+                          )}
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+
+              {message && (
+                <div
+                  style={{
+                    fontFamily: F.body,
+                    fontSize: 11,
+                    color: P.coral,
+                  }}
+                >
+                  {message}
+                </div>
+              )}
+
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent:
+                    "flex-end",
+                  gap: 8,
+                }}
+              >
+                <button
+                  onClick={() =>
+                    setShowEditor(false)
+                  }
+                  disabled={saving}
+                  style={{
+                    height: 38,
+                    padding: "0 14px",
+                    borderRadius: 9,
+                    border:
+                      `1px solid ${P.line}`,
+                    background: P.white,
+                    cursor: "pointer",
+                    fontWeight: 700,
+                  }}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={saveVideo}
+                  disabled={saving}
+                  style={{
+                    height: 38,
+                    padding: "0 16px",
+                    borderRadius: 9,
+                    border: 0,
+                    background: P.p600,
+                    color: "#fff",
+                    cursor:
+                      saving
+                        ? "wait"
+                        : "pointer",
+                    fontWeight: 800,
+                  }}
+                >
+                  {saving
+                    ? "Saving…"
+                    : editingVideo
+                    ? "Save Changes"
+                    : "Add Video"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavourite, userRole, skills = [], club }) {
   const [search, setSearch] = useState("");
   const [filterCat, setFilterCat] = useState("");
   const [selectedIdx, setSelectedIdx] = useState(null); // index in filtered array
   const [mode, setMode] = useState("library"); // "library" or "builder"
   const [builderDrill, setBuilderDrill] = useState(null); // drill to copy into builder
   const [customDrillsVersion, setCustomDrillsVersion] = useState(0); // trigger re-render when custom drills change
+  const [videoCreateRequested, setVideoCreateRequested] = useState(0);
+
+  const canWriteLibrary = Boolean(
+    userRole?.capabilities?.canAddDrills ||
+    userRole?.capabilities?.coachWrite ||
+    ["super_admin", "admin", "club_admin", "lead_coach"].includes(
+      String(userRole?.role || "").toLowerCase()
+    )
+  );
 
   // Merge custom drills from localStorage into activities
   const customDrills = (() => { void customDrillsVersion; try { return JSON.parse(localStorage.getItem("spraoi_custom_drills") || "[]"); } catch { return []; } })();
@@ -2811,15 +4194,141 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
 
   return (
     <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
-      <TopBar title="Drills Library" sub={`${mergedActivities.length} activities${customDrills.length > 0 ? ` (${customDrills.length} custom)` : ""}`}>
-        <div style={{ display: "flex", gap: 6 }}>
-          <button onClick={() => { setMode("library"); setBuilderDrill(null); }} style={{ padding: "6px 14px", borderRadius: 8, border: `1.5px solid ${mode === "library" ? P.p600 : P.line}`, background: mode === "library" ? P.p50 : P.white, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: mode === "library" ? P.p600 : P.muted, cursor: "pointer" }}>Library</button>
-          {["super_admin", "admin", "club_admin", "lead_coach"].includes(userRole?.role) && <button onClick={() => setMode("builder")} style={{ padding: "6px 14px", borderRadius: 8, border: `1.5px solid ${mode === "builder" ? P.p600 : P.line}`, background: mode === "builder" ? P.p50 : P.white, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: mode === "builder" ? P.p600 : P.muted, cursor: "pointer" }}>Create Drill</button>}
+      <TopBar
+        title="Coaching Library"
+        sub={`${mergedActivities.length} drills`}
+      >
+        <div
+          style={{
+            display: "flex",
+            gap: 6,
+            flexWrap: "wrap",
+            alignItems: "center",
+          }}
+        >
+          <button
+            onClick={() => {
+              setMode("library");
+              setBuilderDrill(null);
+              setSelectedIdx(null);
+            }}
+            style={{
+              padding: "6px 14px",
+              borderRadius: 8,
+              border: `1.5px solid ${
+                mode === "library" || mode === "builder"
+                  ? P.p600
+                  : P.line
+              }`,
+              background:
+                mode === "library" || mode === "builder"
+                  ? P.p50
+                  : P.white,
+              fontFamily: F.body,
+              fontSize: 11,
+              fontWeight: 700,
+              color:
+                mode === "library" || mode === "builder"
+                  ? P.p600
+                  : P.muted,
+              cursor: "pointer",
+            }}
+          >
+            Drills
+          </button>
+
+          <button
+            onClick={() => {
+              setMode("videos");
+              setSelectedIdx(null);
+              setBuilderDrill(null);
+            }}
+            style={{
+              padding: "6px 14px",
+              borderRadius: 8,
+              border: `1.5px solid ${
+                mode === "videos" ? P.p600 : P.line
+              }`,
+              background:
+                mode === "videos" ? P.p50 : P.white,
+              fontFamily: F.body,
+              fontSize: 11,
+              fontWeight: 700,
+              color:
+                mode === "videos" ? P.p600 : P.muted,
+              cursor: "pointer",
+            }}
+          >
+            Videos
+          </button>
+
+          {mode === "videos" ? (
+            canWriteLibrary && (
+              <button
+                onClick={() =>
+                  setVideoCreateRequested((v) => v + 1)
+                }
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: 8,
+                  border: `1.5px solid ${P.line}`,
+                  background: P.white,
+                  fontFamily: F.body,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: P.ink,
+                  cursor: "pointer",
+                }}
+              >
+                + Add Video
+              </button>
+            )
+          ) : (
+            canWriteLibrary && (
+              <button
+                onClick={() => setMode("builder")}
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: 8,
+                  border: `1.5px solid ${
+                    mode === "builder" ? P.p600 : P.line
+                  }`,
+                  background:
+                    mode === "builder" ? P.p50 : P.white,
+                  fontFamily: F.body,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color:
+                    mode === "builder" ? P.p600 : P.ink,
+                  cursor: "pointer",
+                }}
+              >
+                + Create Drill
+              </button>
+            )
+          )}
         </div>
       </TopBar>
 
-      {mode === "builder" ? (
-        <DrillCardBuilder diagramMap={diagramMap} allActivities={allActivities} userRole={userRole} copyFrom={builderDrill} onBack={() => { setMode("library"); setBuilderDrill(null); setCustomDrillsVersion((v) => v + 1); }} />
+      {mode === "videos" ? (
+        <VideoLibrary
+          skills={skills}
+          club={club}
+          userRole={userRole}
+          createRequested={videoCreateRequested}
+        />
+      ) : mode === "builder" ? (
+        <DrillCardBuilder
+          diagramMap={diagramMap}
+          allActivities={allActivities}
+          userRole={userRole}
+          copyFrom={builderDrill}
+          onBack={() => {
+            setMode("library");
+            setBuilderDrill(null);
+            setCustomDrillsVersion((v) => v + 1);
+          }}
+        />
       ) : (
         <div style={{ padding: "20px 28px" }}>
           {/* Search + Filter */}
@@ -2895,7 +4404,7 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
                 <button onClick={() => onToggleFavourite && onToggleFavourite(selectedDrill.id)} style={{ padding: "5px 10px", borderRadius: 6, border: `1.5px solid ${(favouriteIds || []).includes(selectedDrill.id) ? "#fbc02d" : P.line}`, background: (favouriteIds || []).includes(selectedDrill.id) ? "#fbc02d15" : P.white, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: (favouriteIds || []).includes(selectedDrill.id) ? "#f59e0b" : P.muted, cursor: "pointer" }}>
                   {(favouriteIds || []).includes(selectedDrill.id) ? "★ Saved to Favourites" : "☆ Add to Favourites"}
                 </button>
-                {["super_admin", "admin", "club_admin", "lead_coach"].includes(userRole?.role) && <button onClick={() => { if (!window.confirm(`Copy & edit "${selectedDrill.title}"?\n\nThis will create an editable copy in your custom cards.`)) return; setBuilderDrill(selectedDrill); setMode("builder"); setSelectedIdx(null); }} style={{ padding: "5px 10px", borderRadius: 6, border: `1.5px solid ${P.p600}`, background: P.p50, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.p600, cursor: "pointer" }}>Copy & Edit</button>}
+                {canWriteLibrary && <button onClick={() => { if (!window.confirm(`Copy & edit "${selectedDrill.title}"?\n\nThis will create an editable copy in your custom cards.`)) return; setBuilderDrill(selectedDrill); setMode("builder"); setSelectedIdx(null); }} style={{ padding: "5px 10px", borderRadius: 6, border: `1.5px solid ${P.p600}`, background: P.p50, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.p600, cursor: "pointer" }}>Copy & Edit</button>}
                 <button onClick={() => setSelectedIdx(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: P.muted }}>×</button>
               </div>
             </div>
@@ -5425,7 +6934,15 @@ export function CoachModule({
               <CoachReadOnlyNotice title="Editing unavailable" message="Your Coach / Mentor role is read-only. Ask a Club Admin to assign Lead Coach access if you need to create or amend sessions." />
             </div>
       )}
-      {screen === "coach-drills" && <DrillsScreen allActivities={allActivities} diagramMap={diagramMap} favouriteIds={favouriteIds} onToggleFavourite={toggleFavourite} userRole={selectedTeamUserRole} />}
+      {screen === "coach-drills" && <DrillsScreen
+        allActivities={allActivities}
+        diagramMap={diagramMap}
+        favouriteIds={favouriteIds}
+        onToggleFavourite={toggleFavourite}
+        userRole={selectedTeamUserRole}
+        skills={skills}
+        club={club}
+      />}
       {screen === "coach-players" && <PlayersScreen club={club} ageGroups={ageGroups} selectedTeam={selectedTeam} userRole={selectedTeamUserRole} />}
     </>
   );
@@ -6854,7 +8371,15 @@ export default function App() {
               </div>
             )
       )}
-      {screen === "coach-drills" && <DrillsScreen allActivities={allActivities} diagramMap={diagramMap} favouriteIds={favouriteIds} onToggleFavourite={toggleFavourite} userRole={selectedTeamUserRole} />}
+      {screen === "coach-drills" && <DrillsScreen
+        allActivities={allActivities}
+        diagramMap={diagramMap}
+        favouriteIds={favouriteIds}
+        onToggleFavourite={toggleFavourite}
+        userRole={selectedTeamUserRole}
+        skills={skills}
+        club={club}
+      />}
       {screen === "coach-players" && <PlayersScreen club={club} ageGroups={ageGroups} selectedTeam={selectedTeam} userRole={selectedTeamUserRole} />}
 
       {/* CLUB screens */}
