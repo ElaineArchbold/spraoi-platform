@@ -65,19 +65,61 @@ function saveActiveContext(team, club) {
   }));
 }
 
-function roleCapabilities(role) {
+function roleCapabilities(role, grants = {}) {
   const normalized = String(role || "").toLowerCase();
+
+  const isClubAdmin =
+    ["club_admin", "super_admin", "admin"].includes(normalized);
+
+  const isLeadCoach = normalized === "lead_coach";
+  const isTeamAdmin = normalized === "team_admin";
+
+  const isCoachMentor =
+    ["coach_mentor", "coach", "mentor"].includes(normalized);
+
+  const cupRead =
+    isClubAdmin ||
+    isTeamAdmin ||
+    Boolean(grants.cup_read) ||
+    Boolean(grants.cup_write);
+
+  const cupWrite =
+    isClubAdmin ||
+    isTeamAdmin ||
+    Boolean(grants.cup_write);
+
   return {
-    isClubAdmin: ["club_admin", "super_admin", "admin"].includes(normalized),
-    isLeadCoach: normalized === "lead_coach",
-    isCoachMentor: ["coach_mentor", "coach", "mentor"].includes(normalized),
-    canEditCoachPlans: ["club_admin", "super_admin", "admin", "lead_coach"].includes(normalized),
-    canEditAcademyPlans: ["club_admin", "super_admin", "admin", "lead_coach"].includes(normalized),
-    canPublishAcademy: ["club_admin", "super_admin", "admin", "lead_coach"].includes(normalized),
-    canAddDrills: ["club_admin", "super_admin", "admin", "lead_coach"].includes(normalized),
-    canEditSharedDrills: ["club_admin", "super_admin", "admin"].includes(normalized),
-    canDeleteSharedDrills: ["club_admin", "super_admin", "admin"].includes(normalized),
-    canManageTeamStaff: ["club_admin", "super_admin", "admin"].includes(normalized),
+    isClubAdmin,
+    isLeadCoach,
+    isTeamAdmin,
+    isCoachMentor,
+
+    cupRead,
+    cupWrite,
+
+    canEditCoachPlans:
+      isClubAdmin ||
+      isLeadCoach ||
+      Boolean(grants.coach_write),
+
+    canEditAcademyPlans:
+      isClubAdmin ||
+      isLeadCoach ||
+      Boolean(grants.academy_write),
+
+    canPublishAcademy:
+      isClubAdmin ||
+      isLeadCoach ||
+      Boolean(grants.academy_publish),
+
+    canAddDrills:
+      isClubAdmin ||
+      isLeadCoach ||
+      Boolean(grants.coach_write),
+
+    canEditSharedDrills: isClubAdmin,
+    canDeleteSharedDrills: isClubAdmin,
+    canManageTeamStaff: isClubAdmin,
   };
 }
 
@@ -4148,7 +4190,16 @@ function CupChecklistPanel({ eventId, automaticReadiness = [], onNav }) {
   );
 }
 
-function CupModuleScreen({ screen, onNav, contextTeam, selectedEventId = "", cupStore = null, canEditSchedule = false, canManageAllEvents = false }) {
+function CupModuleScreen({
+  screen,
+  onNav,
+  contextTeam,
+  selectedEventId = "",
+  cupStore = null,
+  canEditSchedule = false,
+  canManageAllEvents = false,
+  canWrite = false,
+}) {
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth <= 760 : false
   );
@@ -4219,6 +4270,10 @@ function CupModuleScreen({ screen, onNav, contextTeam, selectedEventId = "", cup
   const eventsForSelectedTeam=contextTeam?.id ? events.filter((e)=>eventBelongsToTeam(e,contextTeam.id) && !isArchivedEvent(e)) : events.filter((e)=>!isArchivedEvent(e));
 
   const archiveEvent=async(e)=>{
+    if(!canWrite){
+      alert("You have read-only Cup access for this team.");
+      return;
+    }
     if(!e?.id)return;
     if(!confirm(`Archive "${e.name}"?\n\nArchived events are kept with all teams, fixtures, results, event content and orders, but are removed from the normal Upcoming and Past event lists.`))return;
 
@@ -4247,6 +4302,10 @@ function CupModuleScreen({ screen, onNav, contextTeam, selectedEventId = "", cup
   };
 
   const restoreArchivedEvent=async(e)=>{
+    if(!canWrite){
+      alert("You have read-only Cup access for this team.");
+      return;
+    }
     if(!e?.id)return;
     await storeUpdateEvent(e.id,{
       status:"published",
@@ -4258,6 +4317,10 @@ function CupModuleScreen({ screen, onNav, contextTeam, selectedEventId = "", cup
   };
 
   const deleteEventPermanently=async(e)=>{
+    if(!canWrite){
+      alert("You have read-only Cup access for this team.");
+      return;
+    }
     if(!e?.id)return;
 
     const first=confirm(`Delete "${e.name}" permanently?\n\nOnly use Delete for test events, mistakes or accidental duplicates. Real events should be archived.`);
@@ -4311,6 +4374,11 @@ function CupModuleScreen({ screen, onNav, contextTeam, selectedEventId = "", cup
     }
   };
   const save=async(section,value,setter)=>{
+    if(!canWrite){
+      alert("You have read-only Cup access for this team.");
+      return;
+    }
+
     setter(value);
     if(!eventId)return;
     setSaveState("saving");
@@ -4464,13 +4532,28 @@ function CupModuleScreen({ screen, onNav, contextTeam, selectedEventId = "", cup
     setBroadcastSelectedEventId(nextId);
     if(onNav)onNav("cup-dashboard");
   };
-  const createEvent=async()=>{const name=prompt("Event name");if(!name)return;const date=prompt("Event date (YYYY-MM-DD)","")||"";const venue=prompt("Venue","")||"";const e=await storeCreateEvent({name,date,venue,ownerTeamId:contextTeam?.id||"",ownerTeamLabel:contextTeam?.label||contextTeam?.name||""});setEvents(await storeRead(storeEventsKey,[]));await switchEvent(e.id)};
-  const duplicate=async(e)=>{const name=prompt("New event name",`${e.name} Copy`);if(!name)return;const date=prompt("New event date (YYYY-MM-DD)","")||"";const n=await storeDuplicateEvent(e,{name,date,venue:e.venue,ownerTeamId:e.ownerTeamId||contextTeam?.id||"",ownerTeamLabel:e.ownerTeamLabel||contextTeam?.label||contextTeam?.name||""});setEvents(await storeRead(storeEventsKey,[]));await switchEvent(n.id)};
+  const createEvent=async()=>{
+    if(!canWrite){
+      alert("You have read-only Cup access for this team.");
+      return;
+    }
+    const name=prompt("Event name");if(!name)return;const date=prompt("Event date (YYYY-MM-DD)","")||"";const venue=prompt("Venue","")||"";const e=await storeCreateEvent({name,date,venue,ownerTeamId:contextTeam?.id||"",ownerTeamLabel:contextTeam?.label||contextTeam?.name||""});setEvents(await storeRead(storeEventsKey,[]));await switchEvent(e.id)};
+  const duplicate=async(e)=>{
+    if(!canWrite){
+      alert("You have read-only Cup access for this team.");
+      return;
+    }
+    const name=prompt("New event name",`${e.name} Copy`);if(!name)return;const date=prompt("New event date (YYYY-MM-DD)","")||"";const n=await storeDuplicateEvent(e,{name,date,venue:e.venue,ownerTeamId:e.ownerTeamId||contextTeam?.id||"",ownerTeamLabel:e.ownerTeamLabel||contextTeam?.label||contextTeam?.name||""});setEvents(await storeRead(storeEventsKey,[]));await switchEvent(n.id)};
   const teamById=id=>teams.find(t=>t.id===id)||{name:id||"TBC"};
   const clubById=id=>clubs.find(c=>c.id===id)||{id,name:id||"Unknown club"};
   const finished=matches.filter(m=>m.status==="finished"),live=matches.filter(m=>m.status==="live"),pitches=config.pitches||[];
   const field=(label,child)=><label style={{display:"grid",gap:5,fontFamily:F.body,fontSize:9,fontWeight:800,color:P.muted,textTransform:"uppercase"}}>{label}{child}</label>;
   const setEventStatus=async(status)=>{
+    if(!canWrite){
+      alert("You have read-only Cup access for this team.");
+      return;
+    }
+
     const updated=await storeUpdateEvent(eventId,{status});
     setEvent(updated);
     setEvents(await storeRead(storeEventsKey,[]));
@@ -5882,11 +5965,6 @@ export default function App() {
   // User role state
   const [userRole, setUserRole] = useState(null); // { role, club_id, modules }
   const [enabledModules, setEnabledModules] = useState([]);
-  useEffect(() => {
-    if (APP_MODULE === "cup") {
-      setEnabledModules((mods) => mods.includes("cup") ? mods : [...mods, "cup"]);
-    }
-  }, []);
 
   // App state — this standalone build owns CUP only.
   // Other module buttons return to the single Admin shell, which renders the canonical module.
@@ -5924,7 +6002,52 @@ export default function App() {
   const [sessionDetail, setSessionDetail] = useState(null);
   const [editingSession, setEditingSession] = useState(null); // full session object for pre-filling builder
   const [myTeams, setMyTeams] = useState([]); // age groups this coach is assigned to
-  const permissions = roleCapabilities(userRole?.role);
+  const selectedTeamGrant = (() => {
+    const teamId = String(selectedTeam?.id || "");
+
+    const rows = (userRole?.staffAssignments || []).filter(
+      row => String(row.age_group_id || "") === teamId
+    );
+
+    return rows.reduce(
+      (grants, row) => ({
+        coach_write:
+          grants.coach_write || Boolean(row.coach_write),
+
+        academy_write:
+          grants.academy_write || Boolean(row.academy_write),
+
+        academy_publish:
+          grants.academy_publish || Boolean(row.academy_publish),
+
+        connect_read:
+          grants.connect_read ||
+          Boolean(row.connect_read) ||
+          Boolean(row.connect_write),
+
+        connect_write:
+          grants.connect_write || Boolean(row.connect_write),
+
+        cup_read:
+          grants.cup_read ||
+          Boolean(row.cup_read) ||
+          Boolean(row.cup_write),
+
+        cup_write:
+          grants.cup_write || Boolean(row.cup_write),
+
+        attendance_manage:
+          grants.attendance_manage ||
+          Boolean(row.attendance_manage),
+      }),
+      {}
+    );
+  })();
+
+  const permissions = roleCapabilities(
+    userRole?.role,
+    selectedTeamGrant
+  );
   const coachAccessLabel = permissions.isClubAdmin ? "Club Admin" : permissions.isLeadCoach ? "Lead Coach" : "Coach / Mentor";
   const [showProfile, setShowProfile] = useState(false);
   const [shareUrl, setShareUrl] = useState(null);
@@ -6029,11 +6152,6 @@ export default function App() {
 
       if (clubData) setClub(clubData);
 
-      // During platform build/testing Elaine has access to every module.
-      // RBAC can later narrow this list without changing the navigation shell.
-      setEnabledModules(allModules);
-      setUserRole(roleData || { role: "coach_mentor", club_id: clubData?.id || null, capabilities: roleCapabilities("coach_mentor") });
-
       const effectiveClubId = clubId || clubData?.id;
       if (effectiveClubId) {
         loadAgeGroups(effectiveClubId);
@@ -6046,13 +6164,13 @@ export default function App() {
       // RBAC team assignment. team_staff is authoritative where rows exist;
       // coach_assignments is fallback-only for older unmigrated accounts.
       let assignedTeamIds = [];
-      let effectiveRole = roleData?.role || "coach_mentor";
+      let effectiveRole = roleData?.role || "no_access";
       const accountRole = String(roleData?.role || "").toLowerCase();
       const hasPlatformRole = ["super_admin", "admin", "club_admin", "lead_coach"].includes(accountRole);
 
       let { data: staffRows, error: staffError } = await supabase
         .from("team_staff")
-        .select("id, age_group_id, role, status, coach_id")
+        .select("id, age_group_id, role, status, coach_id, user_id, coach_write, academy_write, academy_publish, connect_read, connect_write, cup_read, cup_write, attendance_manage")
         .eq("user_id", userId)
         .eq("status", "active");
 
@@ -6067,7 +6185,7 @@ export default function App() {
         if (matchingCoach?.id) {
           const { data: coachRows, error: coachRowsError } = await supabase
             .from("team_staff")
-            .select("id, age_group_id, role, status, coach_id, user_id")
+            .select("id, age_group_id, role, status, coach_id, user_id, coach_write, academy_write, academy_publish, connect_read, connect_write, cup_read, cup_write, attendance_manage")
             .eq("coach_id", matchingCoach.id)
             .eq("status", "active");
 
@@ -6151,14 +6269,107 @@ export default function App() {
           ];
         }
       }
-const capabilities = roleCapabilities(effectiveRole);
-      setUserRole({ ...(roleData || {}), role: effectiveRole, club_id: effectiveClubId, capabilities });
+      const moduleGrants = (staffRows || []).reduce(
+        (grants, row) => ({
+          coach_write:
+            grants.coach_write || Boolean(row.coach_write),
+
+          academy_write:
+            grants.academy_write || Boolean(row.academy_write),
+
+          academy_publish:
+            grants.academy_publish || Boolean(row.academy_publish),
+
+          connect_read:
+            grants.connect_read ||
+            Boolean(row.connect_read) ||
+            Boolean(row.connect_write),
+
+          connect_write:
+            grants.connect_write || Boolean(row.connect_write),
+
+          cup_read:
+            grants.cup_read ||
+            Boolean(row.cup_read) ||
+            Boolean(row.cup_write),
+
+          cup_write:
+            grants.cup_write || Boolean(row.cup_write),
+
+          attendance_manage:
+            grants.attendance_manage ||
+            Boolean(row.attendance_manage),
+        }),
+        {}
+      );
+
+      const capabilities = roleCapabilities(
+        effectiveRole,
+        moduleGrants
+      );
+
+      const normalizedRole =
+        String(effectiveRole || "").toLowerCase();
+
+      let resolvedModules = [];
+
+      if (
+        ["super_admin", "admin", "club_admin"].includes(normalizedRole)
+      ) {
+        resolvedModules = allModules;
+      } else if (normalizedRole === "lead_coach") {
+        resolvedModules = ["coach", "academy", "connect", "club"];
+
+        if (capabilities.cupRead) {
+          resolvedModules.push("cup");
+        }
+      } else if (normalizedRole === "team_admin") {
+        resolvedModules = [
+          "club",
+          "coach",
+          "academy",
+          "connect",
+          "cup",
+        ];
+      } else if (
+        ["coach_mentor", "coach", "mentor"].includes(normalizedRole)
+      ) {
+        resolvedModules = ["club", "coach", "academy"];
+
+        if (
+          capabilities.connectRead ||
+          capabilities.connectWrite
+        ) {
+          resolvedModules.push("connect");
+        }
+
+        if (capabilities.cupRead) {
+          resolvedModules.push("cup");
+        }
+      } else if (normalizedRole === "cup_helper") {
+        resolvedModules = ["cup"];
+      }
+
+      setEnabledModules([...new Set(resolvedModules)]);
+
+      setUserRole({
+        ...(roleData || {}),
+        role: effectiveRole,
+        club_id: effectiveClubId,
+        capabilities,
+        staffAssignments: staffRows || [],
+      });
+
       setMyTeams([...new Set(assignedTeamIds)]);
     } catch (error) {
       console.error("Unable to initialise platform access:", error);
-      // Never lock Elaine out of a module because an older RBAC table differs.
-      setEnabledModules(allModules);
-      setUserRole({ role: "coach_mentor", club_id: null, capabilities: roleCapabilities("coach_mentor") });
+      setEnabledModules([]);
+      setUserRole({
+        role: "no_access",
+        club_id: null,
+        capabilities: roleCapabilities("no_access"),
+        staffAssignments: [],
+      });
       setMyTeams([]);
       loadSkills();
       loadActivities();
@@ -6734,7 +6945,25 @@ setAgeGroups(data || []);
       {screen.startsWith("club-") && screen !== "club-permissions" && <ModulePlaceholder module={MODULES.club} screen={screen} club={club} />}
 
       {/* CUP screens */}
-      {screen.startsWith("cup-") && <CupModuleScreen screen={screen} onNav={setScreen} contextTeam={selectedTeam} canEditSchedule={permissions.isLeadCoach || permissions.isClubAdmin} />}
+      {screen.startsWith("cup-") && (
+        permissions.cupRead
+          ? (
+              <CupModuleScreen
+                screen={screen}
+                onNav={setScreen}
+                contextTeam={selectedTeam}
+                canEditSchedule={permissions.cupWrite}
+                canManageAllEvents={permissions.isClubAdmin}
+                canWrite={permissions.cupWrite}
+              />
+            )
+          : (
+              <AccessDeniedScreen
+                module={MODULES.cup}
+                club={club}
+              />
+            )
+      )}
 
       {/* CONNECT screens */}
       {screen.startsWith("connect-") && <ModulePlaceholder module={MODULES.connect} screen={screen} club={club} />}

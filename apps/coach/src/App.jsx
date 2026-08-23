@@ -74,23 +74,139 @@ function saveActiveContext(team, club) {
   }));
 }
 
-function roleCapabilities(role) {
+function roleCapabilities(role, grants = {}) {
   const normalized = String(role || "").toLowerCase();
+
+  const isClubAdmin =
+    ["club_admin", "super_admin", "admin"].includes(normalized);
+
+  const isLeadCoach = normalized === "lead_coach";
+  const isTeamAdmin = normalized === "team_admin";
+
+  const isCoachMentor =
+    ["coach_mentor", "coach", "mentor"].includes(normalized);
+
+  // Team Admin is deliberately NOT elevated by coach_write /
+  // academy_write. Its Coach and Academy access remains read-only.
+  const coachWrite =
+    isClubAdmin ||
+    isLeadCoach ||
+    (
+      isCoachMentor &&
+      Boolean(grants.coach_write)
+    );
+
+  const academyWrite =
+    isClubAdmin ||
+    isLeadCoach ||
+    (
+      isCoachMentor &&
+      Boolean(grants.academy_write)
+    );
+
+  const academyPublish =
+    isClubAdmin ||
+    isLeadCoach ||
+    (
+      isCoachMentor &&
+      Boolean(grants.academy_publish)
+    );
+
+  const connectRead =
+    isClubAdmin ||
+    isLeadCoach ||
+    isTeamAdmin ||
+    Boolean(grants.connect_read) ||
+    Boolean(grants.connect_write);
+
+  const connectWrite =
+    isClubAdmin ||
+    isLeadCoach ||
+    isTeamAdmin ||
+    Boolean(grants.connect_write);
+
+  const cupRead =
+    isClubAdmin ||
+    isTeamAdmin ||
+    Boolean(grants.cup_read) ||
+    Boolean(grants.cup_write);
+
+  const cupWrite =
+    isClubAdmin ||
+    isTeamAdmin ||
+    Boolean(grants.cup_write);
+
+  const attendanceManage =
+    isClubAdmin ||
+    (
+      (isLeadCoach || isTeamAdmin || isCoachMentor) &&
+      Boolean(grants.attendance_manage)
+    );
+
   return {
-    isClubAdmin: ["club_admin", "super_admin", "admin"].includes(normalized),
-    isLeadCoach: normalized === "lead_coach",
-    isTeamAdmin: normalized === "team_admin",
-    isCoachMentor: ["coach_mentor", "coach", "mentor"].includes(normalized),
-    canEditCoachPlans: ["club_admin", "super_admin", "admin", "lead_coach"].includes(normalized),
-    canEditAcademyPlans: ["club_admin", "super_admin", "admin", "lead_coach"].includes(normalized),
-    canPublishAcademy: ["club_admin", "super_admin", "admin", "lead_coach"].includes(normalized),
-    canAddDrills: ["club_admin", "super_admin", "admin", "lead_coach"].includes(normalized),
-    canEditSharedDrills: ["club_admin", "super_admin", "admin", "lead_coach"].includes(normalized),
-    canDeleteSharedDrills: ["club_admin", "super_admin", "admin"].includes(normalized),
-    canManageTeamStaff: ["club_admin", "super_admin", "admin"].includes(normalized),
+    isClubAdmin,
+    isLeadCoach,
+    isTeamAdmin,
+    isCoachMentor,
+
+    coachWrite,
+    academyWrite,
+    academyPublish,
+
+    connectRead,
+    connectWrite,
+    cupRead,
+    cupWrite,
+    attendanceManage,
+
+    canEditCoachPlans: coachWrite,
+    canEditAcademyPlans: academyWrite,
+    canPublishAcademy: academyPublish,
+    canAddDrills: coachWrite,
+
+    canEditSharedDrills: isClubAdmin,
+    canDeleteSharedDrills: isClubAdmin,
+    canManageTeamStaff: isClubAdmin,
   };
 }
 
+
+const TEAM_ADMIN_COACH_SCREENS = new Set([
+  "coach-dashboard",
+  "coach-attendance",
+]);
+
+function coachNavForRole(role, nav = []) {
+  const normalized = String(role || "").toLowerCase();
+
+  if (normalized === "team_admin") {
+    return nav.filter((item) =>
+      ["coach-dashboard", "coach-attendance"].includes(item.id)
+    );
+  }
+
+  return nav;
+}
+
+function canAccessCoachScreen(role, screen) {
+  const normalized = String(role || "").toLowerCase();
+
+  if (
+    ["super_admin", "admin", "club_admin", "lead_coach"].includes(normalized)
+  ) {
+    return true;
+  }
+
+  if (normalized === "team_admin") {
+    return TEAM_ADMIN_COACH_SCREENS.has(screen);
+  }
+
+  if (["coach_mentor", "coach", "mentor"].includes(normalized)) {
+    return true;
+  }
+
+  return false;
+}
 
 function teamDisplayName(team, fallback = "Team") {
   if (!team) return fallback;
@@ -346,6 +462,7 @@ const MODULES = {
   coach: {
     label: "Coach", color: "#7C3AED", icon: "/spraoi-coach-icon.png", tagline: "Plan and deliver better coaching.", nav: [
       { id: "coach-dashboard", icon: "⌂", label: "Dashboard" },
+      { id: "coach-attendance", icon: "✓", label: "Attendance" },
       { id: "coach-planner", icon: "◫", label: "Planner" },
       { id: "coach-sessions", icon: "▶", label: "Sessions" },
       { id: "coach-drills", icon: "◇", label: "Drills" },
@@ -425,7 +542,7 @@ function normalizeModuleIds(moduleIds = []) {
 /* ============================================================
    SIDEBAR — with module switcher
    ============================================================ */
-function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, selectedTeam, onSelectTeam, enabledModules, onLogout, ageGroups, myTeams, onShowProfile }) {
+function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, selectedTeam, onSelectTeam, enabledModules, onLogout, ageGroups, myTeams, onShowProfile, userRole }) {
   const visibleTeams = myTeams?.length ? (ageGroups || []).filter((ag) => myTeams.includes(ag.id)) : (ageGroups || []);
   const mod = MODULES[activeModule];
   const clubName = club?.name || "Club Spraoi";
@@ -524,7 +641,10 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
         </div>
 
         <nav style={{ flex: 1, padding: "9px 10px", display: "flex", flexDirection: "column", gap: 3, overflowY: "auto" }}>
-          {mod.nav.map((item) => {
+          {(activeModule === "coach"
+            ? coachNavForRole(userRole?.role, mod.nav)
+            : mod.nav
+          ).map((item) => {
             const isActive = activeScreen === item.id || (item.id === "coach-sessions" && activeScreen === "coach-builder");
             const fg = activeModule === "connect" ? "#332800" : "#fff";
             return (
@@ -5146,19 +5266,32 @@ function MobileHeader({ activeModule, setActiveModule, onNav, enabledModules, cl
   );
 }
 
-function MobileNav({ activeModule, screen, onNav, enabledModules }) {
+function MobileNav({ activeModule, screen, onNav, enabledModules, userRole }) {
   const module = MODULES[activeModule];
   const [showMore, setShowMore] = useState(false);
 
-  const items = [
+  const allItems = [
     { id: "coach-dashboard", label: "Dashboard" },
+    { id: "coach-attendance", label: "Attendance" },
     { id: "coach-planner", label: "Planner" },
     { id: "coach-sessions", label: "Sessions" },
-    { id: "coach-drills", label: "Drills" }
+    { id: "coach-drills", label: "Drills" },
   ];
 
+  const visibleItems = coachNavForRole(
+    userRole?.role,
+    allItems
+  );
+
+  const items = visibleItems.slice(0, 4);
+
   const moreItems = [
-    { id: "coach-players", label: "Players" }
+    ...visibleItems.slice(4),
+    ...(
+      String(userRole?.role || "").toLowerCase() === "team_admin"
+        ? []
+        : [{ id: "coach-players", label: "Players" }]
+    ),
   ];
 
   const moreActive = moreItems.some((item) => item.id === screen);
@@ -5242,11 +5375,46 @@ export function CoachModule({
 }) {
   const effectiveCanEdit = typeof canEditCoachPlans === "boolean"
     ? canEditCoachPlans
-    : roleCapabilities(userRole?.role).canEditCoachPlans;
+    : (userRole?.capabilities || roleCapabilities(userRole?.role)).canEditCoachPlans;
+
+  if (!canAccessCoachScreen(userRole?.role, screen)) {
+    return (
+      <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
+        <TopBar title="Coach" sub="Access restricted" />
+        <CoachReadOnlyNotice
+          title="This section isn't available"
+          message="Your role does not include access to this Coach section."
+        />
+      </div>
+    );
+  }
 
   return (
     <>
       {screen === "coach-dashboard" && <DashboardScreen club={club} ageGroups={ageGroups} planSessions={planSessions} weeklyPlan={weeklyPlan} upcomingSessions={upcomingSessions} onNav={onNav} onOpenSession={openSession} allActivities={allActivities} selectedTeam={selectedTeam} favouriteIds={favouriteIds} coaches={coaches} />}
+
+      {screen === "coach-attendance" && (
+        <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
+          <TopBar
+            title="Attendance"
+            sub={
+              selectedTeam
+                ? teamDisplayName(selectedTeam)
+                : "Select a team"
+            }
+          />
+          <div
+            style={{
+              padding: "20px 24px",
+              maxWidth: 1100,
+              margin: "0 auto",
+            }}
+          >
+            <CoachAttendanceCard selectedTeam={selectedTeam} />
+          </div>
+        </div>
+      )}
+
       {screen === "coach-planner" && <PlannerScreen onNav={onNav} club={club} ageGroups={ageGroups} upcomingSessions={upcomingSessions} onOpenSession={openSession} allActivities={allActivities} coaches={coaches} skills={skills} diagramMap={diagramMap} selectedTeam={selectedTeam} />}
       {screen === "coach-sessions" && <SessionsListScreen club={club} selectedTeam={selectedTeam} onOpenSession={openSession} onNav={onNav} onEditSession={editSession} />}
       {screen === "coach-builder" && (
@@ -5257,8 +5425,8 @@ export function CoachModule({
               <CoachReadOnlyNotice title="Editing unavailable" message="Your Coach / Mentor role is read-only. Ask a Club Admin to assign Lead Coach access if you need to create or amend sessions." />
             </div>
       )}
-      {screen === "coach-drills" && <DrillsScreen allActivities={allActivities} diagramMap={diagramMap} favouriteIds={favouriteIds} onToggleFavourite={toggleFavourite} userRole={userRole} />}
-      {screen === "coach-players" && <PlayersScreen club={club} ageGroups={ageGroups} selectedTeam={selectedTeam} userRole={userRole} />}
+      {screen === "coach-drills" && <DrillsScreen allActivities={allActivities} diagramMap={diagramMap} favouriteIds={favouriteIds} onToggleFavourite={toggleFavourite} userRole={selectedTeamUserRole} />}
+      {screen === "coach-players" && <PlayersScreen club={club} ageGroups={ageGroups} selectedTeam={selectedTeam} userRole={selectedTeamUserRole} />}
     </>
   );
 }
@@ -5609,7 +5777,80 @@ export default function App() {
   const [sessionDetail, setSessionDetail] = useState(null);
   const [editingSession, setEditingSession] = useState(null); // full session object for pre-filling builder
   const [myTeams, setMyTeams] = useState([]); // age groups this coach is assigned to
-  const permissions = roleCapabilities(userRole?.role);
+  const selectedTeamGrant = (() => {
+    const teamId = String(selectedTeam?.id || "");
+
+    const rows = (userRole?.staffAssignments || []).filter(
+      row => String(row.age_group_id || "") === teamId
+    );
+
+    return rows.reduce(
+      (grants, row) => ({
+        coach_write:
+          grants.coach_write || Boolean(row.coach_write),
+
+        academy_write:
+          grants.academy_write || Boolean(row.academy_write),
+
+        academy_publish:
+          grants.academy_publish || Boolean(row.academy_publish),
+
+        connect_read:
+          grants.connect_read ||
+          Boolean(row.connect_read) ||
+          Boolean(row.connect_write),
+
+        connect_write:
+          grants.connect_write || Boolean(row.connect_write),
+
+        cup_read:
+          grants.cup_read ||
+          Boolean(row.cup_read) ||
+          Boolean(row.cup_write),
+
+        cup_write:
+          grants.cup_write || Boolean(row.cup_write),
+
+        attendance_manage:
+          grants.attendance_manage ||
+          Boolean(row.attendance_manage),
+      }),
+      {}
+    );
+  })();
+
+  const permissions = roleCapabilities(
+    userRole?.role,
+    selectedTeamGrant
+  );
+
+  const selectedTeamUserRole = userRole
+    ? {
+        ...userRole,
+        capabilities: permissions,
+      }
+    : userRole;
+  useEffect(() => {
+    if (!userRole?.role) return;
+    if (!String(screen || "").startsWith("coach-")) return;
+
+    if (!canAccessCoachScreen(userRole.role, screen)) {
+      setScreen("coach-dashboard");
+      return;
+    }
+
+    if (
+      screen === "coach-builder" &&
+      !permissions.canEditCoachPlans
+    ) {
+      setScreen("coach-sessions");
+    }
+  }, [
+    screen,
+    userRole?.role,
+    permissions.canEditCoachPlans,
+  ]);
+
   const [showProfile, setShowProfile] = useState(false);
   const [shareUrl, setShareUrl] = useState(null);
   const [pitchView, setPitchView] = useState(false);
@@ -5643,7 +5884,7 @@ export default function App() {
   async function loadUserRole(userId, userEmail) {
     const allModules = ["coach", "club", "cup", "connect", "academy", "plus"];
 
-    const modulesForRole = (role) => {
+    const modulesForRole = (role, capabilities = {}) => {
       const normalized = String(role || "").toLowerCase();
 
       if (["super_admin", "admin", "club_admin"].includes(normalized)) {
@@ -5737,7 +5978,7 @@ export default function App() {
 
       let { data: staffRows, error: staffError } = await supabase
         .from("team_staff")
-        .select("id, age_group_id, role, status, coach_id")
+        .select("id, age_group_id, role, status, coach_id, user_id, coach_write, academy_write, academy_publish, connect_read, connect_write, cup_read, cup_write, attendance_manage")
         .eq("user_id", userId)
         .eq("status", "active");
 
@@ -5753,7 +5994,7 @@ export default function App() {
         if (matchingCoach?.id) {
           const { data: pendingRows } = await supabase
             .from("team_staff")
-            .select("id, age_group_id, role, status, coach_id")
+            .select("id, age_group_id, role, status, coach_id, user_id, coach_write, academy_write, academy_publish, connect_read, connect_write, cup_read, cup_write, attendance_manage")
             .eq("coach_id", matchingCoach.id)
             .eq("status", "active");
           staffRows = pendingRows || [];
@@ -5781,9 +6022,61 @@ export default function App() {
         }
       }
 
-      const capabilities = roleCapabilities(effectiveRole);
-      setEnabledModules(modulesForRole(effectiveRole));
-      setUserRole({ ...(roleData || {}), role: effectiveRole, club_id: effectiveClubId, capabilities });
+      const moduleGrants = (staffRows || []).reduce(
+        (grants, row) => ({
+          coach_write:
+            grants.coach_write || Boolean(row.coach_write),
+
+          academy_write:
+            grants.academy_write || Boolean(row.academy_write),
+
+          academy_publish:
+            grants.academy_publish || Boolean(row.academy_publish),
+
+          connect_read:
+            grants.connect_read ||
+            Boolean(row.connect_read) ||
+            Boolean(row.connect_write),
+
+          connect_write:
+            grants.connect_write || Boolean(row.connect_write),
+
+          cup_read:
+            grants.cup_read ||
+            Boolean(row.cup_read) ||
+            Boolean(row.cup_write),
+
+          cup_write:
+            grants.cup_write || Boolean(row.cup_write),
+
+          attendance_manage:
+            grants.attendance_manage ||
+            Boolean(row.attendance_manage),
+        }),
+        {}
+      );
+
+      const capabilities = roleCapabilities(
+        effectiveRole,
+        moduleGrants
+      );
+
+      setEnabledModules(
+        modulesForRole(effectiveRole, capabilities)
+      );
+
+      setUserRole({
+        ...(roleData || {}),
+        role: effectiveRole,
+        club_id: effectiveClubId,
+
+        // Aggregate capabilities: navigation/module visibility only.
+        capabilities,
+
+        // Authorisation is evaluated against the selected team below.
+        staffAssignments: staffRows || [],
+      });
+
       setMyTeams([...new Set(assignedTeamIds)]);
     } catch (error) {
       console.error("Unable to initialise platform access:", error);
@@ -6468,6 +6761,11 @@ export default function App() {
   }
 
   async function editSession(sess) {
+    if (!permissions.canEditCoachPlans) {
+      setScreen("coach-sessions");
+      return;
+    }
+
     const { data } = await supabase.from("sessions").select("*, session_activities(*, activity:activities(*, skill:skills!activities_skill_id_fkey(name, category)), coach:coaches(name)), plan:weekly_plans(week_number, mode, coach_notes)").eq("id", sess.id).single();
     setEditingSession(data);
     setScreen("coach-builder");
@@ -6494,18 +6792,73 @@ export default function App() {
       {showMobile && <MobileHeader activeModule={activeModule} setActiveModule={setActiveModule} onNav={setScreen} enabledModules={enabledModules} club={club} selectedTeam={selectedTeam} ageGroups={ageGroups} myTeams={myTeams} onSelectTeam={selectTeam} onShowProfile={()=>setShowProfile(true)} />}
 
       {/* Sidebar — desktop only */}
-      {!showMobile && <Sidebar activeModule={activeModule} setActiveModule={setActiveModule} activeScreen={screen} onNav={setScreen} club={club} selectedTeam={selectedTeam} onSelectTeam={selectTeam} enabledModules={enabledModules} onLogout={logout} ageGroups={ageGroups} myTeams={myTeams} onShowProfile={() => setShowProfile(true)} />}
+      {!showMobile && <Sidebar activeModule={activeModule} setActiveModule={setActiveModule} activeScreen={screen} onNav={setScreen} club={club} selectedTeam={selectedTeam} onSelectTeam={selectTeam} enabledModules={enabledModules} onLogout={logout} ageGroups={ageGroups} myTeams={myTeams} onShowProfile={() => setShowProfile(true)} userRole={selectedTeamUserRole} />}
 
       {/* COACH screens */}
       {screen === "coach-dashboard" && <DashboardScreen club={club} ageGroups={ageGroups} planSessions={planSessions} weeklyPlan={weeklyPlan} upcomingSessions={upcomingSessions} onNav={setScreen} onOpenSession={openSession} allActivities={allActivities} selectedTeam={selectedTeam} favouriteIds={favouriteIds} coaches={coaches} />}
+
+      {screen === "coach-attendance" && (
+        <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
+          <TopBar
+            title="Attendance"
+            sub={
+              selectedTeam
+                ? teamDisplayName(selectedTeam)
+                : "Select a team"
+            }
+          />
+          <div
+            style={{
+              padding: "20px 24px",
+              maxWidth: 1100,
+              margin: "0 auto",
+            }}
+          >
+            <CoachAttendanceCard selectedTeam={selectedTeam} />
+          </div>
+        </div>
+      )}
+
       {screen === "coach-planner" && <PlannerScreen onNav={setScreen} club={club} ageGroups={ageGroups} upcomingSessions={upcomingSessions} onOpenSession={openSession} allActivities={allActivities} coaches={coaches} skills={skills} diagramMap={diagramMap} selectedTeam={selectedTeam} />}
       {screen === "coach-sessions" && <SessionsListScreen club={club} selectedTeam={selectedTeam} onOpenSession={openSession} onNav={setScreen} onEditSession={editSession} />}
-      {screen === "coach-builder" && <SessionBuilderScreen club={club} ageGroups={ageGroups} skills={skills} allActivities={allActivities} coaches={coaches} diagramMap={diagramMap} selectedTeam={selectedTeam} onNav={setScreen} editingSession={editingSession} onClearEdit={() => setEditingSession(null)} />}
-      {screen === "coach-drills" && <DrillsScreen allActivities={allActivities} diagramMap={diagramMap} favouriteIds={favouriteIds} onToggleFavourite={toggleFavourite} userRole={userRole} />}
-      {screen === "coach-players" && <PlayersScreen club={club} ageGroups={ageGroups} selectedTeam={selectedTeam} userRole={userRole} />}
+      {screen === "coach-builder" && (
+        permissions.canEditCoachPlans
+          ? (
+              <SessionBuilderScreen
+                club={club}
+                ageGroups={ageGroups}
+                skills={skills}
+                allActivities={allActivities}
+                coaches={coaches}
+                diagramMap={diagramMap}
+                selectedTeam={selectedTeam}
+                onNav={setScreen}
+                editingSession={editingSession}
+                onClearEdit={() => setEditingSession(null)}
+              />
+            )
+          : (
+              <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
+                <TopBar
+                  title="Session Builder"
+                  sub={
+                    selectedTeam
+                      ? teamDisplayName(selectedTeam)
+                      : "No team selected"
+                  }
+                />
+                <CoachReadOnlyNotice
+                  title="Editing unavailable"
+                  message="You have read-only Coach access. A Club Admin can grant Coach editing permission from Club → People."
+                />
+              </div>
+            )
+      )}
+      {screen === "coach-drills" && <DrillsScreen allActivities={allActivities} diagramMap={diagramMap} favouriteIds={favouriteIds} onToggleFavourite={toggleFavourite} userRole={selectedTeamUserRole} />}
+      {screen === "coach-players" && <PlayersScreen club={club} ageGroups={ageGroups} selectedTeam={selectedTeam} userRole={selectedTeamUserRole} />}
 
       {/* CLUB screens */}
-      {screen === "club-permissions" && <ClubPermissionsScreen club={club} userRole={userRole} />}
+      {screen === "club-permissions" && <ClubPermissionsScreen club={club} userRole={selectedTeamUserRole} />}
       {screen.startsWith("club-") && screen !== "club-permissions" && <ModulePlaceholder module={MODULES.club} screen={screen} club={club} />}
 
       {/* CUP screens */}
@@ -6737,7 +7090,7 @@ export default function App() {
       )}
 
       {/* Mobile bottom nav */}
-      {showMobile && <MobileNav activeModule={activeModule} screen={screen} onNav={setScreen} enabledModules={enabledModules} />}
+      {showMobile && <MobileNav activeModule={activeModule} screen={screen} onNav={setScreen} enabledModules={enabledModules} userRole={selectedTeamUserRole} />}
     </div>
   );
 }

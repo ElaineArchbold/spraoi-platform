@@ -75,29 +75,95 @@ function displayRoleLabel(role) {
   return "Coach/Mentor";
 }
 
-function roleCapabilities(role) {
+function roleCapabilities(role, grants = {}) {
   const normalized = String(role || "").toLowerCase();
+
+  const isClubAdmin = ["club_admin", "super_admin", "admin"].includes(normalized);
+  const isLeadCoach = normalized === "lead_coach";
+  const isTeamAdmin = normalized === "team_admin";
+  const isCoachMentor = ["coach_mentor", "coach", "mentor"].includes(normalized);
+
+  const coachWrite =
+    isClubAdmin ||
+    isLeadCoach ||
+    Boolean(grants.coach_write);
+
+  const academyWrite =
+    isClubAdmin ||
+    isLeadCoach ||
+    Boolean(grants.academy_write);
+
+  const academyPublish =
+    isClubAdmin ||
+    isLeadCoach ||
+    Boolean(grants.academy_publish);
+
+  const connectRead =
+    isClubAdmin ||
+    isLeadCoach ||
+    isTeamAdmin ||
+    Boolean(grants.connect_read) ||
+    Boolean(grants.connect_write);
+
+  const connectWrite =
+    isClubAdmin ||
+    isLeadCoach ||
+    isTeamAdmin ||
+    Boolean(grants.connect_write);
+
+  const cupRead =
+    isClubAdmin ||
+    isTeamAdmin ||
+    Boolean(grants.cup_read) ||
+    Boolean(grants.cup_write);
+
+  const cupWrite =
+    isClubAdmin ||
+    isTeamAdmin ||
+    Boolean(grants.cup_write);
+
+  const attendanceManage =
+    isClubAdmin ||
+    isLeadCoach ||
+    isTeamAdmin ||
+    isCoachMentor ||
+    Boolean(grants.attendance_manage);
+
   return {
-    isClubAdmin: ["club_admin", "super_admin", "admin"].includes(normalized),
-    isLeadCoach: normalized === "lead_coach",
-    isTeamAdmin: normalized === "team_admin",
-    isCoachMentor: ["coach_mentor", "coach", "mentor"].includes(normalized),
-    canEditCoachPlans: ["club_admin", "super_admin", "admin", "lead_coach"].includes(normalized),
-    canEditAcademyPlans: ["club_admin", "super_admin", "admin", "lead_coach"].includes(normalized),
-    canPublishAcademy: ["club_admin", "super_admin", "admin", "lead_coach"].includes(normalized),
-    canAddDrills: ["club_admin", "super_admin", "admin", "lead_coach"].includes(normalized),
-    canEditSharedDrills: ["club_admin", "super_admin", "admin", "lead_coach"].includes(normalized),
-    canDeleteSharedDrills: ["club_admin", "super_admin", "admin"].includes(normalized),
-    canManageTeamStaff: ["club_admin", "super_admin", "admin"].includes(normalized),
+    isClubAdmin,
+    isLeadCoach,
+    isTeamAdmin,
+    isCoachMentor,
+
+    coachWrite,
+    academyWrite,
+    academyPublish,
+
+    connectRead,
+    connectWrite,
+
+    cupRead,
+    cupWrite,
+
+    attendanceManage,
+
+    canEditCoachPlans: coachWrite,
+    canEditAcademyPlans: academyWrite,
+    canPublishAcademy: academyPublish,
+
+    canAddDrills: coachWrite,
+    canEditSharedDrills: isClubAdmin || isLeadCoach,
+    canDeleteSharedDrills: isClubAdmin,
+
+    canManageTeamStaff: isClubAdmin,
   };
 }
 
-const TEAM_ADMIN_CLUB_SCREENS = new Set([
-  "club-teams",
-  "club-coaches",
+const LIMITED_CLUB_SCREENS = new Set([
+  "club-scheduling",
 ]);
 
-function modulesForRole(role) {
+function modulesForRole(role, capabilities = {}) {
   const normalized = String(role || "").toLowerCase();
 
   if (["super_admin", "admin", "club_admin"].includes(normalized)) {
@@ -109,11 +175,21 @@ function modulesForRole(role) {
   }
 
   if (normalized === "team_admin") {
-    return ["club", "connect"];
+    return ["club", "coach", "academy", "connect", "cup"];
   }
 
   if (["coach_mentor", "coach", "mentor"].includes(normalized)) {
-    return ["coach", "connect"];
+    const modules = ["club", "coach", "academy"];
+
+    if (capabilities.connectRead || capabilities.connectWrite) {
+      modules.push("connect");
+    }
+
+    if (capabilities.cupRead || capabilities.cupWrite) {
+      modules.push("cup");
+    }
+
+    return modules;
   }
 
   if (normalized === "cup_helper") {
@@ -138,8 +214,11 @@ function canAccessClubScreen(role, screen) {
     return ["club-dashboard", "club-teams", "club-coaches"].includes(screen);
   }
 
-  if (normalized === "team_admin") {
-    return TEAM_ADMIN_CLUB_SCREENS.has(screen);
+  if (
+    normalized === "team_admin" ||
+    ["coach_mentor", "coach", "mentor"].includes(normalized)
+  ) {
+    return LIMITED_CLUB_SCREENS.has(screen);
   }
 
   return false;
@@ -2346,6 +2425,10 @@ function ClubSetupScreen({ club, userRole, onClubUpdated, onNav }) {
   const [contactPhone, setContactPhone] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+
+  const [permissionCoach, setPermissionCoach] = useState(null);
+  const [permissionRows, setPermissionRows] = useState([]);
+  const [permissionSaving, setPermissionSaving] = useState(false);
   const [contactError, setContactError] = useState("");
 
   useEffect(() => {
@@ -2602,6 +2685,386 @@ function ClubSetupScreen({ club, userRole, onClubUpdated, onNav }) {
           </div>
         )}
       </ClubCard>
+
+      {permissionCoach && isAdmin && (
+        <div
+          onClick={() => {
+            if (!permissionSaving) {
+              setPermissionCoach(null);
+              setPermissionRows([]);
+            }
+          }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 10030,
+            background: "rgba(15,23,42,.52)",
+            display: "grid",
+            placeItems: "center",
+            padding: 16,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "min(860px, calc(100vw - 32px))",
+              maxHeight: "calc(100vh - 48px)",
+              overflow: "auto",
+              background: P.white,
+              borderRadius: 16,
+              padding: 22,
+              boxShadow: Sh.lift,
+            }}
+          >
+            <div
+              style={{
+                fontFamily: F.display,
+                fontSize: 18,
+                fontWeight: 800,
+                color: P.ink,
+              }}
+            >
+              Permissions · {permissionCoach.name || "Coach"}
+            </div>
+
+            <div
+              style={{
+                fontFamily: F.body,
+                fontSize: 10,
+                color: P.muted,
+                marginTop: 4,
+                marginBottom: 16,
+              }}
+            >
+              Permissions are stored separately for each team assignment.
+            </div>
+
+            {permissionRows.length === 0 ? (
+              <div
+                style={{
+                  padding: 14,
+                  borderRadius: 10,
+                  background: P.soft,
+                  color: P.muted,
+                  fontFamily: F.body,
+                  fontSize: 10,
+                }}
+              >
+                This person has no active team assignment.
+              </div>
+            ) : (
+              <div style={{ display: "grid", gap: 12 }}>
+                {permissionRows.map((row) => {
+                  const normalizedRole = String(row.role || "").toLowerCase();
+                  const fixedFull =
+                    normalizedRole === "lead_coach" ||
+                    normalizedRole === "club_admin";
+
+                  return (
+                    <div
+                      key={row.id}
+                      style={{
+                        border: `1px solid ${P.line}`,
+                        borderRadius: 12,
+                        padding: 14,
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: 10,
+                          alignItems: "center",
+                          marginBottom: 12,
+                        }}
+                      >
+                        <div>
+                          <div
+                            style={{
+                              fontFamily: F.body,
+                              fontSize: 12,
+                              fontWeight: 800,
+                              color: P.ink,
+                            }}
+                          >
+                            {teamDisplayName(row.team)}
+                          </div>
+
+                          <div
+                            style={{
+                              fontFamily: F.body,
+                              fontSize: 9,
+                              color: P.muted,
+                              marginTop: 2,
+                            }}
+                          >
+                            {displayRoleLabel(row.role)}
+                          </div>
+                        </div>
+
+                        {fixedFull && (
+                          <span
+                            style={{
+                              padding: "4px 8px",
+                              borderRadius: 999,
+                              background: "#ecfdf3",
+                              color: "#16803a",
+                              fontFamily: F.body,
+                              fontSize: 8,
+                              fontWeight: 800,
+                            }}
+                          >
+                            ROLE DEFAULT
+                          </span>
+                        )}
+                      </div>
+
+                      <div
+                        className="club-permission-editor-grid"
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns:
+                            "repeat(2,minmax(0,1fr))",
+                          gap: 10,
+                        }}
+                      >
+                        <label
+                          style={{
+                            padding: 10,
+                            borderRadius: 9,
+                            background: P.soft,
+                            fontFamily: F.body,
+                            fontSize: 10,
+                            color: P.ink,
+                          }}
+                        >
+                          <div style={{ fontWeight: 800, marginBottom: 7 }}>
+                            Coach
+                          </div>
+                          <select
+                            value={row.coach_write ? "write" : "read"}
+                            disabled={fixedFull}
+                            onChange={(e) =>
+                              updatePermissionRow(row.id, {
+                                coach_write: e.target.value === "write",
+                              })
+                            }
+                            style={{
+                              width: "100%",
+                              padding: 8,
+                              borderRadius: 8,
+                              border: `1px solid ${P.line}`,
+                            }}
+                          >
+                            <option value="read">Read only</option>
+                            <option value="write">Can edit</option>
+                          </select>
+                        </label>
+
+                        <label
+                          style={{
+                            padding: 10,
+                            borderRadius: 9,
+                            background: P.soft,
+                            fontFamily: F.body,
+                            fontSize: 10,
+                            color: P.ink,
+                          }}
+                        >
+                          <div style={{ fontWeight: 800, marginBottom: 7 }}>
+                            Academy
+                          </div>
+                          <select
+                            value={
+                              row.academy_publish
+                                ? "publish"
+                                : row.academy_write
+                                  ? "write"
+                                  : "read"
+                            }
+                            disabled={fixedFull}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              updatePermissionRow(row.id, {
+                                academy_write:
+                                  value === "write" ||
+                                  value === "publish",
+                                academy_publish:
+                                  value === "publish",
+                              });
+                            }}
+                            style={{
+                              width: "100%",
+                              padding: 8,
+                              borderRadius: 8,
+                              border: `1px solid ${P.line}`,
+                            }}
+                          >
+                            <option value="read">Read only</option>
+                            <option value="write">Can edit</option>
+                            <option value="publish">Can publish</option>
+                          </select>
+                        </label>
+
+                        <label
+                          style={{
+                            padding: 10,
+                            borderRadius: 9,
+                            background: P.soft,
+                            fontFamily: F.body,
+                            fontSize: 10,
+                            color: P.ink,
+                          }}
+                        >
+                          <div style={{ fontWeight: 800, marginBottom: 7 }}>
+                            Connect
+                          </div>
+                          <select
+                            value={accessLevel(row, "connect")}
+                            disabled={
+                              fixedFull ||
+                              normalizedRole === "team_admin"
+                            }
+                            onChange={(e) =>
+                              updateAccessLevel(
+                                row.id,
+                                "connect",
+                                e.target.value
+                              )
+                            }
+                            style={{
+                              width: "100%",
+                              padding: 8,
+                              borderRadius: 8,
+                              border: `1px solid ${P.line}`,
+                            }}
+                          >
+                            <option value="none">No access</option>
+                            <option value="read">Read only</option>
+                            <option value="write">Read & write</option>
+                          </select>
+                        </label>
+
+                        <label
+                          style={{
+                            padding: 10,
+                            borderRadius: 9,
+                            background: P.soft,
+                            fontFamily: F.body,
+                            fontSize: 10,
+                            color: P.ink,
+                          }}
+                        >
+                          <div style={{ fontWeight: 800, marginBottom: 7 }}>
+                            Cup
+                          </div>
+                          <select
+                            value={accessLevel(row, "cup")}
+                            disabled={
+                              normalizedRole === "team_admin" ||
+                              normalizedRole === "club_admin"
+                            }
+                            onChange={(e) =>
+                              updateAccessLevel(
+                                row.id,
+                                "cup",
+                                e.target.value
+                              )
+                            }
+                            style={{
+                              width: "100%",
+                              padding: 8,
+                              borderRadius: 8,
+                              border: `1px solid ${P.line}`,
+                            }}
+                          >
+                            <option value="none">No access</option>
+                            <option value="read">Read only</option>
+                            <option value="write">Read & write</option>
+                          </select>
+                        </label>
+
+                        <label
+                          style={{
+                            gridColumn: "1 / -1",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 9,
+                            padding: 10,
+                            borderRadius: 9,
+                            background: P.soft,
+                            fontFamily: F.body,
+                            fontSize: 10,
+                            color: P.ink,
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={Boolean(row.attendance_manage)}
+                            disabled={[
+                              "lead_coach",
+                              "team_admin",
+                              "coach_mentor",
+                              "coach",
+                              "mentor",
+                            ].includes(normalizedRole)}
+                            onChange={(e) =>
+                              updatePermissionRow(row.id, {
+                                attendance_manage: e.target.checked,
+                              })
+                            }
+                          />
+                          <span>
+                            <strong>Attendance</strong>
+                            <span
+                              style={{
+                                display: "block",
+                                marginTop: 2,
+                                fontSize: 8,
+                                color: P.muted,
+                              }}
+                            >
+                              Team Admin and Coach/Mentor receive this by default.
+                            </span>
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div
+              style={{
+                display: "flex",
+                gap: 8,
+                marginTop: 18,
+              }}
+            >
+              <Btn
+                label={
+                  permissionSaving
+                    ? "Saving..."
+                    : "Save Permissions"
+                }
+                variant="primary"
+                onClick={savePermissionEditor}
+              />
+              <Btn
+                label="Cancel"
+                variant="ghost"
+                onClick={() => {
+                  if (!permissionSaving) {
+                    setPermissionCoach(null);
+                    setPermissionRows([]);
+                  }
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`
         @media(max-width:900px){.club-setup-grid{grid-template-columns:1fr!important}.club-contact-form{grid-template-columns:1fr 1fr!important}}
@@ -5041,6 +5504,118 @@ function ClubCoachesScreen({ club, ageGroups, coaches, selectedTeam, onReloadCoa
       }));
   }
 
+  function openPermissionEditor(coach) {
+    if (!isAdmin || !coach?.id) return;
+
+    const rows = assignmentsForCoach(coach.id).map((row) => ({
+      ...row,
+      coach_write: Boolean(row.coach_write),
+      academy_write: Boolean(row.academy_write),
+      academy_publish: Boolean(row.academy_publish),
+      connect_read: Boolean(row.connect_read),
+      connect_write: Boolean(row.connect_write),
+      cup_read: Boolean(row.cup_read),
+      cup_write: Boolean(row.cup_write),
+      attendance_manage: Boolean(row.attendance_manage),
+    }));
+
+    setPermissionCoach(coach);
+    setPermissionRows(rows);
+  }
+
+  function updatePermissionRow(id, patch) {
+    setPermissionRows((current) =>
+      current.map((row) => {
+        if (row.id !== id) return row;
+
+        const next = { ...row, ...patch };
+
+        if (next.connect_write) next.connect_read = true;
+        if (!next.connect_read) next.connect_write = false;
+
+        if (next.cup_write) next.cup_read = true;
+        if (!next.cup_read) next.cup_write = false;
+
+        if (next.academy_publish) next.academy_write = true;
+        if (!next.academy_write) next.academy_publish = false;
+
+        return next;
+      })
+    );
+  }
+
+  async function savePermissionEditor() {
+    if (!isAdmin || permissionSaving || !permissionRows.length) return;
+
+    setPermissionSaving(true);
+    setMessage("");
+
+    try {
+      for (const row of permissionRows) {
+        const payload = {
+          coach_write: Boolean(row.coach_write),
+          academy_write: Boolean(row.academy_write),
+          academy_publish: Boolean(row.academy_publish),
+          connect_read: Boolean(row.connect_read || row.connect_write),
+          connect_write: Boolean(row.connect_write),
+          cup_read: Boolean(row.cup_read || row.cup_write),
+          cup_write: Boolean(row.cup_write),
+          attendance_manage: Boolean(row.attendance_manage),
+          updated_at: new Date().toISOString(),
+        };
+
+        const { error } = await supabase
+          .from("team_staff")
+          .update(payload)
+          .eq("id", row.id)
+          .eq("club_id", club.id);
+
+        if (error) throw error;
+      }
+
+      setPermissionCoach(null);
+      setPermissionRows([]);
+      setMessage("Permissions updated.");
+      await loadPeopleData();
+    } catch (error) {
+      setMessage(
+        "Could not update permissions: " +
+          (error?.message || "Unknown error")
+      );
+    } finally {
+      setPermissionSaving(false);
+    }
+  }
+
+  function accessLevel(row, prefix) {
+    if (row?.[`${prefix}_write`]) return "write";
+    if (row?.[`${prefix}_read`]) return "read";
+    return "none";
+  }
+
+  function updateAccessLevel(rowId, prefix, value) {
+    if (value === "write") {
+      updatePermissionRow(rowId, {
+        [`${prefix}_read`]: true,
+        [`${prefix}_write`]: true,
+      });
+      return;
+    }
+
+    if (value === "read") {
+      updatePermissionRow(rowId, {
+        [`${prefix}_read`]: true,
+        [`${prefix}_write`]: false,
+      });
+      return;
+    }
+
+    updatePermissionRow(rowId, {
+      [`${prefix}_read`]: false,
+      [`${prefix}_write`]: false,
+    });
+  }
+
   function invitationTeamNames(invitationId) {
     const ids = invitationTeams
       .filter((row) => row.invitation_id === invitationId)
@@ -5634,12 +6209,19 @@ function ClubCoachesScreen({ club, ageGroups, coaches, selectedTeam, onReloadCoa
                 </div>
 
                 {isAdmin && (
-                  <Btn
-                    label="Remove"
-                    variant="ghost"
-                    style={{ color: P.coral }}
-                    onClick={() => removeCoachRecord(coach)}
-                  />
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    <Btn
+                      label="Permissions"
+                      variant="ghost"
+                      onClick={() => openPermissionEditor(coach)}
+                    />
+                    <Btn
+                      label="Remove"
+                      variant="ghost"
+                      style={{ color: P.coral }}
+                      onClick={() => removeCoachRecord(coach)}
+                    />
+                  </div>
                 )}
               </div>
             );
@@ -5711,6 +6293,9 @@ function ClubCoachesScreen({ club, ageGroups, coaches, selectedTeam, onReloadCoa
           }
           .club-invitation-row{
             grid-template-columns:1fr 1fr!important;
+          }
+          .club-permission-editor-grid{
+            grid-template-columns:1fr!important;
           }
         }
 
@@ -8165,9 +8750,14 @@ export default function App() {
   const [sessionDetail, setSessionDetail] = useState(null);
   const [editingSession, setEditingSession] = useState(null); // full session object for pre-filling builder
   const [myTeams, setMyTeams] = useState([]); // age groups this coach is assigned to
-  const permissions = roleCapabilities(userRole?.role);
+  const permissions =
+    userRole?.capabilities ||
+    roleCapabilities(userRole?.role);
 
-  const scopedAgeGroups = permissions.isTeamAdmin
+  const isTeamScopedUser =
+    permissions.isTeamAdmin || permissions.isCoachMentor;
+
+  const scopedAgeGroups = isTeamScopedUser
     ? ageGroups.filter((ag) => myTeams.includes(ag.id))
     : ageGroups;
 
@@ -8186,9 +8776,12 @@ export default function App() {
       moduleKey === "club" &&
       !canAccessClubScreen(userRole?.role, screen)
     ) {
+      const normalizedRole = String(userRole?.role || "").toLowerCase();
+
       const fallback =
-        String(userRole?.role || "").toLowerCase() === "team_admin"
-          ? "club-teams"
+        normalizedRole === "team_admin" ||
+        ["coach_mentor", "coach", "mentor"].includes(normalizedRole)
+          ? "club-scheduling"
           : "club-dashboard";
 
       if (screen !== fallback) {
@@ -8276,7 +8869,7 @@ const [showProfile, setShowProfile] = useState(false);
 
       let { data: staffRows, error: staffError } = await supabase
         .from("team_staff")
-        .select("id, club_id, age_group_id, role, status, coach_id")
+        .select("id, club_id, age_group_id, role, status, coach_id, coach_write, academy_write, academy_publish, connect_read, connect_write, cup_read, cup_write, attendance_manage")
         .eq("user_id", userId)
         .eq("status", "active");
 
@@ -8296,7 +8889,7 @@ const [showProfile, setShowProfile] = useState(false);
         if (matchingCoach?.id) {
           const { data: pendingRows, error: pendingError } = await supabase
             .from("team_staff")
-            .select("id, club_id, age_group_id, role, status, coach_id")
+            .select("id, club_id, age_group_id, role, status, coach_id, coach_write, academy_write, academy_publish, connect_read, connect_write, cup_read, cup_write, attendance_manage")
             .eq("coach_id", matchingCoach.id)
             .eq("status", "active");
 
@@ -8437,7 +9030,7 @@ const [showProfile, setShowProfile] = useState(false);
       }
 
       // Coach/Academy content should only load for roles that can use it.
-      if (["super_admin", "admin", "club_admin", "lead_coach", "coach_mentor", "coach", "mentor"].includes(
+      if (["super_admin", "admin", "club_admin", "lead_coach", "team_admin", "coach_mentor", "coach", "mentor"].includes(
         String(effectiveRole || "").toLowerCase()
       )) {
         loadSkills();
@@ -8445,9 +9038,57 @@ const [showProfile, setShowProfile] = useState(false);
         loadUpcoming();
       }
 
-      const capabilities = roleCapabilities(effectiveRole);
+      const staffGrants = (staffRows || []).reduce(
+        (grants, row) => ({
+          coach_write:
+            grants.coach_write || Boolean(row.coach_write),
 
-      setEnabledModules(modulesForRole(effectiveRole));
+          academy_write:
+            grants.academy_write || Boolean(row.academy_write),
+
+          academy_publish:
+            grants.academy_publish || Boolean(row.academy_publish),
+
+          connect_read:
+            grants.connect_read ||
+            Boolean(row.connect_read) ||
+            Boolean(row.connect_write),
+
+          connect_write:
+            grants.connect_write || Boolean(row.connect_write),
+
+          cup_read:
+            grants.cup_read ||
+            Boolean(row.cup_read) ||
+            Boolean(row.cup_write),
+
+          cup_write:
+            grants.cup_write || Boolean(row.cup_write),
+
+          attendance_manage:
+            grants.attendance_manage ||
+            Boolean(row.attendance_manage),
+        }),
+        {
+          coach_write: false,
+          academy_write: false,
+          academy_publish: false,
+          connect_read: false,
+          connect_write: false,
+          cup_read: false,
+          cup_write: false,
+          attendance_manage: false,
+        }
+      );
+
+      const capabilities = roleCapabilities(
+        effectiveRole,
+        staffGrants
+      );
+
+      setEnabledModules(
+        modulesForRole(effectiveRole, capabilities)
+      );
 
       setUserRole({
         ...(roleData || {}),
@@ -9380,7 +10021,13 @@ const [showProfile, setShowProfile] = useState(false);
       {screen === "club-compliance" && <ClubComplianceScreen club={club} coaches={coaches} userRole={userRole} />}
       {screen === "club-permissions" && <ClubPermissionsScreen club={club} userRole={userRole} ageGroups={ageGroups} />}
       {screen === "club-scheduling" && <ClubPage title="Facilities & Slots" sub="Manage facilities, recurring training slots and weekly pitch allocations.">
-        <ClubScheduling club={club} ageGroups={ageGroups} currentUserId={session?.user?.id || ""} hideHeader />
+        <ClubScheduling
+          club={club}
+          ageGroups={scopedAgeGroups}
+          currentUserId={session?.user?.id || ""}
+          hideHeader
+          readOnly={permissions.isTeamAdmin || permissions.isCoachMentor}
+        />
       </ClubPage>}
 
       {/* CUP screens */}

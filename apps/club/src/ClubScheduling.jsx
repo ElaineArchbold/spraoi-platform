@@ -38,7 +38,13 @@ const card = { background:"#fff", border:`1px solid ${LINE}`, borderRadius:16, p
 const input = { height:38, borderRadius:9, border:`1px solid ${LINE}`, padding:"0 10px", fontSize:11, color:INK, background:"#fff" };
 const btn = (primary=false) => ({ height:38, borderRadius:9, border: primary ? "none" : `1px solid ${LINE}`, padding:"0 13px", fontSize:11, fontWeight:800, cursor:"pointer", background:primary?RED:"#fff", color:primary?"#fff":INK });
 
-export default function ClubScheduling({ club, ageGroups = [], currentUserId, hideHeader = false }) {
+export default function ClubScheduling({
+  club,
+  ageGroups = [],
+  currentUserId,
+  hideHeader = false,
+  readOnly = false,
+}) {
   const [tab,setTab] = useState("weekly");
   const [plannerView,setPlannerView] = useState("week");
   const [facilities,setFacilities] = useState([]);
@@ -65,6 +71,12 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId, hi
   }, [facilities, facilityId]);
 
   useEffect(()=>{ if(club?.id) loadAll(); },[club?.id,weekStart]);
+
+  function denyReadOnlyWrite() {
+    if (!readOnly) return false;
+    setMessage("You have read-only access to Facilities & Slots.");
+    return true;
+  }
 
   function showToast(text) {
     setToast(text);
@@ -97,16 +109,19 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId, hi
     }
   }
   async function seedFacilities(){
+    if (denyReadOnlyWrite()) return;
     if(!club?.id) return; setBusy(true); setMessage("");
     const rows = DEFAULT_FACILITIES.map(([name,notes])=>({club_id:club.id,name,notes,active:true}));
     const {error}=await supabase.from("facilities").upsert(rows,{onConflict:"club_id,name",ignoreDuplicates:true});
     setMessage(error?error.message:"Default club facilities added."); await loadAll(); setBusy(false);
   }
   async function addFacility(){
+    if (denyReadOnlyWrite()) return;
     if(!facilityName.trim()) return; const {error}=await supabase.from("facilities").insert({club_id:club.id,name:facilityName.trim(),active:true});
     if(error)setMessage(error.message); else {setFacilityName("");setMessage("Facility added.");await loadAll();}
   }
-  async function toggleFacility(row){ await supabase.from("facilities").update({active:!row.active,updated_at:new Date().toISOString()}).eq("id",row.id); await loadAll(); }
+  async function toggleFacility(row){
+    if (denyReadOnlyWrite()) return; await supabase.from("facilities").update({active:!row.active,updated_at:new Date().toISOString()}).eq("id",row.id); await loadAll(); }
   function allocationsOverlap(startA, endA, startB, endB) {
     const aStart = new Date(startA).getTime();
     const aEnd = new Date(endA).getTime();
@@ -155,6 +170,7 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId, hi
   }
 
   async function addManualWeekSlot() {
+    if (denyReadOnlyWrite()) return;
     if (!teamId) {
       setMessage("Choose a team.");
       return;
@@ -249,6 +265,7 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId, hi
   }
 
   async function addSlot(){
+    if (denyReadOnlyWrite()) return;
     if(!teamId||!facilityId) {setMessage("Choose a team and facility.");return;}
     const {error}=await supabase.from("recurring_training_slots").insert({club_id:club.id,age_group_id:teamId,facility_id:facilityId,weekday:Number(weekday),start_time:startTime,end_time:endTime,effective_from:isoDate(new Date()),active:true});
     if (error) {
@@ -262,6 +279,7 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId, hi
     await loadAll();
   }
   async function removeRecurringSlot(slot){
+    if (denyReadOnlyWrite()) return;
     if(!slot?.id) return;
     const team = ageGroups.find((item) => String(item.id) === String(slot.age_group_id));
     const confirmed = window.confirm(
@@ -300,6 +318,7 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId, hi
     setBusy(false);
   }
   async function generateWeek(){
+    if (denyReadOnlyWrite()) return;
     setBusy(true); setMessage("");
     const rows = [];
     const conflicts = [];
@@ -376,8 +395,10 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId, hi
     await loadAll();
     setBusy(false);
   }
-  async function updateAllocation(id,patch){ const {error}=await supabase.from("weekly_training_allocations").update({...patch,updated_at:new Date().toISOString()}).eq("id",id); if(error)setMessage(error.message); await loadAll(); }
+  async function updateAllocation(id,patch){
+    if (denyReadOnlyWrite()) return; const {error}=await supabase.from("weekly_training_allocations").update({...patch,updated_at:new Date().toISOString()}).eq("id",id); if(error)setMessage(error.message); await loadAll(); }
   async function attachAllocationToExistingSession(allocation, event){
+    if (denyReadOnlyWrite()) return null;
     if(!allocation?.age_group_id || !event?.id) return null;
     const sessionDate = String(allocation.starts_at || "").slice(0,10);
     if(!sessionDate) return null;
@@ -431,6 +452,7 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId, hi
     return session;
   }
   async function publishWeek(){
+    if (denyReadOnlyWrite()) return;
     if(!allocations.length){setMessage("Generate the week first.");return;}
     setBusy(true); setMessage(""); const now=new Date().toISOString();
     for(const a of allocations.filter(x=>x.status!=="cancelled")){
@@ -601,6 +623,24 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId, hi
 
   return (
     <div>
+      {readOnly && (
+        <div
+          role="status"
+          style={{
+            marginBottom: 14,
+            padding: "11px 14px",
+            borderRadius: 12,
+            background: "#f8fafc",
+            border: `1px solid ${LINE}`,
+            color: MUTED,
+            fontSize: 10,
+            fontWeight: 700,
+            lineHeight: 1.5,
+          }}
+        >
+          Read-only access — you can view your team's facilities and weekly pitch allocations, but only Club Admin can make changes or publish the pitch plan.
+        </div>
+      )}
       <style>{`
         @media (max-width: 850px) {
           .facilities-summary-grid {

@@ -255,13 +255,45 @@ export default function App(){
   const [composer,setComposer]=useState(null); const [groupModal,setGroupModal]=useState(false); const [permissionModal,setPermissionModal]=useState(false); const [status,setStatus]=useState("");
   const [newGroupName,setNewGroupName]=useState(""); const [newGroupDescription,setNewGroupDescription]=useState(""); const [newGroupPlayers,setNewGroupPlayers]=useState([]); const [mobileModulesOpen,setMobileModulesOpen]=useState(false);
 
-  const isAdmin=["super_admin","admin","club_admin"].includes(String(role).toLowerCase());
-  const myStaffRows=staff.filter(s=>String(s.user_id)===String(session?.user?.id));
-  const userDisplayName=myStaffRows[0]?.coach?.name||session?.user?.user_metadata?.full_name||session?.user?.user_metadata?.name||session?.user?.email||"User";
+  const normalizedRole=String(role||"").toLowerCase();
+  const isAdmin=["super_admin","admin","club_admin"].includes(normalizedRole);
+
+  const myStaffRows=staff.filter(
+    s=>String(s.user_id)===String(session?.user?.id)
+  );
+
+  const userDisplayName=
+    myStaffRows[0]?.coach?.name||
+    session?.user?.user_metadata?.full_name||
+    session?.user?.user_metadata?.name||
+    session?.user?.email||
+    "User";
+
   const userInitials=initialsFromName(userDisplayName,"U");
-  const leadTeamIds=myStaffRows.filter(s=>s.role==="lead_coach").map(s=>s.age_group_id);
-  const delegatedTeamIds=delegates.filter(d=>d.active&&String(d.user_id)===String(session?.user?.id)).map(d=>d.age_group_id);
-  const visibleTeams=isAdmin?teams:teams.filter(t=>assignedTeamIds.includes(t.id));
+
+  const readableConnectTeamIds=[
+    ...new Set(
+      myStaffRows
+        .filter(row=>{
+          const rowRole=String(row.role||"").toLowerCase();
+
+          return (
+            rowRole==="lead_coach" ||
+            rowRole==="team_admin" ||
+            Boolean(row.connect_read) ||
+            Boolean(row.connect_write)
+          );
+        })
+        .map(row=>row.age_group_id)
+        .filter(Boolean)
+    )
+  ];
+
+  const visibleTeams=isAdmin
+    ? teams
+    : teams.filter(t=>readableConnectTeamIds.some(
+        id=>String(id)===String(t.id)
+      ));
   
   useEffect(() => {
     if (!selectedTeamId) return;
@@ -303,12 +335,47 @@ export default function App(){
     };
   }, [visibleTeams, selectedTeamId]);
 
-const selectedTeam=visibleTeams.find(t=>t.id===selectedTeamId)||visibleTeams[0]||null;
-  const teamPlayers=players.filter(p=>p.age_group_id===selectedTeam?.id);
-  const teamEvents=events.filter(e=>e.age_group_id===selectedTeam?.id);
-  const teamGroups=groups.filter(g=>g.age_group_id===selectedTeam?.id&&g.active!==false);
-  const canSendSelected=isAdmin||leadTeamIds.includes(selectedTeam?.id)||delegatedTeamIds.includes(selectedTeam?.id);
-  const canManageDelegates=isAdmin||leadTeamIds.includes(selectedTeam?.id);
+const selectedTeam=visibleTeams.find(
+    t=>String(t.id)===String(selectedTeamId)
+  )||visibleTeams[0]||null;
+
+  const teamPlayers=players.filter(
+    p=>String(p.age_group_id)===String(selectedTeam?.id)
+  );
+
+  const teamEvents=events.filter(
+    e=>String(e.age_group_id)===String(selectedTeam?.id)
+  );
+
+  const teamGroups=groups.filter(
+    g=>
+      String(g.age_group_id)===String(selectedTeam?.id) &&
+      g.active!==false
+  );
+
+  const selectedStaffRows=myStaffRows.filter(
+    row=>String(row.age_group_id)===String(selectedTeam?.id)
+  );
+
+  const canSendSelected=
+    isAdmin ||
+    selectedStaffRows.some(row=>{
+      const rowRole=String(row.role||"").toLowerCase();
+
+      return (
+        rowRole==="lead_coach" ||
+        rowRole==="team_admin" ||
+        Boolean(row.connect_write)
+      );
+    });
+
+  const canManageDelegates=
+    isAdmin ||
+    selectedStaffRows.some(row=>
+      ["lead_coach","team_admin"].includes(
+        String(row.role||"").toLowerCase()
+      )
+    );
   const noResponseCount=(event)=>teamPlayers.filter(p=>p.parent_user_id&&p.parent_user_id!==ZERO&&!responses.some(r=>r.event_id===event.id&&r.player_id===p.id)).length;
 
   useEffect(()=>{supabase.auth.getSession().then(({data:{session:s}})=>{setSession(s);if(s)loadAll(s);else setLoading(false)});const {data:{subscription}}=supabase.auth.onAuthStateChange((_e,s)=>{setSession(s);if(s)loadAll(s);else setLoading(false)});return()=>subscription.unsubscribe();},[]);
@@ -426,7 +493,15 @@ const selectedTeam=visibleTeams.find(t=>t.id===selectedTeamId)||visibleTeams[0]|
       priority: "normal",
     });
   }
-  async function createGroup(){if(!newGroupName.trim()||!selectedTeam?.id)return;const {data:g,error}=await supabase.from("connect_groups").insert({club_id:club.id,age_group_id:selectedTeam.id,name:newGroupName.trim(),description:newGroupDescription.trim()||null,created_by:session.user.id}).select("*").single();if(error){setStatus(error.message);return;}if(newGroupPlayers.length)await supabase.from("connect_group_members").insert(newGroupPlayers.map(player_id=>({group_id:g.id,player_id})));setNewGroupName("");setNewGroupDescription("");setNewGroupPlayers([]);setGroupModal(false);await loadAll();}
+  async function createGroup(){
+    if(!canSendSelected){
+      setStatus("You have read-only Connect access for this team.");
+      return;
+    }
+    if(!newGroupName.trim()||!selectedTeam?.id)return;
+    const {data:g,error}=await supabase.from("connect_groups").insert({club_id:club.id,age_group_id:selectedTeam.id,name:newGroupName.trim(),description:newGroupDescription.trim()||null,created_by:session.user.id}).select("*").single();if(error){setStatus(error.message);return;}if(newGroupPlayers.length)await supabase.from("connect_group_members").insert(newGroupPlayers.map(player_id=>({group_id:g.id,player_id})));setNewGroupName("");setNewGroupDescription("");setNewGroupPlayers([]);setGroupModal(false);await loadAll();
+  }
+
   async function toggleDelegate(staffRow){if(!canManageDelegates||!selectedTeam?.id||!staffRow.user_id)return;const existing=delegates.find(d=>d.age_group_id===selectedTeam.id&&String(d.user_id)===String(staffRow.user_id));if(existing){await supabase.from("connect_sender_permissions").update({active:!existing.active,granted_by:session.user.id,updated_at:new Date().toISOString()}).eq("id",existing.id);}else{await supabase.from("connect_sender_permissions").insert({club_id:club.id,age_group_id:selectedTeam.id,user_id:staffRow.user_id,granted_by:session.user.id,active:true});}await loadAll();}
 
   if(loading)return (

@@ -73,22 +73,126 @@ function saveActiveContext(team, club) {
   }));
 }
 
-function roleCapabilities(role) {
+function roleCapabilities(role, grants = {}) {
   const normalized = String(role || "").toLowerCase();
+
+  const isClubAdmin =
+    ["club_admin", "super_admin", "admin"].includes(normalized);
+
+  const isLeadCoach = normalized === "lead_coach";
+  const isTeamAdmin = normalized === "team_admin";
+  const isCoachMentor =
+    ["coach_mentor", "coach", "mentor"].includes(normalized);
+
+  const coachWrite =
+    isClubAdmin ||
+    isLeadCoach ||
+    Boolean(grants.coach_write);
+
+  const academyWrite =
+    isClubAdmin ||
+    isLeadCoach ||
+    Boolean(grants.academy_write);
+
+  const academyPublish =
+    isClubAdmin ||
+    isLeadCoach ||
+    Boolean(grants.academy_publish);
+
+  const connectRead =
+    isClubAdmin ||
+    isLeadCoach ||
+    isTeamAdmin ||
+    Boolean(grants.connect_read) ||
+    Boolean(grants.connect_write);
+
+  const connectWrite =
+    isClubAdmin ||
+    isLeadCoach ||
+    isTeamAdmin ||
+    Boolean(grants.connect_write);
+
+  const cupRead =
+    isClubAdmin ||
+    isTeamAdmin ||
+    Boolean(grants.cup_read) ||
+    Boolean(grants.cup_write);
+
+  const cupWrite =
+    isClubAdmin ||
+    isTeamAdmin ||
+    Boolean(grants.cup_write);
+
+  const attendanceManage =
+    isClubAdmin ||
+    isLeadCoach ||
+    isTeamAdmin ||
+    isCoachMentor ||
+    Boolean(grants.attendance_manage);
+
   return {
-    isClubAdmin: ["club_admin", "super_admin", "admin"].includes(normalized),
-    isLeadCoach: normalized === "lead_coach",
-    isCoachMentor: ["coach_mentor", "coach", "mentor"].includes(normalized),
-    canEditCoachPlans: ["club_admin", "super_admin", "admin", "lead_coach"].includes(normalized),
-    canEditAcademyPlans: ["club_admin", "super_admin", "admin", "lead_coach"].includes(normalized),
-    canPublishAcademy: ["club_admin", "super_admin", "admin", "lead_coach"].includes(normalized),
-    canAddDrills: ["club_admin", "super_admin", "admin", "lead_coach"].includes(normalized),
-    canEditSharedDrills: ["club_admin", "super_admin", "admin"].includes(normalized),
-    canDeleteSharedDrills: ["club_admin", "super_admin", "admin"].includes(normalized),
-    canManageTeamStaff: ["club_admin", "super_admin", "admin"].includes(normalized),
+    isClubAdmin,
+    isLeadCoach,
+    isTeamAdmin,
+    isCoachMentor,
+
+    coachWrite,
+    academyWrite,
+    academyPublish,
+
+    connectRead,
+    connectWrite,
+    cupRead,
+    cupWrite,
+    attendanceManage,
+
+    canEditCoachPlans: coachWrite,
+    canEditAcademyPlans: academyWrite,
+    canPublishAcademy: academyPublish,
+    canAddDrills: coachWrite,
+
+    canEditSharedDrills: isClubAdmin,
+    canDeleteSharedDrills: isClubAdmin,
+    canManageTeamStaff: isClubAdmin,
   };
 }
 
+
+const TEAM_ADMIN_ACADEMY_SCREENS = new Set([
+  "academy-dashboard",
+]);
+
+const COACH_MENTOR_ACADEMY_SCREENS = new Set([
+  "academy-dashboard",
+  "academy-content",
+  "academy-leaderboard",
+]);
+
+function canAccessAcademyScreen(role, screen) {
+  const normalized = String(role || "").toLowerCase();
+
+  if (
+    ["super_admin", "admin", "club_admin", "lead_coach"].includes(normalized)
+  ) {
+    return true;
+  }
+
+  if (normalized === "team_admin") {
+    return TEAM_ADMIN_ACADEMY_SCREENS.has(screen);
+  }
+
+  if (["coach_mentor", "coach", "mentor"].includes(normalized)) {
+    return COACH_MENTOR_ACADEMY_SCREENS.has(screen);
+  }
+
+  return false;
+}
+
+function academyNavForRole(role, nav = []) {
+  return nav.filter((item) =>
+    canAccessAcademyScreen(role, item.id)
+  );
+}
 
 function teamDisplayName(team, fallback = "Team") {
   if (!team) return fallback;
@@ -382,7 +486,7 @@ function normalizeModuleIds(moduleIds = []) {
 /* ============================================================
    SIDEBAR — with module switcher
    ============================================================ */
-function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, selectedTeam, onSelectTeam, enabledModules, onLogout, ageGroups, myTeams, onShowProfile }) {
+function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, selectedTeam, onSelectTeam, enabledModules, onLogout, ageGroups, myTeams, onShowProfile, userRole }) {
   const visibleTeams = myTeams?.length ? (ageGroups || []).filter((ag) => myTeams.includes(ag.id)) : (ageGroups || []);
   const mod = MODULES[activeModule];
   const clubName = club?.name || "Club Spraoi";
@@ -481,7 +585,10 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
         </div>
 
         <nav style={{ flex: 1, padding: "9px 10px", display: "flex", flexDirection: "column", gap: 3, overflowY: "auto" }}>
-          {mod.nav.map((item) => {
+          {(activeModule === "academy"
+            ? academyNavForRole(userRole?.role, mod.nav)
+            : mod.nav
+          ).map((item) => {
             const isActive = activeScreen === item.id || (item.id === "coach-sessions" && activeScreen === "coach-builder");
             const fg = activeModule === "connect" ? "#332800" : "#fff";
             return (
@@ -5509,8 +5616,36 @@ function MobileNav({ activeModule, screen, onNav, enabledModules }) {
 export function AcademyModule({
   screen, onNav, club, selectedTeam, weeklyPlan, planSessions, extras, skills,
   overrides, published, onSetOverride, onAddExtra, onUpdateExtra, onRemoveExtra,
-  onMoveExtra, onPublish, parentRows, setParentRows,
+  onMoveExtra, onPublish, parentRows, setParentRows, userRole,
 }) {
+  if (
+    userRole?.role &&
+    !canAccessAcademyScreen(userRole.role, screen)
+  ) {
+    return (
+      <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
+        <AcademyPageHeader
+          title="Academy"
+          sub="Access restricted"
+        />
+        <div
+          style={{
+            margin: 24,
+            padding: 18,
+            background: P.white,
+            borderRadius: 14,
+            border: `1px solid ${P.line}`,
+            fontFamily: F.body,
+            fontSize: 11,
+            color: P.muted,
+          }}
+        >
+          Your role does not include access to this Academy section.
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       {screen === "academy-dashboard" && (
@@ -5892,7 +6027,61 @@ export default function App() {
   const [sessionDetail, setSessionDetail] = useState(null);
   const [editingSession, setEditingSession] = useState(null); // full session object for pre-filling builder
   const [myTeams, setMyTeams] = useState([]); // age groups this coach is assigned to
-  const permissions = roleCapabilities(userRole?.role);
+  const selectedTeamGrant = (() => {
+    const teamId = String(selectedTeam?.id || "");
+
+    const rows = (userRole?.staffAssignments || []).filter(
+      (row) => String(row.age_group_id || "") === teamId
+    );
+
+    return rows.reduce(
+      (grants, row) => ({
+        coach_write:
+          grants.coach_write || Boolean(row.coach_write),
+
+        academy_write:
+          grants.academy_write || Boolean(row.academy_write),
+
+        academy_publish:
+          grants.academy_publish || Boolean(row.academy_publish),
+
+        connect_read:
+          grants.connect_read ||
+          Boolean(row.connect_read) ||
+          Boolean(row.connect_write),
+
+        connect_write:
+          grants.connect_write || Boolean(row.connect_write),
+
+        cup_read:
+          grants.cup_read ||
+          Boolean(row.cup_read) ||
+          Boolean(row.cup_write),
+
+        cup_write:
+          grants.cup_write || Boolean(row.cup_write),
+
+        attendance_manage:
+          grants.attendance_manage ||
+          Boolean(row.attendance_manage),
+      }),
+      {}
+    );
+  })();
+
+  const permissions = roleCapabilities(
+    userRole?.role,
+    selectedTeamGrant
+  );
+  useEffect(() => {
+    if (!userRole?.role) return;
+    if (!String(screen || "").startsWith("academy-")) return;
+
+    if (!canAccessAcademyScreen(userRole.role, screen)) {
+      setScreen("academy-dashboard");
+    }
+  }, [screen, userRole?.role]);
+
   const [showProfile, setShowProfile] = useState(false);
   const [shareUrl, setShareUrl] = useState(null);
   const [pitchView, setPitchView] = useState(false);
@@ -5926,7 +6115,7 @@ export default function App() {
   async function loadUserRole(userId, userEmail) {
     const allModules = ["coach", "club", "cup", "connect", "academy", "plus"];
 
-    const modulesForRole = (role) => {
+    const modulesForRole = (role, capabilities = {}) => {
       const normalized = String(role || "").toLowerCase();
 
       if (["super_admin", "admin", "club_admin"].includes(normalized)) {
@@ -5938,11 +6127,21 @@ export default function App() {
       }
 
       if (normalized === "team_admin") {
-        return ["club", "connect"];
+        return ["club", "coach", "academy", "connect", "cup"];
       }
 
       if (["coach_mentor", "coach", "mentor"].includes(normalized)) {
-        return ["coach", "connect"];
+        const modules = ["club", "coach", "academy"];
+
+        if (capabilities.connectRead || capabilities.connectWrite) {
+          modules.push("connect");
+        }
+
+        if (capabilities.cupRead || capabilities.cupWrite) {
+          modules.push("cup");
+        }
+
+        return modules;
       }
 
       if (normalized === "cup_helper") {
@@ -6024,7 +6223,7 @@ export default function App() {
 
       let { data: staffRows, error: staffError } = await supabase
         .from("team_staff")
-        .select("id, age_group_id, role, status, coach_id")
+        .select("id, age_group_id, role, status, coach_id, coach_write, academy_write, academy_publish, connect_read, connect_write, cup_read, cup_write, attendance_manage")
         .eq("user_id", userId)
         .eq("status", "active");
 
@@ -6040,7 +6239,7 @@ export default function App() {
         if (matchingCoach?.id) {
           const { data: pendingRows } = await supabase
             .from("team_staff")
-            .select("id, age_group_id, role, status, coach_id")
+            .select("id, age_group_id, role, status, coach_id, coach_write, academy_write, academy_publish, connect_read, connect_write, cup_read, cup_write, attendance_manage")
             .eq("coach_id", matchingCoach.id)
             .eq("status", "active");
           staffRows = pendingRows || [];
@@ -6075,9 +6274,69 @@ export default function App() {
         ])];
       }
 
-      const capabilities = roleCapabilities(effectiveRole);
-      setEnabledModules(modulesForRole(effectiveRole));
-      setUserRole({ ...(roleData || {}), role: effectiveRole, club_id: effectiveClubId, capabilities });
+      const staffGrants = (staffRows || []).reduce(
+        (grants, row) => ({
+          coach_write:
+            grants.coach_write || Boolean(row.coach_write),
+
+          academy_write:
+            grants.academy_write || Boolean(row.academy_write),
+
+          academy_publish:
+            grants.academy_publish || Boolean(row.academy_publish),
+
+          connect_read:
+            grants.connect_read ||
+            Boolean(row.connect_read) ||
+            Boolean(row.connect_write),
+
+          connect_write:
+            grants.connect_write || Boolean(row.connect_write),
+
+          cup_read:
+            grants.cup_read ||
+            Boolean(row.cup_read) ||
+            Boolean(row.cup_write),
+
+          cup_write:
+            grants.cup_write || Boolean(row.cup_write),
+
+          attendance_manage:
+            grants.attendance_manage ||
+            Boolean(row.attendance_manage),
+        }),
+        {
+          coach_write: false,
+          academy_write: false,
+          academy_publish: false,
+          connect_read: false,
+          connect_write: false,
+          cup_read: false,
+          cup_write: false,
+          attendance_manage: false,
+        }
+      );
+
+      const capabilities = roleCapabilities(
+        effectiveRole,
+        staffGrants
+      );
+
+      setEnabledModules(
+        modulesForRole(effectiveRole, capabilities)
+      );
+
+      setUserRole({
+        ...(roleData || {}),
+        role: effectiveRole,
+        club_id: effectiveClubId,
+
+        // Aggregate capabilities are ONLY for module visibility.
+        capabilities,
+
+        // Actual write permissions remain team-scoped.
+        staffAssignments: staffRows || [],
+      });
       setMyTeams([...new Set(assignedTeamIds)]);
     } catch (error) {
       console.error("Unable to initialise platform access:", error);
@@ -6366,6 +6625,11 @@ export default function App() {
   }
 
   async function setAcademyVideoOverride(activityId, skillId) {
+    if (!permissions.canEditAcademyPlans) {
+      alert("Academy content is read-only for this team.");
+      return;
+    }
+
     const next = { ...academyVideoOverrides };
     if (skillId) next[activityId] = skillId; else delete next[activityId];
     setAcademyVideoOverrides(next);
@@ -6404,6 +6668,11 @@ export default function App() {
     setAcademyExtras(prev => [...prev, { ...extra, ...data, xp: data.xp_reward, type: data.activity_type || extra.type }]);
   }
   async function removeAcademyExtra(id) {
+    if (!permissions.canEditAcademyPlans) {
+      alert("Academy content is read-only for this team.");
+      return;
+    }
+
     if (!String(id).startsWith("local-")) {
       await supabase.from("player_progress").delete().eq("exercise_id", id);
       await supabase.from("journey_exercises").delete().eq("id", id);
@@ -6411,6 +6680,11 @@ export default function App() {
     setAcademyExtras(prev => { const next=prev.filter(x=>x.id!==id); localStorage.setItem("spraoi_academy_extras", JSON.stringify(next)); return next; });
   }
   async function updateAcademyExtra(id, changes) {
+    if (!permissions.canEditAcademyPlans) {
+      alert("Academy content is read-only for this team.");
+      return;
+    }
+
     const merged = academyExtras.find(x => x.id === id);
     if (!merged) return;
     if (!String(id).startsWith("local-")) {
@@ -6427,6 +6701,11 @@ export default function App() {
     setAcademyExtras(prev => { const next=prev.map(x=>x.id===id?{...x,...changes,xp:changes.xp}:x); localStorage.setItem("spraoi_academy_extras",JSON.stringify(next)); return next; });
   }
   async function moveAcademyExtra(id, direction, groupTest) {
+    if (!permissions.canEditAcademyPlans) {
+      alert("Academy content is read-only for this team.");
+      return;
+    }
+
     const group = academyExtras.filter(groupTest);
     const current = group.findIndex(x => x.id === id);
     const target = current + direction;
@@ -6441,7 +6720,10 @@ export default function App() {
   }
 
   async function publishAcademyWeek() {
-    if (!permissions.canPublishAcademy) { alert("Only a Lead Coach or Club Admin can publish Academy content."); return; }
+    if (!permissions.canPublishAcademy) {
+      alert("You do not have permission to publish Academy content for this team.");
+      return;
+    }
     const next=!academyPublished;
     const plan = await ensureAcademyPlan();
     if (!plan?.id) return;
@@ -6789,7 +7071,7 @@ export default function App() {
       {showMobile && <MobileHeader activeModule={activeModule} setActiveModule={setActiveModule} onNav={setScreen} enabledModules={enabledModules} club={club} selectedTeam={selectedTeam} ageGroups={ageGroups} myTeams={myTeams} onSelectTeam={selectTeam} onShowProfile={()=>setShowProfile(true)} />}
 
       {/* Sidebar — desktop only */}
-      {!showMobile && <Sidebar activeModule={activeModule} setActiveModule={setActiveModule} activeScreen={screen} onNav={setScreen} club={club} selectedTeam={selectedTeam} onSelectTeam={selectTeam} enabledModules={enabledModules} onLogout={logout} ageGroups={ageGroups} myTeams={myTeams} onShowProfile={() => setShowProfile(true)} />}
+      {!showMobile && <Sidebar activeModule={activeModule} setActiveModule={setActiveModule} activeScreen={screen} onNav={setScreen} club={club} selectedTeam={selectedTeam} onSelectTeam={selectTeam} enabledModules={enabledModules} onLogout={logout} ageGroups={ageGroups} myTeams={myTeams} onShowProfile={() => setShowProfile(true)} userRole={userRole} />}
 
       {/* COACH screens */}
       {screen === "coach-dashboard" && <DashboardScreen club={club} ageGroups={ageGroups} planSessions={planSessions} weeklyPlan={weeklyPlan} upcomingSessions={upcomingSessions} onNav={setScreen} onOpenSession={openSession} allActivities={allActivities} selectedTeam={selectedTeam} />}
