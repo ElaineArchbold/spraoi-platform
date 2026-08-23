@@ -575,7 +575,7 @@ function normalizeModuleIds(moduleIds = []) {
 /* ============================================================
    SIDEBAR — with module switcher
    ============================================================ */
-function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, selectedTeam, onSelectTeam, enabledModules, onLogout, ageGroups, myTeams, onShowProfile, userRole }) {
+function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, selectedTeam, onSelectTeam, enabledModules, onLogout, ageGroups, myTeams, onShowProfile, userRole, profileInitials = "U" }) {
   const visibleTeams = myTeams?.length ? (ageGroups || []).filter((ag) => myTeams.includes(ag.id)) : (ageGroups || []);
   const mod = MODULES[activeModule];
   const clubName = club?.name || "Club Spraoi";
@@ -656,7 +656,7 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
           })}
         </div>
         <img src="/spraoi-logo-white.png" alt="Spraoi Sports" style={{ width: 58, height: 38, objectFit: "contain", marginBottom: 4, opacity: .96 }} />
-        <button onClick={onShowProfile} title="Profile & sign out" style={{ width: 42, height: 42, borderRadius: 13, border: "1px solid rgba(255,255,255,.36)", background: "rgba(255,255,255,.12)", color: "#fff", cursor: "pointer", fontFamily: F.body, fontWeight: 800 }}>EA</button>
+        <button onClick={onShowProfile} title="Profile & sign out" style={{ width: 42, height: 42, borderRadius: 13, border: "1px solid rgba(255,255,255,.36)", background: "rgba(255,255,255,.12)", color: "#fff", cursor: "pointer", fontFamily: F.body, fontWeight: 800 }}>{profileInitials}</button>
       </aside>
 
       {/* Fixed navigation for the active module */}
@@ -697,6 +697,25 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
 
 function MobileAccessibilityStyles() {
   return <style>{`
+    @keyframes spraoi-screen-enter {
+      from {
+        opacity: .55;
+        transform: translateY(3px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .spraoi-screen-transition {
+      animation: spraoi-screen-enter .14s ease-out both;
+      flex: 1;
+      min-width: 0;
+      display: flex;
+    }
+
+
     .spraoi-page-header { box-sizing: border-box; }
     .spraoi-page-header-main { min-width: 0; }
     .spraoi-page-header-actions { min-width: 0; }
@@ -6687,7 +6706,7 @@ function AccessDeniedScreen({ module, club }) {
 /* ============================================================
    MOBILE BOTTOM NAV — shows modules
    ============================================================ */
-function MobileHeader({ activeModule, setActiveModule, onNav, enabledModules, club, selectedTeam, ageGroups = [], myTeams = [], onSelectTeam, onShowProfile }) {
+function MobileHeader({ activeModule, setActiveModule, onNav, enabledModules, club, selectedTeam, ageGroups = [], myTeams = [], onSelectTeam, onShowProfile , profileInitials = "U" }) {
   const [open, setOpen] = useState(false);
   const mod = MODULES[activeModule];
   const clubName = club?.name || "Club Spraoi";
@@ -6720,7 +6739,7 @@ function MobileHeader({ activeModule, setActiveModule, onNav, enabledModules, cl
           <div className="spraoi-mobile-module-name">{mod.label}</div>
 
           <button onClick={onShowProfile} aria-label="Open profile" className="spraoi-mobile-profile-button">
-            {initial}
+            {profileInitials}
           </button>
         </div>
 
@@ -7222,6 +7241,116 @@ function SpraoiPasswordRecovery({
   );
 }
 
+
+function PermissionModal({ open, onClose, teamName }) {
+  if (!open) return null;
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 20000,
+        background: "rgba(15, 23, 42, .52)",
+        backdropFilter: "blur(3px)",
+        display: "grid",
+        placeItems: "center",
+        padding: 18,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: "min(430px, 100%)",
+          background: "#fff",
+          borderRadius: 18,
+          boxShadow: "0 24px 70px rgba(15,23,42,.24)",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            padding: "22px 22px 18px",
+            textAlign: "center",
+          }}
+        >
+          <div
+            style={{
+              width: 54,
+              height: 54,
+              borderRadius: 16,
+              margin: "0 auto 14px",
+              display: "grid",
+              placeItems: "center",
+              background: "#f3e8ff",
+              color: "#7C3AED",
+              fontSize: 25,
+              fontWeight: 900,
+            }}
+          >
+            🔒
+          </div>
+
+          <div
+            style={{
+              fontFamily: F.display,
+              fontSize: 20,
+              fontWeight: 800,
+              color: P.ink,
+            }}
+          >
+            You don't have permission to do that
+          </div>
+
+          <div
+            style={{
+              fontFamily: F.body,
+              fontSize: 12,
+              lineHeight: 1.65,
+              color: P.muted,
+              marginTop: 9,
+            }}
+          >
+            {teamName
+              ? `You don't currently have permission to manage this for ${teamName}.`
+              : "Your current role does not have permission to make this change."}
+            <br />
+            Contact your Club Administrator if you need this access.
+          </div>
+        </div>
+
+        <div
+          style={{
+            padding: "14px 18px 18px",
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <button
+            onClick={onClose}
+            autoFocus
+            style={{
+              minWidth: 120,
+              height: 40,
+              border: 0,
+              borderRadius: 10,
+              background: P.p600,
+              color: "#fff",
+              fontFamily: F.body,
+              fontSize: 12,
+              fontWeight: 800,
+              cursor: "pointer",
+            }}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   useSpraoiFonts();
   // Auth state
@@ -7356,12 +7485,6 @@ export default function App() {
       return;
     }
 
-    if (
-      screen === "coach-builder" &&
-      !permissions.canEditCoachPlans
-    ) {
-      setScreen("coach-sessions");
-    }
   }, [
     screen,
     userRole?.role,
@@ -7369,6 +7492,12 @@ export default function App() {
   ]);
 
   const [showProfile, setShowProfile] = useState(false);
+  const [permissionModalOpen, setPermissionModalOpen] = useState(false);
+
+  function showPermissionMessage() {
+    setPermissionModalOpen(true);
+  }
+
   const [shareUrl, setShareUrl] = useState(null);
   const [pitchView, setPitchView] = useState(false);
   const [shareToken] = useState(() => new URLSearchParams(window.location.search).get("share"));
@@ -7878,7 +8007,10 @@ export default function App() {
   }
 
   async function addAcademyExtra(extra) {
-    if (!permissions.canEditAcademyPlans) { alert("This team is read-only for your Coach / Mentor role."); return; }
+    if (!permissions.canEditAcademyPlans) {
+      showPermissionMessage();
+      return;
+    }
     if (!weeklyPlan?.id || !selectedTeam?.id || !club?.id) {
       setAcademyExtras(prev => { const next=[...prev, extra]; localStorage.setItem("spraoi_academy_extras", JSON.stringify(next)); return next; });
       return;
@@ -7935,7 +8067,10 @@ export default function App() {
   }
 
   async function publishAcademyWeek() {
-    if (!permissions.canPublishAcademy) { alert("Only a Lead Coach or Club Admin can publish Academy content."); return; }
+    if (!permissions.canPublishAcademy) {
+      showPermissionMessage();
+      return;
+    }
     const next=!academyPublished;
     if (weeklyPlan?.id) await supabase.from("weekly_plans").update({ published: next }).eq("id", weeklyPlan.id);
     setAcademyPublished(next);
@@ -8279,7 +8414,7 @@ export default function App() {
 
   async function editSession(sess) {
     if (!permissions.canEditCoachPlans) {
-      setScreen("coach-sessions");
+      showPermissionMessage();
       return;
     }
 
@@ -8303,14 +8438,54 @@ export default function App() {
 
   const showMobile = isMobile;
 
+  const signedInDisplayName =
+    String(
+      session?.user?.user_metadata?.full_name ||
+      session?.user?.user_metadata?.name ||
+      session?.user?.email ||
+      ""
+    ).trim();
+
+  const signedInInitials = (() => {
+    const metadataName = String(
+      session?.user?.user_metadata?.full_name ||
+      session?.user?.user_metadata?.name ||
+      ""
+    ).trim();
+
+    if (metadataName) {
+      const parts = metadataName.split(/\s+/).filter(Boolean);
+      return (
+        (parts[0]?.[0] || "") +
+        (parts.length > 1 ? parts[parts.length - 1]?.[0] || "" : "")
+      ).toUpperCase() || "U";
+    }
+
+    const emailName = String(session?.user?.email || "")
+      .split("@")[0]
+      .replace(/[._-]+/g, " ")
+      .trim();
+
+    const parts = emailName.split(/\s+/).filter(Boolean);
+
+    return (
+      (parts[0]?.[0] || "") +
+      (parts.length > 1 ? parts[parts.length - 1]?.[0] || "" : "")
+    ).toUpperCase() || "U";
+  })();
+
   return (
     <div className="spraoi-shell" style={{ display: "flex", minHeight: "100vh", width: "100%", fontFamily: F.body, paddingTop: showMobile ? 116 : 0, paddingBottom: showMobile ? 78 : 0, boxSizing: "border-box" }}>
       <MobileAccessibilityStyles />
-      {showMobile && <MobileHeader activeModule={activeModule} setActiveModule={setActiveModule} onNav={setScreen} enabledModules={enabledModules} club={club} selectedTeam={selectedTeam} ageGroups={ageGroups} myTeams={myTeams} onSelectTeam={selectTeam} onShowProfile={()=>setShowProfile(true)} />}
+      {showMobile && <MobileHeader activeModule={activeModule} setActiveModule={setActiveModule} onNav={setScreen} enabledModules={enabledModules} club={club} selectedTeam={selectedTeam} ageGroups={ageGroups} myTeams={myTeams} onSelectTeam={selectTeam} onShowProfile={()=>setShowProfile(true)} profileInitials={signedInInitials} />}
 
       {/* Sidebar — desktop only */}
-      {!showMobile && <Sidebar activeModule={activeModule} setActiveModule={setActiveModule} activeScreen={screen} onNav={setScreen} club={club} selectedTeam={selectedTeam} onSelectTeam={selectTeam} enabledModules={enabledModules} onLogout={logout} ageGroups={ageGroups} myTeams={myTeams} onShowProfile={() => setShowProfile(true)} userRole={selectedTeamUserRole} />}
+      {!showMobile && <Sidebar activeModule={activeModule} setActiveModule={setActiveModule} activeScreen={screen} onNav={setScreen} club={club} selectedTeam={selectedTeam} onSelectTeam={selectTeam} enabledModules={enabledModules} onLogout={logout} ageGroups={ageGroups} myTeams={myTeams} onShowProfile={() => setShowProfile(true)} userRole={selectedTeamUserRole} profileInitials={signedInInitials} />}
 
+      <main
+        key={screen}
+        className="spraoi-screen-transition"
+      >
       {/* COACH screens */}
       {screen === "coach-dashboard" && <DashboardScreen club={club} ageGroups={ageGroups} planSessions={planSessions} weeklyPlan={weeklyPlan} upcomingSessions={upcomingSessions} onNav={setScreen} onOpenSession={openSession} allActivities={allActivities} selectedTeam={selectedTeam} favouriteIds={favouriteIds} coaches={coaches} />}
 
@@ -8414,6 +8589,18 @@ export default function App() {
       {screen.startsWith("plus-") && <ModulePlaceholder module={MODULES.plus} screen={screen} club={club} />}
 
       {screen.startsWith("access-denied-") && <AccessDeniedScreen module={MODULES[screen.replace("access-denied-", "")] || MODULES[activeModule]} club={club} />}
+
+      </main>
+
+      <PermissionModal
+        open={permissionModalOpen}
+        onClose={() => setPermissionModalOpen(false)}
+        teamName={
+          selectedTeam
+            ? teamDisplayName(selectedTeam)
+            : ""
+        }
+      />
 
       {/* Profile Modal */}
       {showProfile && (
