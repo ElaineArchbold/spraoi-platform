@@ -5643,6 +5643,36 @@ export default function App() {
   async function loadUserRole(userId, userEmail) {
     const allModules = ["coach", "club", "cup", "connect", "academy", "plus"];
 
+    const modulesForRole = (role) => {
+      const normalized = String(role || "").toLowerCase();
+
+      if (["super_admin", "admin", "club_admin"].includes(normalized)) {
+        return allModules;
+      }
+
+      if (normalized === "lead_coach") {
+        return ["coach", "academy", "connect", "club"];
+      }
+
+      if (normalized === "team_admin") {
+        return ["club", "connect"];
+      }
+
+      if (["coach_mentor", "coach", "mentor"].includes(normalized)) {
+        return ["coach", "connect"];
+      }
+
+      if (normalized === "cup_helper") {
+        return ["cup"];
+      }
+
+      if (normalized === "club_staff") {
+        return ["club"];
+      }
+
+      return [];
+    };
+
     try {
       // The existing project has used more than one user_roles schema over time.
       // Load the available rows first, then match against whichever identity field exists.
@@ -5657,7 +5687,7 @@ export default function App() {
         normalizedEmail &&
         String(row.user_email || row.email || "").trim().toLowerCase() === normalizedEmail
       );
-      const rolePriority = { super_admin: 4, club_admin: 3, admin: 3, lead_coach: 2, coach_mentor: 1, coach: 1, mentor: 1 };
+      const rolePriority = { super_admin: 5, club_admin: 4, admin: 4, lead_coach: 3, team_admin: 2, coach_mentor: 1, coach: 1, mentor: 1 };
 
       const roleData = [...emailRoleRows].sort((a, b) => {
         const aAll = String(a.squad_key || a.squad || "").trim().toLowerCase() === "all" ? 1 : 0;
@@ -5687,10 +5717,7 @@ export default function App() {
 
       if (clubData) setClub(clubData);
 
-      // During platform build/testing Elaine has access to every module.
-      // RBAC can later narrow this list without changing the navigation shell.
-      setEnabledModules(allModules);
-      setUserRole(roleData || { role: "super_admin", club_id: clubData?.id || null });
+      // Module access is resolved after account + team roles are known.
 
       const effectiveClubId = clubId || clubData?.id;
       if (effectiveClubId) {
@@ -5704,7 +5731,7 @@ export default function App() {
       // RBAC team assignment. New installations use team_staff; older ones can
       // continue to use coach_assignments while the migration is rolled out.
       let assignedTeamIds = [];
-      let effectiveRole = roleData?.role || "coach_mentor";
+      let effectiveRole = roleData?.role || "no_access";
       const accountRole = String(roleData?.role || "").toLowerCase();
       const hasPlatformRole = ["super_admin", "admin", "club_admin", "lead_coach"].includes(accountRole);
 
@@ -5740,7 +5767,7 @@ export default function App() {
       if (!staffError && staffRows?.length) {
         assignedTeamIds = [...new Set(staffRows.map((row) => row.age_group_id).filter(Boolean))];
         if (!hasPlatformRole) {
-          const priority = { club_admin: 3, lead_coach: 2, coach_mentor: 1, coach: 1, mentor: 1 };
+          const priority = { club_admin: 4, lead_coach: 3, team_admin: 2, coach_mentor: 1, coach: 1, mentor: 1 };
           effectiveRole = [...staffRows]
             .sort((a, b) => (priority[b.role] || 0) - (priority[a.role] || 0))[0]?.role || effectiveRole;
         }
@@ -5755,17 +5782,15 @@ export default function App() {
       }
 
       const capabilities = roleCapabilities(effectiveRole);
+      setEnabledModules(modulesForRole(effectiveRole));
       setUserRole({ ...(roleData || {}), role: effectiveRole, club_id: effectiveClubId, capabilities });
       setMyTeams([...new Set(assignedTeamIds)]);
     } catch (error) {
       console.error("Unable to initialise platform access:", error);
-      // Never lock Elaine out of a module because an older RBAC table differs.
-      setEnabledModules(allModules);
-      setUserRole({ role: "super_admin", club_id: null });
+      // Fail closed: a permissions error must never grant elevated access.
+      setEnabledModules([]);
+      setUserRole({ role: "no_access", club_id: null, capabilities: roleCapabilities("no_access") });
       setMyTeams([]);
-      loadSkills();
-      loadActivities();
-      loadUpcoming();
     } finally {
       setAuthLoading(false);
     }

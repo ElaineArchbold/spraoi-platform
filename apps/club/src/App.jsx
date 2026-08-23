@@ -92,6 +92,59 @@ function roleCapabilities(role) {
   };
 }
 
+const TEAM_ADMIN_CLUB_SCREENS = new Set([
+  "club-teams",
+  "club-coaches",
+]);
+
+function modulesForRole(role) {
+  const normalized = String(role || "").toLowerCase();
+
+  if (["super_admin", "admin", "club_admin"].includes(normalized)) {
+    return ["coach", "club", "cup", "connect", "academy", "plus"];
+  }
+
+  if (normalized === "lead_coach") {
+    return ["coach", "academy", "connect", "club"];
+  }
+
+  if (normalized === "team_admin") {
+    return ["club", "connect"];
+  }
+
+  if (["coach_mentor", "coach", "mentor"].includes(normalized)) {
+    return ["coach", "connect"];
+  }
+
+  if (normalized === "cup_helper") {
+    return ["cup"];
+  }
+
+  if (normalized === "club_staff") {
+    return ["club"];
+  }
+
+  return [];
+}
+
+function canAccessClubScreen(role, screen) {
+  const normalized = String(role || "").toLowerCase();
+
+  if (["super_admin", "admin", "club_admin"].includes(normalized)) {
+    return true;
+  }
+
+  if (normalized === "lead_coach") {
+    return ["club-dashboard", "club-teams", "club-coaches"].includes(screen);
+  }
+
+  if (normalized === "team_admin") {
+    return TEAM_ADMIN_CLUB_SCREENS.has(screen);
+  }
+
+  return false;
+}
+
 function teamDisplayName(team, fallback = "Team") {
   if (!team) return fallback;
   const base = String(team.label || team.name || fallback).trim();
@@ -336,13 +389,21 @@ function normalizeModuleIds(moduleIds = []) {
 /* ============================================================
    SIDEBAR — with module switcher
    ============================================================ */
-function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, selectedTeam, onSelectTeam, enabledModules, onLogout, ageGroups, myTeams, onShowProfile, userInitial }) {
+function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, selectedTeam, onSelectTeam, enabledModules, onLogout, ageGroups, myTeams, onShowProfile, userInitial, userRole }) {
   const visibleTeams = (ageGroups || []).filter((ag) => (myTeams || []).includes(ag.id));
   const mod = MODULES[activeModule];
   const clubName = club?.name || "Club Spraoi";
-
+  const visibleNavItems = activeModule === "club"
+    ? mod.nav.filter((item) => canAccessClubScreen(userRole?.role, item.id))
+    : mod.nav;
   function openModule(key, module) {
-    const target = readModuleScreen(key, module.nav[0].id);
+    if (!enabledModules.includes(key)) return;
+
+    let target = readModuleScreen(key, module.nav[0].id);
+
+    if (key === "club" && !canAccessClubScreen(userRole?.role, target)) {
+      target = module.nav.find((item) => canAccessClubScreen(userRole?.role, item.id))?.id || "club-teams";
+    }
     if (key !== APP_MODULE) {
       openAdminModule(key, target);
       return;
@@ -368,7 +429,7 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
           }}
         />
         <div style={{ flex: 1, width: "100%", display: "flex", flexDirection: "column", justifyContent: "center", gap: 7 }}>
-          {["coach", "academy", "connect", "cup", "club"].map((key) => {
+          {["coach", "academy", "connect", "cup", "club"].filter((key) => enabledModules.includes(key)).map((key) => {
             const module = MODULES[key];
             const isActive = activeModule === key;
             const locked = !enabledModules.includes(key);
@@ -411,7 +472,7 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
         </div>}
 
         <nav style={{ flex: 1, padding: "9px 10px", display: "flex", flexDirection: "column", gap: 3, overflowY: "auto" }}>
-          {mod.nav.map((item) => {
+          {visibleNavItems.map((item) => {
             const isActive = activeScreen === item.id || (item.id === "coach-sessions" && activeScreen === "coach-builder");
             const fg = activeModule === "connect" ? "#332800" : "#fff";
             return (
@@ -7171,7 +7232,6 @@ function AcademySectionScreen({ screen, selectedTeam, weeklyPlan, planSessions, 
 function ModulePlaceholder({ module, screen, club }) {
   const screenLabel = module.nav.find((n) => n.id === screen)?.label || screen;
   const clubName = club?.name || "Club Spraoi";
-
   if (module.label === "Club") {
     return (
       <div style={{ flex: 1, minHeight: "100vh", overflow: "auto", background: `linear-gradient(180deg, ${module.color}12 0%, ${P.soft} 380px)` }}>
@@ -7288,7 +7348,7 @@ function MobileHeader({ activeModule, setActiveModule, onNav, enabledModules, cl
           <div onClick={(e) => e.stopPropagation()} style={{ marginTop: 82, width: "100%", maxWidth: 430, background: P.white, borderRadius: 20, padding: 16, boxShadow: Sh.lift }}>
             <div style={{ fontFamily: F.display, fontWeight: 700, color: P.ink, fontSize: 18, marginBottom: 12 }}>Switch module</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 10 }}>
-              {["coach","academy","connect","cup","club"].filter((key) => MODULES[key]).map((key) => {
+              {["coach","academy","connect","cup","club"].filter((key) => MODULES[key] && enabledModules.includes(key)).map((key) => {
                 const m = MODULES[key];
                 const unlocked = enabledModules.includes(key);
                 return (
@@ -7312,22 +7372,31 @@ function MobileHeader({ activeModule, setActiveModule, onNav, enabledModules, cl
   );
 }
 
-function MobileNav({ activeModule, screen, onNav, enabledModules }) {
+function MobileNav({ activeModule, screen, onNav, enabledModules, userRole }) {
   const module = MODULES[activeModule];
   const [showMore, setShowMore] = useState(false);
 
-  const items = [
-    { id: "club-dashboard", label: "Dashboard" },
-    { id: "club-teams", label: "Teams" },
-    { id: "club-coaches", label: "People" },
-    { id: "club-scheduling", label: "Facilities" }
-  ];
+  const isTeamAdmin = String(userRole?.role || "").toLowerCase() === "team_admin";
 
-  const moreItems = [
-    { id: "club-setup", label: "Club Setup" },
-    { id: "club-compliance", label: "Compliance" },
-    { id: "club-permissions", label: "Roles & Permissions" }
-  ];
+  const items = isTeamAdmin
+    ? [
+        { id: "club-teams", label: "Teams" },
+        { id: "club-coaches", label: "People" },
+      ]
+    : [
+        { id: "club-dashboard", label: "Dashboard" },
+        { id: "club-teams", label: "Teams" },
+        { id: "club-coaches", label: "People" },
+        { id: "club-scheduling", label: "Facilities" },
+      ];
+
+  const moreItems = isTeamAdmin
+    ? []
+    : [
+        { id: "club-setup", label: "Club Setup" },
+        { id: "club-compliance", label: "Compliance" },
+        { id: "club-permissions", label: "Roles & Permissions" },
+      ];
 
   const moreActive = moreItems.some((item) => item.id === screen);
 
@@ -8097,7 +8166,38 @@ export default function App() {
   const [editingSession, setEditingSession] = useState(null); // full session object for pre-filling builder
   const [myTeams, setMyTeams] = useState([]); // age groups this coach is assigned to
   const permissions = roleCapabilities(userRole?.role);
-  const [showProfile, setShowProfile] = useState(false);
+
+  const scopedAgeGroups = permissions.isTeamAdmin
+    ? ageGroups.filter((ag) => myTeams.includes(ag.id))
+    : ageGroups;
+
+  useEffect(() => {
+    if (authLoading || !userRole || !screen) return;
+    if (String(screen).startsWith("access-denied-")) return;
+
+    const moduleKey = String(screen).split("-")[0];
+
+    if (!enabledModules.includes(moduleKey)) {
+      setScreen(`access-denied-${moduleKey}`);
+      return;
+    }
+
+    if (
+      moduleKey === "club" &&
+      !canAccessClubScreen(userRole?.role, screen)
+    ) {
+      const fallback =
+        String(userRole?.role || "").toLowerCase() === "team_admin"
+          ? "club-teams"
+          : "club-dashboard";
+
+      if (screen !== fallback) {
+        setScreen(fallback);
+      }
+    }
+  }, [screen, userRole?.role, enabledModules, authLoading]);
+
+const [showProfile, setShowProfile] = useState(false);
   const [shareUrl, setShareUrl] = useState(null);
   const [pitchView, setPitchView] = useState(false);
   const [shareToken] = useState(() => new URLSearchParams(window.location.search).get("share"));
@@ -8130,119 +8230,136 @@ export default function App() {
   }, []);
 
   async function loadUserRole(userId, userEmail) {
-    const allModules = ["coach", "club", "cup", "connect", "academy", "plus"];
-
     try {
-      // The existing project has used more than one user_roles schema over time.
-      // Load the available rows first, then match against whichever identity field exists.
       const { data: roleRows, error: roleError } = await supabase
         .from("user_roles")
         .select("*");
 
-      if (roleError) console.warn("Unable to load user roles:", roleError.message);
+      if (roleError) {
+        console.warn("Unable to load user roles:", roleError.message);
+      }
 
       const normalizedEmail = String(userEmail || "").trim().toLowerCase();
+
       const emailRoleRows = (roleRows || []).filter((row) =>
         normalizedEmail &&
         String(row.user_email || row.email || "").trim().toLowerCase() === normalizedEmail
       );
-      const rolePriority = { super_admin: 4, club_admin: 3, admin: 3, lead_coach: 2, coach_mentor: 1, coach: 1, mentor: 1 };
+
+      const rolePriority = {
+        super_admin: 6,
+        admin: 5,
+        club_admin: 5,
+        lead_coach: 4,
+        team_admin: 3,
+        club_staff: 2,
+        coach_mentor: 1,
+        coach: 1,
+        mentor: 1,
+      };
 
       const roleData = [...emailRoleRows].sort((a, b) => {
         const aAll = String(a.squad_key || a.squad || "").trim().toLowerCase() === "all" ? 1 : 0;
         const bAll = String(b.squad_key || b.squad || "").trim().toLowerCase() === "all" ? 1 : 0;
+
         if (aAll !== bAll) return bAll - aAll;
-        return (rolePriority[String(b.role || "").toLowerCase()] ?? -1)
-          - (rolePriority[String(a.role || "").toLowerCase()] ?? -1);
+
+        return (
+          (rolePriority[String(b.role || "").toLowerCase()] ?? -1) -
+          (rolePriority[String(a.role || "").toLowerCase()] ?? -1)
+        );
       })[0] || (roleRows || []).find((row) =>
         [row.user_id, row.auth_user_id, row.profile_id]
           .filter(Boolean)
           .some((value) => String(value) === String(userId))
       ) || null;
 
-      const clubId = roleData?.club_id || roleData?.club?.id || null;
-      let clubData = null;
-
-      if (clubId) {
-        const { data } = await supabase.from("clubs").select("*").eq("id", clubId).maybeSingle();
-        clubData = data || null;
-      }
-
-      if (!clubData) {
-        const { data: clubSpraoi } = await supabase.from("clubs").select("*").eq("slug", "club-spraoi").maybeSingle();
-        clubData = clubSpraoi || null;
-      }
-
-      if (!clubData) {
-        const { data: legacyClub } = await supabase.from("clubs").select("*").eq("slug", "fingallians").maybeSingle();
-        clubData = legacyClub || null;
-      }
-
-      if (clubData) setClub(clubData);
-
-      // During platform build/testing Elaine has access to every module.
-      // RBAC can later narrow this list without changing the navigation shell.
-      setEnabledModules(allModules);
-      setUserRole(roleData || { role: "coach_mentor", club_id: clubData?.id || null, capabilities: roleCapabilities("coach_mentor") });
-
-      const effectiveClubId = clubId || clubData?.id;
-      if (effectiveClubId) {
-        loadAgeGroups(effectiveClubId);
-        loadCoaches(effectiveClubId);
-      }
-      loadSkills();
-      loadActivities();
-      loadUpcoming();
-
-      // RBAC team assignment. New installations use team_staff; older ones can
-      // continue to use coach_assignments while the migration is rolled out.
-      let assignedTeamIds = [];
-      let effectiveRole = roleData?.role || "coach_mentor";
-      const accountRole = String(roleData?.role || "").toLowerCase();
-      const hasPlatformRole = ["super_admin", "admin", "club_admin", "lead_coach"].includes(accountRole);
-
       let { data: staffRows, error: staffError } = await supabase
         .from("team_staff")
-        .select("id, age_group_id, role, status, coach_id")
+        .select("id, club_id, age_group_id, role, status, coach_id")
         .eq("user_id", userId)
         .eq("status", "active");
 
-      // A Club Admin can assign a coach before that coach first signs in. On the
-      // first sign-in, link the matching coach email to the auth user automatically.
+      let matchingCoach = null;
+
+      // Legacy/pending coach records may exist before the auth user is linked.
       if ((!staffRows?.length || staffError) && userEmail) {
-        const { data: matchingCoach } = await supabase
+        const { data } = await supabase
           .from("coaches")
-          .select("id")
-          .eq("club_id", effectiveClubId)
+          .select("id, club_id")
           .ilike("email", userEmail)
+          .limit(1)
           .maybeSingle();
+
+        matchingCoach = data || null;
+
         if (matchingCoach?.id) {
-          const { data: pendingRows } = await supabase
+          const { data: pendingRows, error: pendingError } = await supabase
             .from("team_staff")
-            .select("id, age_group_id, role, status, coach_id")
+            .select("id, club_id, age_group_id, role, status, coach_id")
             .eq("coach_id", matchingCoach.id)
             .eq("status", "active");
-          staffRows = pendingRows || [];
-          if (staffRows.length) {
-            await supabase.from("coaches").update({ user_id: userId }).eq("id", matchingCoach.id);
-            await supabase.from("team_staff").update({ user_id: userId }).in("id", staffRows.map((row) => row.id));
+
+          if (!pendingError && pendingRows?.length) {
+            staffRows = pendingRows;
+
+            await supabase
+              .from("coaches")
+              .update({ user_id: userId })
+              .eq("id", matchingCoach.id);
+
+            await supabase
+              .from("team_staff")
+              .update({ user_id: userId })
+              .in("id", pendingRows.map((row) => row.id));
           }
         }
       }
 
-      if (!staffError && staffRows?.length) {
-        assignedTeamIds = [...new Set(staffRows.map((row) => row.age_group_id).filter(Boolean))];
+      const accountRole = String(roleData?.role || "").toLowerCase();
 
-        // Platform-level Super Admin/Admin/Lead Coach access must not be downgraded by team_staff.
+      const hasPlatformRole = [
+        "super_admin",
+        "admin",
+        "club_admin",
+        "lead_coach",
+      ].includes(accountRole);
+
+      let effectiveRole = roleData?.role || "no_access";
+
+      let assignedTeamIds = [];
+
+      if (!staffError && staffRows?.length) {
+        assignedTeamIds = [
+          ...new Set(
+            staffRows
+              .map((row) => row.age_group_id)
+              .filter(Boolean)
+          ),
+        ];
+
         if (!hasPlatformRole) {
-          const priority = { club_admin: 3, lead_coach: 2, coach_mentor: 1, coach: 1, mentor: 1 };
-          effectiveRole = [...staffRows]
-            .sort((a, b) => (priority[b.role] || 0) - (priority[a.role] || 0))[0]?.role || effectiveRole;
+          const staffPriority = {
+            club_admin: 5,
+            lead_coach: 4,
+            team_admin: 3,
+            club_staff: 2,
+            coach_mentor: 1,
+            coach: 1,
+            mentor: 1,
+          };
+
+          effectiveRole =
+            [...staffRows]
+              .sort(
+                (a, b) =>
+                  (staffPriority[String(b.role || "").toLowerCase()] || 0) -
+                  (staffPriority[String(a.role || "").toLowerCase()] || 0)
+              )[0]?.role || effectiveRole;
         }
       }
 
-      // team_staff is the authoritative membership source.
-      // coach_assignments is fallback-only for older unmigrated accounts.
+      // coach_assignments is fallback-only for older unmigrated coach accounts.
       if (!staffRows?.length) {
         const { data: assignments, error: assignmentError } = await supabase
           .from("coach_assignments")
@@ -8255,28 +8372,106 @@ export default function App() {
               assignments
                 .map((assignment) => assignment.age_group_id)
                 .filter(Boolean)
-            )
+            ),
           ];
+
+          if (!roleData && effectiveRole === "no_access") {
+            effectiveRole = "coach_mentor";
+          }
         }
       }
 
+      // Team-scoped membership determines the club where no global role exists.
+      const roleClubId =
+        roleData?.club_id ||
+        roleData?.club?.id ||
+        null;
+
+      const staffClubId =
+        (staffRows || []).find((row) => row.club_id)?.club_id ||
+        matchingCoach?.club_id ||
+        null;
+
+      const effectiveClubId = roleClubId || staffClubId || null;
+
+      let clubData = null;
+
+      if (effectiveClubId) {
+        const { data } = await supabase
+          .from("clubs")
+          .select("*")
+          .eq("id", effectiveClubId)
+          .maybeSingle();
+
+        clubData = data || null;
+      }
+
+      // Branding fallback only. This must never grant permissions.
+      if (!clubData) {
+        const { data } = await supabase
+          .from("clubs")
+          .select("*")
+          .eq("slug", "club-spraoi")
+          .maybeSingle();
+
+        clubData = data || null;
+      }
+
+      if (!clubData) {
+        const { data } = await supabase
+          .from("clubs")
+          .select("*")
+          .eq("slug", "fingallians")
+          .maybeSingle();
+
+        clubData = data || null;
+      }
+
+      if (clubData) {
+        setClub(clubData);
+      }
+
+      if (effectiveClubId) {
+        loadAgeGroups(effectiveClubId);
+        loadCoaches(effectiveClubId);
+      }
+
+      // Coach/Academy content should only load for roles that can use it.
+      if (["super_admin", "admin", "club_admin", "lead_coach", "coach_mentor", "coach", "mentor"].includes(
+        String(effectiveRole || "").toLowerCase()
+      )) {
+        loadSkills();
+        loadActivities();
+        loadUpcoming();
+      }
+
       const capabilities = roleCapabilities(effectiveRole);
-      setUserRole({ ...(roleData || {}), role: effectiveRole, club_id: effectiveClubId, capabilities });
+
+      setEnabledModules(modulesForRole(effectiveRole));
+
+      setUserRole({
+        ...(roleData || {}),
+        role: effectiveRole,
+        club_id: effectiveClubId,
+        capabilities,
+      });
+
       setMyTeams([...new Set(assignedTeamIds)]);
     } catch (error) {
       console.error("Unable to initialise platform access:", error);
-      // Never lock Elaine out of a module because an older RBAC table differs.
-      setEnabledModules(allModules);
-      setUserRole({ role: "coach_mentor", club_id: null, capabilities: roleCapabilities("coach_mentor") });
+
+      // Permission failures must never elevate access.
+      setEnabledModules([]);
+      setUserRole({
+        role: "no_access",
+        club_id: null,
+        capabilities: roleCapabilities("no_access"),
+      });
       setMyTeams([]);
-      loadSkills();
-      loadActivities();
-      loadUpcoming();
     } finally {
       setAuthLoading(false);
     }
   }
-
 
   async function currentCoachId() {
     if (!session?.user?.id || !club?.id) return null;
@@ -9163,10 +9358,10 @@ export default function App() {
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", width: "100%", fontFamily: F.body, paddingTop: showMobile ? 116 : 0, paddingBottom: showMobile ? 78 : 0, boxSizing: "border-box" }}>
-      {showMobile && <MobileHeader activeModule={activeModule} setActiveModule={setActiveModule} onNav={setScreen} enabledModules={enabledModules} club={club} selectedTeam={selectedTeam} ageGroups={ageGroups} myTeams={myTeams} onSelectTeam={selectTeam} onShowProfile={()=>setShowProfile(true)} userInitial={userInitial} />}
+      {showMobile && <MobileHeader activeModule={activeModule} setActiveModule={setActiveModule} onNav={setScreen} enabledModules={enabledModules} club={club} selectedTeam={selectedTeam} ageGroups={scopedAgeGroups} myTeams={myTeams} onSelectTeam={selectTeam} onShowProfile={()=>setShowProfile(true)} userInitial={userInitial} />}
 
       {/* Sidebar — desktop only */}
-      {!showMobile && <Sidebar activeModule={activeModule} setActiveModule={setActiveModule} activeScreen={screen} onNav={setScreen} club={club} selectedTeam={selectedTeam} onSelectTeam={selectTeam} enabledModules={enabledModules} onLogout={logout} ageGroups={ageGroups} myTeams={myTeams} onShowProfile={() => setShowProfile(true)} userInitial={userInitial} />}
+      {!showMobile && <Sidebar activeModule={activeModule} setActiveModule={setActiveModule} activeScreen={screen} onNav={setScreen} club={club} selectedTeam={selectedTeam} onSelectTeam={selectTeam} enabledModules={enabledModules} onLogout={logout} ageGroups={scopedAgeGroups} myTeams={myTeams} onShowProfile={() => setShowProfile(true)} userInitial={userInitial} userRole={userRole} />}
 
       {/* COACH screens */}
       {screen === "coach-dashboard" && <DashboardScreen club={club} ageGroups={ageGroups} planSessions={planSessions} weeklyPlan={weeklyPlan} upcomingSessions={upcomingSessions} onNav={setScreen} onOpenSession={openSession} allActivities={allActivities} selectedTeam={selectedTeam} />}
@@ -9180,8 +9375,8 @@ export default function App() {
       {screen === "club-dashboard" && <ClubDashboardScreen club={club} ageGroups={ageGroups} coaches={coaches} selectedTeam={selectedTeam} onNav={setScreen} />}
       {screen === "club-setup" && <ClubSetupScreen club={club} userRole={userRole} onClubUpdated={setClub} onNav={setScreen} />}
       {screen === "club-legal" && <ClubLegalScreen club={club} currentUserId={session?.user?.id} onNav={setScreen} />}
-      {screen === "club-teams" && <ClubTeamsScreen club={club} ageGroups={ageGroups} coaches={coaches} selectedTeam={selectedTeam} onSelectTeam={selectTeam} onReloadTeams={() => loadAgeGroups(club?.id)} userRole={userRole} />}
-      {screen === "club-coaches" && <ClubCoachesScreen club={club} ageGroups={ageGroups} coaches={coaches} selectedTeam={selectedTeam} onReloadCoaches={() => loadCoaches(club?.id)} userRole={userRole} currentUserId={session?.user?.id} />}
+      {screen === "club-teams" && <ClubTeamsScreen club={club} ageGroups={scopedAgeGroups} coaches={coaches} selectedTeam={selectedTeam} onSelectTeam={selectTeam} onReloadTeams={() => loadAgeGroups(club?.id)} userRole={userRole} />}
+      {screen === "club-coaches" && <ClubCoachesScreen club={club} ageGroups={scopedAgeGroups} coaches={coaches} selectedTeam={selectedTeam} onReloadCoaches={() => loadCoaches(club?.id)} userRole={userRole} currentUserId={session?.user?.id} />}
       {screen === "club-compliance" && <ClubComplianceScreen club={club} coaches={coaches} userRole={userRole} />}
       {screen === "club-permissions" && <ClubPermissionsScreen club={club} userRole={userRole} ageGroups={ageGroups} />}
       {screen === "club-scheduling" && <ClubPage title="Facilities & Slots" sub="Manage facilities, recurring training slots and weekly pitch allocations.">
@@ -9417,7 +9612,7 @@ export default function App() {
       )}
 
       {/* Mobile bottom nav */}
-      {showMobile && <MobileNav activeModule={activeModule} screen={screen} onNav={setScreen} enabledModules={enabledModules} />}
+      {showMobile && <MobileNav activeModule={activeModule} screen={screen} onNav={setScreen} enabledModules={enabledModules} userRole={userRole} />}
     </div>
   );
 }
