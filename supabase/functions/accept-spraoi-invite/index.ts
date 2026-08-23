@@ -416,7 +416,7 @@ export default {
             actor_type:
               invitation.invite_type === "parent_guardian"
                 ? "parent_guardian"
-                : "staff",
+                : "adult_user",
             parent_guardian_confirmation:
               invitation.invite_type === "parent_guardian",
           }));
