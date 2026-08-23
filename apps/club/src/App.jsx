@@ -4816,6 +4816,7 @@ function ClubCoachesScreen({ club, ageGroups, coaches, selectedTeam, onReloadCoa
 
   const availableInviteTypes = isAdmin
     ? [
+        { value: "club_admin", label: "Club Admin" },
         { value: "lead_coach", label: "Lead Coach" },
         { value: "team_admin", label: "Team Admin" },
         { value: "coach", label: "Coach / Mentor" },
@@ -4835,8 +4836,8 @@ function ClubCoachesScreen({ club, ageGroups, coaches, selectedTeam, onReloadCoa
     const cleanName = name.trim();
     const cleanEmail = emailValue.trim().toLowerCase();
 
-    if (!cleanName || !cleanEmail || !teamId) {
-      setMessage("Please enter a name, email address and team.");
+    if (!cleanName || !cleanEmail || (inviteType !== "club_admin" && !teamId)) {
+      setMessage(inviteType === "club_admin" ? "Please enter a name and email address." : "Please enter a name, email address and team.");
       return;
     }
 
@@ -4860,7 +4861,7 @@ function ClubCoachesScreen({ club, ageGroups, coaches, selectedTeam, onReloadCoa
       name: cleanName,
       email: cleanEmail,
       inviteType,
-      teamIds: [teamId],
+      teamIds: inviteType === "club_admin" ? [] : [teamId],
       childIds: inviteType === "parent_guardian" ? childIds : [],
     };
 
@@ -5009,6 +5010,7 @@ function ClubCoachesScreen({ club, ageGroups, coaches, selectedTeam, onReloadCoa
   }
 
   function inviteTypeLabel(value) {
+    if (value === "club_admin") return "Club Admin";
     if (value === "lead_coach") return "Lead Coach";
     if (value === "team_admin") return "Team Admin";
     if (value === "coach") return "Coach / Mentor";
@@ -7747,9 +7749,13 @@ function SpraoiInviteAcceptance({ token, session }) {
               >
                 {isParent
                   ? "Parent / Guardian"
-                  : invitation.invite_type === "lead_coach"
-                    ? "Lead Coach"
-                    : "Coach / Mentor"}
+                  : invitation.invite_type === "club_admin"
+                    ? "Club Admin"
+                    : invitation.invite_type === "lead_coach"
+                      ? "Lead Coach"
+                      : invitation.invite_type === "team_admin"
+                        ? "Team Admin"
+                        : "Coach / Mentor"}
               </div>
 
               {!passwordSetupComplete && invitation.status === "pending" && (

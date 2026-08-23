@@ -738,8 +738,83 @@ export default {
             }
           }
         }
-
         // ----------------------------------------------------
+        // ACTIVATE CLUB ADMIN
+        // ----------------------------------------------------
+
+        if (invitation.invite_type === "club_admin") {
+          const { data: adminRoleRows, error: adminRoleReadError } =
+            await ctx.supabaseAdmin
+              .from("user_roles")
+              .select("id, role")
+              .eq("user_email", userEmail)
+              .order("created_at", { ascending: true });
+
+          if (adminRoleReadError) {
+            return json(
+              {
+                ok: false,
+                error:
+                  `Could not check Club Admin role: ${adminRoleReadError.message}`,
+              },
+              500,
+            );
+          }
+
+          const strongestExistingAdminRole = (adminRoleRows || [])
+            .map((row: any) => row.role)
+            .sort(
+              (a: string, b: string) =>
+                rolePriority(b) - rolePriority(a),
+            )[0];
+
+          if (!strongestExistingAdminRole) {
+            const { error: adminRoleInsertError } =
+              await ctx.supabaseAdmin
+                .from("user_roles")
+                .insert({
+                  user_email: userEmail,
+                  role: "club_admin",
+                });
+
+            if (adminRoleInsertError) {
+              return json(
+                {
+                  ok: false,
+                  error:
+                    `Could not create Club Admin role: ${adminRoleInsertError.message}`,
+                },
+                500,
+              );
+            }
+          } else if (
+            rolePriority("club_admin") >
+            rolePriority(strongestExistingAdminRole)
+          ) {
+            const targetAdminRole = (adminRoleRows || []).find(
+              (row: any) => row.role === strongestExistingAdminRole,
+            );
+
+            if (targetAdminRole?.id) {
+              const { error: adminRoleUpdateError } =
+                await ctx.supabaseAdmin
+                  .from("user_roles")
+                  .update({ role: "club_admin" })
+                  .eq("id", targetAdminRole.id);
+
+              if (adminRoleUpdateError) {
+                return json(
+                  {
+                    ok: false,
+                    error:
+                      `Could not activate Club Admin role: ${adminRoleUpdateError.message}`,
+                  },
+                  500,
+                );
+              }
+            }
+          }
+        }
         // ACTIVATE PARENT / GUARDIAN
         //
         // Academy uses journey_players.parent_user_id as the
@@ -937,4 +1012,6 @@ export default {
     },
   ),
 };
+
+
 

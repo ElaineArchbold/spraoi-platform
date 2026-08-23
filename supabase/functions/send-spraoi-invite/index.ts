@@ -1,6 +1,7 @@
 import { withSupabase } from "npm:@supabase/server";
 
 type InviteType =
+  | "club_admin"
   | "lead_coach"
   | "coach"
   | "team_admin"
@@ -20,6 +21,7 @@ type InviteRequest = {
 };
 
 const ALLOWED_INVITE_TYPES: InviteType[] = [
+  "club_admin",
   "lead_coach",
   "coach",
   "team_admin",
@@ -29,6 +31,7 @@ const ALLOWED_INVITE_TYPES: InviteType[] = [
 ];
 
 const ROLE_MAP: Record<InviteType, string | null> = {
+  club_admin: "club_admin",
   lead_coach: "lead_coach",
   coach: "coach_mentor",
   team_admin: "team_admin",
