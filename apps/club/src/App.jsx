@@ -4706,6 +4706,7 @@ function ClubTeamsScreen(props) {
   );
 }
 
+// Build refresh: People invite roles 2026-08-23
 function ClubCoachesScreen({ club, ageGroups, coaches, selectedTeam, onReloadCoaches, userRole, currentUserId }) {
   const [staff, setStaff] = useState([]);
   const [invitations, setInvitations] = useState([]);
@@ -9420,6 +9421,7 @@ export default function App() {
     </div>
   );
 }
+
 
 
 
