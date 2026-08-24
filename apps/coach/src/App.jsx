@@ -298,7 +298,7 @@ function SpraoiNavIcon({ name = "", size = 18 }) {
   if (key.includes("attendance")) {
     return (
       <img
-        src="/icons/coach/attendance.svg"
+        src="/icons/coach/coach-attendance.svg"
         alt=""
         aria-hidden="true"
         style={{
@@ -314,7 +314,7 @@ function SpraoiNavIcon({ name = "", size = 18 }) {
   if (key.includes("attendance")) {
     return (
       <img
-        src="/icons/coach/attendance.svg"
+        src="/icons/coach/coach-attendance.svg"
         alt=""
         aria-hidden="true"
         style={{
@@ -386,7 +386,7 @@ function secondaryNavAsset(moduleKey, id) {
   const maps = {
     coach: {
       "coach-dashboard": "/icons/coach/dashboard.svg",
-      "coach-attendance": "/icons/coach/attendance.svg",
+      "coach-attendance": "/icons/coach/coach-attendance.svg",
       "coach-planner": "/icons/coach/planner.svg",
       "coach-sessions": "/icons/coach/sessions.svg",
       "coach-drills": "/icons/coach/drills.svg",
@@ -462,7 +462,7 @@ function coachIconAsset(name) {
     player: "/icons/coach/player.svg",
     coaches: "/icons/coach/coaches.svg",
     team: "/icons/coach/team.svg",
-    attendance: "/icons/coach/attendance.svg",
+    attendance: "/icons/coach/coach-attendance.svg",
     favourite: "/icons/coach/favourite.svg",
     academy: "/icons/coach/academy.svg",
     addSession: "/icons/coach/add-session.svg",
@@ -495,7 +495,7 @@ const MODULES = {
   coach: {
     label: "Coach", color: "#7C3AED", icon: "/spraoi-coach-icon.png", tagline: "Plan and deliver better coaching.", nav: [
       { id: "coach-dashboard", icon: "⌂", label: "Dashboard" },
-      { id: "coach-attendance", icon: "/icons/coach/attendance.svg", label: "Attendance" },
+      { id: "coach-attendance", icon: "/icons/coach/coach-attendance.svg", label: "Attendance" },
       { id: "coach-planner", icon: "◫", label: "Planner" },
       { id: "coach-sessions", icon: "▶", label: "Sessions" },
       { id: "coach-drills", icon: "◇", label: "Drills" },
@@ -6203,7 +6203,7 @@ function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 18 }}>
           <MetricCard label="Academy players" value="24" detail="in this squad" accent={academyBlue} icon="P" onClick={() => onNav("academy-players")} />
           <MetricCard label="Parents linked" value="19" detail="5 invitations pending" trend={{ label: "79% linked", color: "#0369a1", bg: "#e0f2fe" }} accent="#0ea5e9" icon="↗" onClick={() => onNav("academy-parents")} />
-          <MetricCard label="Active this week" value="17" detail="of 24 players" trend={{ label: "+8%", color: "#15803d", bg: "#dcfce7" }} accent={P.green} icon="/icons/coach/attendance.svg" onClick={() => onNav("academy-engagement")} />
+          <MetricCard label="Active this week" value="17" detail="of 24 players" trend={{ label: "+8%", color: "#15803d", bg: "#dcfce7" }} accent={P.green} icon="/icons/coach/coach-attendance.svg" onClick={() => onNav("academy-engagement")} />
           <MetricCard label="Completion rate" value="68%" detail="across published practices" trend={{ label: "+12%", color: "#15803d", bg: "#dcfce7" }} accent={P.orange} icon="◒" onClick={() => onNav("academy-engagement")} />
         </div>
 
@@ -6615,7 +6615,7 @@ function AcademyPreview({ planSessions, extras, skills = [], overrides = {}, pub
 }
 
 
-function AcademyEngagement() { return <div style={{flex:1,overflow:"auto",background:P.soft}}><AcademyPageHeader title="Engagement" sub="Completion, activity and invitation health" /><div style={{padding:24,maxWidth:1180,margin:"0 auto",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(210px,1fr))",gap:12}}><MetricCard label="Active children" value="17" detail="of 24 this week" accent={ACADEMY_BLUE} icon="/icons/coach/attendance.svg"/><MetricCard label="Completion" value="68%" detail="across all missions" accent="#0ea5e9" icon="◒"/><MetricCard label="XP earned" value="4,820" detail="this week" accent="#7c3aed" icon="★"/><MetricCard label="Parent opens" value="83%" detail="invitation and app links" accent="#16a34a" icon="↗"/></div></div>; }
+function AcademyEngagement() { return <div style={{flex:1,overflow:"auto",background:P.soft}}><AcademyPageHeader title="Engagement" sub="Completion, activity and invitation health" /><div style={{padding:24,maxWidth:1180,margin:"0 auto",display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(210px,1fr))",gap:12}}><MetricCard label="Active children" value="17" detail="of 24 this week" accent={ACADEMY_BLUE} icon="/icons/coach/coach-attendance.svg"/><MetricCard label="Completion" value="68%" detail="across all missions" accent="#0ea5e9" icon="◒"/><MetricCard label="XP earned" value="4,820" detail="this week" accent="#7c3aed" icon="★"/><MetricCard label="Parent opens" value="83%" detail="invitation and app links" accent="#16a34a" icon="↗"/></div></div>; }
 
 function AcademySettings({ published, onNav }) {
   const items = [
