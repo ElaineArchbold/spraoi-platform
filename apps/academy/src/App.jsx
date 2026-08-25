@@ -3,6 +3,8 @@ import { supabase } from "./supabaseClient";
 import html2canvas from "html2canvas";
 import { openAdminModule, requestedScreenFromUrl, requestedTeamFromUrl, readModuleScreen, writeModuleScreen } from "../../../packages/ui/src/platformNavigation.js";
 
+import GlobalModuleRail from "../../../packages/ui/src/GlobalModuleRail.jsx";
+import PermissionDeniedModal from "../../../packages/ui/src/PermissionDeniedModal.jsx";
 import "../../../packages/ui/src/adminShell.css";
 import "../../../packages/ui/src/dashboardLayout.css";
 /* ============================================================
@@ -192,6 +194,47 @@ function academyNavForRole(role, nav = []) {
   return nav.filter((item) =>
     canAccessAcademyScreen(role, item.id)
   );
+}
+
+function signedInInitials(session) {
+  const name = String(
+    session?.user?.user_metadata?.full_name ||
+    session?.user?.user_metadata?.name ||
+    ""
+  ).trim();
+
+  if (name) {
+    const bits = name.split(/\s+/).filter(Boolean);
+
+    return (
+      (bits[0]?.[0] || "") +
+      (
+        bits.length > 1
+          ? bits[bits.length - 1]?.[0] || ""
+          : ""
+      )
+    ).toUpperCase() || "U";
+  }
+
+  const emailName = String(
+    session?.user?.email || ""
+  )
+    .split("@")[0]
+    .replace(/[._-]+/g, " ")
+    .trim();
+
+  const bits = emailName
+    .split(/\s+/)
+    .filter(Boolean);
+
+  return (
+    (bits[0]?.[0] || "") +
+    (
+      bits.length > 1
+        ? bits[bits.length - 1]?.[0] || ""
+        : ""
+    )
+  ).toUpperCase() || "U";
 }
 
 function teamDisplayName(team, fallback = "Team") {
@@ -486,7 +529,7 @@ function normalizeModuleIds(moduleIds = []) {
 /* ============================================================
    SIDEBAR — with module switcher
    ============================================================ */
-function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, selectedTeam, onSelectTeam, enabledModules, onLogout, ageGroups, myTeams, onShowProfile, userRole }) {
+function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, selectedTeam, onSelectTeam, enabledModules, onLogout, ageGroups, myTeams, onShowProfile, userRole, userInitial }) {
   const visibleTeams = myTeams?.length ? (ageGroups || []).filter((ag) => myTeams.includes(ag.id)) : (ageGroups || []);
   const mod = MODULES[activeModule];
   const clubName = club?.name || "Club Spraoi";
@@ -503,72 +546,16 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
   return (
     <div className="spraoi-desktop-shell-nav" style={{ width: 306, minHeight: "100vh", display: "flex", flexShrink: 0, position: "sticky", top: 0, alignSelf: "flex-start", height: "100vh", zIndex: 30 }}>
       {/* Fixed global module rail: all modules are always reachable without scrolling */}
-      <aside className="spraoi-global-rail" style={{ width: 78, background: "#10243e", display: "flex", flexDirection: "column", alignItems: "center", padding: "12px 8px", gap: 8, borderRight: "1px solid rgba(255,255,255,.08)" }}>
-        <div title={clubName} style={{ width: 60, height: 60, borderRadius: 17, background: "#fff", display: "grid", placeItems: "center", overflow: "hidden", boxShadow: "0 5px 16px rgba(0,0,0,.20)", border: "1px solid rgba(255,255,255,.55)", marginBottom: 5 }}>
-          <img src={club?.logo_url || "/spraoi-club-icon.png"} alt={`${clubName} crest`} style={{ width: 52, height: 52, objectFit: "contain" }} />
-        </div>
-        <div style={{
-          width: "100%",
-          display: "flex",
-          justifyContent: "center",
-          marginBottom: 5
-        }}>
-          <div className="spraoi-team-selector-label">Team</div>
-          <select
-            aria-label="Active team"
-            title={selectedTeam ? teamDisplayName(selectedTeam) : "Select team"}
-            value={selectedTeam?.id || ""}
-            onChange={(e) => {
-              const ag = visibleTeams.find(
-                (team) => String(team.id) === String(e.target.value)
-              );
-              if (ag) onSelectTeam(ag);
-            }}
-            style={{
-              width: 62,
-              height: 34,
-              borderRadius: 10,
-              border: "1px solid rgba(255,255,255,.28)",
-              background: "#fff",
-              color: "#10243e",
-              fontFamily: F.body,
-              fontSize: 12,
-              fontWeight: 800,
-              padding: "0 4px",
-              cursor: "pointer"
-            }}
-          >
-            {visibleTeams.map((ag) => (
-              <option
-                key={ag.id}
-                value={ag.id}
-                style={{ color: "#10243e", background: "#fff" }}
-              >
-                {String(teamDisplayName(ag) || "")
-                  .replace(/\s*Boys$/i, "B")
-                  .replace(/\s*Girls$/i, "G")
-                  .replace(/\s+/g, "")}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div style={{ flex: 1, width: "100%", display: "flex", flexDirection: "column", justifyContent: "center", gap: 7 }}>
-          {["coach","academy","connect","cup","club"].filter((key) => MODULES[key]).map((key) => { const module = MODULES[key];
-            const isActive = activeModule === key;
-            const locked = !enabledModules.includes(key);
-            const darkText = key === "connect";
-            return (
-              <button className="spraoi-module-switcher-button" data-active={isActive} key={key} title={`${module.label}${locked ? " — contact your administrator" : ""}`} onClick={() => openModule(key, module)} style={{ width: "100%", minHeight: 62, border: "none", borderRadius: 14, cursor: "pointer", background: isActive ? module.color : "transparent", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, position: "relative", boxShadow: isActive ? "0 8px 22px rgba(0,0,0,.24)" : "none" }}>
-                <span style={{ width: 46, height: 46, borderRadius: 14, background: "#fff", border: "1px solid rgba(15,23,42,.08)", display: "grid", placeItems: "center", boxShadow: isActive ? "0 6px 16px rgba(0,0,0,.18)" : "0 3px 10px rgba(0,0,0,.10)" }}><img src={module.icon} alt="" style={{ width: 40, height: 40, objectFit: "contain", filter: locked ? "grayscale(1) opacity(.55)" : "none" }} /></span>
-                <span style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, letterSpacing: "-.01em", color: isActive ? (darkText ? "#332800" : "#fff") : "rgba(255,255,255,.7)" }}>{module.label}</span>
-                {locked && <span style={{ position: "absolute", top: 5, right: 5, fontSize: 9, color: "rgba(255,255,255,.8)" }}>🔒</span>}
-              </button>
-            );
-          })}
-        </div>
-        <img src="/spraoi-logo-white.png" alt="Spraoi Sports" style={{ width: 58, height: 38, objectFit: "contain", marginBottom: 4, opacity: .96 }} />
-        <button onClick={onShowProfile} title="Profile & sign out" style={{ width: 42, height: 42, borderRadius: 13, border: "1px solid rgba(255,255,255,.36)", background: "rgba(255,255,255,.12)", color: "#fff", cursor: "pointer", fontFamily: F.body, fontWeight: 800 }}>EA</button>
-      </aside>
+      <GlobalModuleRail
+        activeModule={activeModule}
+        enabledModules={enabledModules}
+        club={club}
+        selectedTeam={selectedTeam}
+        visibleTeams={visibleTeams}
+        onSelectTeam={onSelectTeam}
+        initials={userInitial}
+        onShowProfile={onShowProfile}
+      />
 
       {/* Fixed navigation for the active module */}
       <aside className="spraoi-module-sidebar" data-module={activeModule} style={{ width: 228, background: `linear-gradient(180deg, ${mod.color} 0%, ${mod.color}ee 58%, #10243e 100%)`, display: "flex", flexDirection: "column", minHeight: "100vh", transition: "background .22s ease", color: activeModule === "connect" ? "#332800" : "#fff" }}>
@@ -3523,7 +3510,7 @@ function AcademyDashboardParents({
   );
 }
 
-function AcademyDashboardScreen({ club, selectedTeam, weeklyPlan, planSessions, extras = [], skills = [], overrides = {}, published = false, onSetOverride, onNav }) {
+function AcademyDashboardScreen({ club, selectedTeam, weeklyPlan, planSessions, extras = [], skills = [], overrides = {}, published = false, onSetOverride, onNav, canManageWeeklyContent = true, onPermissionDenied }) {
   const academyBlue = "#2563EB";
   const academyDark = "#075985";
   const academySoft = "#eef8ff";
@@ -3938,9 +3925,7 @@ function AcademyDashboardScreen({ club, selectedTeam, weeklyPlan, planSessions, 
         <Btn
           label="Manage Weekly Content"
           variant="primary"
-          onClick={() =>
-            onNav("academy-content")
-          }
+          onClick={() => canManageWeeklyContent ? onNav("academy-content") : onPermissionDenied?.()}
           style={{
             background: academyBlue,
             boxShadow:
@@ -6083,6 +6068,8 @@ export default function App() {
   }, [screen, userRole?.role]);
 
   const [showProfile, setShowProfile] = useState(false);
+  const [permissionModalOpen, setPermissionModalOpen] = useState(false);
+  const showPermissionMessage = () => setPermissionModalOpen(true);
   const [shareUrl, setShareUrl] = useState(null);
   const [pitchView, setPitchView] = useState(false);
   const [shareToken] = useState(() => new URLSearchParams(window.location.search).get("share"));
@@ -6123,15 +6110,15 @@ export default function App() {
       }
 
       if (normalized === "lead_coach") {
-        return ["coach", "academy", "connect", "club"];
+        return ["coach", "academy", "connect"];
       }
 
       if (normalized === "team_admin") {
-        return ["club", "coach", "academy", "connect", "cup"];
+        return ["coach", "academy", "connect", "cup"];
       }
 
       if (["coach_mentor", "coach", "mentor"].includes(normalized)) {
-        const modules = ["club", "coach", "academy"];
+        const modules = ["coach", "academy"];
 
         if (capabilities.connectRead || capabilities.connectWrite) {
           modules.push("connect");
@@ -6458,7 +6445,11 @@ export default function App() {
   }
   async function login() { setLoggingIn(true); setAuthError(""); const { error } = await supabase.auth.signInWithPassword({ email, password }); if (error) setAuthError(error.message); setLoggingIn(false); }
   async function signup() { setLoggingIn(true); setAuthError(""); const { error } = await supabase.auth.signUp({ email, password }); if (error) setAuthError(error.message); else setAuthError("Check your email to confirm."); setLoggingIn(false); }
-  async function logout() { await supabase.auth.signOut(); setSession(null); setUserRole(null); setClub(null); setSelectedTeam(null); }
+  async function logout() {
+    await supabase.auth.signOut();
+    setSession(null); setUserRole(null); setClub(null); setSelectedTeam(null);
+    if (window.__SPRAOI_ADMIN_SHELL__) openAdminModule("coach", "coach-dashboard");
+  }
 
   // Restore and synchronise the one active team shared by every Spraoi module.
   useEffect(() => {
@@ -6626,7 +6617,7 @@ export default function App() {
 
   async function setAcademyVideoOverride(activityId, skillId) {
     if (!permissions.canEditAcademyPlans) {
-      alert("Academy content is read-only for this team.");
+      showPermissionMessage();
       return;
     }
 
@@ -6641,7 +6632,7 @@ export default function App() {
   }
 
   async function addAcademyExtra(extra) {
-    if (!permissions.canEditAcademyPlans) { alert("This team is read-only for your Coach / Mentor role."); return; }
+    if (!permissions.canEditAcademyPlans) { showPermissionMessage(); return; }
     if (!selectedTeam?.id || !club?.id) return;
     const plan = await ensureAcademyPlan();
     if (!plan?.id) {
@@ -6669,7 +6660,7 @@ export default function App() {
   }
   async function removeAcademyExtra(id) {
     if (!permissions.canEditAcademyPlans) {
-      alert("Academy content is read-only for this team.");
+      showPermissionMessage();
       return;
     }
 
@@ -6681,7 +6672,7 @@ export default function App() {
   }
   async function updateAcademyExtra(id, changes) {
     if (!permissions.canEditAcademyPlans) {
-      alert("Academy content is read-only for this team.");
+      showPermissionMessage();
       return;
     }
 
@@ -6702,7 +6693,7 @@ export default function App() {
   }
   async function moveAcademyExtra(id, direction, groupTest) {
     if (!permissions.canEditAcademyPlans) {
-      alert("Academy content is read-only for this team.");
+      showPermissionMessage();
       return;
     }
 
@@ -6721,7 +6712,7 @@ export default function App() {
 
   async function publishAcademyWeek() {
     if (!permissions.canPublishAcademy) {
-      alert("You do not have permission to publish Academy content for this team.");
+      showPermissionMessage();
       return;
     }
     const next=!academyPublished;
@@ -7071,7 +7062,7 @@ export default function App() {
       {showMobile && <MobileHeader activeModule={activeModule} setActiveModule={setActiveModule} onNav={setScreen} enabledModules={enabledModules} club={club} selectedTeam={selectedTeam} ageGroups={ageGroups} myTeams={myTeams} onSelectTeam={selectTeam} onShowProfile={()=>setShowProfile(true)} />}
 
       {/* Sidebar — desktop only */}
-      {!showMobile && <Sidebar activeModule={activeModule} setActiveModule={setActiveModule} activeScreen={screen} onNav={setScreen} club={club} selectedTeam={selectedTeam} onSelectTeam={selectTeam} enabledModules={enabledModules} onLogout={logout} ageGroups={ageGroups} myTeams={myTeams} onShowProfile={() => setShowProfile(true)} userRole={userRole} />}
+      {!showMobile && <Sidebar activeModule={activeModule} setActiveModule={setActiveModule} activeScreen={screen} onNav={setScreen} club={club} selectedTeam={selectedTeam} onSelectTeam={selectTeam} enabledModules={enabledModules} onLogout={logout} ageGroups={ageGroups} myTeams={myTeams} onShowProfile={() => setShowProfile(true)} userRole={userRole} userInitial={signedInInitials(session)} />}
 
       {/* COACH screens */}
       {screen === "coach-dashboard" && <DashboardScreen club={club} ageGroups={ageGroups} planSessions={planSessions} weeklyPlan={weeklyPlan} upcomingSessions={upcomingSessions} onNav={setScreen} onOpenSession={openSession} allActivities={allActivities} selectedTeam={selectedTeam} />}
@@ -7104,6 +7095,8 @@ export default function App() {
           published={academyPublished}
           onSetOverride={setAcademyVideoOverride}
           onNav={setScreen}
+          canManageWeeklyContent={permissions.canEditAcademyPlans}
+          onPermissionDenied={showPermissionMessage}
         />
       )}
       {screen.startsWith("academy-") && screen !== "academy-dashboard" && (
@@ -7114,6 +7107,13 @@ export default function App() {
       {screen.startsWith("plus-") && <ModulePlaceholder module={MODULES.plus} screen={screen} club={club} />}
 
       {screen.startsWith("access-denied-") && <AccessDeniedScreen module={MODULES[screen.replace("access-denied-", "")] || MODULES[activeModule]} club={club} />}
+
+      <PermissionDeniedModal
+        open={permissionModalOpen}
+        onClose={() => setPermissionModalOpen(false)}
+        teamName={selectedTeam ? teamDisplayName(selectedTeam) : ""}
+        accent={ACADEMY_BLUE}
+      />
 
       {/* Profile Modal */}
       {showProfile && (

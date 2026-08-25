@@ -2388,11 +2388,9 @@ function PlannerScreen({ onNav, upcomingSessions, onOpenSession, selectedTeam })
   );
 }
 
-function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches, diagramMap, selectedTeam, onNav, editingSession, onClearEdit, onEditSession }) {
+function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches, diagramMap, selectedTeam, onNav, editingSession, onClearEdit }) {
   const [showFirstSessionModal, setShowFirstSessionModal] = useState(false);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-
-  const [sections, setSectionsState] = useState(() => {
+  const [sections, setSections] = useState(() => {
     if (editingSession) {
       // Restore phases from JSON if available
       let phases = null;
@@ -2423,159 +2421,27 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
     return [{ id: 1, type: "warmup", label: "Warm-up", drills: [], duration: "10" }];
   });
   const [search, setSearch] = useState("");
-  function setSections(updater) {
-    setHasUnsavedChanges(true);
-    setSectionsState(updater);
-  }
-
   const [filterCat, setFilterCat] = useState("");
   const [filterSport, setFilterSport] = useState("");
   const [showTimeModal, setShowTimeModal] = useState(false);
   const [day, setDay] = useState(() => {
-    const targetDate =
-      editingSession?.session_date ||
-      sessionStorage.getItem("spraoi_builder_target_date");
-
-    if (targetDate) {
-      const parts = targetDate.split("-");
-      const d = new Date(
-        parseInt(parts[0]),
-        parseInt(parts[1]) - 1,
-        parseInt(parts[2])
-      );
-
-      return [
-        "Sun",
-        "Mon",
-        "Tue",
-        "Wed",
-        "Thu",
-        "Fri",
-        "Sat"
-      ][d.getDay()];
-    }
-
-    if (false) {
+    if (editingSession?.session_date) {
       const parts = editingSession.session_date.split("-");
       const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
       return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()];
     }
     return "";
   });
-  const [weekOffset, setWeekOffset] = useState(() => {
-    const targetDate =
-      editingSession?.session_date ||
-      sessionStorage.getItem("spraoi_builder_target_date");
-
-    if (!targetDate) return 0;
-
-    const target = new Date(targetDate + "T12:00:00");
-    const today = new Date();
-
-    const mondayFor = (date) => {
-      const d = new Date(date);
-      d.setHours(12, 0, 0, 0);
-      d.setDate(
-        d.getDate() -
-        ((d.getDay() + 6) % 7)
-      );
-      return d;
-    };
-
-    const currentMonday = mondayFor(today);
-    const targetMonday = mondayFor(target);
-
-    return Math.round(
-      (targetMonday.getTime() - currentMonday.getTime()) /
-      (7 * 24 * 60 * 60 * 1000)
-    );
-  });
-  const [plannedStartTime, setPlannedStartTimeState] = useState(() => {
-    if (!editingSession?.planned_starts_at) return "";
-
-    const value = new Date(editingSession.planned_starts_at);
-
-    if (Number.isNaN(value.getTime())) return "";
-
-    return value.toLocaleTimeString("en-IE", {
-      hour: "2-digit",
-      minute: "2-digit"
-    });
-  });
-  const [plannedLocation, setPlannedLocationState] = useState("");
-  function setPlannedLocation(value) {
-    setHasUnsavedChanges(true);
-    setPlannedLocationState(value);
-  }
-
+  const [weekOffset, setWeekOffset] = useState(0);
+  const [plannedStartTime, setPlannedStartTime] = useState(() => editingSession?.planned_starts_at ? new Date(editingSession.planned_starts_at).toTimeString().slice(0,5) : "");
+  const [plannedLocation, setPlannedLocation] = useState("");
   const [facilities, setFacilities] = useState([]);
   const [publishedAllocation, setPublishedAllocation] = useState(null);
-
-  const confirmedAllocationTime = (() => {
-    if (!publishedAllocation?.starts_at) return "";
-
-    const d = new Date(publishedAllocation.starts_at);
-
-    if (Number.isNaN(d.getTime())) return "";
-
-    return new Intl.DateTimeFormat("en-IE", {
-      timeZone: "Europe/Dublin",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false
-    }).format(d);
-  })();
-
-  const confirmedAllocationFacility = (() => {
-    if (!publishedAllocation) return "";
-
-    if (publishedAllocation.confirmedLocation) {
-      return publishedAllocation.confirmedLocation;
-    }
-
-    if (publishedAllocation.facility?.name) {
-      return publishedAllocation.facility.name;
-    }
-
-    if (publishedAllocation.facility?.location) {
-      return publishedAllocation.facility.location;
-    }
-
-    const match = (facilities || []).find(
-      facility =>
-        String(facility.id) ===
-        String(publishedAllocation.facility_id || "")
-    );
-
-    return match?.name || match?.location || "";
-  })();
-
-  function setPlannedStartTime(value) {
-    setHasUnsavedChanges(true);
-    setPlannedStartTimeState(value);
-  }
-
   const [allocationConflict, setAllocationConflict] = useState(false);
-  const [notes, setNotesState] = useState(editingSession?.plan?.coach_notes || "");
-
-  function setNotes(value) {
-    setHasUnsavedChanges(true);
-    setNotesState(value);
-  }
+  const [notes, setNotes] = useState(editingSession?.plan?.coach_notes || "");
   const [saving, setSaving] = useState(false);
   const [nextId, setNextId] = useState(2);
   const previewRef = useRef(null);
-  const allocationRequestRef = useRef(0);
-  const userTouchedSessionRef = useRef(false);
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      sessionStorage.removeItem(
-        "spraoi_builder_target_date"
-      );
-    }, 0);
-
-    return () => clearTimeout(timer);
-  }, []);
 
   // Club facilities and published weekly allocations are the source of truth for confirmed venue/time.
   function selectedSessionDate() {
@@ -2588,194 +2454,77 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
     return `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, "0")}-${String(monday.getDate()).padStart(2, "0")}`;
   }
 
+  useEffect(() => {
+    let cancelled = false;
 
-  function builderDateForDay(dayName) {
-    const dayMap = {
-      Mon: 0,
-      Tue: 1,
-      Wed: 2,
-      Thu: 3,
-      Fri: 4,
-      Sat: 5,
-      Sun: 6
-    };
+    async function loadPublishedPitchForSelectedDay() {
+      if (!selectedTeam?.id || !day) return;
 
-    const monday = new Date();
-    monday.setHours(12, 0, 0, 0);
+      const sessionDate =
+        editingSession?.session_date ||
+        selectedSessionDate();
 
-    monday.setDate(
-      monday.getDate() -
-      ((monday.getDay() + 6) % 7) +
-      (weekOffset || 0) * 7
-    );
+      if (!sessionDate) return;
 
-    monday.setDate(
-      monday.getDate() +
-      dayMap[dayName]
-    );
+      const { start: dayStart, end: dayEnd } = localDayIsoBounds(sessionDate);
 
-    return `${monday.getFullYear()}-${String(
-      monday.getMonth() + 1
-    ).padStart(2, "0")}-${String(
-      monday.getDate()
-    ).padStart(2, "0")}`;
-  }
+      const { data: allocation, error } = await supabase
+        .from("weekly_training_allocations")
+        .select(`
+          id,
+          age_group_id,
+          facility_id,
+          starts_at,
+          ends_at,
+          status,
+          facility:facilities(id,name,location)
+        `)
+        .eq("age_group_id", selectedTeam.id)
+        .eq("status", "published")
+        .gte("starts_at", dayStart)
+        .lte("starts_at", dayEnd)
+        .order("starts_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
 
-
-  async function openBuilderCalendarDate(
-    dayName,
-    _ignoredDateObject
-  ) {
-
-    // Never carry the previous day's Club allocation
-    // while the newly-selected day is loading.
-    allocationRequestRef.current += 1;
-    setPublishedAllocation(null);
-    setAllocationConflict(false);
-    const targetDate =
-      builderDateForDay(dayName);
-
-    if (!targetDate || !selectedTeam?.id) {
-      return;
-    }
-
-    /*
-     * If this is genuinely the currently-loaded session,
-     * there is nothing to reload.
-     */
-    if (
-      editingSession?.session_date === targetDate
-    ) {
-      setDay(dayName);
-      return;
-    }
-
-    /*
-     * Only warn after an actual USER edit.
-     */
-    if (userTouchedSessionRef.current) {
-      const discard = window.confirm(
-        "You have unsaved changes. Discard them and open the selected date?"
-      );
-
-      if (!discard) return;
-    }
-
-    try {
-      /*
-       * Visually move immediately.
-       * The allocation lookup and session lookup now use
-       * this exact same day.
-       */
-      setDay(dayName);
-      userTouchedSessionRef.current = false;
-      setHasUnsavedChanges(false);
-
-      const { data: plans, error: planError } =
-        await supabase
-          .from("weekly_plans")
-          .select("id")
-          .eq(
-            "age_group_id",
-            selectedTeam.id
-          );
-
-      if (planError) throw planError;
-
-      const planIds = (plans || [])
-        .map(plan => plan.id)
-        .filter(Boolean);
-
-      let existingSession = null;
-
-      if (planIds.length) {
-        const { data: sessions, error: sessionError } =
-          await supabase
-            .from("sessions")
-            .select(
-              "id,plan_id,session_date,planned_starts_at,confirmed_starts_at,confirmed_ends_at,confirmed_facility_id,weekly_allocation_id,station_count,total_duration_mins,notes,created_at"
-            )
-            .in("plan_id", planIds)
-            .eq("session_date", targetDate)
-            .order("station_count", {
-              ascending: false
-            })
-            .order("created_at", {
-              ascending: false
-            })
-            .limit(1);
-
-        if (sessionError) throw sessionError;
-
-        existingSession =
-          sessions?.[0] || null;
-      }
-
-      /*
-       * SAVED SESSION:
-       * parent editSession fetches the full session +
-       * session_activities. The Builder key below then
-       * remounts with the new saved session.
-       */
-      if (existingSession?.id) {
-        sessionStorage.removeItem(
-          "spraoi_builder_target_date"
-        );
-
-        if (onEditSession) {
-          await onEditSession(existingSession);
+      if (cancelled || error) {
+        if (error) {
+          console.error("Pitch allocation lookup failed:", error);
         }
-
         return;
       }
 
-      /*
-       * NO SESSION:
-       * make the Builder genuinely blank.
-       */
-      sessionStorage.setItem(
-        "spraoi_builder_target_date",
-        targetDate
-      );
-
-      setSectionsState([
-        {
-          id: 1,
-          type: "warmup",
-          label: "Warm-up",
-          drills: [],
-          duration: "10",
-          coachId: "",
-          coachName: "",
-          notes: ""
-        }
-      ]);
-
-      setNotesState("");
-      setPlannedStartTimeState("");
-      setPlannedLocationState("");
-      setPublishedAllocation(null);
-      setAllocationConflict(false);
-      setNextId(2);
-      userTouchedSessionRef.current = false;
-      setHasUnsavedChanges(false);
-
-      if (onClearEdit) {
-        onClearEdit();
+      if (!allocation) {
+        return;
       }
 
-    } catch (error) {
-      console.error(
-        "Could not open Builder date:",
-        error
-      );
+      const allocationStart = new Date(allocation.starts_at);
+      if (!Number.isNaN(allocationStart.getTime())) {
+        setPlannedStartTime(`${String(allocationStart.getHours()).padStart(2, "0")}:${String(allocationStart.getMinutes()).padStart(2, "0")}`);
+      }
 
-      alert(
-        "Could not open that date: " +
-        error.message
-      );
+      const facilityName =
+        allocation.facility?.name ||
+        allocation.facility?.location ||
+        "";
+
+      if (facilityName) {
+        setPlannedLocation(facilityName);
+      }
     }
-  }
+
+    loadPublishedPitchForSelectedDay();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    selectedTeam?.id,
+    day,
+    weekOffset,
+    editingSession?.id
+  ]);
+
 
   useEffect(() => {
     let cancelled = false;
@@ -2791,9 +2540,6 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
   useEffect(() => {
     let cancelled = false;
     async function loadPublishedAllocation() {
-      const requestId =
-        ++allocationRequestRef.current;
-
       setPublishedAllocation(null);
       setAllocationConflict(false);
       const sessionDate = selectedSessionDate();
@@ -2809,125 +2555,30 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
         .order("starts_at")
         .limit(1)
         .maybeSingle();
-      if (
-        cancelled ||
-        requestId !== allocationRequestRef.current ||
-        !allocation
-      ) return;
-      const confirmedTime = (() => {
-        const value = new Date(allocation.starts_at);
-
-        return Number.isNaN(value.getTime())
-          ? ""
-          : value.toLocaleTimeString("en-IE", {
-              hour: "2-digit",
-              minute: "2-digit"
-            });
-      })();
-
-      const confirmedLocation =
-        allocation.facility?.name ||
-        allocation.facility?.location ||
-        allocation.location ||
-        "";
-
+      if (cancelled || !allocation) return;
+      const confirmedTime = (() => { const value = new Date(allocation.starts_at); return `${String(value.getHours()).padStart(2, "0")}:${String(value.getMinutes()).padStart(2, "0")}`; })();
+      const confirmedLocation = allocation.facility?.name || allocation.location || "";
       const differs = Boolean(
-        (plannedStartTime &&
-          confirmedTime &&
-          plannedStartTime !== confirmedTime) ||
-        (plannedLocation.trim() &&
-          confirmedLocation &&
-          plannedLocation.trim() !== confirmedLocation)
+        (plannedStartTime && plannedStartTime !== confirmedTime) ||
+        (plannedLocation.trim() && confirmedLocation && plannedLocation.trim() !== confirmedLocation)
       );
-
       setAllocationConflict(differs);
-
-      if (
-        requestId !== allocationRequestRef.current ||
-        selectedSessionDate() !== sessionDate
-      ) {
-        return;
-      }
-
-      setPublishedAllocation({
-        ...allocation,
-        confirmedTime,
-        confirmedLocation,
-        sessionDate
-      });
-
-      // SELF-HEAL EXISTING COACH SESSION
-      // Never create a session here.
-      // Only link the currently-open saved session when date/time match.
-      if (
-        editingSession?.id &&
-        plannedStartTime
-      ) {
-        const plannedIso =
-          localDateTimeIso(
-            sessionDate,
-            plannedStartTime
-          );
-
-        const plannedMs = plannedIso
-          ? new Date(plannedIso).getTime()
-          : NaN;
-
-        const allocationMs =
-          new Date(allocation.starts_at).getTime();
-
-        if (
-          Number.isFinite(plannedMs) &&
-          Number.isFinite(allocationMs) &&
-          Math.abs(plannedMs - allocationMs) < 60000
-        ) {
-          const { error: linkExistingError } =
-            await supabase
-              .from("sessions")
-              .update({
-                weekly_allocation_id: allocation.id,
-                confirmed_starts_at: allocation.starts_at,
-                confirmed_ends_at: allocation.ends_at,
-                confirmed_facility_id:
-                  allocation.facility_id || null
-              })
-              .eq("id", editingSession.id);
-
-          if (linkExistingError) {
-            console.error(
-              "Could not link published allocation:",
-              linkExistingError
-            );
-          }
-        }
-      }
-
-      // IMPORTANT:
-      // Do not overwrite the Coach's planned values here.
-      // Club allocation is confirmation only.
-      // plannedStartTime and plannedLocation remain untouched.
+      setPublishedAllocation(allocation);
+      setPlannedStartTime(confirmedTime);
+      if (confirmedLocation) setPlannedLocation(confirmedLocation);
     }
     loadPublishedAllocation();
-    return () => {
-      cancelled = true;
-      allocationRequestRef.current += 1;
-    };
+    return () => { cancelled = true; };
   }, [selectedTeam?.id, day, weekOffset]);
 
   function addSection(type) {
-    userTouchedSessionRef.current = true;
-    setHasUnsavedChanges(true);
     const labels = { warmup: "Warm-up", stations: "Stations", match: "Training Match", cooldown: "Cool-down", other: "Other" };
     const recommendedDurations = { warmup: "10", cooldown: "5", match: "15" };
     setSections((s) => [...s, { id: nextId, type, label: labels[type] || type, drills: [], duration: recommendedDurations[type] || "" }]);
     setNextId((n) => n + 1);
   }
-  function removeSection(id) {
-    userTouchedSessionRef.current = true;
-    setHasUnsavedChanges(true); setSections((s) => s.filter((sec) => sec.id !== id)); }
+  function removeSection(id) { setSections((s) => s.filter((sec) => sec.id !== id)); }
   function moveSection(id, dir) {
-    userTouchedSessionRef.current = true;
-    setHasUnsavedChanges(true);
     setSections((s) => {
       const idx = s.findIndex((sec) => sec.id === id);
       if (idx < 0) return s;
@@ -2939,23 +2590,15 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
     });
   }
   function addDrillToSection(sectionId, activity) {
-    userTouchedSessionRef.current = true;
-    setHasUnsavedChanges(true);
     setSections((s) => s.map((sec) => sec.id === sectionId ? { ...sec, drills: [...sec.drills, { ...activity, coachId: "", coachName: "" }] } : sec));
   }
   function removeDrill(sectionId, drillIdx) {
-    userTouchedSessionRef.current = true;
-    setHasUnsavedChanges(true);
     setSections((s) => s.map((sec) => sec.id === sectionId ? { ...sec, drills: sec.drills.filter((_, i) => i !== drillIdx) } : sec));
   }
   function updateDrill(sectionId, drillIdx, updates) {
-    userTouchedSessionRef.current = true;
-    setHasUnsavedChanges(true);
     setSections((s) => s.map((sec) => sec.id === sectionId ? { ...sec, drills: sec.drills.map((d, i) => i === drillIdx ? { ...d, ...updates } : d) } : sec));
   }
   function moveDrill(sectionId, fromIdx, toIdx) {
-    userTouchedSessionRef.current = true;
-    setHasUnsavedChanges(true);
     setSections((s) => s.map((sec) => {
       if (sec.id !== sectionId) return sec;
       const drills = [...sec.drills];
@@ -3230,8 +2873,6 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
           throw new Error("Session drills failed to save: " + activityInsertError.message);
         }
       }
-      captureSessionBaseline();
-
       if (selectedTeam?.id) {
         localStorage.setItem(ACTIVE_TEAM_KEY, String(selectedTeam.id));
         localStorage.setItem("spraoi_coach_plan_sync", JSON.stringify({ teamId: selectedTeam.id, planId, at: Date.now() }));
@@ -3252,13 +2893,6 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
 
   useEffect(() => {
     if (!editingSession) return;
-
-    userTouchedSessionRef.current = false;
-    userTouchedSessionRef.current = false;
-      setHasUnsavedChanges(false);
-
-    userTouchedSessionRef.current = false;
-      setHasUnsavedChanges(false);
 
     const startsAt =
       editingSession.confirmed_starts_at ||
@@ -3310,11 +2944,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
   }
 
   return (
-    <div
-      onChangeCapture={() => {
-        userTouchedSessionRef.current = true;
-        setHasUnsavedChanges(true);
-      }} style={{ flex: 1, overflow: "auto", background: P.soft }}>
+    <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
       <TopBar title="Session Builder" sub={selectedTeam ? teamDisplayName(selectedTeam) : "Select a team"}>
         <Btn label="Share" variant="ghost" onClick={shareAsImage} />
         <Btn label="Save Session" variant="primary" onClick={saveSession} style={{ opacity: allDrills.length > 0 ? 1 : 0.5 }} />
@@ -3338,7 +2968,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
                 const isSelected = day === d;
                 const isToday = mon.toDateString() === new Date().toDateString();
                 return (
-                  <button key={d} onClick={() => openBuilderCalendarDate(d, mon)} style={{ padding: "8px 2px", borderRadius: 8, border: isSelected ? `2px solid ${P.p600}` : isToday ? `2px solid ${P.line}` : "2px solid transparent", background: isSelected ? P.p50 : P.white, cursor: "pointer", textAlign: "center" }}>
+                  <button key={d} onClick={() => setDay(d)} style={{ padding: "8px 2px", borderRadius: 8, border: isSelected ? `2px solid ${P.p600}` : isToday ? `2px solid ${P.line}` : "2px solid transparent", background: isSelected ? P.p50 : P.white, cursor: "pointer", textAlign: "center" }}>
                     <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 700, color: isSelected ? P.p600 : P.muted }}>{d}</div>
                     <div style={{ fontFamily: F.display, fontSize: 14, fontWeight: 800, color: isSelected ? P.p600 : P.ink }}>{mon.getDate()}</div>
                   </button>
@@ -3353,11 +2983,11 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1.5fr", gap:8, marginTop:10 }}>
               <div>
                 <div style={{ fontFamily:F.body, fontSize:9, fontWeight:800, color:P.muted, marginBottom:4 }}>{publishedAllocation?"CONFIRMED TIME":"PLANNED TIME (OPTIONAL)"}</div>
-                <input type="time" value={publishedAllocation ? confirmedAllocationTime : plannedStartTime}  onChange={(e)=>setPlannedStartTime(e.target.value)} style={{ width:"100%", boxSizing:"border-box", height:36, borderRadius:8, border:`1px solid ${P.line}`, padding:"0 9px", fontFamily:F.body, background:P.white }} />
+                <input type="time" value={plannedStartTime} disabled={Boolean(publishedAllocation)} onChange={(e)=>setPlannedStartTime(e.target.value)} style={{ width:"100%", boxSizing:"border-box", height:36, borderRadius:8, border:`1px solid ${P.line}`, padding:"0 9px", fontFamily:F.body, background:publishedAllocation?P.soft:P.white }} />
               </div>
               <div>
                 <div style={{ fontFamily:F.body, fontSize:9, fontWeight:800, color:P.muted, marginBottom:4 }}>{publishedAllocation?"CONFIRMED FACILITY":"PLANNED LOCATION (OPTIONAL)"}</div>
-                <input list="spraoi-club-facilities" value={publishedAllocation ? confirmedAllocationFacility : plannedLocation}  onChange={(e)=>setPlannedLocation(e.target.value)} placeholder="Choose a Club facility or enter another location" style={{ width:"100%", boxSizing:"border-box", height:36, borderRadius:8, border:`1px solid ${P.line}`, padding:"0 9px", fontFamily:F.body, background:P.white }} />
+                <input list="spraoi-club-facilities" value={plannedLocation} disabled={Boolean(publishedAllocation)} onChange={(e)=>setPlannedLocation(e.target.value)} placeholder="Choose a Club facility or enter another location" style={{ width:"100%", boxSizing:"border-box", height:36, borderRadius:8, border:`1px solid ${P.line}`, padding:"0 9px", fontFamily:F.body, background:publishedAllocation?P.soft:P.white }} />
                 <datalist id="spraoi-club-facilities">{facilities.map((facility)=><option key={facility.id} value={facility.name}>{facility.location||"Club facility"}</option>)}</datalist>
               </div>
             </div>
@@ -6332,44 +5962,34 @@ function PlayersScreen({
 
 async function loadTeamSessions(ageGroupId) {
   if (!ageGroupId) return [];
-
-  const { data: plans, error: plansError } =
-    await supabase
-      .from("weekly_plans")
-      .select("id")
-      .eq("age_group_id", ageGroupId);
-
+  const { data: plans, error: plansError } = await supabase
+    .from("weekly_plans")
+    .select("id")
+    .eq("age_group_id", ageGroupId);
   if (plansError) throw plansError;
-
-  const planIds = (plans || [])
-    .map(plan => plan.id)
-    .filter(Boolean);
-
+  const planIds = (plans || []).map((plan) => plan.id).filter(Boolean);
   if (!planIds.length) return [];
-
-  const { data, error } =
-    await supabase
-      .from("sessions")
-      .select(`
-        *,
-        plan:weekly_plans(
-          week_number,
-          mode,
-          age_group_id,
-          coach_notes,
-          hurling_skill:skills!weekly_plans_hurling_focus_skill_id_fkey(name)
-        )
-      `)
-      .in("plan_id", planIds)
-      .not("session_date", "is", null)
-      .order("session_date", { ascending: true })
-      .order("planned_starts_at", { ascending: true });
-
+  const { data, error } = await supabase
+    .from("sessions")
+    .select(`
+      *,
+      plan:weekly_plans(
+        week_number,
+        mode,
+        age_group_id,
+        coach_notes,
+        hurling_skill:skills!weekly_plans_hurling_focus_skill_id_fkey(name)
+      ),
+      confirmed_facility:facilities!sessions_confirmed_facility_id_fkey(id,name,location),
+      planned_facility:facilities!sessions_planned_facility_id_fkey(id,name,location)
+    `)
+    .in("plan_id", planIds)
+    .not("session_date", "is", null)
+    .order("session_date", { ascending: true })
+    .order("planned_starts_at", { ascending: true });
   if (error) throw error;
-
   return data || [];
 }
-
 
 function SessionsListScreen({
   club,
@@ -7986,7 +7606,7 @@ export function CoachModule({
       />}
       {screen === "coach-builder" && (
         effectiveCanEdit
-          ? <SessionBuilderScreen key={editingSession?.id || sessionStorage.getItem("spraoi_builder_target_date") || "new-session"} club={club} ageGroups={ageGroups} skills={skills} allActivities={allActivities} coaches={selectedTeamCoaches} diagramMap={diagramMap} selectedTeam={selectedTeam} onNav={onNav} editingSession={editingSession} onClearEdit={() => setEditingSession?.(null)} onEditSession={editSession} />
+          ? <SessionBuilderScreen club={club} ageGroups={ageGroups} skills={skills} allActivities={allActivities} coaches={selectedTeamCoaches} diagramMap={diagramMap} selectedTeam={selectedTeam} onNav={onNav} editingSession={editingSession} onClearEdit={() => setEditingSession?.(null)} />
           : <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
               <TopBar title="Session Builder" sub={selectedTeam ? teamDisplayName(selectedTeam) : "No team selected"} />
               <CoachReadOnlyNotice title="Editing unavailable" message="Your Coach / Mentor role is read-only. Ask a Club Admin to assign Lead Coach access if you need to create or amend sessions." />
@@ -9718,7 +9338,6 @@ export default function App() {
         permissions.canEditCoachPlans
           ? (
               <SessionBuilderScreen
-                key={editingSession?.id || sessionStorage.getItem("spraoi_builder_target_date") || "new-session"}
                 club={club}
                 ageGroups={ageGroups}
                 skills={skills}
@@ -9729,7 +9348,6 @@ export default function App() {
                 onNav={setScreen}
                 editingSession={editingSession}
                 onClearEdit={() => setEditingSession(null)}
-                onEditSession={editSession}
               />
             )
           : (

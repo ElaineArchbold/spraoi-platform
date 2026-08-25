@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabaseClient";
 
 const RED = "#d32f2f";
@@ -377,41 +377,74 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId, hi
   async function updateAllocation(id,patch){ const {error}=await supabase.from("weekly_training_allocations").update({...patch,updated_at:new Date().toISOString()}).eq("id",id); if(error)setMessage(error.message); await loadAll(); }
 
   async function ensureSessionForAllocation(allocation) {
-    // Club publishing MUST NOT create Coach sessions.
-    //
-    // It may only link a session that a Coach has already
-    // created for the exact same team, date and time.
-
     if (!allocation || allocation.status !== "published") {
       return null;
     }
 
-    if (
-      !allocation.age_group_id ||
-      !allocation.starts_at
-    ) {
+    const allocationDate = timestampDateKey(allocation.starts_at);
+
+    if (!allocationDate || !allocation.age_group_id) {
       return null;
     }
 
-    const allocationDate =
-      String(allocation.starts_at).slice(0, 10);
+    const allocationWeekStart = isoDate(
+      mondayOf(new Date(`${allocationDate}T12:00:00`))
+    );
 
-    const allocationStart =
-      new Date(allocation.starts_at).getTime();
+    const team = ageGroups.find(
+      item =>
+        String(item.id) ===
+        String(allocation.age_group_id)
+    );
 
-    if (
-      !allocationDate ||
-      !Number.isFinite(allocationStart)
-    ) {
-      return null;
+    let { data: planRows, error: planLookupError } =
+      await supabase
+        .from("weekly_plans")
+        .select("*")
+        .eq("age_group_id", allocation.age_group_id)
+        .eq("starts_at", allocationWeekStart)
+        .order("created_at", { ascending: true })
+        .limit(1);
+
+    if (planLookupError) throw planLookupError;
+
+    let plan = planRows?.[0] || null;
+
+    if (!plan) {
+      const { data: latest, error: latestError } =
+        await supabase
+          .from("weekly_plans")
+          .select("week_number")
+          .eq("age_group_id", allocation.age_group_id)
+          .order("week_number", { ascending: false })
+          .limit(1);
+
+      if (latestError) throw latestError;
+
+      const nextWeek =
+        (latest?.[0]?.week_number || 0) + 1;
+
+      const { data: createdPlan, error: createPlanError } =
+        await supabase
+          .from("weekly_plans")
+          .insert({
+            club_id: club.id,
+            age_group_id: allocation.age_group_id,
+            week_number: nextWeek,
+            season: "2026-27",
+            mode: "hurling",
+            starts_at: allocationWeekStart,
+            published: false
+          })
+          .select()
+          .single();
+
+      if (createPlanError) throw createPlanError;
+
+      plan = createdPlan;
     }
 
-    // --------------------------------------------------------
-    // Already linked?
-    // Refresh confirmation only.
-    // --------------------------------------------------------
-
-    const { data: alreadyLinked, error: linkedError } =
+    const { data: linkedRows, error: linkedError } =
       await supabase
         .from("sessions")
         .select("*")
@@ -420,8 +453,8 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId, hi
 
     if (linkedError) throw linkedError;
 
-    if (alreadyLinked?.[0]) {
-      const existing = alreadyLinked[0];
+    if (linkedRows?.[0]) {
+      const existing = linkedRows[0];
 
       const { data: refreshed, error: refreshError } =
         await supabase
@@ -441,92 +474,100 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId, hi
       return refreshed;
     }
 
-    // --------------------------------------------------------
-    // Find plans belonging to this team.
-    // --------------------------------------------------------
-
-    const { data: plans, error: planError } =
-      await supabase
-        .from("weekly_plans")
-        .select("id")
-        .eq(
-          "age_group_id",
-          allocation.age_group_id
-        );
-
-    if (planError) throw planError;
-
-    const planIds =
-      (plans || []).map(plan => plan.id);
-
-    if (!planIds.length) {
-      // No Coach plan exists.
-      // DO NOT CREATE ONE.
-      return null;
-    }
-
-    // --------------------------------------------------------
-    // Find Coach-created sessions on this date.
-    // --------------------------------------------------------
-
-    const { data: sessions, error: sessionError } =
+    const { data: candidates, error: candidateError } =
       await supabase
         .from("sessions")
         .select("*")
-        .in("plan_id", planIds)
-        .eq("session_date", allocationDate);
+        .eq("plan_id", plan.id)
+        .eq("session_date", allocationDate)
+        .order("created_at", { ascending: true });
 
-    if (sessionError) throw sessionError;
+    if (candidateError) throw candidateError;
+
+    const allocationStart =
+      new Date(allocation.starts_at).getTime();
 
     const matchingSession =
-      (sessions || []).find(session => {
-        if (!session.planned_starts_at) {
-          return false;
-        }
+      (candidates || []).find(session => {
+        if (!session.planned_starts_at) return false;
 
         const plannedStart =
-          new Date(
-            session.planned_starts_at
-          ).getTime();
+          new Date(session.planned_starts_at).getTime();
 
         return (
           Number.isFinite(plannedStart) &&
-          Math.abs(
-            plannedStart - allocationStart
-          ) < 60000
+          Number.isFinite(allocationStart) &&
+          Math.abs(plannedStart - allocationStart) < 60000
         );
       });
 
-    if (!matchingSession) {
-      // Pitch allocation exists,
-      // but Coach has not created a matching session.
-      //
-      // Correct behaviour: leave Coach empty.
-      return null;
+    if (matchingSession) {
+      const { data: linked, error: linkError } =
+        await supabase
+          .from("sessions")
+          .update({
+            weekly_allocation_id: allocation.id,
+            confirmed_starts_at: allocation.starts_at,
+            confirmed_ends_at: allocation.ends_at,
+            confirmed_facility_id:
+              allocation.facility_id || null
+          })
+          .eq("id", matchingSession.id)
+          .select()
+          .single();
+
+      if (linkError) throw linkError;
+
+      return linked;
     }
 
-    // --------------------------------------------------------
-    // Link confirmation to the REAL Coach session.
-    // Do not touch drills, notes, sections or duration.
-    // --------------------------------------------------------
+    const durationMins = Math.max(
+      0,
+      Math.round(
+        (
+          new Date(allocation.ends_at).getTime() -
+          new Date(allocation.starts_at).getTime()
+        ) / 60000
+      )
+    );
 
-    const { data: linked, error: linkError } =
+    const nextSessionNumber =
+      Math.max(
+        0,
+        ...(candidates || []).map(
+          session => Number(session.session_number || 0)
+        )
+      ) + 1;
+
+    const { data: createdSession, error: createSessionError } =
       await supabase
         .from("sessions")
-        .update({
+        .insert({
+          plan_id: plan.id,
+          session_number: nextSessionNumber,
+          sport:
+            team?.gender === "girls"
+              ? "camogie"
+              : "hurling",
+          format: "stations",
+          total_duration_mins: durationMins || 60,
+          station_count: 0,
+          session_date: allocationDate,
+
           weekly_allocation_id: allocation.id,
           confirmed_starts_at: allocation.starts_at,
           confirmed_ends_at: allocation.ends_at,
           confirmed_facility_id:
             allocation.facility_id || null
         })
-        .eq("id", matchingSession.id)
         .select()
         .single();
 
-    if (linkError) throw linkError;
+    if (createSessionError) {
+      throw createSessionError;
+    }
 
-    return linked;
+    return createdSession;
   }
 
   async function publishWeek(){
@@ -544,7 +585,7 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId, hi
         return;
       }
       const {data:existingEvent}=await supabase.from("club_events").select("*").eq("training_allocation_id",a.id).maybeSingle();
-      const eventPayload={club_id:club.id,age_group_id:a.age_group_id,event_type:"training",title:"Training",facility_id:a.facility_id,location:a.facility?.name||null,starts_at:a.starts_at,ends_at:a.ends_at,status:existingEvent?"changed":"scheduled",source:"club_allocation",training_allocation_id:a.id,session_id: linkedSession?.id || null,created_by:currentUserId};
+      const eventPayload={club_id:club.id,age_group_id:a.age_group_id,event_type:"training",title:"Training",facility_id:a.facility_id,location:a.facility?.name||null,starts_at:a.starts_at,ends_at:a.ends_at,status:existingEvent?"changed":"scheduled",source:"club_allocation",training_allocation_id:a.id,session_id:linkedSession?.id||existingEvent?.session_id||null,created_by:currentUserId};
       const changed=Boolean(existingEvent&&(String(existingEvent.facility_id||"")!==String(a.facility_id||"")||new Date(existingEvent.starts_at).getTime()!==new Date(a.starts_at).getTime()||new Date(existingEvent.ends_at||0).getTime()!==new Date(a.ends_at||0).getTime()));
       const {data:event}=await supabase.from("club_events").upsert(eventPayload,{onConflict:"training_allocation_id"}).select().maybeSingle();
       if(linkedSession?.id){
@@ -1032,51 +1073,9 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId, hi
                   type="button"
                   onClick={publishWeek}
                   disabled={busy}
-                  style={{
-                    ...btn(true),
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 7,
-                    opacity: busy ? 0.8 : 1,
-                    cursor: busy ? "wait" : "pointer"
-                  }}
+                  style={btn(true)}
                 >
-                  {busy && (
-                    <svg
-                      width="15"
-                      height="15"
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                    >
-                      <circle
-                        cx="12"
-                        cy="12"
-                        r="9"
-                        fill="none"
-                        stroke="rgba(255,255,255,.4)"
-                        strokeWidth="3"
-                      />
-                      <path
-                        d="M12 3a9 9 0 0 1 9 9"
-                        fill="none"
-                        stroke="#fff"
-                        strokeWidth="3"
-                        strokeLinecap="round"
-                      >
-                        <animateTransform
-                          attributeName="transform"
-                          type="rotate"
-                          from="0 12 12"
-                          to="360 12 12"
-                          dur="0.7s"
-                          repeatCount="indefinite"
-                        />
-                      </path>
-                    </svg>
-                  )}
-
-                  {busy ? "Publishing..." : "Publish Week"}
+                  Publish Week
                 </button>
               </div>
             </div>
@@ -2547,7 +2546,6 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId, hi
     </div>
   );
 }
-
 
 
 

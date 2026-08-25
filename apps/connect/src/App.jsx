@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabaseClient";
 import { openAdminModule } from "../../../packages/ui/src/platformNavigation.js";
+import GlobalModuleRail from "../../../packages/ui/src/GlobalModuleRail.jsx";
 import "../../../packages/ui/src/adminShell.css";
 
 const ZERO = "00000000-0000-0000-0000-000000000000";
@@ -138,79 +139,20 @@ function connectSidebarAsset(id) {
   return map[id] || `${BASE}icons/global/chevron.png`;
 }
 
-function DesktopNav({nav,tab,setTab,club,selectedTeam,visibleTeams,setSelectedTeamId,canSendSelected,isAdmin,session,userInitials,onShowProfile}){
+function DesktopNav({nav,tab,setTab,club,selectedTeam,visibleTeams,setSelectedTeamId,canSendSelected,isAdmin,session,userInitials,onShowProfile,enabledModules=[]}){
   const clubName = club?.name || "Club Spraoi";
   const initial = userInitials || "U";
   return <div className="connect-desktop-sidebar spraoi-desktop-shell-nav" style={{width:306,minHeight:"100vh",display:"flex",flexShrink:0,position:"sticky",top:0,alignSelf:"flex-start",height:"100vh",zIndex:30}}>
-    <aside className="spraoi-global-rail" style={{width:78,background:"#10243e",display:"flex",flexDirection:"column",alignItems:"center",padding:"12px 8px",gap:8,borderRight:"1px solid rgba(255,255,255,.08)"}}>
-      <div title={clubName} style={{width:60,height:60,borderRadius:17,background:"#fff",display:"grid",placeItems:"center",overflow:"hidden",boxShadow:"0 5px 16px rgba(0,0,0,.20)",border:"1px solid rgba(255,255,255,.55)",marginBottom:5}}>
-        <img src={club?.logo_url || `${BASE}spraoi-club-icon.png`} alt={`${clubName} crest`} style={{width:52,height:52,objectFit:"contain"}}/>
-      </div>
-      <div
-        style={{
-          width:"100%",
-          marginBottom:5,
-          display:"flex",
-          justifyContent:"center"
-        }}
-      >
-        <div className="spraoi-team-selector-label">Team</div>
-        <select
-          aria-label="Active team"
-          title={selectedTeam ? shortTeam(selectedTeam) : "Select team"}
-          value={selectedTeam?.id || ""}
-          onChange={(e)=>setSelectedTeamId(e.target.value)}
-          style={{
-            width:62,
-            height:34,
-            borderRadius:10,
-            border:"1px solid rgba(255,255,255,.28)",
-            background:"#fff",
-            color:"#10243e",
-            fontFamily:F.body,
-            fontSize:12,
-            fontWeight:800,
-            padding:"0 4px",
-            cursor:"pointer"
-          }}
-        >
-          {visibleTeams.map((team)=>(
-            <option
-              key={team.id}
-              value={team.id}
-              style={{color:"#10243e",background:"#fff"}}
-            >
-              {String(shortTeam(team) || "")
-                .replace(/\s*Boys$/i, "B")
-                .replace(/\s*Girls$/i, "G")
-                .replace(/\s+/g, "")}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div style={{flex:1,width:"100%",display:"flex",flexDirection:"column",justifyContent:"center",gap:7}}>
-        {Object.entries(MODULES).map(([key,module])=>{
-          const active=key==="connect";
-          return <button className="spraoi-module-switcher-button" data-active={active} key={key} title={module.label} onClick={()=>key==="connect"?setTab("dashboard"):openAdminModule(key,module.screen)} style={{width:"100%",minHeight:62,border:"none",borderRadius:14,cursor:"pointer",background:active?module.color:"transparent",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:3,position:"relative",boxShadow:active?"0 8px 22px rgba(0,0,0,.24)":"none"}}>
-            <span style={{width:46,height:46,borderRadius:14,background:"#fff",border:"1px solid rgba(15,23,42,.08)",display:"grid",placeItems:"center",boxShadow:active?"0 6px 16px rgba(0,0,0,.18)":"0 3px 10px rgba(0,0,0,.10)"}}><img src={module.icon} alt="" style={{width:40,height:40,objectFit:"contain"}}/></span>
-            <span style={{fontFamily:F.body,fontSize:10,fontWeight:700,letterSpacing:"-.01em",color:active?"#fff":"rgba(255,255,255,.7)"}}>{module.label}</span>
-          </button>
-        })}
-      </div>
-      <img
-        src={`${BASE}spraoi-logo-white.png`}
-        alt="Spraoi Sports"
-        style={{
-          width:58,
-          height:38,
-          objectFit:"contain",
-          marginBottom:4,
-          opacity:.96
-        }}
-      />
-      <button onClick={onShowProfile} title="Profile" style={{width:42,height:42,borderRadius:13,border:"1px solid rgba(255,255,255,.36)",background:"rgba(255,255,255,.12)",color:"#fff",cursor:"pointer",fontFamily:F.body,fontWeight:800}}>{initial}</button>
-    </aside>
+    <GlobalModuleRail
+      activeModule="connect"
+      enabledModules={enabledModules}
+      club={club}
+      selectedTeam={selectedTeam}
+      visibleTeams={visibleTeams}
+      onSelectTeam={(team) => setSelectedTeamId(String(team.id))}
+      initials={userInitials}
+      onShowProfile={onShowProfile}
+    />
 
     <aside className="spraoi-module-sidebar" data-module="connect" style={{width:228,background:"linear-gradient(180deg, #F97316 0%, #d84f00 100%)",display:"flex",flexDirection:"column",minHeight:"100vh",color:"#fff"}}>
       <div className="spraoi-module-title-block" style={{height:118,minHeight:118,boxSizing:"border-box",padding:"18px 16px",borderBottom:"1px solid #FFE0C8"}}>
@@ -254,6 +196,12 @@ export default function App(){
   const [players,setPlayers]=useState([]); const [events,setEvents]=useState([]); const [responses,setResponses]=useState([]); const [groups,setGroups]=useState([]); const [groupMembers,setGroupMembers]=useState([]); const [messages,setMessages]=useState([]); const [delegates,setDelegates]=useState([]);
   const [composer,setComposer]=useState(null); const [groupModal,setGroupModal]=useState(false); const [permissionModal,setPermissionModal]=useState(false); const [status,setStatus]=useState("");
   const [newGroupName,setNewGroupName]=useState(""); const [newGroupDescription,setNewGroupDescription]=useState(""); const [newGroupPlayers,setNewGroupPlayers]=useState([]); const [mobileModulesOpen,setMobileModulesOpen]=useState(false);
+
+  async function centralLogout() {
+    await supabase.auth.signOut();
+    setSession(null);
+    if (window.__SPRAOI_ADMIN_SHELL__) openAdminModule("coach", "coach-dashboard");
+  }
 
   const normalizedRole=String(role||"").toLowerCase();
   const isAdmin=["super_admin","admin","club_admin"].includes(normalizedRole);
@@ -356,6 +304,46 @@ const selectedTeam=visibleTeams.find(
   const selectedStaffRows=myStaffRows.filter(
     row=>String(row.age_group_id)===String(selectedTeam?.id)
   );
+
+  const enabledModules = (() => {
+    if (isAdmin) {
+      return [
+        "coach",
+        "academy",
+        "connect",
+        "cup",
+        "club"
+      ];
+    }
+
+    const modules = new Set([
+      "coach",
+      "academy"
+    ]);
+
+    if (
+      readableConnectTeamIds.length ||
+      role === "lead_coach" ||
+      role === "team_admin"
+    ) {
+      modules.add("connect");
+    }
+
+    const hasCupAccess = myStaffRows.some(
+      row =>
+        Boolean(row.cup_read) ||
+        Boolean(row.cup_write) ||
+        String(row.role || "").toLowerCase() ===
+          "team_admin"
+    );
+
+    if (hasCupAccess) {
+      modules.add("cup");
+    }
+
+    // Club is deliberately Admin-only.
+    return [...modules];
+  })();
 
   const canSendSelected=
     isAdmin ||
@@ -524,7 +512,7 @@ const selectedTeam=visibleTeams.find(
   const nextPublishedTraining=upcoming.find(e=>e.event_type==="training"&&e.source==="club_allocation")||upcoming.find(e=>e.event_type==="training")||null;
 
   return <div className="connect-shell" style={{minHeight:"100vh",background:C.soft,fontFamily:F.body,color:C.ink,display:"flex"}}>
-    <DesktopNav nav={nav} tab={tab} setTab={setTab} club={club} selectedTeam={selectedTeam} visibleTeams={visibleTeams} setSelectedTeamId={setSelectedTeamId} canSendSelected={canSendSelected} isAdmin={isAdmin} session={session} userInitials={userInitials} onShowProfile={()=>setProfileOpen(true)}/>
+    <DesktopNav nav={nav} tab={tab} setTab={setTab} club={club} selectedTeam={selectedTeam} visibleTeams={visibleTeams} setSelectedTeamId={setSelectedTeamId} canSendSelected={canSendSelected} isAdmin={isAdmin} session={session} userInitials={userInitials} onShowProfile={()=>setProfileOpen(true)} enabledModules={enabledModules}/>
     <div className="connect-content" style={{flex:1,minWidth:0,paddingBottom:86}}>
       <header className="connect-mobile-header spraoi-mobile-app-header" data-module="connect">
         <div className="spraoi-mobile-app-header-row">
@@ -592,7 +580,7 @@ const selectedTeam=visibleTeams.find(
 
       {tab==="responses"&&<div>{upcoming.map(e=><Card key={e.id} style={{padding:15,marginBottom:10}}><div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"center",marginBottom:9}}><div><b>{e.title}</b><div style={{fontSize:9,color:C.muted}}>{fmt(e.starts_at)}</div></div><Pill tone={noResponseCount(e)?"warn":"yes"}>{noResponseCount(e)} outstanding</Pill></div>{teamPlayers.map(p=>{const r=responses.find(x=>x.event_id===e.id&&x.player_id===p.id);return <div key={p.id} style={{display:"flex",justifyContent:"space-between",gap:10,padding:"8px 0",borderTop:`1px solid ${C.line}`,fontSize:11}}><span>{p.name}</span><Pill tone={r?.response||"warn"}>{r?.response?r.response.toUpperCase():"NO RESPONSE"}</Pill></div>})}</Card>)}</div>}
 
-      {tab==="more"&&<><Card style={{padding:16,marginBottom:10}}><h2 style={{fontSize:17,margin:"0 0 5px"}}>Sending permissions</h2><div style={{fontSize:11,color:C.muted,lineHeight:1.5}}>Lead Mentors can send automatically. They can grant another assigned mentor permission for this team. Club Admin and Super Admin can send clubwide.</div>{canManageDelegates&&<Btn style={{marginTop:12}} onClick={()=>setPermissionModal(true)}>Manage authorised senders</Btn>}</Card><Card style={{padding:16}}><b>Account</b><div style={{fontSize:10,color:C.muted,marginTop:4}}>{session.user.email}</div><Btn ghost style={{marginTop:12}} onClick={()=>supabase.auth.signOut()}>Log out</Btn></Card></>}
+      {tab==="more"&&<><Card style={{padding:16,marginBottom:10}}><h2 style={{fontSize:17,margin:"0 0 5px"}}>Sending permissions</h2><div style={{fontSize:11,color:C.muted,lineHeight:1.5}}>Lead Mentors can send automatically. They can grant another assigned mentor permission for this team. Club Admin and Super Admin can send clubwide.</div>{canManageDelegates&&<Btn style={{marginTop:12}} onClick={()=>setPermissionModal(true)}>Manage authorised senders</Btn>}</Card><Card style={{padding:16}}><b>Account</b><div style={{fontSize:10,color:C.muted,marginTop:4}}>{session.user.email}</div><Btn ghost style={{marginTop:12}} onClick={centralLogout}>Log out</Btn></Card></>}
       </main>
     </div>
 
@@ -796,7 +784,7 @@ const selectedTeam=visibleTeams.find(
             <button
               onClick={async () => {
                 setProfileOpen(false);
-                await supabase.auth.signOut();
+                await centralLogout();
               }}
               style={{
                 width:"100%",
@@ -1001,7 +989,7 @@ const selectedTeam=visibleTeams.find(
             <button
               onClick={async () => {
                 setProfileOpen(false);
-                await supabase.auth.signOut();
+                await centralLogout();
               }}
               style={{
                 width:"100%",

@@ -55,6 +55,22 @@ function normaliseEmail(value: unknown) {
   return String(value || "").trim().toLowerCase();
 }
 
+function teamDisplayName(team: any) {
+  const base = String(team?.label || team?.name || "Team").trim();
+  const gender = String(team?.gender || "").toLowerCase();
+
+  const suffix =
+    gender === "girls"
+      ? "Girls"
+      : gender === "boys"
+        ? "Boys"
+        : "";
+
+  return suffix && !new RegExp(`\\b${suffix}$`, "i").test(base)
+    ? `${base} ${suffix}`
+    : base;
+}
+
 function cleanIds(value: unknown) {
   if (!Array.isArray(value)) return [];
 
@@ -273,7 +289,7 @@ export default {
           const { data: teams, error: teamsError } =
             await ctx.supabaseAdmin
               .from("age_groups")
-              .select("id, club_id, label")
+              .select("id, club_id, label, gender")
               .in("id", teamIds);
 
           if (teamsError) {
@@ -298,7 +314,7 @@ export default {
 
           teamNames = (teams || [])
             .filter((team: any) => team.club_id === clubId)
-            .map((team: any) => String(team.label || "").trim())
+            .map((team: any) => teamDisplayName(team))
             .filter(Boolean);
 
           if (invalidTeam) {

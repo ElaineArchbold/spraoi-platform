@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabaseClient";
 
 const RED = "#d32f2f";
@@ -1032,51 +1032,9 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId, hi
                   type="button"
                   onClick={publishWeek}
                   disabled={busy}
-                  style={{
-                    ...btn(true),
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 7,
-                    opacity: busy ? 0.8 : 1,
-                    cursor: busy ? "wait" : "pointer"
-                  }}
+                  style={btn(true)}
                 >
-                  {busy && (
-                    <svg
-                      width="15"
-                      height="15"
-                      viewBox="0 0 24 24"
-                      aria-hidden="true"
-                    >
-                      <circle
-                        cx="12"
-                        cy="12"
-                        r="9"
-                        fill="none"
-                        stroke="rgba(255,255,255,.4)"
-                        strokeWidth="3"
-                      />
-                      <path
-                        d="M12 3a9 9 0 0 1 9 9"
-                        fill="none"
-                        stroke="#fff"
-                        strokeWidth="3"
-                        strokeLinecap="round"
-                      >
-                        <animateTransform
-                          attributeName="transform"
-                          type="rotate"
-                          from="0 12 12"
-                          to="360 12 12"
-                          dur="0.7s"
-                          repeatCount="indefinite"
-                        />
-                      </path>
-                    </svg>
-                  )}
-
-                  {busy ? "Publishing..." : "Publish Week"}
+                  Publish Week
                 </button>
               </div>
             </div>
@@ -2547,7 +2505,6 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId, hi
     </div>
   );
 }
-
 
 
 

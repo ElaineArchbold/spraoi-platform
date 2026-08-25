@@ -1691,3 +1691,15 @@ body[data-spraoi-active-module="club"] .spraoi-page-header-icon { background:#FF
     align-items: stretch !important;
   }
 }
+
+
+/* Coach Attendance icon keeps the Coach module colour */
+.spraoi-module-nav-button .spraoi-attendance-inline-icon,
+.spraoi-module-nav-button[data-active="false"] .spraoi-attendance-inline-icon,
+.spraoi-module-nav-button[data-active="true"] .spraoi-attendance-inline-icon {
+  color: #7C3AED !important;
+}
+
+.spraoi-attendance-inline-icon svg {
+  stroke: #7C3AED !important;
+}

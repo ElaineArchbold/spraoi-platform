@@ -2565,7 +2565,6 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
   const [saving, setSaving] = useState(false);
   const [nextId, setNextId] = useState(2);
   const previewRef = useRef(null);
-  const allocationRequestRef = useRef(0);
   const userTouchedSessionRef = useRef(false);
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -2626,12 +2625,6 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
     dayName,
     _ignoredDateObject
   ) {
-
-    // Never carry the previous day's Club allocation
-    // while the newly-selected day is loading.
-    allocationRequestRef.current += 1;
-    setPublishedAllocation(null);
-    setAllocationConflict(false);
     const targetDate =
       builderDateForDay(dayName);
 
@@ -2791,9 +2784,6 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
   useEffect(() => {
     let cancelled = false;
     async function loadPublishedAllocation() {
-      const requestId =
-        ++allocationRequestRef.current;
-
       setPublishedAllocation(null);
       setAllocationConflict(false);
       const sessionDate = selectedSessionDate();
@@ -2809,11 +2799,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
         .order("starts_at")
         .limit(1)
         .maybeSingle();
-      if (
-        cancelled ||
-        requestId !== allocationRequestRef.current ||
-        !allocation
-      ) return;
+      if (cancelled || !allocation) return;
       const confirmedTime = (() => {
         const value = new Date(allocation.starts_at);
 
@@ -2842,18 +2828,10 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
 
       setAllocationConflict(differs);
 
-      if (
-        requestId !== allocationRequestRef.current ||
-        selectedSessionDate() !== sessionDate
-      ) {
-        return;
-      }
-
       setPublishedAllocation({
         ...allocation,
         confirmedTime,
-        confirmedLocation,
-        sessionDate
+        confirmedLocation
       });
 
       // SELF-HEAL EXISTING COACH SESSION
@@ -2908,10 +2886,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
       // plannedStartTime and plannedLocation remain untouched.
     }
     loadPublishedAllocation();
-    return () => {
-      cancelled = true;
-      allocationRequestRef.current += 1;
-    };
+    return () => { cancelled = true; };
   }, [selectedTeam?.id, day, weekOffset]);
 
   function addSection(type) {

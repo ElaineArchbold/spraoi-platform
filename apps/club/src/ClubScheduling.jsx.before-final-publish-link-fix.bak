@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabaseClient";
 
 const RED = "#d32f2f";
@@ -2547,7 +2547,6 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId, hi
     </div>
   );
 }
-
 
 
 

@@ -2252,69 +2252,6 @@ const CLUB_RED_DARK = "#a91f1f";
 const CLUB_SOFT = "#fff1f1";
 
 function ClubPage({ title, sub, children, actions }) {
-
-  useEffect(() => {
-    function spraoiClubHideGlobalTeamSelector() {
-      document.querySelectorAll("select").forEach((select) => {
-        let node = select.parentElement;
-
-        for (let level = 0; level < 5 && node; level++) {
-          const text = String(
-            node.textContent || ""
-          )
-            .replace(/\s+/g, " ")
-            .trim();
-
-          /*
-           * The rail selector is the compact block:
-           * TEAM + U12B/U11G etc.
-           */
-          if (
-            /^TEAM\b/i.test(text) &&
-            text.length < 80
-          ) {
-            node.dataset.spraoiClubTeamSelector =
-              "hidden";
-
-            node.dataset.spraoiOldDisplay =
-              node.style.display || "";
-
-            node.style.display = "none";
-            break;
-          }
-
-          node = node.parentElement;
-        }
-      });
-    }
-
-    spraoiClubHideGlobalTeamSelector();
-
-    const observer = new MutationObserver(
-      spraoiClubHideGlobalTeamSelector
-    );
-
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true
-    });
-
-    return () => {
-      observer.disconnect();
-
-      document
-        .querySelectorAll(
-          '[data-spraoi-club-team-selector="hidden"]'
-        )
-        .forEach((node) => {
-          node.style.display =
-            node.dataset.spraoiOldDisplay || "";
-
-          delete node.dataset.spraoiClubTeamSelector;
-          delete node.dataset.spraoiOldDisplay;
-        });
-    };
-  }, []);
   return (
     <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
       <style>{`

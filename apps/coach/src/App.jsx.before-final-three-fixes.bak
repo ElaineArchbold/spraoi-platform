@@ -2529,10 +2529,6 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
   const confirmedAllocationFacility = (() => {
     if (!publishedAllocation) return "";
 
-    if (publishedAllocation.confirmedLocation) {
-      return publishedAllocation.confirmedLocation;
-    }
-
     if (publishedAllocation.facility?.name) {
       return publishedAllocation.facility.name;
     }
@@ -2565,8 +2561,6 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
   const [saving, setSaving] = useState(false);
   const [nextId, setNextId] = useState(2);
   const previewRef = useRef(null);
-  const allocationRequestRef = useRef(0);
-  const userTouchedSessionRef = useRef(false);
   useEffect(() => {
     const timer = setTimeout(() => {
       sessionStorage.removeItem(
@@ -2626,12 +2620,6 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
     dayName,
     _ignoredDateObject
   ) {
-
-    // Never carry the previous day's Club allocation
-    // while the newly-selected day is loading.
-    allocationRequestRef.current += 1;
-    setPublishedAllocation(null);
-    setAllocationConflict(false);
     const targetDate =
       builderDateForDay(dayName);
 
@@ -2653,7 +2641,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
     /*
      * Only warn after an actual USER edit.
      */
-    if (userTouchedSessionRef.current) {
+    if (hasUnsavedChanges) {
       const discard = window.confirm(
         "You have unsaved changes. Discard them and open the selected date?"
       );
@@ -2668,7 +2656,6 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
        * this exact same day.
        */
       setDay(dayName);
-      userTouchedSessionRef.current = false;
       setHasUnsavedChanges(false);
 
       const { data: plans, error: planError } =
@@ -2757,7 +2744,6 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
       setPublishedAllocation(null);
       setAllocationConflict(false);
       setNextId(2);
-      userTouchedSessionRef.current = false;
       setHasUnsavedChanges(false);
 
       if (onClearEdit) {
@@ -2791,9 +2777,6 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
   useEffect(() => {
     let cancelled = false;
     async function loadPublishedAllocation() {
-      const requestId =
-        ++allocationRequestRef.current;
-
       setPublishedAllocation(null);
       setAllocationConflict(false);
       const sessionDate = selectedSessionDate();
@@ -2809,11 +2792,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
         .order("starts_at")
         .limit(1)
         .maybeSingle();
-      if (
-        cancelled ||
-        requestId !== allocationRequestRef.current ||
-        !allocation
-      ) return;
+      if (cancelled || !allocation) return;
       const confirmedTime = (() => {
         const value = new Date(allocation.starts_at);
 
@@ -2842,65 +2821,11 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
 
       setAllocationConflict(differs);
 
-      if (
-        requestId !== allocationRequestRef.current ||
-        selectedSessionDate() !== sessionDate
-      ) {
-        return;
-      }
-
       setPublishedAllocation({
         ...allocation,
         confirmedTime,
-        confirmedLocation,
-        sessionDate
+        confirmedLocation
       });
-
-      // SELF-HEAL EXISTING COACH SESSION
-      // Never create a session here.
-      // Only link the currently-open saved session when date/time match.
-      if (
-        editingSession?.id &&
-        plannedStartTime
-      ) {
-        const plannedIso =
-          localDateTimeIso(
-            sessionDate,
-            plannedStartTime
-          );
-
-        const plannedMs = plannedIso
-          ? new Date(plannedIso).getTime()
-          : NaN;
-
-        const allocationMs =
-          new Date(allocation.starts_at).getTime();
-
-        if (
-          Number.isFinite(plannedMs) &&
-          Number.isFinite(allocationMs) &&
-          Math.abs(plannedMs - allocationMs) < 60000
-        ) {
-          const { error: linkExistingError } =
-            await supabase
-              .from("sessions")
-              .update({
-                weekly_allocation_id: allocation.id,
-                confirmed_starts_at: allocation.starts_at,
-                confirmed_ends_at: allocation.ends_at,
-                confirmed_facility_id:
-                  allocation.facility_id || null
-              })
-              .eq("id", editingSession.id);
-
-          if (linkExistingError) {
-            console.error(
-              "Could not link published allocation:",
-              linkExistingError
-            );
-          }
-        }
-      }
 
       // IMPORTANT:
       // Do not overwrite the Coach's planned values here.
@@ -2908,26 +2833,17 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
       // plannedStartTime and plannedLocation remain untouched.
     }
     loadPublishedAllocation();
-    return () => {
-      cancelled = true;
-      allocationRequestRef.current += 1;
-    };
+    return () => { cancelled = true; };
   }, [selectedTeam?.id, day, weekOffset]);
 
   function addSection(type) {
-    userTouchedSessionRef.current = true;
-    setHasUnsavedChanges(true);
     const labels = { warmup: "Warm-up", stations: "Stations", match: "Training Match", cooldown: "Cool-down", other: "Other" };
     const recommendedDurations = { warmup: "10", cooldown: "5", match: "15" };
     setSections((s) => [...s, { id: nextId, type, label: labels[type] || type, drills: [], duration: recommendedDurations[type] || "" }]);
     setNextId((n) => n + 1);
   }
-  function removeSection(id) {
-    userTouchedSessionRef.current = true;
-    setHasUnsavedChanges(true); setSections((s) => s.filter((sec) => sec.id !== id)); }
+  function removeSection(id) { setSections((s) => s.filter((sec) => sec.id !== id)); }
   function moveSection(id, dir) {
-    userTouchedSessionRef.current = true;
-    setHasUnsavedChanges(true);
     setSections((s) => {
       const idx = s.findIndex((sec) => sec.id === id);
       if (idx < 0) return s;
@@ -2939,23 +2855,15 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
     });
   }
   function addDrillToSection(sectionId, activity) {
-    userTouchedSessionRef.current = true;
-    setHasUnsavedChanges(true);
     setSections((s) => s.map((sec) => sec.id === sectionId ? { ...sec, drills: [...sec.drills, { ...activity, coachId: "", coachName: "" }] } : sec));
   }
   function removeDrill(sectionId, drillIdx) {
-    userTouchedSessionRef.current = true;
-    setHasUnsavedChanges(true);
     setSections((s) => s.map((sec) => sec.id === sectionId ? { ...sec, drills: sec.drills.filter((_, i) => i !== drillIdx) } : sec));
   }
   function updateDrill(sectionId, drillIdx, updates) {
-    userTouchedSessionRef.current = true;
-    setHasUnsavedChanges(true);
     setSections((s) => s.map((sec) => sec.id === sectionId ? { ...sec, drills: sec.drills.map((d, i) => i === drillIdx ? { ...d, ...updates } : d) } : sec));
   }
   function moveDrill(sectionId, fromIdx, toIdx) {
-    userTouchedSessionRef.current = true;
-    setHasUnsavedChanges(true);
     setSections((s) => s.map((sec) => {
       if (sec.id !== sectionId) return sec;
       const drills = [...sec.drills];
@@ -3253,12 +3161,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
   useEffect(() => {
     if (!editingSession) return;
 
-    userTouchedSessionRef.current = false;
-    userTouchedSessionRef.current = false;
-      setHasUnsavedChanges(false);
-
-    userTouchedSessionRef.current = false;
-      setHasUnsavedChanges(false);
+    setHasUnsavedChanges(false);
 
     const startsAt =
       editingSession.confirmed_starts_at ||
@@ -3310,11 +3213,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
   }
 
   return (
-    <div
-      onChangeCapture={() => {
-        userTouchedSessionRef.current = true;
-        setHasUnsavedChanges(true);
-      }} style={{ flex: 1, overflow: "auto", background: P.soft }}>
+    <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
       <TopBar title="Session Builder" sub={selectedTeam ? teamDisplayName(selectedTeam) : "Select a team"}>
         <Btn label="Share" variant="ghost" onClick={shareAsImage} />
         <Btn label="Save Session" variant="primary" onClick={saveSession} style={{ opacity: allDrills.length > 0 ? 1 : 0.5 }} />
@@ -3353,11 +3252,11 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1.5fr", gap:8, marginTop:10 }}>
               <div>
                 <div style={{ fontFamily:F.body, fontSize:9, fontWeight:800, color:P.muted, marginBottom:4 }}>{publishedAllocation?"CONFIRMED TIME":"PLANNED TIME (OPTIONAL)"}</div>
-                <input type="time" value={publishedAllocation ? confirmedAllocationTime : plannedStartTime}  onChange={(e)=>setPlannedStartTime(e.target.value)} style={{ width:"100%", boxSizing:"border-box", height:36, borderRadius:8, border:`1px solid ${P.line}`, padding:"0 9px", fontFamily:F.body, background:P.white }} />
+                <input type="time" value={plannedStartTime}  onChange={(e)=>setPlannedStartTime(e.target.value)} style={{ width:"100%", boxSizing:"border-box", height:36, borderRadius:8, border:`1px solid ${P.line}`, padding:"0 9px", fontFamily:F.body, background:P.white }} />
               </div>
               <div>
                 <div style={{ fontFamily:F.body, fontSize:9, fontWeight:800, color:P.muted, marginBottom:4 }}>{publishedAllocation?"CONFIRMED FACILITY":"PLANNED LOCATION (OPTIONAL)"}</div>
-                <input list="spraoi-club-facilities" value={publishedAllocation ? confirmedAllocationFacility : plannedLocation}  onChange={(e)=>setPlannedLocation(e.target.value)} placeholder="Choose a Club facility or enter another location" style={{ width:"100%", boxSizing:"border-box", height:36, borderRadius:8, border:`1px solid ${P.line}`, padding:"0 9px", fontFamily:F.body, background:P.white }} />
+                <input list="spraoi-club-facilities" value={plannedLocation}  onChange={(e)=>setPlannedLocation(e.target.value)} placeholder="Choose a Club facility or enter another location" style={{ width:"100%", boxSizing:"border-box", height:36, borderRadius:8, border:`1px solid ${P.line}`, padding:"0 9px", fontFamily:F.body, background:P.white }} />
                 <datalist id="spraoi-club-facilities">{facilities.map((facility)=><option key={facility.id} value={facility.name}>{facility.location||"Club facility"}</option>)}</datalist>
               </div>
             </div>
