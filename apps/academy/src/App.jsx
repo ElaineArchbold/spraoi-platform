@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+﻿import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabaseClient";
 import html2canvas from "html2canvas";
 import { openAdminModule, requestedScreenFromUrl, requestedTeamFromUrl, readModuleScreen, writeModuleScreen } from "../../../packages/ui/src/platformNavigation.js";
@@ -2807,120 +2807,346 @@ function academySkillScoreForCode(activity, skill, code) {
   return score;
 }
 
-function getAcademyWeeklyRecommendations(planSessions, skills = [], overrides = {}, selectedTeam = null) {
-  const allFoundations = getAcademyFoundationReviews(planSessions, skills, overrides);
-  const sourceActivities = allFoundations.map((item) => ({
-    ...item.sourceActivity,
-    id: item.id,
-    title: item.title,
-    sessionTitle: item.sessionTitle,
-    matchedSkill: item.matchedSkill,
-  }));
+function getAcademyWeeklyRecommendations(
+  planSessions,
+  skills = [],
+  overrides = {},
+  selectedTeam = null
+) {
+  const isGirlsTeam =
+    String(selectedTeam?.gender || "").toLowerCase() === "girls";
 
-  // Academy Admin must remain usable before Coach is connected. When there are no
-  // Coach sessions yet, show the club skill library as manual choices instead of
-  // blocking the Academy screen. Once Coach sessions exist, the same cards become
-  // Coach-informed recommendations.
-  const isGirlsTeam = String(selectedTeam?.gender || "").toLowerCase() === "girls";
-  if (sourceActivities.length === 0) {
-    return ["football", "hurling"].map((code) => {
-      const codeSkills = (skills || []).filter((skill) => {
-        if (!skill.video_url) return false;
-        const sport = String(skill.sport || "").toLowerCase();
-        return code === "football" ? sport.includes("football") : (sport.includes("hurl") || sport.includes("camogie"));
-      });
-      const override = codeSkills.find((skill) => skill.id === overrides?.[code]) || null;
-      return {
-        id: code, code,
-        label: code === "football" ? "Football" : (isGirlsTeam ? "Camogie" : "Hurling"),
-        matchedSkill: override || codeSkills[0] || null,
-        overridden: Boolean(override),
-        matchScore: 0, frequency: 0, sourceDrills: [], alternatives: codeSkills,
-        needsReview: true, manualOnly: true,
-      };
-    });
-  }
+  const coachActivities = [];
 
-  return ["football", "hurling"].map((code) => {
-    const codeOverrideId = overrides?.[code];
-    const codeOverride = (skills || []).find((skill) => skill.id === codeOverrideId && skill.video_url);
+  function codeForSport(value) {
+    const sport = String(value || "").toLowerCase();
 
-    const codeSkills = (skills || []).filter((skill) => {
-      if (!skill.video_url) return false;
-      const sport = String(skill.sport || "").toLowerCase();
-      return code === "football"
-        ? sport.includes("football")
-        : (sport.includes("hurl") || sport.includes("camogie"));
-    });
-
-    const tallies = new Map();
-    sourceActivities.forEach((activity) => {
-      const ranked = codeSkills
-        .map((skill) => ({ skill, score: academySkillScoreForCode(activity, skill, code) }))
-        .sort((a, b) => b.score - a.score);
-      const best = ranked[0];
-      if (!best || best.score <= 0) return;
-      const existing = tallies.get(best.skill.id) || { skill: best.skill, frequency: 0, totalScore: 0, sources: [] };
-      existing.frequency += 1;
-      existing.totalScore += best.score;
-      existing.sources.push(activity);
-      tallies.set(best.skill.id, existing);
-    });
-
-    const rankedThemes = [...tallies.values()].sort((a, b) => {
-      if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
-      return b.frequency - a.frequency;
-    });
-
-    let selectedTheme = rankedThemes[0] || null;
-
-    if (!selectedTheme && codeSkills.length) {
-      const corpusActivity = {
-        title: sourceActivities.map((item) => item.title).join(" "),
-        description: sourceActivities.map((item) => item.description || "").join(" "),
-        coaching_points: sourceActivities.map((item) => item.coaching_points || "").join(" "),
-        category: sourceActivities.map((item) => item.category || "").join(" "),
-        sessionTitle: sourceActivities.map((item) => item.sessionTitle || "").join(" "),
-      };
-      const fallback = codeSkills
-        .map((skill) => ({ skill, score: academySkillScoreForCode(corpusActivity, skill, code) }))
-        .sort((a, b) => b.score - a.score)[0];
-      if (fallback) selectedTheme = { skill: fallback.skill, frequency: 0, totalScore: fallback.score, sources: sourceActivities };
+    if (sport.includes("football")) {
+      return "football";
     }
 
-    const matchedSkill = codeOverride || selectedTheme?.skill || codeSkills[0] || null;
-    const sourceDrills = selectedTheme?.sources?.length ? selectedTheme.sources : sourceActivities;
-    const uniqueSources = [];
-    const seen = new Set();
-    sourceDrills.forEach((item) => {
-      const key = String(item.id || item.title);
-      if (!seen.has(key)) {
-        seen.add(key);
-        uniqueSources.push(item);
+    if (
+      sport.includes("hurl") ||
+      sport.includes("camogie")
+    ) {
+      return "hurling";
+    }
+
+    return null;
+  }
+
+  function skillCode(skill) {
+    return codeForSport(skill?.sport);
+  }
+
+  (planSessions || []).forEach((session) => {
+    (session.session_activities || []).forEach((link) => {
+      const activity =
+        link.activity ||
+        link.activities ||
+        null;
+
+      if (!activity) return;
+
+      const skillId =
+        activity.skill?.id ||
+        activity.skill_id ||
+        null;
+
+      const skill =
+        activity.skill ||
+        (skills || []).find(item => item.id === skillId) ||
+        null;
+
+      /*
+        IMPORTANT:
+        A linked skill is authoritative for Academy recommendation sport.
+
+        Example:
+        Jab Lift => Hurling/Camogie even if the activity/session metadata
+        contains another value.
+      */
+      const code =
+        skillCode(skill) ||
+        codeForSport(activity.sport) ||
+        codeForSport(session.sport);
+
+      coachActivities.push({
+        id: activity.id || link.activity_id || link.id,
+        title: activity.title || activity.name || "Coach drill",
+        sessionId: session.id,
+        sessionDate: session.session_date,
+        activity,
+        skillId,
+        skill,
+        code
+      });
+    });
+  });
+
+  function normaliseWords(value) {
+    return String(value || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9 ]+/g, " ")
+      .split(/s+/)
+      .filter(word => word.length >= 3);
+  }
+
+  function fallbackScore(skill, relevant) {
+    const skillWords = new Set(
+      normaliseWords(
+        [
+          skill?.name,
+          skill?.category
+        ].filter(Boolean).join(" ")
+      )
+    );
+
+    if (!skillWords.size) return 0;
+
+    let score = 0;
+
+    relevant.forEach(item => {
+      const sourceWords = new Set(
+        normaliseWords(
+          [
+            item.title,
+            item.skill?.name,
+            item.skill?.category
+          ].filter(Boolean).join(" ")
+        )
+      );
+
+      let overlap = 0;
+
+      skillWords.forEach(word => {
+        if (sourceWords.has(word)) {
+          overlap += 1;
+        }
+      });
+
+      score += overlap * 10;
+
+      const skillName =
+        String(skill?.name || "").toLowerCase();
+
+      const sourceText =
+        [
+          item.title,
+          item.skill?.name
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+      if (
+        skillName &&
+        sourceText.includes(skillName)
+      ) {
+        score += 50;
       }
     });
 
-    const rankedAlternativeSkills = [];
-    const alternativeSeen = new Set();
-    [...rankedThemes.map((theme) => theme.skill), ...codeSkills].forEach((skill) => {
-      if (skill?.id && !alternativeSeen.has(skill.id)) {
-        alternativeSeen.add(skill.id);
-        rankedAlternativeSkills.push(skill);
+    return score;
+  }
+
+  return ["football", "hurling"].map(code => {
+    const relevant = coachActivities.filter(
+      item => item.code === code
+    );
+
+    /*
+      Count every current-week linked Coach skill.
+    */
+    const counts = new Map();
+
+    relevant.forEach(item => {
+      if (!item.skillId || !item.skill) return;
+
+      const existing =
+        counts.get(item.skillId) || {
+          skillId: item.skillId,
+          frequency: 0,
+          sources: [],
+          skill: item.skill
+        };
+
+      existing.frequency += 1;
+      existing.sources.push(item);
+
+      counts.set(item.skillId, existing);
+    });
+
+    const rankedCurrentWeek = [...counts.values()]
+      .sort((a, b) => {
+        if (b.frequency !== a.frequency) {
+          return b.frequency - a.frequency;
+        }
+
+        return String(a.skill?.name || "")
+          .localeCompare(String(b.skill?.name || ""));
+      });
+
+    /*
+      RULE 1:
+      Exact current-week Coach skills WITH a video have priority.
+
+      Most-used exact skill with video wins.
+    */
+    const exactVideoRanked =
+      rankedCurrentWeek.filter(
+        entry =>
+          entry.skill &&
+          entry.skill.video_url &&
+          skillCode(entry.skill) === code
+      );
+
+    const exactWinner =
+      exactVideoRanked[0] || null;
+
+    /*
+      Keep track of the Coach's most-used linked skill even when it
+      has no video. Useful for the UI/review information.
+    */
+    const dominantCoach =
+      rankedCurrentWeek[0] || null;
+
+    /*
+      RULE 2:
+      Only when there are ZERO exact current-week skills with a video
+      may Academy choose a same-code library fallback.
+    */
+    let fallbackWinner = null;
+
+    if (!exactWinner) {
+      const fallbackCandidates =
+        (skills || [])
+          .filter(skill =>
+            skill?.id &&
+            skill?.video_url &&
+            skillCode(skill) === code
+          )
+          .map(skill => ({
+            skill,
+            score: fallbackScore(skill, relevant)
+          }))
+          .sort((a, b) => {
+            if (b.score !== a.score) {
+              return b.score - a.score;
+            }
+
+            return String(a.skill?.name || "")
+              .localeCompare(String(b.skill?.name || ""));
+          });
+
+      fallbackWinner =
+        fallbackCandidates[0] || null;
+    }
+
+    /*
+      Manual Academy override remains the explicit final override.
+    */
+    const overrideId = overrides?.[code];
+
+    const overrideSkill =
+      overrideId
+        ? (skills || []).find(
+            skill => skill.id === overrideId
+          ) || null
+        : null;
+
+    const generatedSkill =
+      exactWinner?.skill ||
+      fallbackWinner?.skill ||
+      null;
+
+    const matchedSkill =
+      overrideSkill ||
+      generatedSkill ||
+      null;
+
+    let matchType = "none";
+
+    if (overrideSkill) {
+      matchType = "override";
+    } else if (exactWinner) {
+      matchType = "exact";
+    } else if (fallbackWinner) {
+      matchType = "fallback";
+    }
+
+    /*
+      Alternatives:
+      exact current-week video skills first,
+      then other same-code video-enabled library skills.
+    */
+    const alternatives = [];
+    const seen = new Set();
+
+    exactVideoRanked.forEach(entry => {
+      if (
+        entry.skill?.id &&
+        !seen.has(entry.skill.id)
+      ) {
+        seen.add(entry.skill.id);
+        alternatives.push(entry.skill);
       }
     });
-    if (codeOverride && !alternativeSeen.has(codeOverride.id)) rankedAlternativeSkills.unshift(codeOverride);
+
+    (skills || []).forEach(skill => {
+      if (
+        !skill?.id ||
+        seen.has(skill.id) ||
+        !skill.video_url ||
+        skillCode(skill) !== code
+      ) {
+        return;
+      }
+
+      seen.add(skill.id);
+      alternatives.push(skill);
+    });
 
     return {
       id: code,
       code,
-      label: code === "football" ? "Football" : (isGirlsTeam ? "Camogie" : "Hurling"),
+
+      label:
+        code === "football"
+          ? "Football"
+          : isGirlsTeam
+            ? "Camogie"
+            : "Hurling",
+
       matchedSkill,
-      overridden: Boolean(codeOverride),
-      matchScore: codeOverride ? 999 : selectedTheme?.totalScore || 0,
-      frequency: selectedTheme?.frequency || 0,
-      sourceDrills: uniqueSources,
-      alternatives: rankedAlternativeSkills,
-      needsReview: !matchedSkill || (selectedTheme?.frequency || 0) < 2,
+
+      /*
+        Exact Coach recommendation when available.
+        Otherwise retain dominant linked Coach skill for context.
+      */
+      coachRecommendedSkill:
+        exactWinner?.skill ||
+        dominantCoach?.skill ||
+        null,
+
+      overridden: Boolean(overrideSkill),
+
+      frequency:
+        exactWinner?.frequency ||
+        dominantCoach?.frequency ||
+        0,
+
+      sourceDrills:
+        exactWinner?.sources ||
+        dominantCoach?.sources ||
+        relevant,
+
+      alternatives,
+      matchType,
+
+      needsReview:
+        !matchedSkill ||
+        !matchedSkill.video_url
     };
   });
 }
@@ -2950,6 +3176,12 @@ const previewPill = {
 
 function AcademyPhonePreview({ weeklyPlan = null, planSessions = [], extras = [], skills = [], overrides = {}, published = false, compact = false, selectedTeam = null }) {
   const recommendations = getAcademyWeeklyRecommendations(planSessions, skills, overrides, selectedTeam);
+
+
+
+
+
+
   const football = recommendations.filter((item) => item.code === "football");
   const hurling = recommendations.filter((item) => item.code === "hurling");
   const grouped = { steps: [], exercises: [], runs: [], bonus: [], recovery: [] };
@@ -3133,381 +3365,77 @@ function AcademyPhonePreview({ weeklyPlan = null, planSessions = [], extras = []
   );
 }
 
-function AcademyDashboardParents({
-  club,
-  selectedTeam,
-  onNav,
-}) {
-  const [parents, setParents] = useState([]);
-  const [loading, setLoading] = useState(true);
+const ACADEMY_BLUE = "#2563EB";
+const ACADEMY_DARK = "#075985";
+const ACADEMY_SOFT = "#eef8ff";
+const ACADEMY_TEMPLATES = [
+  { type: "steps", icon: "👟", title: "Step goal", instruction: "Reach your step target this week.", xp: 20, target: "20,000 steps" },
+  { type: "run", icon: "🏃", title: "Run activity", instruction: "Complete a steady run with an adult.", xp: 25, target: "2 km" },
+  { type: "exercise", icon: "⭐", title: "Star jumps", instruction: "Complete 3 sets with a short rest.", xp: 10, target: "3 × 20" },
+  { type: "exercise", icon: "🦵", title: "Lunges", instruction: "Keep your chest tall and alternate legs.", xp: 10, target: "20 each side" },
+  { type: "exercise", icon: "⬇", title: "Squats", instruction: "Sit back, keep your knees tracking forward.", xp: 10, target: "3 × 15" },
+  { type: "skill", icon: "🎯", title: "Skill repetitions", instruction: "Practise this week’s key skill at home.", xp: 20, target: "50 repetitions" },
+  { type: "club", icon: "🏑", title: "Friday Night Hurling", instruction: "Attend the club session and check in.", xp: 30, target: "Attend", verification_type: "coach" },
+  { type: "club", icon: "📅", title: "Club activity", instruction: "Take part in this week’s bonus club activity.", xp: 20, target: "Attend" },
+];
 
-  useEffect(() => {
-    let live = true;
+function getAcademyWeekRange(weeklyPlan) {
+  const raw = weeklyPlan?.starts_at || weeklyPlan?.week_start || weeklyPlan?.week_start_date || weeklyPlan?.created_at;
+  const mondayKey = mondayKeyForDate(raw || new Date().toISOString().slice(0,10));
+  const start = new Date(`${mondayKey}T12:00:00`);
+  return `Week commencing ${start.toLocaleDateString("en-IE", { day: "numeric", month: "short", year: start.getFullYear() !== new Date().getFullYear() ? "numeric" : undefined })}`;
+}
 
-    async function loadParents() {
-      if (!club?.id) {
-        if (live) {
-          setParents([]);
-          setLoading(false);
-        }
-        return;
-      }
-
-      setLoading(true);
-
-      const [
-        guardianResult,
-        playerResult,
-        inviteResult,
-      ] = await Promise.all([
-        supabase
-          .from("club_guardians")
-          .select("id,name,email,user_id")
-          .eq("club_id", club.id)
-          .order("name"),
-
-        supabase
-          .from("journey_players")
-          .select("id,name,age_group_id")
-          .eq("club_id", club.id)
-          .order("name"),
-
-        supabase
-          .from("spraoi_invitations")
-          .select("email,status,invite_type,created_at")
-          .eq("club_id", club.id)
-          .eq("invite_type", "parent_guardian")
-          .order("created_at", {
-            ascending: false,
-          }),
-      ]);
-
-      const guardians =
-        guardianResult.data || [];
-
-      const players =
-        playerResult.data || [];
-
-      const invitations =
-        inviteResult.data || [];
-
-      let links = [];
-
-      if (guardians.length) {
-        const { data } = await supabase
-          .from("club_player_guardians")
-          .select("player_id,guardian_id")
-          .in(
-            "guardian_id",
-            guardians.map(
-              (guardian) => guardian.id
-            )
-          );
-
-        links = data || [];
-      }
-
-      const rows = guardians
-        .map((guardian) => {
-          const children = links
-            .filter(
-              (link) =>
-                String(link.guardian_id) ===
-                String(guardian.id)
-            )
-            .map((link) =>
-              players.find(
-                (player) =>
-                  String(player.id) ===
-                  String(link.player_id)
-              )
-            )
-            .filter(Boolean)
-            .filter(
-              (child) =>
-                !selectedTeam?.id ||
-                String(child.age_group_id) ===
-                  String(selectedTeam.id)
-            );
-
-          const latestInvite =
-            invitations.find(
-              (invite) =>
-                String(
-                  invite.email || ""
-                ).toLowerCase() ===
-                String(
-                  guardian.email || ""
-                ).toLowerCase()
-            );
-
-          let status = "Not invited";
-
-          if (
-            guardian.user_id ||
-            latestInvite?.status === "accepted"
-          ) {
-            status = "Active";
-          }
-          else if (
-            latestInvite?.status === "pending"
-          ) {
-            status = "Pending";
-          }
-          else if (
-            latestInvite?.status === "expired"
-          ) {
-            status = "Expired";
-          }
-          else if (
-            latestInvite?.status === "cancelled"
-          ) {
-            status = "Cancelled";
-          }
-
-          return {
-            ...guardian,
-            children,
-            status,
-          };
-        })
-        .filter(
-          (parent) =>
-            !selectedTeam?.id ||
-            parent.children.length > 0
-        );
-
-      if (live) {
-        setParents(rows);
-        setLoading(false);
-      }
-    }
-
-    loadParents();
-
-    return () => {
-      live = false;
-    };
-  }, [club?.id, selectedTeam?.id]);
-
-  const activeCount =
-    parents.filter(
-      (parent) =>
-        parent.status === "Active"
-    ).length;
-
-  const pendingCount =
-    parents.filter(
-      (parent) =>
-        parent.status === "Pending"
-    ).length;
-
+function AcademyPageHeader({ title, sub, actions }) {
   return (
-    <section
-      style={{
-        background: P.white,
-        borderRadius: 16,
-        border: `1px solid ${P.line}`,
-        boxShadow: Sh.card,
-        overflow: "hidden",
-      }}
-    >
-      <div
-        style={{
-          padding: 18,
-          borderBottom: `1px solid ${P.line}`,
-          display: "flex",
-          justifyContent: "space-between",
-          gap: 12,
-          alignItems: "center",
-        }}
-      >
-        <div>
-          <div
-            style={{
-              fontFamily: F.display,
-              fontSize: 16,
-              fontWeight: 800,
-              color: P.ink,
-            }}
-          >
-            Parents & Academy Access
-          </div>
-
-          <div
-            style={{
-              fontFamily: F.body,
-              fontSize: 10,
-              color: P.muted,
-              marginTop: 3,
-            }}
-          >
-            {parents.length} linked ·{" "}
-            {activeCount} active ·{" "}
-            {pendingCount} pending
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={() =>
-            onNav("academy-parents")
-          }
-          style={{
-            border: 0,
-            background: "transparent",
-            color: ACADEMY_BLUE,
-            fontFamily: F.body,
-            fontSize: 10,
-            fontWeight: 800,
-            cursor: "pointer",
-            whiteSpace: "nowrap",
-          }}
-        >
-          Manage all →
-        </button>
+    <div className="spraoi-page-header" style={{ height: 118, minHeight: 118, boxSizing: "border-box", background: "linear-gradient(135deg,#f8fcff 0%,#e9f6ff 100%)", borderBottom: "1px solid #cfeeff", padding: "20px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18, flexWrap: "wrap" }}>
+      <div className="spraoi-page-header-main" style={{ display: "flex", alignItems: "center", gap: 13, minWidth: 0 }}>
+        <div className="spraoi-page-header-icon" style={{ width: 64, height: 64, borderRadius: 20, background: "#fff", border: "1px solid rgba(15,23,42,.08)", display: "grid", placeItems: "center", boxShadow: "0 10px 26px rgba(2,119,189,.12)", flexShrink: 0 }}><img src="/spraoi-academy-icon.png" alt="Academy" style={{ width: 48, height: 48, objectFit: "contain" }} /></div>
+        <div style={{ minWidth: 0 }}><div className="spraoi-page-header-title" style={{ fontFamily: F.display, fontSize: 21, fontWeight: 700, color: ACADEMY_DARK }}>{title}</div><div className="spraoi-page-header-sub" style={{ fontFamily: F.body, fontSize: 12, color: "#4c7187", marginTop: 2 }}>{sub}</div></div>
       </div>
-
-      {loading ? (
-        <div
-          style={{
-            padding: 18,
-            fontFamily: F.body,
-            fontSize: 10,
-            color: P.muted,
-          }}
-        >
-          Loading parents…
-        </div>
-      ) : parents.length === 0 ? (
-        <div
-          style={{
-            padding: 18,
-            fontFamily: F.body,
-            fontSize: 10,
-            color: P.muted,
-          }}
-        >
-          No linked parents found for this team.
-        </div>
-      ) : (
-        <div>
-          {parents
-            .slice(0, 6)
-            .map((parent, index) => {
-              const statusStyle =
-                parent.status === "Active"
-                  ? {
-                      color: "#15803d",
-                      background: "#dcfce7",
-                    }
-                  : parent.status === "Pending"
-                    ? {
-                        color: "#b45309",
-                        background: "#fff7ed",
-                      }
-                    : {
-                        color: "#64748b",
-                        background: "#f1f5f9",
-                      };
-
-              return (
-                <div
-                  key={parent.id}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns:
-                      "minmax(0,1fr) auto",
-                    gap: 10,
-                    alignItems: "center",
-                    padding: "11px 18px",
-                    borderTop:
-                      index === 0
-                        ? "none"
-                        : `1px solid ${P.line}`,
-                  }}
-                >
-                  <div
-                    style={{
-                      minWidth: 0,
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontFamily: F.body,
-                        fontSize: 11,
-                        fontWeight: 800,
-                        color: P.ink,
-                      }}
-                    >
-                      {parent.name ||
-                        parent.email}
-                    </div>
-
-                    <div
-                      style={{
-                        fontFamily: F.body,
-                        fontSize: 9,
-                        color: P.muted,
-                        marginTop: 2,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {parent.children
-                        .map(
-                          (child) =>
-                            child.name
-                        )
-                        .join(", ") ||
-                        "No linked child"}
-                    </div>
-                  </div>
-
-                  <span
-                    style={{
-                      padding: "5px 8px",
-                      borderRadius: 999,
-                      fontFamily: F.body,
-                      fontSize: 8,
-                      fontWeight: 800,
-                      textTransform: "uppercase",
-                      ...statusStyle,
-                    }}
-                  >
-                    {parent.status}
-                  </span>
-                </div>
-              );
-            })}
-
-          {parents.length > 6 && (
-            <button
-              type="button"
-              onClick={() =>
-                onNav("academy-parents")
-              }
-              style={{
-                width: "100%",
-                height: 38,
-                border: 0,
-                borderTop: `1px solid ${P.line}`,
-                background: "#f8fafc",
-                color: ACADEMY_BLUE,
-                fontFamily: F.body,
-                fontSize: 10,
-                fontWeight: 800,
-                cursor: "pointer",
-              }}
-            >
-              View all {parents.length} parents
-            </button>
-          )}
-        </div>
-      )}
-    </section>
+      <div className="spraoi-page-header-actions" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{actions}</div>
+    </div>
   );
+}
+
+function AcademyCard({ children, style, className = "" }) { return <div className={className} style={{ background: P.white, border: `1px solid ${P.line}`, borderRadius: 16, padding: 18, boxShadow: Sh.card, ...style }}>{children}</div>; }
+function AcademyMetricCard({ label, value, detail, accent = ACADEMY_BLUE, icon }) {
+  return <AcademyCard className="spraoi-admin-metric-card" style={{ "--card-accent": accent, position: "relative", overflow: "hidden", minWidth: 0 }}>
+    <div style={{ position: "absolute", inset: "0 auto 0 0", width: 3, background: accent }} />
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+      <div style={{ minWidth: 0 }}>
+        <div className="spraoi-admin-metric-label" style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted }}>{label}</div>
+        <div className="spraoi-admin-metric-value" style={{ fontFamily: F.display, fontSize: 27, lineHeight: 1.15, fontWeight: 800, color: P.ink, marginTop: 8 }}>{value}</div>
+      </div>
+      <div style={{ width: 34, height: 34, borderRadius: 10, background: `${accent}12`, color: accent, display: "grid", placeItems: "center", fontSize: 15, fontWeight: 800, flexShrink: 0 }}>{icon}</div>
+    </div>
+    <div className="spraoi-admin-metric-copy" style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 9 }}>{detail}</div>
+  </AcademyCard>;
+}
+function AcademyBadge({ children, color = ACADEMY_BLUE, bg = ACADEMY_SOFT }) { return <span style={{ display: "inline-flex", alignItems: "center", padding: "5px 8px", borderRadius: 999, background: bg, color, fontFamily: F.body, fontSize: 9, fontWeight: 800, letterSpacing: ".04em", textTransform: "uppercase" }}>{children}</span>; }
+
+function getFoundationActivities(planSessions) {
+  const rows = [];
+  (planSessions || []).forEach((session, sessionIndex) => {
+    const acts = session.session_activities || session.activities || [];
+    acts.forEach((sa, activityIndex) => {
+      const activity = sa.activity || sa.activities || sa;
+      rows.push({
+        id: sa.id || `${session.id}-${activityIndex}`,
+        sessionId: session.id,
+        sessionTitle: session.title || session.name || `Session ${sessionIndex + 1}`,
+        title: activity?.title || activity?.name || "Coach drill",
+        description: activity?.description || activity?.instructions || "Imported from the Coach weekly plan.",
+        duration: sa.duration_mins || activity?.duration_mins || activity?.duration || null,
+        sport: activity?.sport || session?.sport || "Training",
+        skill: activity?.skill?.name || activity?.skill_name || "Weekly focus",
+        skillId: activity?.skill?.id || activity?.skill_id || null,
+        videoUrl: activity?.skill?.video_url || activity?.video_url || null,
+        category: activity?.skill?.category || activity?.category || "skill",
+      });
+    });
+  });
+  return rows;
 }
 
 function AcademyDashboardScreen({ club, selectedTeam, weeklyPlan, planSessions, extras = [], skills = [], overrides = {}, published = false, onSetOverride, onNav, canManageWeeklyContent = true, onPermissionDenied }) {
@@ -3520,6 +3448,10 @@ function AcademyDashboardScreen({ club, selectedTeam, weeklyPlan, planSessions, 
 
   const weeklyRecommendations = getAcademyWeeklyRecommendations(planSessions, skills, overrides, selectedTeam);
   const [previewIndexes, setPreviewIndexes] = useState({});
+
+  useEffect(() => {
+    setPreviewIndexes({});
+  }, [selectedTeam?.id, planSessions]);
   const [childLinkCopied, setChildLinkCopied] = useState(false);
 
   const [dashboardStats, setDashboardStats] = useState({
@@ -4233,7 +4165,7 @@ function AcademyDashboardScreen({ club, selectedTeam, weeklyPlan, planSessions, 
 
             <section style={{ background: academySoft, borderRadius: 16, border: "1px solid #cfeeff", padding: 16 }}>
               <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:12 }}><div><div style={{ fontFamily:F.display,fontSize:16,fontWeight:800,color:academyDark }}>Live child preview</div><div style={{fontFamily:F.body,fontSize:10,color:"#477084",marginTop:2}}>Only sections with content are shown.</div></div><button onClick={()=>onNav("academy-preview")} style={{border:0,background:"transparent",color:academyBlue,fontFamily:F.body,fontSize:10,fontWeight:800,cursor:"pointer"}}>Open full →</button></div>
-              <div style={{display:"grid",placeItems:"center"}}><AcademyPhonePreview weeklyPlan={weeklyPlan} planSessions={planSessions} extras={extras} skills={skills} overrides={overrides} published={published} compact selectedTeam={selectedTeam} /></div>
+              <div style={{display:"grid",placeItems:"center"}}><AcademyPhonePreview club={club} weeklyPlan={weeklyPlan} planSessions={planSessions} extras={extras} skills={skills} overrides={overrides} published={published} compact selectedTeam={selectedTeam} /></div>
             </section>
           </div>
         </div>
@@ -4242,82 +4174,14 @@ function AcademyDashboardScreen({ club, selectedTeam, weeklyPlan, planSessions, 
   );
 }
 
-const ACADEMY_BLUE = "#2563EB";
-const ACADEMY_DARK = "#075985";
-const ACADEMY_SOFT = "#eef8ff";
-const ACADEMY_TEMPLATES = [
-  { type: "steps", icon: "👟", title: "Step goal", instruction: "Reach your step target this week.", xp: 20, target: "20,000 steps" },
-  { type: "run", icon: "🏃", title: "Run activity", instruction: "Complete a steady run with an adult.", xp: 25, target: "2 km" },
-  { type: "exercise", icon: "⭐", title: "Star jumps", instruction: "Complete 3 sets with a short rest.", xp: 10, target: "3 × 20" },
-  { type: "exercise", icon: "🦵", title: "Lunges", instruction: "Keep your chest tall and alternate legs.", xp: 10, target: "20 each side" },
-  { type: "exercise", icon: "⬇", title: "Squats", instruction: "Sit back, keep your knees tracking forward.", xp: 10, target: "3 × 15" },
-  { type: "skill", icon: "🎯", title: "Skill repetitions", instruction: "Practise this week’s key skill at home.", xp: 20, target: "50 repetitions" },
-  { type: "club", icon: "🏑", title: "Friday Night Hurling", instruction: "Attend the club session and check in.", xp: 30, target: "Attend", verification_type: "coach" },
-  { type: "club", icon: "📅", title: "Club activity", instruction: "Take part in this week’s bonus club activity.", xp: 20, target: "Attend" },
-];
-
-function getAcademyWeekRange(weeklyPlan) {
-  const raw = weeklyPlan?.starts_at || weeklyPlan?.week_start || weeklyPlan?.week_start_date || weeklyPlan?.created_at;
-  const mondayKey = mondayKeyForDate(raw || new Date().toISOString().slice(0,10));
-  const start = new Date(`${mondayKey}T12:00:00`);
-  return `Week commencing ${start.toLocaleDateString("en-IE", { day: "numeric", month: "short", year: start.getFullYear() !== new Date().getFullYear() ? "numeric" : undefined })}`;
-}
-
-function AcademyPageHeader({ title, sub, actions }) {
-  return (
-    <div className="spraoi-page-header" style={{ height: 118, minHeight: 118, boxSizing: "border-box", background: "linear-gradient(135deg,#f8fcff 0%,#e9f6ff 100%)", borderBottom: "1px solid #cfeeff", padding: "20px 28px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 18, flexWrap: "wrap" }}>
-      <div className="spraoi-page-header-main" style={{ display: "flex", alignItems: "center", gap: 13, minWidth: 0 }}>
-        <div className="spraoi-page-header-icon" style={{ width: 64, height: 64, borderRadius: 20, background: "#fff", border: "1px solid rgba(15,23,42,.08)", display: "grid", placeItems: "center", boxShadow: "0 10px 26px rgba(2,119,189,.12)", flexShrink: 0 }}><img src="/spraoi-academy-icon.png" alt="Academy" style={{ width: 48, height: 48, objectFit: "contain" }} /></div>
-        <div style={{ minWidth: 0 }}><div className="spraoi-page-header-title" style={{ fontFamily: F.display, fontSize: 21, fontWeight: 700, color: ACADEMY_DARK }}>{title}</div><div className="spraoi-page-header-sub" style={{ fontFamily: F.body, fontSize: 12, color: "#4c7187", marginTop: 2 }}>{sub}</div></div>
-      </div>
-      <div className="spraoi-page-header-actions" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{actions}</div>
-    </div>
-  );
-}
-
-function AcademyCard({ children, style, className = "" }) { return <div className={className} style={{ background: P.white, border: `1px solid ${P.line}`, borderRadius: 16, padding: 18, boxShadow: Sh.card, ...style }}>{children}</div>; }
-function AcademyMetricCard({ label, value, detail, accent = ACADEMY_BLUE, icon }) {
-  return <AcademyCard className="spraoi-admin-metric-card" style={{ "--card-accent": accent, position: "relative", overflow: "hidden", minWidth: 0 }}>
-    <div style={{ position: "absolute", inset: "0 auto 0 0", width: 3, background: accent }} />
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
-      <div style={{ minWidth: 0 }}>
-        <div className="spraoi-admin-metric-label" style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted }}>{label}</div>
-        <div className="spraoi-admin-metric-value" style={{ fontFamily: F.display, fontSize: 27, lineHeight: 1.15, fontWeight: 800, color: P.ink, marginTop: 8 }}>{value}</div>
-      </div>
-      <div style={{ width: 34, height: 34, borderRadius: 10, background: `${accent}12`, color: accent, display: "grid", placeItems: "center", fontSize: 15, fontWeight: 800, flexShrink: 0 }}>{icon}</div>
-    </div>
-    <div className="spraoi-admin-metric-copy" style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 9 }}>{detail}</div>
-  </AcademyCard>;
-}
-function AcademyBadge({ children, color = ACADEMY_BLUE, bg = ACADEMY_SOFT }) { return <span style={{ display: "inline-flex", alignItems: "center", padding: "5px 8px", borderRadius: 999, background: bg, color, fontFamily: F.body, fontSize: 9, fontWeight: 800, letterSpacing: ".04em", textTransform: "uppercase" }}>{children}</span>; }
-
-function getFoundationActivities(planSessions) {
-  const rows = [];
-  (planSessions || []).forEach((session, sessionIndex) => {
-    const acts = session.session_activities || session.activities || [];
-    acts.forEach((sa, activityIndex) => {
-      const activity = sa.activity || sa.activities || sa;
-      rows.push({
-        id: sa.id || `${session.id}-${activityIndex}`,
-        sessionId: session.id,
-        sessionTitle: session.title || session.name || `Session ${sessionIndex + 1}`,
-        title: activity?.title || activity?.name || "Coach drill",
-        description: activity?.description || activity?.instructions || "Imported from the Coach weekly plan.",
-        duration: sa.duration_mins || activity?.duration_mins || activity?.duration || null,
-        sport: activity?.sport || session?.sport || "Training",
-        skill: activity?.skill?.name || activity?.skill_name || "Weekly focus",
-        skillId: activity?.skill?.id || activity?.skill_id || null,
-        videoUrl: activity?.skill?.video_url || activity?.video_url || null,
-        category: activity?.skill?.category || activity?.category || "skill",
-      });
-    });
-  });
-  return rows;
-}
-
-function AcademyWeeklyContent({ selectedTeam, weeklyPlan, planSessions, extras, skills = [], overrides = {}, onSetOverride, onAddExtra, onUpdateExtra, onRemoveExtra, onMoveExtra, published, onPublish }) {
+function AcademyWeeklyContent({ selectedTeam, weeklyPlan, planSessions, extras, skills = [], overrides = {}, onSetOverride, onAddExtra, onUpdateExtra, onRemoveExtra, onMoveExtra, published, onPublish, onRefreshCoach }) {
   const recommendations = getAcademyWeeklyRecommendations(planSessions, skills, overrides, selectedTeam);
-  const [previewIndexes, setPreviewIndexes] = useState({});
+
+
+
+
+
+    const [previewIndexes, setPreviewIndexes] = useState({});
   const [draft, setDraft] = useState({ title: "", instruction: "", target: "", xp: 15, type: "exercise", required: false, verification_type: "self" });
   const [editingId, setEditingId] = useState(null);
   const [publishReview, setPublishReview] = useState(false);
@@ -4355,6 +4219,29 @@ function AcademyWeeklyContent({ selectedTeam, weeklyPlan, planSessions, extras, 
         <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center",flexWrap:"wrap"}}><div><AcademyBadge>Weekly readiness</AcademyBadge><div style={{fontFamily:F.display,fontSize:18,fontWeight:800,color:P.ink,marginTop:8}}>{published?"This week is live":"Complete the checks before publishing"}</div></div><div style={{display:"flex",gap:7,flexWrap:"wrap"}}>{validation.map(v=><AcademyBadge key={v.label} color={v.ok?"#15803d":"#b45309"} bg={v.ok?"#dcfce7":"#fff7ed"}>{v.ok?"✓":"!"} {v.label}</AcademyBadge>)}</div></div>
       </AcademyCard>
       <AcademyCard style={{ marginBottom: 16, borderColor: "#b9e3f8" }}>
+        <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}>
+          <button
+            onClick={() => {
+              setPreviewIndexes({});
+              onRefreshCoach?.();
+            }}
+            style={{
+              height:36,
+              padding:"0 12px",
+              borderRadius:9,
+              border:"1px solid #bae6fd",
+              background:"#fff",
+              color:"#0369a1",
+              fontFamily:F.body,
+              fontSize:10,
+              fontWeight:800,
+              cursor:"pointer"
+            }}
+          >
+            ↻ Refresh from Coach
+          </button>
+        </div>
+
         <div><AcademyBadge>Suggested weekly videos</AcademyBadge><div style={{fontFamily:F.display,fontSize:18,fontWeight:800,color:P.ink,marginTop:8}}>One video per code</div><div style={{fontFamily:F.body,fontSize:11,color:P.muted,marginTop:4}}>Browse suggestions, then explicitly select the Football and {selectedTeam?.gender === "girls" ? "Camogie" : "Hurling"} videos for this week.</div></div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:14,marginTop:16}}>{recommendations.map(rec=>{const options=rec.alternatives?.length?rec.alternatives:(rec.matchedSkill?[rec.matchedSkill]:[]);const idx=Math.min(previewIndexes[rec.code]??Math.max(0,options.findIndex(x=>x.id===rec.matchedSkill?.id)),Math.max(0,options.length-1));const skill=options[idx]||rec.matchedSkill;const selected=overrides?.[rec.code]===skill?.id;return <div key={rec.code} style={{border:`1px solid ${selected?"#86efac":"#bae6fd"}`,borderRadius:16,padding:15,background:"#fff"}}><div style={{display:"flex",justifyContent:"space-between",gap:8}}><AcademyBadge color={rec.code==="football"?"#1d4ed8":"#b91c1c"} bg={rec.code==="football"?"#dbeafe":"#fee2e2"}>{rec.label}</AcademyBadge><AcademyBadge color={selected?"#15803d":"#0369a1"} bg={selected?"#dcfce7":"#e0f2fe"}>{selected?"Selected":"Suggestion"}</AcademyBadge></div><div style={{fontFamily:F.display,fontSize:18,fontWeight:800,color:P.ink,marginTop:10}}>{skill?.name||"No match available"}</div>{skill?.video_url&&<div style={{borderRadius:11,overflow:"hidden",background:"#071827",marginTop:10}}><iframe title={skill.name} src={skill.video_url.replace("watch?v=","embed/").split("&")[0]} style={{width:"100%",height:180,border:0,display:"block"}} allowFullScreen /></div>}<div className="academy-match-actions" style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:7,marginTop:10}}><button disabled={idx===0} onClick={()=>setPreviewIndexes(p=>({...p,[rec.code]:Math.max(0,idx-1)}))} style={smallAction(idx===0)}>Previous</button><button disabled={idx>=options.length-1} onClick={()=>setPreviewIndexes(p=>({...p,[rec.code]:Math.min(options.length-1,idx+1)}))} style={smallAction(idx>=options.length-1)}>Next suggestion</button><button disabled={!skill?.id||selected} onClick={()=>skill?.id&&onSetOverride?.(rec.code,skill.id)} style={{...smallAction(false),background:selected?"#dcfce7":ACADEMY_BLUE,color:selected?"#15803d":"#fff",border:0}}>{selected?"Selected":"Use this video"}</button></div><div style={{fontFamily:F.body,fontSize:9,color:P.muted,marginTop:7}}>Suggestion {options.length?idx+1:0} of {options.length} · {rec.sourceDrills.length ? `based on ${rec.sourceDrills.length} Coach activities` : "manual Academy selection"}</div></div>})}</div>
       </AcademyCard>
@@ -5158,7 +5045,7 @@ function AcademyParents({ club, selectedTeam }) {
     </div>
   );
 }
-function AcademyPreview({ weeklyPlan, planSessions, extras, skills = [], overrides = {}, published, selectedTeam }) { return <div style={{flex:1,overflow:"auto",background:"linear-gradient(180deg,#e8f7ff,#f8fbff)"}}><AcademyPageHeader title="Child Preview" sub={`${getAcademyWeekRange(weeklyPlan)} · Exactly what a child will see after publishing`} /><div style={{padding:24,display:"grid",placeItems:"center"}}><AcademyPhonePreview weeklyPlan={weeklyPlan} planSessions={planSessions} extras={extras} skills={skills} overrides={overrides} published={published} selectedTeam={selectedTeam} /></div></div>;
+function AcademyPreview({ club = null, weeklyPlan, planSessions, extras, skills = [], overrides = {}, published, selectedTeam }) { return <div style={{flex:1,overflow:"auto",background:"linear-gradient(180deg,#e8f7ff,#f8fbff)"}}><AcademyPageHeader title="Child Preview" sub={`${getAcademyWeekRange(weeklyPlan)} · Exactly what a child will see after publishing`} /><div style={{padding:24,display:"grid",placeItems:"center"}}><AcademyPhonePreview club={club} weeklyPlan={weeklyPlan} planSessions={planSessions} extras={extras} skills={skills} overrides={overrides} published={published} selectedTeam={selectedTeam} /></div></div>;
 }
 
 
@@ -5341,10 +5228,10 @@ function AcademySettings({ published, onNav }) {
   return <div style={{ flex: 1, overflow: "auto", background: P.soft }}><AcademyPageHeader title="Settings" sub="Academy setup and shortcuts" /><div style={{ padding: 24, maxWidth: 900, margin: "0 auto", display: "grid", gap: 12 }}>{items.map((item) => <AcademyCard key={item.title}><div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", flexWrap: "wrap" }}><div style={{ flex: 1, minWidth: 220 }}><div style={{ fontFamily: F.body, fontSize: 12, fontWeight: 800, color: P.ink }}>{item.title}</div><div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 3 }}>{item.desc}</div></div><button onClick={item.action} style={{ height: 34, border: 0, borderRadius: 9, background: ACADEMY_BLUE, color: "#fff", padding: "0 12px", fontFamily: F.body, fontSize: 10, fontWeight: 800, cursor: "pointer" }}>{item.label}</button></div></AcademyCard>)}</div></div>;
 }
 
-function AcademySectionScreen({ screen, onNav, club, selectedTeam, weeklyPlan, planSessions, extras, skills, overrides, onSetOverride, onAddExtra, onUpdateExtra, onRemoveExtra, onMoveExtra, published, onPublish, parentRows, setParentRows }) {
-  if (screen === "academy-content") return <AcademyWeeklyContent selectedTeam={selectedTeam} weeklyPlan={weeklyPlan} planSessions={planSessions} extras={extras} skills={skills} overrides={overrides} onSetOverride={onSetOverride} onAddExtra={onAddExtra} onUpdateExtra={onUpdateExtra} onRemoveExtra={onRemoveExtra} onMoveExtra={onMoveExtra} published={published} onPublish={onPublish}/>;
+function AcademySectionScreen({ screen, onNav, club, selectedTeam, weeklyPlan, planSessions, extras, skills, overrides, onSetOverride, onAddExtra, onUpdateExtra, onRemoveExtra, onMoveExtra, published, onPublish, onRefreshCoach, parentRows, setParentRows }) {
+  if (screen === "academy-content") return <AcademyWeeklyContent selectedTeam={selectedTeam} weeklyPlan={weeklyPlan} planSessions={planSessions} extras={extras} skills={skills} overrides={overrides} onSetOverride={onSetOverride} onAddExtra={onAddExtra} onUpdateExtra={onUpdateExtra} onRemoveExtra={onRemoveExtra} onMoveExtra={onMoveExtra} published={published} onPublish={onPublish} onRefreshCoach={onRefreshCoach} />;
   if (screen === "academy-parents") return <AcademyParents club={club} selectedTeam={selectedTeam}/>;
-  if (screen === "academy-preview") return <AcademyPreview weeklyPlan={weeklyPlan} planSessions={planSessions} extras={extras} skills={skills} overrides={overrides} published={published} selectedTeam={selectedTeam}/>;
+  if (screen === "academy-preview") return <AcademyPreview club={club} weeklyPlan={weeklyPlan} planSessions={planSessions} extras={extras} skills={skills} overrides={overrides} published={published} selectedTeam={selectedTeam}/>;
   if (screen === "academy-engagement") return <AcademyEngagement selectedTeam={selectedTeam}/>;
   if (screen === "academy-approvals") return <AcademyApprovals selectedTeam={selectedTeam} weeklyPlan={weeklyPlan}/>;
   if (screen === "academy-leaderboard") return <AcademyLeaderboard selectedTeam={selectedTeam}/>;
@@ -6006,6 +5893,7 @@ export default function App() {
   const [academyExtras, setAcademyExtras] = useState(() => { try { return JSON.parse(localStorage.getItem("spraoi_academy_extras") || "[]"); } catch { return []; } });
   const [academyPublished, setAcademyPublished] = useState(() => localStorage.getItem("spraoi_academy_published") === "true");
   const [academyVideoOverrides, setAcademyVideoOverrides] = useState({});
+  const [academyRefreshKey, setAcademyRefreshKey] = useState(0);
   const [academyParents, setAcademyParents] = useState(() => { try { return JSON.parse(localStorage.getItem("spraoi_academy_parents") || "[]"); } catch { return []; } });
   const [upcomingSessions, setUpcomingSessions] = useState([]);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -6487,7 +6375,7 @@ export default function App() {
     if (club?.id) localStorage.setItem(ACTIVE_CLUB_KEY, String(club.id));
   }, [club?.id]);
 
-  useEffect(() => { if (selectedTeam?.id) loadAcademyCoachPlan(selectedTeam.id); }, [selectedTeam?.id]);
+  useEffect(() => { if (selectedTeam?.id) loadAcademyCoachPlan(selectedTeam.id); }, [selectedTeam?.id, academyRefreshKey]);
 
   function selectTeam(ag) {
     setSelectedTeam(ag);
@@ -6520,22 +6408,53 @@ export default function App() {
       const end = new Date(`${weekStartDate}T12:00:00`); end.setDate(end.getDate()+7);
       const weekEndDate = `${end.getFullYear()}-${String(end.getMonth()+1).padStart(2,"0")}-${String(end.getDate()).padStart(2,"0")}`;
 
-      // Pull every plan for the selected team, then all sessions whose actual training date falls in this Monday-Sunday week.
-      const { data: teamPlans, error: teamPlanError } = await supabase.from("weekly_plans").select("*").eq("age_group_id", ageGroupId).order("starts_at", { ascending: false });
-      if (teamPlanError) throw teamPlanError;
-      const planIds = (teamPlans || []).map(p=>p.id);
-      let sessions = [];
-      if (planIds.length) {
-        const { data, error } = await supabase.from("sessions").select("*").in("plan_id", planIds).gte("session_date", weekStartDate).lt("session_date", weekEndDate).order("session_date", { ascending: true });
-        if (error) throw error; sessions = data || [];
-      }
-      const sessionPlanIds = [...new Set(sessions.map(s=>s.plan_id).filter(Boolean))];
-      const currentWeekPlans = (teamPlans || []).filter(p=>p.starts_at && mondayKeyForDate(p.starts_at)===weekStartDate);
-      let plan = currentWeekPlans.find(p=>p.published) || currentWeekPlans[0] || (teamPlans || []).find(p=>sessionPlanIds.includes(p.id)) || null;
-      setWeeklyPlan(plan ? { ...plan, starts_at: weekStartDate } : null);
+      /*
+        Academy weekly content belongs to ONE exact Monday weekly plan.
+
+        Do NOT normalise Sunday/future plan dates back to this Monday.
+        starts_at must exactly equal weekStartDate.
+      */
+      const { data: exactPlans, error: planError } = await supabase
+        .from("weekly_plans")
+        .select("*")
+        .eq("age_group_id", ageGroupId)
+        .eq("starts_at", weekStartDate)
+        .limit(10);
+
+      if (planError) throw planError;
+
+      let plan =
+        (exactPlans || []).find(p => p.published) ||
+        exactPlans?.[0] ||
+        null;
+
+      setWeeklyPlan(plan);
       setAcademyPublished(Boolean(plan?.published));
-      setAcademyVideoOverrides(plan?.academy_video_overrides || {});
-      if (!plan && !sessions.length) { setPlanSessions([]); setAcademyExtras([]); return; }
+      setAcademyVideoOverrides(
+        plan?.academy_video_overrides || {}
+      );
+
+      if (!plan?.id) {
+        setPlanSessions([]);
+        setAcademyExtras([]);
+        return;
+      }
+
+      /*
+        Only sessions belonging to THIS exact weekly plan.
+      */
+      const { data: sessionRows, error: sessionError } =
+        await supabase
+          .from("sessions")
+          .select("*")
+          .eq("plan_id", plan.id)
+          .gte("session_date", weekStartDate)
+          .lt("session_date", weekEndDate)
+          .order("session_date", { ascending: true });
+
+      if (sessionError) throw sessionError;
+
+      const sessions = sessionRows || [];
 
       if (plan?.id) {
         const { data: savedExtras } = await supabase.from("journey_exercises").select("*").eq("plan_id", plan.id).order("sort_order", { ascending: true });
@@ -6546,14 +6465,97 @@ export default function App() {
       if (!ids.length) { setPlanSessions([]); return; }
       const { data: links, error: linksError } = await supabase.from("session_activities").select("*").in("session_id", ids).order("sort_order", { ascending: true });
       if (linksError) throw linksError;
-      const activityIds = [...new Set((links || []).map(x => x.activity_id).filter(Boolean))];
+      const activityIds = [
+        ...new Set(
+          (links || [])
+            .map(x => x.activity_id)
+            .filter(Boolean)
+        )
+      ];
+
       let activities = [];
+
       if (activityIds.length) {
-        const { data } = await supabase.from("activities").select("*, skill:skills(id, name, sport, category, video_url)").in("id", activityIds);
-        activities = data || [];
+        const {
+          data: activityRows,
+          error: activityError
+        } = await supabase
+          .from("activities")
+          .select("*")
+          .in("id", activityIds);
+
+        if (activityError) throw activityError;
+
+        activities = activityRows || [];
       }
-      const amap = Object.fromEntries(activities.map(a=>[a.id,a]));
-      setPlanSessions(sessions.map(sess=>({ ...sess, session_activities:(links||[]).filter(x=>x.session_id===sess.id).map(x=>({ ...x, activity:amap[x.activity_id] || { id:x.activity_id, title:"Coach drill" } })) })));
+
+      /*
+        Load skills explicitly rather than depending on an embedded
+        PostgREST relationship. This guarantees Academy receives the
+        Coach activity's real linked skill and video.
+      */
+      const skillIds = [
+        ...new Set(
+          activities
+            .map(activity => activity.skill_id)
+            .filter(Boolean)
+        )
+      ];
+
+      let skillRows = [];
+
+      if (skillIds.length) {
+        const {
+          data: loadedSkills,
+          error: skillsError
+        } = await supabase
+          .from("skills")
+          .select("id, name, sport, category, video_url")
+          .in("id", skillIds);
+
+        if (skillsError) throw skillsError;
+
+        skillRows = loadedSkills || [];
+      }
+
+      const skillMap = Object.fromEntries(
+        skillRows.map(skill => [skill.id, skill])
+      );
+
+      const hydratedActivities = activities.map(activity => ({
+        ...activity,
+        skill:
+          skillMap[activity.skill_id] ||
+          null
+      }));
+
+      const activityMap = Object.fromEntries(
+        hydratedActivities.map(activity => [
+          activity.id,
+          activity
+        ])
+      );
+
+      const hydratedSessions = sessions.map(session => ({
+        ...session,
+
+        session_activities: (links || [])
+          .filter(link => link.session_id === session.id)
+          .map(link => ({
+            ...link,
+
+            activity:
+              activityMap[link.activity_id] ||
+              {
+                id: link.activity_id,
+                title: "Coach drill"
+              }
+          }))
+      }));
+
+
+
+      setPlanSessions(hydratedSessions);
     } catch (error) {
       console.error("Academy Coach sync failed", error); setWeeklyPlan(null); setPlanSessions([]); setAcademyExtras([]);
     }
@@ -6578,9 +6580,7 @@ export default function App() {
       .from("weekly_plans")
       .select("*")
       .eq("age_group_id", selectedTeam.id)
-      .gte("starts_at", weekStartDate)
-      .lt("starts_at", weekEndDate)
-      .order("starts_at", { ascending: false })
+      .eq("starts_at", weekStartDate)
       .limit(1);
     if (currentError) { alert("Could not load Academy week: " + currentError.message); return null; }
     if (currentWeek?.[0]) {
@@ -7100,7 +7100,7 @@ export default function App() {
         />
       )}
       {screen.startsWith("academy-") && screen !== "academy-dashboard" && (
-        <AcademySectionScreen screen={screen} onNav={setScreen} club={club} selectedTeam={selectedTeam} weeklyPlan={weeklyPlan} planSessions={planSessions} extras={academyExtras} skills={skills} overrides={academyVideoOverrides} onSetOverride={setAcademyVideoOverride} onAddExtra={addAcademyExtra} onUpdateExtra={updateAcademyExtra} onRemoveExtra={removeAcademyExtra} onMoveExtra={moveAcademyExtra} published={academyPublished} onPublish={publishAcademyWeek} parentRows={academyParents} setParentRows={updateAcademyParents} />
+        <AcademySectionScreen screen={screen} onNav={setScreen} club={club} selectedTeam={selectedTeam} weeklyPlan={weeklyPlan} planSessions={planSessions} extras={academyExtras} skills={skills} overrides={academyVideoOverrides} onSetOverride={setAcademyVideoOverride} onAddExtra={addAcademyExtra} onUpdateExtra={updateAcademyExtra} onRemoveExtra={removeAcademyExtra} onMoveExtra={moveAcademyExtra} published={academyPublished} onPublish={publishAcademyWeek} onRefreshCoach={() => setAcademyRefreshKey((value) => value + 1)} parentRows={academyParents} setParentRows={updateAcademyParents} />
       )}
 
       {/* PLUS screens */}

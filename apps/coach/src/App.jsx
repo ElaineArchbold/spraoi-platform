@@ -3198,7 +3198,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
             }
             if (event?.id) {
               connectEventId = event.id;
-              
+
             }
           }
         }
@@ -3230,7 +3230,8 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
           throw new Error("Session drills failed to save: " + activityInsertError.message);
         }
       }
-      captureSessionBaseline();
+      userTouchedSessionRef.current = false;
+      setHasUnsavedChanges(false);
 
       if (selectedTeam?.id) {
         localStorage.setItem(ACTIVE_TEAM_KEY, String(selectedTeam.id));
@@ -6922,7 +6923,9 @@ function academyBestSkill(activity, skills = []) {
   const sport = String(activity?.sport || activity?.skill?.sport || "").toLowerCase();
   const concepts = [["lift","jab","roll","scoop"],["strike","shoot","accuracy"],["kick","punt"],["pass","handpass"],["catch","receive"],["carry","solo","run"]];
   return (skills || []).filter((skill) => skill.video_url).map((skill) => {
-    let score = activity?.skill_id === skill.id || activity?.skill?.id === skill.id ? 120 : 0;
+    let score = activity?.skill_id === skill.id ||
+      activity?.skillId === skill.id ||
+      activity?.skill?.id === skill.id ? 120 : 0;
     const skillSport = String(skill.sport || "").toLowerCase();
     if (sport && (sport === skillSport || (sport === "camogie" && skillSport === "hurling"))) score += 28;
     const skillWords = academyWords([skill.matchedSkill?.name || "Needs review", skill.category, skill.description].join(" "));
@@ -6937,7 +6940,7 @@ function academyBestSkill(activity, skills = []) {
 }
 function getAcademyFoundationReviews(planSessions, skills = [], overrides = {}) {
   return getFoundationActivities(planSessions).map((foundation) => {
-    const sourceActivity = (planSessions || []).flatMap((session) => session.session_activities || []).find((link) => (link.activity?.id || link.activity_id) === foundation.id)?.activity || foundation;
+    const sourceActivity = (planSessions || []).flatMap((session) => session.session_activities || []).find((link) => (link.activity?.id || link.activity_id) === foundation.activityId)?.activity || foundation;
     const overrideId = overrides?.[foundation.id];
     const override = (skills || []).find((skill) => skill.id === overrideId && skill.video_url);
     const linked = sourceActivity?.skill?.video_url ? sourceActivity.skill : null;
@@ -6974,7 +6977,9 @@ function academySkillScoreForCode(activity, skill, code) {
   const sourceSport = String(activity?.sport || activity?.skill?.sport || "").toLowerCase();
 
   let score = 0;
-  if (activity?.skill_id === skill.id || activity?.skill?.id === skill.id) score += 160;
+  if (activity?.skill_id === skill.id ||
+      activity?.skillId === skill.id ||
+      activity?.skill?.id === skill.id) score += 160;
   if (sourceSport) {
     if (code === "football" && sourceSport.includes("football")) score += 34;
     if (code === "hurling" && (sourceSport.includes("hurl") || sourceSport.includes("camogie"))) score += 34;
@@ -7416,6 +7421,7 @@ function getFoundationActivities(planSessions) {
       const activity = sa.activity || sa.activities || sa;
       rows.push({
         id: sa.id || `${session.id}-${activityIndex}`,
+        activityId: activity?.id || sa.activity_id || null,
         sessionId: session.id,
         sessionTitle: session.title || session.name || `Session ${sessionIndex + 1}`,
         title: activity?.title || activity?.name || "Coach drill",
@@ -7424,6 +7430,7 @@ function getFoundationActivities(planSessions) {
         sport: activity?.sport || session?.sport || "Training",
         skill: activity?.skill?.name || activity?.skill_name || "Weekly focus",
         skillId: activity?.skill?.id || activity?.skill_id || null,
+        skillObject: activity?.skill || null,
         videoUrl: activity?.skill?.video_url || activity?.video_url || null,
         category: activity?.skill?.category || activity?.category || "skill",
       });
@@ -10009,7 +10016,3 @@ export default function App() {
     </div>
   );
 }
-
-
-
-
