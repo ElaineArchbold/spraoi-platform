@@ -98,3 +98,5 @@ setActiveModule(key);
 }
 
 // trigger admin rebuild for permissions deployment
+
+// Vercel deployment trigger - Academy/Coach dependency update
