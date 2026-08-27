@@ -8374,13 +8374,12 @@ function PlayersScreen({
             {` ${sportTwoLabel}`} A/B groups here.
           </div>
 
+          {["super_admin", "lead_coach"].includes(
+            String(userRole?.role || userRole || "").toLowerCase()
+          ) && (
           <button
             type="button"
-            onClick={() =>
-              window.location.assign(
-                MODULE_URLS.club
-              )
-            }
+            onClick={() => openAdminModule("club", "club-teams")}
             style={{
               marginTop: 11,
               height: 34,
@@ -8397,6 +8396,7 @@ function PlayersScreen({
           >
             Manage roster in Club
           </button>
+          )}
         </div>
 
         {message && (
