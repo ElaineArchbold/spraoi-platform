@@ -3459,7 +3459,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
         })()}
 
         {/* Right — Drill Library */}
-        <div className="session-drill-library" style={{ width: 260, minWidth: 0, flexShrink: 0, boxSizing: "border-box" }}>
+        <div className="session-drill-library" style={{ width: 260, flexShrink: 0 }}>
           <div style={{ background: P.white, borderRadius: 12, padding: 14, border: `1px solid ${P.line}`, boxShadow: Sh.card, position: "sticky", top: 76 }}>
             <div style={{ fontFamily: F.display, fontSize: 14, fontWeight: 800, color: P.ink, marginBottom: 3 }}>
               Find a Drill
@@ -3637,22 +3637,14 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
                       setSearch(e.target.value)
                     }
                     style={{
-                    display: "block",
-                    width: "100%",
-                    maxWidth: "100%",
-                    minWidth: 0,
-                    height: 36,
-                    boxSizing: "border-box",
-                    border: `1px solid ${P.line}`,
-                    borderRadius: 9,
-                    background: P.white,
-                    padding: "0 11px",
-                    fontFamily: F.body,
-                    fontSize: 10,
-                    color: P.ink,
-                    outline: "none",
-                    margin: 0
-                  }}
+                      width: "100%",
+                      padding: "7px 10px",
+                      borderRadius: 7,
+                      border: `1.5px solid ${P.line}`,
+                      fontFamily: F.body,
+                      fontSize: 10,
+                      marginBottom: 8,
+                    }}
                   />
                 </>
               );
@@ -3730,7 +3722,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
       {showTimeModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(11,37,69,.45)", zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={() => setShowTimeModal(false)}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: "min(440px, 100%)", background: P.white, borderRadius: 18, padding: 22, boxShadow: "0 24px 70px rgba(11,37,69,.25)", border: `1px solid ${P.line}` }}>
-            <div style={{ width: 48, height: 48, borderRadius: 14, background: "#fff3e0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: 14 }}>{String.fromCodePoint(0x23F1)}</div>
+            <div style={{ width: 48, height: 48, borderRadius: 14, background: "#fff3e0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: 14 }}>â±</div>
             <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 800, color: P.ink, marginBottom: 6 }}>Session is {totalTime - 60} minutes over</div>
             <div style={{ fontFamily: F.body, fontSize: 12, lineHeight: 1.6, color: P.muted, marginBottom: 18 }}>This plan totals <strong style={{ color: P.ink }}>{totalTime} minutes</strong>. Review the warm-up, section and drill times to bring it closer to the recommended 60-minute session.</div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
@@ -7300,59 +7292,7 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
                 SPRAOI SPORTS
               </text>
             )}
-          
-            {/* Remaining equipment selection overlay V3 */}
-            {(() => {
-              const selected = elements.find(
-                (item) => item.id === selectedEl
-              );
-
-              if (
-                !selected ||
-                ![
-                  "pole",
-                  "target",
-                  "hoop",
-                  "ladder",
-                  "football",
-                  "sliotar"
-                ].includes(selected.type) ||
-                !Number.isFinite(selected.x) ||
-                !Number.isFinite(selected.y)
-              ) {
-                return null;
-              }
-
-              const sizes = {
-                pole: [26, 58],
-                target: [48, 48],
-                hoop: [48, 48],
-                ladder: [52, 70],
-                football: [32, 32],
-                sliotar: [30, 30],
-              };
-
-              const [w, h] = sizes[selected.type];
-
-              return (
-                <rect
-                  x={selected.x - w / 2}
-                  y={selected.y - h / 2}
-                  width={w}
-                  height={h}
-                  rx="5"
-                  fill="none"
-                  stroke="#fff"
-                  strokeWidth="2"
-                  strokeDasharray="4,3"
-                  pointerEvents="none"
-                  data-selection="true"
-                />
-              );
-            })()}
-            {/* End remaining equipment selection overlay V3 */}
-
-</svg>
+          </svg>
 
           <div
             style={{
@@ -7815,7 +7755,7 @@ function DrillCardBuilder({ diagramMap, allActivities, userRole, copyFrom, onBac
     <div style={{ padding: "16px 24px" }}>
       {/* Back button */}
       <div style={{ marginBottom: 14 }}>
-        <button onClick={onBack} style={{ padding: "6px 14px", borderRadius: 8, border: `1.5px solid ${P.line}`, background: P.white, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, cursor: "pointer" }}>{String.fromCodePoint(0x2190)} Back</button>
+        <button onClick={onBack} style={{ padding: "6px 14px", borderRadius: 8, border: `1.5px solid ${P.line}`, background: P.white, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, cursor: "pointer" }}>â† Back to Library</button>
       </div>
       <div style={{ display: "flex", gap: 20 }}>
         {/* LEFT — Form */}
@@ -7878,55 +7818,11 @@ function DrillCardBuilder({ diagramMap, allActivities, userRole, copyFrom, onBac
 
             {/* Setup */}
             <label style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, color: P.muted, textTransform: "uppercase", marginBottom: 4, display: "block" }}>Setup</label>
-            <textarea
-            value={setup}
-            onChange={(e) => setSetup(e.target.value)}
-            placeholder="Describe how to set up the drill..."
-            rows={3}
-            style={{
-              display: "block",
-              width: "100%",
-              maxWidth: "100%",
-              boxSizing: "border-box",
-              minHeight: 92,
-              padding: "10px 12px",
-              margin: "0 0 12px 0",
-              borderRadius: 8,
-              border: `1.5px solid ${P.line}`,
-              outline: "none",
-              fontFamily: F.body,
-              fontSize: 12,
-              lineHeight: 1.55,
-              resize: "vertical",
-              background: P.white,
-              color: P.ink,
-            }}
-          />
+            <textarea value={setup} onChange={(e) => setSetup(e.target.value)} placeholder="How to set up the drill..." rows={2} style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 12, resize: "vertical", marginBottom: 12 }} />
 
             {/* Equipment */}
             <label style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, color: P.muted, textTransform: "uppercase", marginBottom: 4, display: "block" }}>Equipment</label>
-            <input
-            type="text"
-            value={equipment}
-            onChange={(e) => setEquipment(e.target.value)}
-            placeholder="e.g. cones, footballs, bibs"
-            style={{
-              display: "block",
-              width: "100%",
-              maxWidth: "100%",
-              boxSizing: "border-box",
-              height: 38,
-              padding: "0 12px",
-              margin: "0 0 12px 0",
-              borderRadius: 8,
-              border: `1.5px solid ${P.line}`,
-              outline: "none",
-              fontFamily: F.body,
-              fontSize: 12,
-              background: P.white,
-              color: P.ink,
-            }}
-          />
+            <input type="text" value={equipment} onChange={(e) => setEquipment(e.target.value)} placeholder="e.g. Cones, bibs, sliotars" style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 12, marginBottom: 12 }} />
 
             {/* Diagram picker */}
             <label style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, color: P.muted, textTransform: "uppercase", marginBottom: 4, display: "block" }}>Diagram</label>
@@ -9360,65 +9256,7 @@ function getAcademyWeeklyRecommendations(planSessions, skills = [], overrides = 
       return b.totalScore - a.totalScore;
     });
 
-    /*
-     * Academy recommendation priority:
-     * 1. Explicit coach override is applied below.
-     * 2. Stable linked skill IDs from Coach activities.
-     * 3. Existing ranked/text matching.
-     * 4. Existing combined-text fallback.
-     *
-     * This keeps Academy recommendations stable when drill titles
-     * or display labels change.
-     */
-    const linkedSkillCounts = new Map();
-
-    sourceActivities.forEach((activity) => {
-      const linkedSkillId =
-        activity?.skillId ||
-        activity?.skill_id ||
-        activity?.skillObject?.id ||
-        activity?.skill?.id ||
-        null;
-
-      if (!linkedSkillId) return;
-
-      linkedSkillCounts.set(
-        linkedSkillId,
-        (linkedSkillCounts.get(linkedSkillId) || 0) + 1
-      );
-    });
-
-    const rankedLinkedSkills = [...linkedSkillCounts.entries()]
-      .map(([skillId, frequency]) => {
-        const skill = codeSkills.find(
-          (candidate) => candidate?.id === skillId
-        );
-
-        return skill
-          ? {
-              skill,
-              frequency,
-              totalScore: 1000 + frequency,
-              sources: sourceActivities.filter((activity) => {
-                const activitySkillId =
-                  activity?.skillId ||
-                  activity?.skill_id ||
-                  activity?.skillObject?.id ||
-                  activity?.skill?.id ||
-                  null;
-
-                return activitySkillId === skillId;
-              }),
-            }
-          : null;
-      })
-      .filter(Boolean)
-      .sort((a, b) => b.frequency - a.frequency);
-
-    let selectedTheme =
-      rankedLinkedSkills[0] ||
-      rankedThemes[0] ||
-      null;
+    let selectedTheme = rankedThemes[0] || null;
 
     if (!selectedTheme && codeSkills.length) {
       const corpusActivity = {
@@ -9504,7 +9342,7 @@ function AcademyPhonePreview({ planSessions = [], extras = [], skills = [], over
   const taskRow=(item)=><div key={item.id} style={{ display:"flex",alignItems:"center",gap:8,padding:"8px 9px",borderRadius:10,background:"#f8fafc" }}><div style={{flex:1,minWidth:0}}><div style={{fontFamily:F.body,fontSize:10,fontWeight:800,color:P.ink}}>{item.title}</div><div style={{fontFamily:F.body,fontSize:8,color:P.muted,marginTop:2}}>{item.target || item.description || item.instruction || "Complete this mission"}</div></div><span style={{fontFamily:F.body,fontSize:8,fontWeight:800,color:"#b45309"}}>+{item.xp || item.xp_reward || 10} XP</span></div>;
   const skillRow=(item)=><div key={item.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 9px",borderRadius:10,background:"#f8fafc"}}><div style={{width:32,height:32,borderRadius:9,background:"#e0f2fe",display:"grid",placeItems:"center"}}>▶</div><div style={{flex:1,minWidth:0}}><div style={{fontFamily:F.body,fontSize:10,fontWeight:800,color:P.ink}}>{item.matchedSkill?.name || "Choose weekly video"}</div><div style={{fontFamily:F.body,fontSize:8,color:P.muted,marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>Based on {item.sourceDrills.length} Coach drill{item.sourceDrills.length===1?"":"s"}</div></div><span style={{fontFamily:F.body,fontSize:8,fontWeight:800,color:"#b45309"}}>+20 XP</span></div>;
   const visibleCount = football.length+hurling.length+Object.values(grouped).reduce((sum,items)=>sum+items.length,0);
-  return <div style={{ width: compact ? 300 : "min(390px,100%)", maxHeight: compact ? 600 : "none", overflow:"hidden", background:"#fff",borderRadius:compact?26:32,border:compact?"6px solid #16324a":"8px solid #16324a",boxShadow:"0 22px 52px rgba(7,89,133,.2)" }}><div style={{background:"linear-gradient(135deg,#38bdf8,#0284c7)",padding:compact?"16px 14px":"22px 18px",color:"#fff",position:"relative",overflow:"hidden"}}><img src="/spraoi-academy-icon.png" alt="" style={{position:"absolute",right:8,bottom:-8,width:compact?68:88,height:compact?68:88,objectFit:"contain",background:"#fff",borderRadius:18,padding:6}}/><div style={{fontFamily:F.body,fontSize:8,fontWeight:800,opacity:.85,textTransform:"uppercase"}}>Club Spraoi Academy</div><div style={{fontFamily:F.display,fontSize:compact?18:24,fontWeight:800,marginTop:3,maxWidth:"70%"}}>Your weekly adventure</div><div style={{display:"flex",gap:6,marginTop:11}}><span style={previewPill}>⭐ {recommendations.length*20+extras.reduce((s,x)=>s+Number(x.xp||x.xp_reward||0),0)} XP</span><span style={previewPill}>Badges</span></div></div><div style={{padding:compact?10:15,background:"#f3f9fd",maxHeight:compact?460:"none",overflowY:"auto"}}>{visibleCount===0?<div style={{padding:18,textAlign:"center",fontFamily:F.body,fontSize:10,color:P.muted}}>Add weekly content to see the child experience here.</div>:<>{section("Step Goals",grouped.steps,"#0f9f6e","👟",taskRow)}{section("Exercises",grouped.exercises,"#7c3aed","💪",taskRow)}{section("Run Challenge",grouped.runs,"#D89A00","🏃",taskRow)}{section("Football Skills",football,"#2563eb","⚽",skillRow)}{section(selectedTeam?.gender === "girls" ? "Camogie Skills" : "Hurling Skills",hurling,"#dc2626","🏑",skillRow)}{section("Bonus",grouped.bonus,"#d97706","✨",taskRow)}{section("Rest & Recovery",grouped.recovery,"#0f766e","🌙",taskRow)}</>}<div style={{marginTop:10,padding:9,borderRadius:11,background:published?"#dcfce7":"#fff7ed",color:published?"#15803d":"#b45309",fontFamily:F.body,fontSize:8,fontWeight:800,textAlign:"center"}}>{published?"✓ Published to children":"Preview mode — not published"}</div></div></div>;
+  return <div style={{ width: compact ? 300 : "min(390px,100%)", maxHeight: compact ? 600 : "none", overflow:"hidden", background:"#fff",borderRadius:compact?26:32,border:compact?"6px solid #16324a":"8px solid #16324a",boxShadow:"0 22px 52px rgba(7,89,133,.2)" }}><div style={{background:"linear-gradient(135deg,#38bdf8,#0284c7)",padding:compact?"16px 14px":"22px 18px",color:"#fff",position:"relative",overflow:"hidden"}}><img src="/spraoi-academy-icon.png" alt="" style={{position:"absolute",right:8,bottom:-8,width:compact?68:88,height:compact?68:88,objectFit:"contain",background:"#fff",borderRadius:18,padding:6}}/><div style={{fontFamily:F.body,fontSize:8,fontWeight:800,opacity:.85,textTransform:"uppercase"}}>Club Spraoi Academy</div><div style={{fontFamily:F.display,fontSize:compact?18:24,fontWeight:800,marginTop:3,maxWidth:"70%"}}>Your weekly adventure</div><div style={{display:"flex",gap:6,marginTop:11}}><span style={previewPill}>⭐ {recommendations.length*20+extras.reduce((s,x)=>s+Number(x.xp||x.xp_reward||0),0)} XP</span><span style={previewPill}>ðŸ… Badges</span></div></div><div style={{padding:compact?10:15,background:"#f3f9fd",maxHeight:compact?460:"none",overflowY:"auto"}}>{visibleCount===0?<div style={{padding:18,textAlign:"center",fontFamily:F.body,fontSize:10,color:P.muted}}>Add weekly content to see the child experience here.</div>:<>{section("Step Goals",grouped.steps,"#0f9f6e","👟",taskRow)}{section("Exercises",grouped.exercises,"#7c3aed","💪",taskRow)}{section("Run Challenge",grouped.runs,"#D89A00","🏃",taskRow)}{section("Football Skills",football,"#2563eb","⚽",skillRow)}{section(selectedTeam?.gender === "girls" ? "Camogie Skills" : "Hurling Skills",hurling,"#dc2626","🏑",skillRow)}{section("Bonus",grouped.bonus,"#d97706","✨",taskRow)}{section("Rest & Recovery",grouped.recovery,"#0f766e","🌙",taskRow)}</>}<div style={{marginTop:10,padding:9,borderRadius:11,background:published?"#dcfce7":"#fff7ed",color:published?"#15803d":"#b45309",fontFamily:F.body,fontSize:8,fontWeight:800,textAlign:"center"}}>{published?"✓ Published to children":"Preview mode — not published"}</div></div></div>;
 }
 
 function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras = [], skills = [], overrides = {}, published = false, onSetOverride, onNav }) {
@@ -12410,4 +12248,3 @@ export default function App() {
     </div>
   );
 }
-

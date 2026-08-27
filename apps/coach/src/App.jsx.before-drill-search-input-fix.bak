@@ -3459,7 +3459,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
         })()}
 
         {/* Right — Drill Library */}
-        <div className="session-drill-library" style={{ width: 260, minWidth: 0, flexShrink: 0, boxSizing: "border-box" }}>
+        <div className="session-drill-library" style={{ width: 260, flexShrink: 0 }}>
           <div style={{ background: P.white, borderRadius: 12, padding: 14, border: `1px solid ${P.line}`, boxShadow: Sh.card, position: "sticky", top: 76 }}>
             <div style={{ fontFamily: F.display, fontSize: 14, fontWeight: 800, color: P.ink, marginBottom: 3 }}>
               Find a Drill
@@ -3637,22 +3637,14 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
                       setSearch(e.target.value)
                     }
                     style={{
-                    display: "block",
-                    width: "100%",
-                    maxWidth: "100%",
-                    minWidth: 0,
-                    height: 36,
-                    boxSizing: "border-box",
-                    border: `1px solid ${P.line}`,
-                    borderRadius: 9,
-                    background: P.white,
-                    padding: "0 11px",
-                    fontFamily: F.body,
-                    fontSize: 10,
-                    color: P.ink,
-                    outline: "none",
-                    margin: 0
-                  }}
+                      width: "100%",
+                      padding: "7px 10px",
+                      borderRadius: 7,
+                      border: `1.5px solid ${P.line}`,
+                      fontFamily: F.body,
+                      fontSize: 10,
+                      marginBottom: 8,
+                    }}
                   />
                 </>
               );

@@ -3459,7 +3459,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
         })()}
 
         {/* Right — Drill Library */}
-        <div className="session-drill-library" style={{ width: 260, minWidth: 0, flexShrink: 0, boxSizing: "border-box" }}>
+        <div className="session-drill-library" style={{ width: 260, flexShrink: 0 }}>
           <div style={{ background: P.white, borderRadius: 12, padding: 14, border: `1px solid ${P.line}`, boxShadow: Sh.card, position: "sticky", top: 76 }}>
             <div style={{ fontFamily: F.display, fontSize: 14, fontWeight: 800, color: P.ink, marginBottom: 3 }}>
               Find a Drill
@@ -3637,22 +3637,14 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
                       setSearch(e.target.value)
                     }
                     style={{
-                    display: "block",
-                    width: "100%",
-                    maxWidth: "100%",
-                    minWidth: 0,
-                    height: 36,
-                    boxSizing: "border-box",
-                    border: `1px solid ${P.line}`,
-                    borderRadius: 9,
-                    background: P.white,
-                    padding: "0 11px",
-                    fontFamily: F.body,
-                    fontSize: 10,
-                    color: P.ink,
-                    outline: "none",
-                    margin: 0
-                  }}
+                      width: "100%",
+                      padding: "7px 10px",
+                      borderRadius: 7,
+                      border: `1.5px solid ${P.line}`,
+                      fontFamily: F.body,
+                      fontSize: 10,
+                      marginBottom: 8,
+                    }}
                   />
                 </>
               );
@@ -3730,7 +3722,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
       {showTimeModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(11,37,69,.45)", zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }} onClick={() => setShowTimeModal(false)}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: "min(440px, 100%)", background: P.white, borderRadius: 18, padding: 22, boxShadow: "0 24px 70px rgba(11,37,69,.25)", border: `1px solid ${P.line}` }}>
-            <div style={{ width: 48, height: 48, borderRadius: 14, background: "#fff3e0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: 14 }}>{String.fromCodePoint(0x23F1)}</div>
+            <div style={{ width: 48, height: 48, borderRadius: 14, background: "#fff3e0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, marginBottom: 14 }}>â±</div>
             <div style={{ fontFamily: F.display, fontSize: 20, fontWeight: 800, color: P.ink, marginBottom: 6 }}>Session is {totalTime - 60} minutes over</div>
             <div style={{ fontFamily: F.body, fontSize: 12, lineHeight: 1.6, color: P.muted, marginBottom: 18 }}>This plan totals <strong style={{ color: P.ink }}>{totalTime} minutes</strong>. Review the warm-up, section and drill times to bring it closer to the recommended 60-minute session.</div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
@@ -4156,99 +4148,6 @@ function VideoLibrary({
         error?.message || "Unable to delete video."
       );
     }
-  }
-
-  function videoPickerSkills() {
-    const normalise = (value) =>
-      String(value || "")
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, " ")
-        .trim();
-
-    const currentSport = normalise(form.sport);
-
-    const definitions =
-      currentSport.includes("hurl") ||
-      currentSport.includes("camogie")
-        ? [
-            ["Jab Lift", ["jab lift"]],
-            ["Roll Lift", ["roll lift"]],
-            ["Ground Strike", ["ground strike"]],
-            ["Striking from the Hand", ["striking from the hand"]],
-            ["Hand Pass", ["hand pass"]],
-            ["Catching", ["chest catch", "catching"]],
-            ["Overhead Catch", ["overhead catch"]],
-            ["First Touch & Control", ["ball control", "controlling a moving ball"]],
-            ["Solo Run", ["solo run"]],
-            ["Hook", ["hook"]],
-            ["Block", ["block", "frontal block"]],
-            ["Goalkeeping", ["goalkeeping", "goalkeeper"]],
-          ]
-        : currentSport.includes("athletic")
-          ? [
-              ["Agility", ["agility"]],
-              ["Acceleration", ["acceleration"]],
-              ["Speed", ["speed", "running"]],
-              ["Balance", ["balance"]],
-              ["Coordination", ["coordination"]],
-              ["Reaction", ["reaction", "reaction speed"]],
-              ["Change of Direction", ["change of direction"]],
-              ["Jumping & Landing", ["jumping"]],
-              ["Strength", ["strength"]],
-              ["Mobility", ["mobility"]],
-            ]
-          : [
-              ["Pick Up", ["crouch lift", "pick up"]],
-              ["Hand Pass", ["hand pass", "fist pass"]],
-              ["Kick Pass", ["punt kick", "hook kick", "kicking"]],
-              ["Catching", ["body catch", "reach catch", "low catch", "catching"]],
-              ["High Catch", ["high catch"]],
-              ["Solo", ["solo"]],
-              ["Bounce", ["bounce"]],
-              ["Shooting", ["shooting"]],
-              ["Tackling", ["tackling", "checking"]],
-              ["Blocking", ["block", "block down", "blocking"]],
-              ["Movement & Support Play", ["feint and side step", "evasion"]],
-              ["Goalkeeping", ["goalkeeping", "goalkeeper"]],
-            ];
-
-    const pool = skills || [];
-
-    return definitions
-      .map(([cleanName, aliases]) => {
-        let matched = null;
-
-        for (const alias of aliases) {
-          matched = pool.find((skill) => {
-            const name = normalise(skill.name);
-            const sport = normalise(skill.sport);
-
-            const sportMatches =
-              currentSport.includes("hurl") ||
-              currentSport.includes("camogie")
-                ? sport.includes("hurl") ||
-                  sport.includes("camogie")
-                : currentSport.includes("athletic")
-                  ? true
-                  : sport.includes("football");
-
-            return (
-              sportMatches &&
-              name === normalise(alias)
-            );
-          });
-
-          if (matched) break;
-        }
-
-        return matched
-          ? {
-              ...matched,
-              cleanName,
-            }
-          : null;
-      })
-      .filter(Boolean);
   }
 
   function videoUrl(video) {
@@ -5014,14 +4913,14 @@ function VideoLibrary({
                     padding: 8,
                   }}
                 >
-                  {videoPickerSkills()
+                  {(skills || [])
                     .slice()
                     .sort((a, b) =>
                       String(
-                        a.cleanName || a.name || ""
+                        a.name || ""
                       ).localeCompare(
                         String(
-                          b.cleanName || b.name || ""
+                          b.name || ""
                         )
                       )
                     )
@@ -5063,7 +4962,7 @@ function VideoLibrary({
                               color: P.ink,
                             }}
                           >
-                            {skill.cleanName || skill.name}
+                            {skill.name}
                           </div>
 
                           {checked && (
@@ -5203,7 +5102,7 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
   // Merge custom drills from localStorage into activities
   const customDrills = (() => { void customDrillsVersion; try { return JSON.parse(localStorage.getItem("spraoi_custom_drills") || "[]"); } catch { return []; } })();
   const mergedActivities = [...allActivities, ...customDrills.map((c) => ({
-    id: c.id, title: c.title, description: c.description, description_html: c.descriptionHtml || null, coaching_points: c.coachingPoints, coaching_points_html: c.coachingPointsHtml || null,
+    id: c.id, title: c.title, description: c.description, coaching_points: c.coachingPoints,
     setup: c.setup, equipment: c.equipment, sport: c.sport, category: c.category,
     difficulty: c.difficulty, duration_mins: c.duration, customDiagram: c.customDiagram || null,
     isCustom: true, skill: { name: c.category?.replace(/_/g, " ") || "", category: c.category },
@@ -5459,7 +5358,7 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
               const hasVideo = !!a.skill?.video_url;
               const diffColor = a.difficulty === "advanced" ? P.coral : a.difficulty === "developing" ? P.orange : P.green;
               const { sportIcon, catIcon } = getDrillIcons(a);
-              const df = a.customDiagram || getActivityDiagram(a, diagramMap);
+              const df = a.customDiagram || diagramMap[a.title];
               return (
                 <div key={a.id} onClick={() => setSelectedIdx(idx)} style={{ background: P.white, borderRadius: 14, border: `1.5px solid ${isFav ? "#fbc02d55" : P.line}`, overflow: "hidden", cursor: "pointer", boxShadow: Sh.card, position: "relative", transition: "transform .15s, box-shadow .15s" }} onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-2px)"} onMouseLeave={(e) => e.currentTarget.style.transform = "none"}>
                   {/* Badges — sport + category + difficulty */}
@@ -5525,7 +5424,7 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
             <div style={{ padding: 18 }}>
               {/* Diagram + category icons header */}
               {(() => {
-                const { sportIcon, catIcon } = getDrillIcons(selectedDrill); const df = selectedDrill.customDiagram || getActivityDiagram(selectedDrill, diagramMap); return df ? (
+                const { sportIcon, catIcon } = getDrillIcons(selectedDrill); const df = selectedDrill.customDiagram || diagramMap[selectedDrill.title]; return df ? (
                   <div style={{ position: "relative", marginBottom: 14 }}>
                     <img src={df.startsWith("data:") ? df : `/diagrams/${df}`} alt="" style={{ width: "100%", borderRadius: 12 }} />
                     <div style={{ position: "absolute", top: 8, left: 8, display: "flex", gap: 4 }}>
@@ -5554,8 +5453,8 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
               {selectedDrill.equipment && <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginBottom: 10, padding: "6px 10px", background: P.soft, borderRadius: 6, display: "flex", alignItems: "center", gap: 6 }}><span style={{ fontWeight: 700, color: P.ink }}>Equipment:</span> {selectedDrill.equipment}</div>}
               <div style={{ fontFamily: F.display, fontSize: 18, fontWeight: 800, color: P.ink, marginBottom: 4 }}>{selectedDrill.title}</div>
               <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginBottom: 12 }}>{selectedDrill.skill?.name || ""} — {selectedDrill.sport} — {selectedDrill.duration_mins || "?"}min — {selectedDrill.difficulty}</div>
-              {selectedDrill.description && <SpraoiRichTextDisplay value={selectedDrill.description_html || selectedDrill.description} style={{ fontFamily: F.body, fontSize: 13, color: P.ink, lineHeight: 1.5, marginBottom: 14 }} />}
-              {selectedDrill.coaching_points && <div style={{ marginBottom: 14 }}><div style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.p600, textTransform: "uppercase", marginBottom: 6 }}>Coaching Points</div><SpraoiRichTextDisplay value={selectedDrill.coaching_points_html || selectedDrill.coaching_points} style={{ fontFamily: F.body, fontSize: 12, color: P.ink, lineHeight: 1.6, background: P.soft, borderRadius: 10, padding: 14 }} /></div>}
+              {selectedDrill.description && <div style={{ fontFamily: F.body, fontSize: 13, color: P.ink, lineHeight: 1.5, marginBottom: 14 }}>{selectedDrill.description}</div>}
+              {selectedDrill.coaching_points && <div style={{ marginBottom: 14 }}><div style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.p600, textTransform: "uppercase", marginBottom: 6 }}>Coaching Points</div><div style={{ fontFamily: F.body, fontSize: 12, color: P.ink, lineHeight: 1.6, background: P.soft, borderRadius: 10, padding: 14 }}>{selectedDrill.coaching_points.split("•").filter(Boolean).map((pt, i) => <div key={i} style={{ display: "flex", gap: 6, marginBottom: 4 }}><span style={{ color: P.p600, fontWeight: 700 }}>•</span><span>{pt.trim()}</span></div>)}</div></div>}
               {selectedDrill.setup && <div style={{ marginBottom: 14 }}><div style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.p600, textTransform: "uppercase", marginBottom: 4 }}>Setup</div><div style={{ fontFamily: F.body, fontSize: 12, color: P.ink, lineHeight: 1.5 }}>{selectedDrill.setup}</div></div>}
               {selectedDrill.skill?.video_url && (
                 <a href={selectedDrill.skill.video_url} target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 10, background: "#ff000012", border: "1.5px solid #ff000022", textDecoration: "none", fontFamily: F.body, fontSize: 12, fontWeight: 700, color: "#cc0000" }}>
@@ -5575,1812 +5474,269 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
 /* ============================================================
    DIAGRAM CREATOR — drag-and-drop pitch diagram builder
    ============================================================ */
-﻿function DiagramCreator({ onSave, onClose, initialElements, backgroundImage }) {
-  const restoredElements = (initialElements || []).filter(
-    (el) => el.type !== "pitchMeta"
-  );
-
-  const restoredPitch =
-    (initialElements || []).find((el) => el.type === "pitchMeta")
-      ?.pitchType || "full";
-
-  const [elements, setElements] = useState(restoredElements);
-  const [pitchType, setPitchType] = useState(restoredPitch);
+function DiagramCreator({ onSave, onClose, initialElements, backgroundImage }) {
+  const [elements, setElements] = useState(initialElements || []);
   const [dragging, setDragging] = useState(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [selectedEl, setSelectedEl] = useState(null);
   const [arrowStart, setArrowStart] = useState(null);
-  const [tool, setTool] = useState("select");
+  const [tool, setTool] = useState("select"); // select, player, cone, ball, hurdle, arrow, text
   const [playerColor, setPlayerColor] = useState("#073B74");
   const [nextLabel, setNextLabel] = useState("A");
-  const [history, setHistory] = useState([]);
-  const [future, setFuture] = useState([]);
-
   const svgRef = useRef(null);
-  const dragRef = useRef(false);
-  const dragSnapshot = useRef(null);
 
-  const W = 440;
-  const H = 320;
-
-  const brandLogo = "/favicon-spraoi-v6.png";
-
-  function commitElements(updater) {
-    setElements((current) => {
-      const next =
-        typeof updater === "function"
-          ? updater(current)
-          : updater;
-
-      setHistory((items) =>
-        [...items, current].slice(-40)
-      );
-      setFuture([]);
-      return next;
-    });
-  }
-
-  function undo() {
-    if (!history.length) return;
-
-    const previous = history[history.length - 1];
-
-    setFuture((items) => [elements, ...items]);
-    setElements(previous);
-    setHistory((items) => items.slice(0, -1));
-    setSelectedEl(null);
-    setArrowStart(null);
-  }
-
-  function redo() {
-    if (!future.length) return;
-
-    const next = future[0];
-
-    setHistory((items) =>
-      [...items, elements].slice(-40)
-    );
-    setElements(next);
-    setFuture((items) => items.slice(1));
-    setSelectedEl(null);
-    setArrowStart(null);
-  }
+  const W = 440, H = 320;
 
   function getSvgPoint(e) {
     const svg = svgRef.current;
     const rect = svg.getBoundingClientRect();
-
-    return {
-      x:
-        ((e.clientX - rect.left) /
-          rect.width) *
-        W,
-      y:
-        ((e.clientY - rect.top) /
-          rect.height) *
-        H,
-    };
-  }
-
-  function nextPlayerLabel() {
-    setNextLabel((current) => {
-      const next =
-        current.charCodeAt(0) + 1;
-
-      return String.fromCharCode(
-        next > 90 ? 65 : next
-      );
-    });
-  }
-
-  function addPointElement(type, pt, extra = {}) {
-    commitElements((els) => [
-      ...els,
-      {
-        id: Date.now(),
-        type,
-        x: pt.x,
-        y: pt.y,
-        ...extra,
-      },
-    ]);
+    return { x: ((e.clientX - rect.left) / rect.width) * W, y: ((e.clientY - rect.top) / rect.height) * H };
   }
 
   function handleCanvasClick(e) {
-    if (dragRef.current) {
-      dragRef.current = false;
-      return;
-    }
-
+    if (dragRef.current) { dragRef.current = false; return; } // skip click after drag
     const pt = getSvgPoint(e);
-
-    if (
-      [
-        "player",
-        "goalkeeper",
-        "coach",
-        "neutral",
-      ].includes(tool)
-    ) {
-      addPointElement("player", pt, {
-        color:
-          tool === "goalkeeper"
-            ? "#f57f17"
-            : tool === "coach"
-              ? "#111827"
-              : tool === "neutral"
-                ? "#ffffff"
-                : playerColor,
-        label:
-          tool === "goalkeeper"
-            ? "GK"
-            : tool === "coach"
-              ? "C"
-              : tool === "neutral"
-                ? "N"
-                : nextLabel,
-        role: tool,
-      });
-
-      if (tool === "player") {
-        nextPlayerLabel();
-      }
-
-      return;
-    }
-
-    if (
-      [
-        "cone",
-        "football",
-        "sliotar",
-        "hurdle",
-        "pole",
-        "hoop",
-        "ladder",
-        "goal",
-        "miniGoal",
-        "target",
-      ].includes(tool)
-    ) {
-      addPointElement(tool, pt);
-      return;
-    }
-
-    if (tool === "text") {
-      const value = prompt("Label text:");
-
-      if (value) {
-        addPointElement("text", pt, {
-          text: value,
-        });
-      }
-
-      return;
-    }
-
-    if (
-      [
-        "runArrow",
-        "passArrow",
-        "strikeArrow",
-        "soloArrow",
-      ].includes(tool)
-    ) {
-      if (!arrowStart) {
-        setArrowStart(pt);
-      } else {
-        commitElements((els) => [
-          ...els,
-          {
-            id: Date.now(),
-            type: "arrow",
-            arrowType: tool,
-            x1: arrowStart.x,
-            y1: arrowStart.y,
-            x2: pt.x,
-            y2: pt.y,
-          },
-        ]);
-
-        setArrowStart(null);
-      }
-
-      return;
-    }
-
-    if (tool === "select") {
+    if (tool === "player") {
+      setElements((els) => [...els, { id: Date.now(), type: "player", x: pt.x, y: pt.y, color: playerColor, label: nextLabel }]);
+      setNextLabel(String.fromCharCode(nextLabel.charCodeAt(0) + 1 > 90 ? 65 : nextLabel.charCodeAt(0) + 1));
+    } else if (tool === "cone") {
+      setElements((els) => [...els, { id: Date.now(), type: "cone", x: pt.x, y: pt.y }]);
+    } else if (tool === "ball") {
+      setElements((els) => [...els, { id: Date.now(), type: "ball", x: pt.x, y: pt.y }]);
+    } else if (tool === "hurdle") {
+      setElements((els) => [...els, { id: Date.now(), type: "hurdle", x: pt.x, y: pt.y }]);
+    } else if (tool === "text") {
+      const text = prompt("Label text:");
+      if (text) setElements((els) => [...els, { id: Date.now(), type: "text", x: pt.x, y: pt.y, text }]);
+    } else if (tool === "arrow") {
+      if (!arrowStart) { setArrowStart(pt); }
+      else { setElements((els) => [...els, { id: Date.now(), type: "arrow", x1: arrowStart.x, y1: arrowStart.y, x2: pt.x, y2: pt.y }]); setArrowStart(null); }
+    } else if (tool === "select") {
+      // Hit test — find element under click
       const hit = findElementAt(pt);
       setSelectedEl(hit ? hit.id : null);
     }
   }
 
   function findElementAt(pt) {
-    for (
-      let i = elements.length - 1;
-      i >= 0;
-      i--
-    ) {
+    // Search in reverse (top-most first)
+    for (let i = elements.length - 1; i >= 0; i--) {
       const el = elements[i];
-
       if (el.type === "arrow") {
-        const dx = el.x2 - el.x1;
-        const dy = el.y2 - el.y1;
-        const len = Math.sqrt(
-          dx * dx + dy * dy
-        );
-
-        if (!len) continue;
-
-        const t = Math.max(
-          0,
-          Math.min(
-            1,
-            ((pt.x - el.x1) * dx +
-              (pt.y - el.y1) * dy) /
-              (len * len)
-          )
-        );
-
-        const px = el.x1 + t * dx;
-        const py = el.y1 + t * dy;
-
-        const dist = Math.sqrt(
-          (pt.x - px) ** 2 +
-            (pt.y - py) ** 2
-        );
-
-        if (dist < 12) return el;
+        // Check distance to line segment
+        const dx = el.x2 - el.x1, dy = el.y2 - el.y1;
+        const len = Math.sqrt(dx * dx + dy * dy);
+        if (len === 0) continue;
+        const t = Math.max(0, Math.min(1, ((pt.x - el.x1) * dx + (pt.y - el.y1) * dy) / (len * len)));
+        const px = el.x1 + t * dx, py = el.y1 + t * dy;
+        const dist = Math.sqrt((pt.x - px) ** 2 + (pt.y - py) ** 2);
+        if (dist < 10) return el;
       } else {
-        const dist = Math.sqrt(
-          (pt.x - el.x) ** 2 +
-            (pt.y - el.y) ** 2
-        );
-
-        const hitRadius =
-          el.type === "player"
-            ? 18
-            : ["goal", "miniGoal"].includes(
-                  el.type
-                )
-              ? 24
-              : el.type === "text"
-                ? 24
-                : 15;
-
+        const dist = Math.sqrt((pt.x - el.x) ** 2 + (pt.y - el.y) ** 2);
+        const hitRadius = el.type === "player" ? 16 : el.type === "text" ? 20 : 12;
         if (dist < hitRadius) return el;
       }
     }
-
     return null;
   }
 
+  const dragRef = useRef(false);
+
   function handlePointerDown(e) {
     if (tool !== "select") return;
-
     const pt = getSvgPoint(e);
     const hit = findElementAt(pt);
-
-    if (!hit) return;
-
-    e.preventDefault();
-
-    setSelectedEl(hit.id);
-    setDragging(hit.id);
-    dragRef.current = false;
-    dragSnapshot.current = elements;
-
-    setDragOffset({
-      x:
-        pt.x -
-        (hit.x ?? hit.x1 ?? 0),
-      y:
-        pt.y -
-        (hit.y ?? hit.y1 ?? 0),
-    });
-
-    svgRef.current.setPointerCapture(
-      e.pointerId
-    );
+    if (hit) {
+      e.preventDefault();
+      setSelectedEl(hit.id);
+      setDragging(hit.id);
+      dragRef.current = false;
+      setDragOffset({ x: pt.x - (hit.x || hit.x1 || 0), y: pt.y - (hit.y || hit.y1 || 0) });
+      svgRef.current.setPointerCapture(e.pointerId);
+    }
   }
 
   function handlePointerMove(e) {
     if (!dragging) return;
-
     e.preventDefault();
     dragRef.current = true;
-
     const pt = getSvgPoint(e);
     const nx = pt.x - dragOffset.x;
     const ny = pt.y - dragOffset.y;
-
-    setElements((els) =>
-      els.map((el) => {
-        if (el.id !== dragging) {
-          return el;
-        }
-
-        if (el.type === "arrow") {
-          const dx = nx - el.x1;
-          const dy = ny - el.y1;
-
-          return {
-            ...el,
-            x1: nx,
-            y1: ny,
-            x2: el.x2 + dx,
-            y2: el.y2 + dy,
-          };
-        }
-
-        return {
-          ...el,
-          x: nx,
-          y: ny,
-        };
-      })
-    );
+    setElements((els) => els.map((el) => {
+      if (el.id !== dragging) return el;
+      if (el.type === "arrow") {
+        const dx = nx - el.x1;
+        const dy = ny - el.y1;
+        return { ...el, x1: nx, y1: ny, x2: el.x2 + dx, y2: el.y2 + dy };
+      }
+      return { ...el, x: nx, y: ny };
+    }));
   }
 
   function handlePointerUp(e) {
     if (dragging) {
-      try {
-        svgRef.current.releasePointerCapture(
-          e.pointerId
-        );
-      } catch {}
-
-      if (
-        dragRef.current &&
-        dragSnapshot.current
-      ) {
-        setHistory((items) =>
-          [...items, dragSnapshot.current].slice(
-            -40
-          )
-        );
-        setFuture([]);
-      }
+      try { svgRef.current.releasePointerCapture(e.pointerId); } catch { }
     }
-
-    dragSnapshot.current = null;
     setDragging(null);
   }
 
   function deleteSelected() {
-    if (!selectedEl) return;
-
-    commitElements((els) =>
-      els.filter(
-        (el) => el.id !== selectedEl
-      )
-    );
-
-    setSelectedEl(null);
+    if (selectedEl) { setElements((els) => els.filter((el) => el.id !== selectedEl)); setSelectedEl(null); }
   }
 
-  function duplicateSelected() {
-    const source = elements.find(
-      (el) => el.id === selectedEl
-    );
-
-    if (!source) return;
-
-    const copy = {
-      ...source,
-      id: Date.now(),
-    };
-
-    if (copy.type === "arrow") {
-      copy.x1 += 15;
-      copy.y1 += 15;
-      copy.x2 += 15;
-      copy.y2 += 15;
-    } else {
-      copy.x += 15;
-      copy.y += 15;
-    }
-
-    commitElements((els) => [
-      ...els,
-      copy,
-    ]);
-
-    setSelectedEl(copy.id);
-  }
-
+  // Keyboard shortcuts
   useEffect(() => {
     function handleKey(e) {
-      const meta = e.ctrlKey || e.metaKey;
-
-      if (
-        meta &&
-        e.key.toLowerCase() === "z"
-      ) {
-        e.preventDefault();
-
-        if (e.shiftKey) redo();
-        else undo();
-
-        return;
-      }
-
-      if (
-        meta &&
-        e.key.toLowerCase() === "y"
-      ) {
-        e.preventDefault();
-        redo();
-        return;
-      }
-
-      if (
-        meta &&
-        e.key.toLowerCase() === "d" &&
-        selectedEl
-      ) {
-        e.preventDefault();
-        duplicateSelected();
-        return;
-      }
-
-      if (
-        e.key === "Delete" ||
-        e.key === "Backspace"
-      ) {
-        if (selectedEl) {
-          e.preventDefault();
-          deleteSelected();
-        }
-      }
-
-      if (e.key === "Escape") {
-        setSelectedEl(null);
-        setArrowStart(null);
-      }
+      if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); deleteSelected(); }
+      if (e.key === "Escape") { setSelectedEl(null); setArrowStart(null); }
     }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [selectedEl]);
 
-    window.addEventListener(
-      "keydown",
-      handleKey
-    );
-
-    return () =>
-      window.removeEventListener(
-        "keydown",
-        handleKey
-      );
-  }, [
-    selectedEl,
-    elements,
-    history,
-    future,
-  ]);
-
-  function clearAll() {
-    if (
-      confirm(
-        "Clear all diagram elements?"
-      )
-    ) {
-      commitElements([]);
-      setSelectedEl(null);
-    }
-  }
+  function clearAll() { if (confirm("Clear all elements?")) { setElements([]); setSelectedEl(null); } }
 
   function saveDiagram() {
     const svg = svgRef.current;
     const clone = svg.cloneNode(true);
-
-    clone
-      .querySelectorAll(
-        "[data-selection]"
-      )
-      .forEach((el) => el.remove());
-
-    const svgData =
-      new XMLSerializer().serializeToString(
-        clone
-      );
-
-    const dataUrl =
-      "data:image/svg+xml;base64," +
-      btoa(
-        unescape(
-          encodeURIComponent(svgData)
-        )
-      );
-
-    const savedElements = [
-      {
-        id: "__pitch_meta__",
-        type: "pitchMeta",
-        pitchType,
-      },
-      ...elements,
-    ];
-
-    onSave(dataUrl, savedElements);
+    // Remove selection indicators
+    clone.querySelectorAll("[data-selection]").forEach((el) => el.remove());
+    const svgData = new XMLSerializer().serializeToString(clone);
+    const dataUrl = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
+    onSave(dataUrl, elements);
   }
-
-  const pitchOptions = [
-    {
-      id: "full",
-      label: "Full Pitch",
-    },
-    {
-      id: "half",
-      label: "Half Pitch",
-    },
-    {
-      id: "attackHalf",
-      label: "Attacking Half",
-    },
-    {
-      id: "third",
-      label: "Third Pitch",
-    },
-    {
-      id: "station",
-      label: "Station / Grid",
-    },
-    {
-      id: "blank",
-      label: "Blank Grass",
-    },
-  ];
 
   const tools = [
-    {
-      id: "select",
-      label: "Select",
-      icon: "↖",
-    },
-    {
-      id: "player",
-      label: "Player",
-      icon: "●",
-    },
-    {
-      id: "goalkeeper",
-      label: "GK",
-      icon: "GK",
-    },
-    {
-      id: "coach",
-      label: "Coach",
-      icon: "C",
-    },
-    {
-      id: "neutral",
-      label: "Neutral",
-      icon: "N",
-    },
-    {
-      id: "cone",
-      label: "Cone",
-      icon: "▲",
-    },
-    {
-      id: "football",
-      label: "Football",
-      icon: "○",
-    },
-    {
-      id: "sliotar",
-      label: "Sliotar",
-      icon: "•",
-    },
-    {
-      id: "goal",
-      label: "Goal",
-      icon: "⊓",
-    },
-    {
-      id: "miniGoal",
-      label: "Mini Goal",
-      icon: "⌑",
-    },
-    {
-      id: "pole",
-      label: "Pole",
-      icon: "│",
-    },
-    {
-      id: "hurdle",
-      label: "Hurdle",
-      icon: "┴",
-    },
-    {
-      id: "ladder",
-      label: "Ladder",
-      icon: "▥",
-    },
-    {
-      id: "hoop",
-      label: "Hoop",
-      icon: "◯",
-    },
-    {
-      id: "target",
-      label: "Target",
-      icon: "◎",
-    },
-    {
-      id: "runArrow",
-      label: "Run",
-      icon: "→",
-    },
-    {
-      id: "passArrow",
-      label: "Pass",
-      icon: "⇢",
-    },
-    {
-      id: "strikeArrow",
-      label: "Kick / Strike",
-      icon: "➜",
-    },
-    {
-      id: "soloArrow",
-      label: "Solo / Carry",
-      icon: "↝",
-    },
-    {
-      id: "text",
-      label: "Text",
-      icon: "T",
-    },
+    { id: "select", label: "Select", icon: "↖" },
+    { id: "player", label: "Player", icon: "●" },
+    { id: "cone", label: "Cone", icon: "▲" },
+    { id: "ball", label: "Ball", icon: "◉" },
+    { id: "hurdle", label: "Hurdle", icon: "═" },
+    { id: "arrow", label: "Arrow", icon: ">" },
+    { id: "text", label: "Text", icon: "T" },
   ];
-
   const playerColors = [
-    {
-      color: "#073B74",
-      label: "Navy",
-    },
-    {
-      color: "#7C3AED",
-      label: "Purple",
-    },
-    {
-      color: "#c51417",
-      label: "Red",
-    },
-    {
-      color: "#43a047",
-      label: "Green",
-    },
-    {
-      color: "#f57f17",
-      label: "Gold",
-    },
-    {
-      color: "#fff",
-      label: "White",
-    },
+    { color: "#073B74", label: "Navy" },
+    { color: "#7C3AED", label: "Purple" },
+    { color: "#c51417", label: "Red" },
+    { color: "#43a047", label: "Green" },
+    { color: "#f57f17", label: "Gold" },
+    { color: "#fff", label: "White" },
   ];
-
-  function renderPitch() {
-    if (pitchType === "blank") {
-      return null;
-    }
-
-    if (pitchType === "station") {
-      return (
-        <>
-          <rect
-            x="55"
-            y="45"
-            width="330"
-            height="230"
-            fill="none"
-            stroke="rgba(255,255,255,.65)"
-            strokeWidth="2"
-            strokeDasharray="8,6"
-            rx="6"
-          />
-          <line
-            x1="220"
-            y1="45"
-            x2="220"
-            y2="275"
-            stroke="rgba(255,255,255,.25)"
-            strokeWidth="1.5"
-          />
-          <line
-            x1="55"
-            y1="160"
-            x2="385"
-            y2="160"
-            stroke="rgba(255,255,255,.25)"
-            strokeWidth="1.5"
-          />
-        </>
-      );
-    }
-
-    const halfPitch =
-      pitchType === "half" ||
-      pitchType === "attackHalf";
-
-    const thirdPitch =
-      pitchType === "third";
-
-    const startX = halfPitch
-      ? 14
-      : thirdPitch
-        ? 14
-        : 14;
-
-    const endX = halfPitch
-      ? 426
-      : thirdPitch
-        ? 300
-        : 426;
-
-    return (
-      <>
-        <rect
-          x={startX}
-          y="14"
-          width={endX - startX}
-          height={H - 28}
-          fill="none"
-          stroke="rgba(255,255,255,.55)"
-          strokeWidth="2"
-          rx="8"
-        />
-
-        {!thirdPitch && (
-          <>
-            <line
-              x1={W / 2}
-              y1="14"
-              x2={W / 2}
-              y2={H - 14}
-              stroke="rgba(255,255,255,.3)"
-              strokeWidth="1.5"
-            />
-
-            <circle
-              cx={W / 2}
-              cy={H / 2}
-              r="28"
-              fill="none"
-              stroke="rgba(255,255,255,.25)"
-              strokeWidth="1.5"
-            />
-          </>
-        )}
-
-        <line
-          x1="82"
-          y1="14"
-          x2="82"
-          y2={H - 14}
-          stroke="rgba(255,255,255,.32)"
-          strokeWidth="1.3"
-        />
-
-        <line
-          x1="125"
-          y1="14"
-          x2="125"
-          y2={H - 14}
-          stroke="rgba(255,255,255,.3)"
-          strokeWidth="1.3"
-        />
-
-        <line
-          x1="164"
-          y1="14"
-          x2="164"
-          y2={H - 14}
-          stroke="rgba(255,255,255,.25)"
-          strokeWidth="1.3"
-        />
-
-        {!halfPitch && !thirdPitch && (
-          <>
-            <line
-              x1={W - 82}
-              y1="14"
-              x2={W - 82}
-              y2={H - 14}
-              stroke="rgba(255,255,255,.32)"
-              strokeWidth="1.3"
-            />
-
-            <line
-              x1={W - 125}
-              y1="14"
-              x2={W - 125}
-              y2={H - 14}
-              stroke="rgba(255,255,255,.3)"
-              strokeWidth="1.3"
-            />
-
-            <line
-              x1={W - 164}
-              y1="14"
-              x2={W - 164}
-              y2={H - 14}
-              stroke="rgba(255,255,255,.25)"
-              strokeWidth="1.3"
-            />
-          </>
-        )}
-
-        <rect
-          x="14"
-          y="102"
-          width="54"
-          height="116"
-          fill="none"
-          stroke="rgba(255,255,255,.42)"
-          strokeWidth="1.5"
-        />
-
-        <rect
-          x="14"
-          y="128"
-          width="28"
-          height="64"
-          fill="none"
-          stroke="rgba(255,255,255,.42)"
-          strokeWidth="1.5"
-        />
-
-        {!halfPitch && !thirdPitch && (
-          <>
-            <rect
-              x={W - 68}
-              y="102"
-              width="54"
-              height="116"
-              fill="none"
-              stroke="rgba(255,255,255,.42)"
-              strokeWidth="1.5"
-            />
-
-            <rect
-              x={W - 42}
-              y="128"
-              width="28"
-              height="64"
-              fill="none"
-              stroke="rgba(255,255,255,.42)"
-              strokeWidth="1.5"
-            />
-          </>
-        )}
-      </>
-    );
-  }
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 99999,
-        background: "rgba(0,0,0,0.6)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 16,
-      }}
-    >
-      <div
-        style={{
-          background: P.white,
-          borderRadius: 16,
-          width: "100%",
-          maxWidth: 820,
-          maxHeight: "94vh",
-          overflowY: "auto",
-          boxShadow: Sh.lift,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent:
-              "space-between",
-            alignItems: "center",
-            padding: "12px 18px",
-            borderBottom: `1px solid ${P.line}`,
-          }}
-        >
-          <div>
-            <div
-              style={{
-                fontFamily: F.display,
-                fontSize: 16,
-                fontWeight: 800,
-                color: P.ink,
-              }}
-            >
-              Create Diagram
-            </div>
-
-            <div
-              style={{
-                fontFamily: F.body,
-                fontSize: 10,
-                color: P.muted,
-                marginTop: 2,
-              }}
-            >
-              GAA pitch & coaching
-              diagram builder
-            </div>
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              gap: 8,
-            }}
-          >
-            <button
-              onClick={saveDiagram}
-              style={{
-                padding: "7px 14px",
-                borderRadius: 8,
-                border: "none",
-                background: P.p600,
-                fontFamily: F.body,
-                fontSize: 11,
-                fontWeight: 700,
-                color: "#fff",
-                cursor: "pointer",
-              }}
-            >
-              Save Diagram
-            </button>
-
-            <button
-              onClick={onClose}
-              style={{
-                background: "none",
-                border: "none",
-                fontSize: 18,
-                cursor: "pointer",
-                color: P.muted,
-              }}
-            >
-              ×
-            </button>
+    <div style={{ position: "fixed", inset: 0, zIndex: 99999, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+      <div style={{ background: P.white, borderRadius: 16, width: "100%", maxWidth: 640, boxShadow: Sh.lift, overflow: "hidden" }}>
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 18px", borderBottom: `1px solid ${P.line}` }}>
+          <div style={{ fontFamily: F.display, fontSize: 15, fontWeight: 800, color: P.ink }}>Create Diagram</div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={saveDiagram} style={{ padding: "6px 14px", borderRadius: 8, border: "none", background: P.p600, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: "#fff", cursor: "pointer" }}>Save Diagram</button>
+            <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 18, cursor: "pointer", color: P.muted }}>x</button>
           </div>
         </div>
 
-        <div
-          style={{
-            padding: "9px 14px",
-            borderBottom: `1px solid ${P.line}`,
-            background: P.soft,
-          }}
-        >
-          <div
-            style={{
-              fontFamily: F.body,
-              fontSize: 9,
-              fontWeight: 800,
-              color: P.muted,
-              textTransform: "uppercase",
-              marginBottom: 6,
-            }}
-          >
-            Pitch
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              gap: 5,
-              flexWrap: "wrap",
-            }}
-          >
-            {pitchOptions.map((option) => (
-              <button
-                key={option.id}
-                onClick={() =>
-                  setPitchType(option.id)
-                }
-                style={{
-                  padding: "5px 9px",
-                  borderRadius: 6,
-                  border: `1.5px solid ${
-                    pitchType === option.id
-                      ? P.p600
-                      : P.line
-                  }`,
-                  background:
-                    pitchType === option.id
-                      ? P.p50
-                      : P.white,
-                  fontFamily: F.body,
-                  fontSize: 9,
-                  fontWeight: 700,
-                  color:
-                    pitchType === option.id
-                      ? P.p600
-                      : P.muted,
-                  cursor: "pointer",
-                }}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
-            padding: "8px 14px",
-            borderBottom: `1px solid ${P.line}`,
-            flexWrap: "wrap",
-          }}
-        >
+        {/* Toolbar */}
+        <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "8px 14px", borderBottom: `1px solid ${P.line}`, flexWrap: "wrap" }}>
           {tools.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => {
-                setTool(t.id);
-                setArrowStart(null);
-              }}
-              style={{
-                padding: "5px 8px",
-                borderRadius: 6,
-                border: `1.5px solid ${
-                  tool === t.id
-                    ? P.p600
-                    : P.line
-                }`,
-                background:
-                  tool === t.id
-                    ? P.p50
-                    : P.white,
-                fontFamily: F.body,
-                fontSize: 9,
-                fontWeight: 700,
-                color:
-                  tool === t.id
-                    ? P.p600
-                    : P.muted,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 4,
-              }}
-            >
-              <span
-                style={{ fontSize: 11 }}
-              >
-                {t.icon}
-              </span>
-              {t.label}
+            <button key={t.id} onClick={() => { setTool(t.id); setArrowStart(null); }} style={{ padding: "5px 10px", borderRadius: 6, border: `1.5px solid ${tool === t.id ? P.p600 : P.line}`, background: tool === t.id ? P.p50 : P.white, fontFamily: F.body, fontSize: 10, fontWeight: 700, color: tool === t.id ? P.p600 : P.muted, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}>
+              <span style={{ fontSize: 13 }}>{t.icon}</span>{t.label}
             </button>
           ))}
-
-          {tool === "player" &&
-            playerColors.map((pc) => (
-              <button
-                key={pc.color}
-                onClick={() =>
-                  setPlayerColor(pc.color)
-                }
-                title={pc.label}
-                style={{
-                  width: 20,
-                  height: 20,
-                  borderRadius: "50%",
-                  background: pc.color,
-                  border:
-                    playerColor === pc.color
-                      ? `2.5px solid ${P.p600}`
-                      : `2px solid ${P.line}`,
-                  cursor: "pointer",
-                }}
-              />
-            ))}
+          <div style={{ width: 1, height: 24, background: P.line, margin: "0 4px" }} />
+          {tool === "player" && playerColors.map((pc) => (
+            <button key={pc.color} onClick={() => setPlayerColor(pc.color)} style={{ width: 20, height: 20, borderRadius: "50%", background: pc.color, border: playerColor === pc.color ? `2.5px solid ${P.p600}` : `2px solid ${P.line}`, cursor: "pointer" }} title={pc.label} />
+          ))}
+          <div style={{ marginLeft: "auto", display: "flex", gap: 4 }}>
+            {selectedEl && <button onClick={deleteSelected} style={{ padding: "4px 10px", borderRadius: 6, border: `1px solid ${P.coral}`, background: "#fff", fontFamily: F.body, fontSize: 10, fontWeight: 700, color: P.coral, cursor: "pointer" }}>Delete</button>}
+            <button onClick={clearAll} style={{ padding: "4px 10px", borderRadius: 6, border: `1px solid ${P.line}`, background: P.white, fontFamily: F.body, fontSize: 10, fontWeight: 700, color: P.muted, cursor: "pointer" }}>Clear</button>
+          </div>
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            gap: 5,
-            alignItems: "center",
-            padding: "7px 14px",
-            borderBottom: `1px solid ${P.line}`,
-          }}
-        >
-          <button
-            onClick={undo}
-            disabled={!history.length}
-          >
-            Undo
-          </button>
-
-          <button
-            onClick={redo}
-            disabled={!future.length}
-          >
-            Redo
-          </button>
-
-          {selectedEl && (
-            <>
-              <button
-                onClick={
-                  duplicateSelected
-                }
-              >
-                Duplicate
-              </button>
-
-              <button
-                onClick={deleteSelected}
-              >
-                Delete
-              </button>
-            </>
-          )}
-
-          <button
-            onClick={clearAll}
-            style={{
-              marginLeft: "auto",
-            }}
-          >
-            Clear
-          </button>
-        </div>
-
-        <div
-          style={{
-            padding: "12px 14px",
-          }}
-        >
-          <svg
-            ref={svgRef}
-            viewBox={`0 0 ${W} ${H}`}
-            style={{
-              width: "100%",
-              height: "auto",
-              borderRadius: 10,
-              cursor:
-                tool === "select"
-                  ? dragging
-                    ? "grabbing"
-                    : "default"
-                  : "crosshair",
-              display: "block",
-              border: `1.5px solid ${P.line}`,
-              userSelect: "none",
-              touchAction: "none",
-            }}
-            onClick={handleCanvasClick}
-            onPointerDown={
-              handlePointerDown
-            }
-            onPointerMove={
-              handlePointerMove
-            }
-            onPointerUp={handlePointerUp}
-          >
+        {/* Canvas */}
+        <div style={{ padding: "12px 14px" }}>
+          <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", borderRadius: 10, cursor: tool === "select" ? (dragging ? "grabbing" : "default") : "crosshair", display: "block", border: `1.5px solid ${P.line}`, userSelect: "none", touchAction: "none" }}
+            onClick={handleCanvasClick} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp}>
+            {/* Pitch background */}
             <defs>
-              <linearGradient
-                id="pitchBg"
-                x1="0"
-                y1="0"
-                x2="0"
-                y2="1"
-              >
-                <stop
-                  offset="0%"
-                  stopColor="#5cb85c"
-                />
-                <stop
-                  offset="50%"
-                  stopColor="#4a9835"
-                />
-                <stop
-                  offset="100%"
-                  stopColor="#3d8030"
-                />
-              </linearGradient>
+              <linearGradient id="pitchBg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#5cb85c" /><stop offset="50%" stopColor="#4a9835" /><stop offset="100%" stopColor="#3d8030" /></linearGradient>
             </defs>
+            <rect width={W} height={H} fill="url(#pitchBg)" rx="14" />
+            <rect x="14" y="14" width={W - 28} height={H - 28} fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="2" rx="8" />
+            <line x1={W / 2} y1="14" x2={W / 2} y2={H - 14} stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" strokeDasharray="8,6" />
+            <circle cx={W / 2} cy={H / 2} r="35" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" />
+            <circle cx={W / 2} cy={H / 2} r="3" fill="rgba(255,255,255,0.4)" />
 
-            <rect
-              width={W}
-              height={H}
-              fill="url(#pitchBg)"
-              rx="14"
-            />
+            {/* Background image from previous diagram (if no elements to restore) */}
+            {backgroundImage && elements.length === 0 && (
+              <image href={backgroundImage} x="0" y="0" width={W} height={H} opacity="0.5" style={{ pointerEvents: "none" }} />
+            )}
 
-            {renderPitch()}
-
-            {backgroundImage &&
-              elements.length === 0 && (
-                <image
-                  href={backgroundImage}
-                  x="0"
-                  y="0"
-                  width={W}
-                  height={H}
-                  opacity="0.35"
-                  style={{
-                    pointerEvents: "none",
-                  }}
-                />
-              )}
-
+            {/* Elements */}
             {elements.map((el) => {
-              const isSelected =
-                selectedEl === el.id;
-
-              if (el.type === "player") {
-                return (
-                  <g
-                    key={el.id}
-                    style={{
-                      cursor: "move",
-                    }}
-                  >
-                    {isSelected && (
-                      <circle
-                        cx={el.x}
-                        cy={el.y}
-                        r="18"
-                        fill="none"
-                        stroke="#fff"
-                        strokeWidth="2"
-                        strokeDasharray="3,3"
-                        data-selection="true"
-                      />
-                    )}
-
-                    <circle
-                      cx={el.x}
-                      cy={el.y}
-                      r="14"
-                      fill={el.color}
-                      stroke="#fff"
-                      strokeWidth="2.5"
-                    />
-
-                    <text
-                      x={el.x}
-                      y={el.y + 4}
-                      textAnchor="middle"
-                      fill={
-                        el.color === "#fff" ||
-                        el.color ===
-                          "#ffffff"
-                          ? "#333"
-                          : "#fff"
-                      }
-                      fontSize={
-                        String(el.label)
-                          .length > 1
-                          ? "8"
-                          : "10"
-                      }
-                      fontWeight="800"
-                      fontFamily="sans-serif"
-                    >
-                      {el.label}
-                    </text>
-                  </g>
-                );
-              }
-
-              if (el.type === "cone") {
-                return (
-                  <g key={el.id}>
-                    {isSelected && (
-                      <circle
-                        cx={el.x}
-                        cy={el.y}
-                        r="13"
-                        fill="none"
-                        stroke="#fff"
-                        strokeWidth="2"
-                        strokeDasharray="3,3"
-                        data-selection="true"
-                      />
-                    )}
-                    <polygon
-                      points={`${el.x},${el.y - 10} ${el.x - 7},${el.y + 5} ${el.x + 7},${el.y + 5}`}
-                      fill="#FF7A00"
-                      stroke="#fff"
-                      strokeWidth="1.5"
-                    />
-                  </g>
-                );
-              }
-
-              if (
-                el.type === "football" ||
-                el.type === "ball"
-              ) {
-                return (
-                  <g key={el.id}>
-                    <circle
-                      cx={el.x}
-                      cy={el.y}
-                      r="8"
-                      fill="#fff"
-                      stroke="#222"
-                      strokeWidth="1.5"
-                    />
-                    <circle
-                      cx={el.x}
-                      cy={el.y}
-                      r="2.5"
-                      fill="#222"
-                    />
-                  </g>
-                );
-              }
-
-              if (el.type === "sliotar") {
-                return (
-                  <g key={el.id}>
-                    <circle
-                      cx={el.x}
-                      cy={el.y}
-                      r="6"
-                      fill="#fff"
-                      stroke="#d32f2f"
-                      strokeWidth="1.5"
-                    />
-                    <path
-                      d={`M${el.x - 4},${el.y} Q${el.x},${el.y - 3} ${el.x + 4},${el.y}`}
-                      fill="none"
-                      stroke="#d32f2f"
-                      strokeWidth="1"
-                    />
-                  </g>
-                );
-              }
-
-              if (el.type === "goal") {
-                return (
-                  <g key={el.id} style={{ cursor: "move" }}>
-                    {isSelected && (
-                      <rect
-                        x={el.x - 30}
-                        y={el.y - 40}
-                        width="60"
-                        height="58"
-                        rx="5"
-                        fill="none"
-                        stroke="#fff"
-                        strokeWidth="2"
-                        strokeDasharray="4,3"
-                        data-selection="true"
-                        pointerEvents="none"
-                      />
-                    )}
-                    <rect
-                      x={el.x - 24}
-                      y={el.y - 12}
-                      width="48"
-                      height="24"
-                      fill="rgba(255,255,255,.08)"
-                      stroke="#fff"
-                      strokeWidth="2"
-                    />
-                    <line
-                      x1={el.x - 24}
-                      y1={el.y - 12}
-                      x2={el.x - 24}
-                      y2={el.y - 34}
-                      stroke="#fff"
-                      strokeWidth="3"
-                    />
-                    <line
-                      x1={el.x + 24}
-                      y1={el.y - 12}
-                      x2={el.x + 24}
-                      y2={el.y - 34}
-                      stroke="#fff"
-                      strokeWidth="3"
-                    />
-                  </g>
-                );
-              }
-
-              if (
-                el.type === "miniGoal"
-              ) {
-                return (
-                  <g key={el.id} style={{ cursor: "move" }}>
-                    {isSelected && (
-                      <rect
-                        x={el.x - 24}
-                        y={el.y - 17}
-                        width="48"
-                        height="34"
-                        rx="5"
-                        fill="none"
-                        stroke="#fff"
-                        strokeWidth="2"
-                        strokeDasharray="4,3"
-                        data-selection="true"
-                        pointerEvents="none"
-                      />
-                    )}
-                    <rect
-                      x={el.x - 18}
-                      y={el.y - 10}
-                      width="36"
-                      height="20"
-                      fill="rgba(255,255,255,.08)"
-                      stroke="#fff"
-                      strokeWidth="2"
-                    />
-                  </g>
-                );
-              }
-
-              if (el.type === "pole") {
-                return (
-                  <g key={el.id}>
-                    <line
-                      x1={el.x}
-                      y1={el.y - 15}
-                      x2={el.x}
-                      y2={el.y + 15}
-                      stroke="#ffd54f"
-                      strokeWidth="4"
-                    />
-                    <circle
-                      cx={el.x}
-                      cy={el.y + 16}
-                      r="4"
-                      fill="#fff"
-                    />
-                  </g>
-                );
-              }
-
-              if (el.type === "hoop") {
-                return (
-                  <circle
-                    key={el.id}
-                    cx={el.x}
-                    cy={el.y}
-                    r="14"
-                    fill="none"
-                    stroke="#ffd54f"
-                    strokeWidth="3"
-                  />
-                );
-              }
-
-              if (el.type === "target") {
-                return (
-                  <g key={el.id}>
-                    <circle
-                      cx={el.x}
-                      cy={el.y}
-                      r="15"
-                      fill="none"
-                      stroke="#fff"
-                      strokeWidth="2"
-                    />
-                    <circle
-                      cx={el.x}
-                      cy={el.y}
-                      r="8"
-                      fill="none"
-                      stroke="#fff"
-                      strokeWidth="2"
-                    />
-                    <circle
-                      cx={el.x}
-                      cy={el.y}
-                      r="2"
-                      fill="#fff"
-                    />
-                  </g>
-                );
-              }
-
-              if (el.type === "ladder") {
-                return (
-                  <g key={el.id}>
-                    <rect
-                      x={el.x - 10}
-                      y={el.y - 22}
-                      width="20"
-                      height="44"
-                      fill="none"
-                      stroke="#ffd54f"
-                      strokeWidth="2"
-                    />
-                    {[-14, -7, 0, 7, 14].map(
-                      (offset) => (
-                        <line
-                          key={offset}
-                          x1={el.x - 10}
-                          y1={el.y + offset}
-                          x2={el.x + 10}
-                          y2={el.y + offset}
-                          stroke="#ffd54f"
-                          strokeWidth="1.5"
-                        />
-                      )
-                    )}
-                  </g>
-                );
-              }
-
-              if (el.type === "hurdle") {
-                return (
-                  <g key={el.id}>
-                    <rect
-                      x={el.x - 12}
-                      y={el.y - 3}
-                      width="24"
-                      height="6"
-                      fill="#e64a19"
-                      stroke="#fff"
-                      strokeWidth="1.5"
-                      rx="2"
-                    />
-                    <line
-                      x1={el.x - 10}
-                      y1={el.y + 3}
-                      x2={el.x - 10}
-                      y2={el.y + 9}
-                      stroke="#fff"
-                      strokeWidth="1.5"
-                    />
-                    <line
-                      x1={el.x + 10}
-                      y1={el.y + 3}
-                      x2={el.x + 10}
-                      y2={el.y + 9}
-                      stroke="#fff"
-                      strokeWidth="1.5"
-                    />
-                  </g>
-                );
-              }
-
+              const isSelected = selectedEl === el.id;
+              if (el.type === "player") return (
+                <g key={el.id} style={{ cursor: "move" }}>
+                  {isSelected && <circle cx={el.x} cy={el.y} r="18" fill="none" stroke="#fff" strokeWidth="2" strokeDasharray="3,3" data-selection="true" />}
+                  <circle cx={el.x} cy={el.y} r="14" fill={el.color} stroke="#fff" strokeWidth="2.5" />
+                  <text x={el.x} y={el.y + 4} textAnchor="middle" fill={el.color === "#fff" ? "#333" : "#fff"} fontSize="10" fontWeight="800" fontFamily="sans-serif">{el.label}</text>
+                </g>
+              );
+              if (el.type === "cone") return (
+                <g key={el.id} style={{ cursor: "move" }}>
+                  {isSelected && <circle cx={el.x} cy={el.y} r="12" fill="none" stroke="#fff" strokeWidth="2" strokeDasharray="3,3" data-selection="true" />}
+                  <polygon points={`${el.x},${el.y - 10} ${el.x - 7},${el.y + 5} ${el.x + 7},${el.y + 5}`} fill="#FF7A00" stroke="#fff" strokeWidth="1.5" />
+                </g>
+              );
+              if (el.type === "ball") return (
+                <g key={el.id} style={{ cursor: "move" }}>
+                  {isSelected && <circle cx={el.x} cy={el.y} r="12" fill="none" stroke="#fff" strokeWidth="2" strokeDasharray="3,3" data-selection="true" />}
+                  <circle cx={el.x} cy={el.y} r="7" fill="#FFB400" stroke="#fff" strokeWidth="2" />
+                </g>
+              );
+              if (el.type === "hurdle") return (
+                <g key={el.id} style={{ cursor: "move" }}>
+                  {isSelected && <rect x={el.x - 16} y={el.y - 6} width="32" height="12" fill="none" stroke="#fff" strokeWidth="2" strokeDasharray="3,3" rx="3" data-selection="true" />}
+                  <rect x={el.x - 12} y={el.y - 3} width="24" height="6" fill="#e64a19" stroke="#fff" strokeWidth="1.5" rx="2" />
+                  <line x1={el.x - 10} y1={el.y + 3} x2={el.x - 10} y2={el.y + 8} stroke="#fff" strokeWidth="1.5" />
+                  <line x1={el.x + 10} y1={el.y + 3} x2={el.x + 10} y2={el.y + 8} stroke="#fff" strokeWidth="1.5" />
+                </g>
+              );
               if (el.type === "arrow") {
-                const dx =
-                  el.x2 - el.x1;
-                const dy =
-                  el.y2 - el.y1;
-                const len = Math.sqrt(
-                  dx * dx + dy * dy
-                );
-
-                if (!len) return null;
-
-                const ux = dx / len;
-                const uy = dy / len;
-                const ax =
-                  el.x2 - ux * 8;
-                const ay =
-                  el.y2 - uy * 8;
-                const px = -uy * 5;
-                const py = ux * 5;
-
-                const dash =
-                  el.arrowType ===
-                  "runArrow"
-                    ? undefined
-                    : el.arrowType ===
-                        "passArrow"
-                      ? "7,5"
-                      : el.arrowType ===
-                          "strikeArrow"
-                        ? "12,4,2,4"
-                        : "2,5";
-
+                const dx = el.x2 - el.x1, dy = el.y2 - el.y1;
+                const len = Math.sqrt(dx * dx + dy * dy);
+                const ux = dx / len, uy = dy / len;
+                const ax = el.x2 - ux * 8, ay = el.y2 - uy * 8;
+                const px = -uy * 5, py = ux * 5;
                 return (
-                  <g key={el.id}>
-                    {isSelected && (
-                      <line
-                        x1={el.x1}
-                        y1={el.y1}
-                        x2={el.x2}
-                        y2={el.y2}
-                        stroke="#fff"
-                        strokeWidth="7"
-                        opacity=".28"
-                        data-selection="true"
-                      />
-                    )}
-
-                    <line
-                      x1={el.x1}
-                      y1={el.y1}
-                      x2={el.x2}
-                      y2={el.y2}
-                      stroke="rgba(255,255,255,.95)"
-                      strokeWidth="2.5"
-                      strokeDasharray={dash}
-                    />
-
-                    <polygon
-                      points={`${el.x2},${el.y2} ${ax + px},${ay + py} ${ax - px},${ay - py}`}
-                      fill="rgba(255,255,255,.95)"
-                    />
+                  <g key={el.id} style={{ cursor: "move" }}>
+                    {isSelected && <line x1={el.x1} y1={el.y1} x2={el.x2} y2={el.y2} stroke="#fff" strokeWidth="6" strokeDasharray="3,3" data-selection="true" />}
+                    <line x1={el.x1} y1={el.y1} x2={el.x2} y2={el.y2} stroke="rgba(255,255,255,0.8)" strokeWidth="2.5" strokeDasharray="6,4" />
+                    <polygon points={`${el.x2},${el.y2} ${ax + px},${ay + py} ${ax - px},${ay - py}`} fill="rgba(255,255,255,0.8)" />
                   </g>
                 );
               }
-
-              if (el.type === "text") {
-                return (
-                  <g key={el.id}>
-                    {isSelected && (
-                      <rect
-                        x={el.x - 3}
-                        y={el.y - 13}
-                        width={
-                          el.text.length *
-                            7 +
-                          6
-                        }
-                        height="17"
-                        fill="none"
-                        stroke="#fff"
-                        strokeWidth="1.5"
-                        strokeDasharray="3,3"
-                        data-selection="true"
-                      />
-                    )}
-
-                    <text
-                      x={el.x}
-                      y={el.y}
-                      fill="#fff"
-                      fontSize="12"
-                      fontWeight="700"
-                      fontFamily="sans-serif"
-                    >
-                      {el.text}
-                    </text>
-                  </g>
-                );
-              }
-
+              if (el.type === "text") return (
+                <g key={el.id} style={{ cursor: "move" }}>
+                  {isSelected && <rect x={el.x - 2} y={el.y - 12} width={el.text.length * 7 + 4} height="16" fill="none" stroke="#fff" strokeWidth="1.5" strokeDasharray="3,3" rx="2" data-selection="true" />}
+                  <text x={el.x} y={el.y} fill="#fff" fontSize="12" fontWeight="700" fontFamily="sans-serif">{el.text}</text>
+                </g>
+              );
               return null;
             })}
 
-            {[
-              "runArrow",
-              "passArrow",
-              "strikeArrow",
-              "soloArrow",
-            ].includes(tool) &&
-              arrowStart && (
-                <circle
-                  cx={arrowStart.x}
-                  cy={arrowStart.y}
-                  r="4"
-                  fill="rgba(255,255,255,.8)"
-                />
-              )}
-
-            {brandLogo ? (
-              <image
-                href={brandLogo}
-                x={W - 88}
-                y={H - 34}
-                width="72"
-                height="22"
-                preserveAspectRatio="xMidYMid meet"
-                opacity=".58"
-                style={{
-                  pointerEvents: "none",
-                }}
-              />
-            ) : (
-              <text
-                x={W - 16}
-                y={H - 10}
-                textAnchor="end"
-                fill="rgba(255,255,255,.55)"
-                fontSize="9"
-                fontWeight="700"
-                fontFamily="sans-serif"
-              >
-                SPRAOI SPORTS
-              </text>
+            {/* Arrow preview while drawing */}
+            {tool === "arrow" && arrowStart && (
+              <circle cx={arrowStart.x} cy={arrowStart.y} r="4" fill="rgba(255,255,255,0.6)" />
             )}
-          
-            {/* Remaining equipment selection overlay V3 */}
-            {(() => {
-              const selected = elements.find(
-                (item) => item.id === selectedEl
-              );
 
-              if (
-                !selected ||
-                ![
-                  "pole",
-                  "target",
-                  "hoop",
-                  "ladder",
-                  "football",
-                  "sliotar"
-                ].includes(selected.type) ||
-                !Number.isFinite(selected.x) ||
-                !Number.isFinite(selected.y)
-              ) {
-                return null;
-              }
-
-              const sizes = {
-                pole: [26, 58],
-                target: [48, 48],
-                hoop: [48, 48],
-                ladder: [52, 70],
-                football: [32, 32],
-                sliotar: [30, 30],
-              };
-
-              const [w, h] = sizes[selected.type];
-
-              return (
-                <rect
-                  x={selected.x - w / 2}
-                  y={selected.y - h / 2}
-                  width={w}
-                  height={h}
-                  rx="5"
-                  fill="none"
-                  stroke="#fff"
-                  strokeWidth="2"
-                  strokeDasharray="4,3"
-                  pointerEvents="none"
-                  data-selection="true"
-                />
-              );
-            })()}
-            {/* End remaining equipment selection overlay V3 */}
-
-</svg>
-
-          <div
-            style={{
-              fontFamily: F.body,
-              fontSize: 10,
-              color: P.muted,
-              marginTop: 8,
-              textAlign: "center",
-            }}
-          >
-            {backgroundImage &&
-              elements.length === 0 && (
-                <div
-                  style={{
-                    color: P.orange,
-                    marginBottom: 4,
-                  }}
-                >
-                  Previous diagram shown
-                  faintly as a reference.
-                </div>
-              )}
-
-            {arrowStart
-              ? "Click to set the arrow end point"
-              : tool === "select"
-                ? "Select and drag objects. Ctrl+D duplicates. Delete removes. Ctrl+Z undoes."
-                : `Click on the pitch to place ${tool}`}
+            {/* Watermark */}
+            <text x={W - 16} y={H - 10} textAnchor="end" fill="rgba(255,255,255,0.4)" fontSize="9" fontWeight="700" fontFamily="sans-serif">SPRAOI SPORTS</text>
+          </svg>
+          <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 8, textAlign: "center" }}>
+            {backgroundImage && elements.length === 0 && <div style={{ color: P.orange, marginBottom: 4 }}>Previous diagram shown as reference (faded). Place new elements on top.</div>}
+            {tool === "arrow" && arrowStart ? "Click to set arrow end point" : tool === "select" ? "Click elements to select, drag to move" : `Click on pitch to place ${tool}`}
           </div>
         </div>
       </div>
@@ -7392,329 +5748,6 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
 /* ============================================================
    DRILL CARD BUILDER — Create custom drill cards from scratch
    ============================================================ */
-
-function spraoiRichHtml(value) {
-  const raw = String(value || "");
-  if (!raw) return "";
-
-  const looksLikeHtml = /<(p|div|br|strong|b|em|i|u|ul|ol|li)\b/i.test(raw);
-  const source = looksLikeHtml
-    ? raw
-    : raw
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/\n/g, "<br>");
-
-  if (typeof document === "undefined") return source;
-
-  const box = document.createElement("div");
-  box.innerHTML = source;
-
-  box.querySelectorAll("script,style,iframe,object,embed").forEach((el) => el.remove());
-
-  const allowed = new Set(["B","STRONG","I","EM","U","UL","OL","LI","P","DIV","BR"]);
-  [...box.querySelectorAll("*")].forEach((el) => {
-    [...el.attributes].forEach((attr) => el.removeAttribute(attr.name));
-    if (!allowed.has(el.tagName)) {
-      el.replaceWith(document.createTextNode(el.textContent || ""));
-    }
-  });
-
-  return box.innerHTML;
-}
-
-function spraoiRichPlain(value) {
-  const html = spraoiRichHtml(value);
-  if (typeof document === "undefined") {
-    return String(value || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-  }
-
-  const box = document.createElement("div");
-  box.innerHTML = html;
-  return (box.innerText || box.textContent || "").replace(/\u00a0/g, " ").trim();
-}
-
-function SpraoiRichTextDisplay({ value, style }) {
-  if (!value) return null;
-  return <div style={style} dangerouslySetInnerHTML={{ __html: spraoiRichHtml(value) }} />;
-}
-
-function SpraoiRichTextEditor({
-  value,
-  onChange,
-  placeholder,
-}) {
-  const editorRef = useRef(null);
-
-  useEffect(() => {
-    const el = editorRef.current;
-
-    if (!el || document.activeElement === el) {
-      return;
-    }
-
-    const html = spraoiRichHtml(value);
-
-    if (el.innerHTML !== html) {
-      el.innerHTML = html;
-    }
-  }, [value]);
-
-  function run(command) {
-    editorRef.current?.focus();
-
-    document.execCommand(
-      command,
-      false,
-      null
-    );
-
-    onChange(
-      editorRef.current?.innerHTML || ""
-    );
-  }
-
-  const toolbarButton = {
-    border: "none",
-    background: "transparent",
-    minWidth: 30,
-    height: 28,
-    padding: "0 7px",
-    borderRadius: 5,
-    fontFamily: F.body,
-    fontSize: 10,
-    fontWeight: 800,
-    color: P.muted,
-    cursor: "pointer",
-  };
-
-  return (
-    <div
-      style={{
-        width: "100%",
-        boxSizing: "border-box",
-        marginBottom: 12,
-        border: `1.5px solid ${P.line}`,
-        borderRadius: 8,
-        overflow: "hidden",
-        background: P.white,
-      }}
-    >
-      <div
-        style={{
-          width: "100%",
-          boxSizing: "border-box",
-          display: "flex",
-          alignItems: "center",
-          gap: 2,
-          flexWrap: "wrap",
-          padding: "5px 7px",
-          borderBottom: `1px solid ${P.line}`,
-          background: P.soft,
-        }}
-      >
-        <button
-          type="button"
-          title="Bold"
-          onMouseDown={(e) => {
-            e.preventDefault();
-            run("bold");
-          }}
-          style={toolbarButton}
-        >
-          B
-        </button>
-
-        <button
-          type="button"
-          title="Italic"
-          onMouseDown={(e) => {
-            e.preventDefault();
-            run("italic");
-          }}
-          style={{
-            ...toolbarButton,
-            fontStyle: "italic",
-          }}
-        >
-          I
-        </button>
-
-        <button
-          type="button"
-          title="Underline"
-          onMouseDown={(e) => {
-            e.preventDefault();
-            run("underline");
-          }}
-          style={{
-            ...toolbarButton,
-            textDecoration: "underline",
-          }}
-        >
-          U
-        </button>
-
-        <div
-          style={{
-            width: 1,
-            height: 18,
-            background: P.line,
-            margin: "0 3px",
-          }}
-        />
-
-        <button
-          type="button"
-          title="Bulleted list"
-          onMouseDown={(e) => {
-            e.preventDefault();
-            run("insertUnorderedList");
-          }}
-          style={toolbarButton}
-        >
-          Bullets
-        </button>
-
-        <button
-          type="button"
-          title="Numbered list"
-          onMouseDown={(e) => {
-            e.preventDefault();
-            run("insertOrderedList");
-          }}
-          style={toolbarButton}
-        >
-          Numbered
-        </button>
-      </div>
-
-      <div
-        ref={editorRef}
-        contentEditable
-        suppressContentEditableWarning
-        data-placeholder={placeholder}
-        aria-label={placeholder}
-        onInput={(e) =>
-          onChange(
-            e.currentTarget.innerHTML
-          )
-        }
-        onBlur={(e) =>
-          onChange(
-            e.currentTarget.innerHTML
-          )
-        }
-        style={{
-          display: "block",
-          width: "100%",
-          boxSizing: "border-box",
-          minHeight: 96,
-          padding: "11px 12px",
-          border: "none",
-          borderRadius: 0,
-          outline: "none",
-          fontFamily: F.body,
-          fontSize: 12,
-          lineHeight: 1.55,
-          background: P.white,
-          color: P.ink,
-          overflowY: "auto",
-        }}
-      />
-    </div>
-  );
-}
-
-
-const DESCRIPTIVE_DRILL_TITLE_ALIASES = {
-  "Underarm Throw - Knock Down Target Circle": "Alien Attack",
-  "Hurley Balance - Hidden Beanbag Cone Relay": "BeanBag Bonanza",
-  "Hurley Balance - Moving Beanbag Control": "Beanbag Boogie",
-  "Hurley Balance - Opposed Beanbag Control": "Beanbag Joust",
-  "Hurley Balance - Colour Cone Criss-Cross Relay": "Colour Criss Cross",
-  "Cone Lift - Scoop & Return Relay": "Cone Scoop",
-  "Ground Strike - Continuous Two-Team Clearance": "Don't let the ball stop",
-  "Hurley Balance - Beanbag Control Relay": "Flip the pancake",
-  "Ground Strike - 2v2 Goal Scoring Game": "Goals Galore",
-  "Dribble - Multi-Gate Dribble Challenge": "Goals Goals Goals",
-  "Cone Lift - Cone Pick-Up Relay": "Hook a Duck",
-  "Jab Lift - Lift & Return Relay": "Jab it",
-  "Dribble - Ball Protection Ring Game": "King or Queen of the Ring",
-  "Jab Lift - Cone & Hoop Lift Challenge": "Lifting Eggs",
-  "Dribble - Control & Chase Grid": "Pac Man",
-  "Jab Lift - Partner Scoop Challenge": "Partner Scoop",
-  "Ground Strike - Gate Passing Rally": "Rally Alley",
-  "Roll Lift - Roll Back & Cone Lift": "Roll Back and Flip Over",
-  "Strike from the Hand - Wall Strike Technique": "Salute the Strike",
-  "Target Accuracy - Strike the Targets": "Skittles",
-  "Throwing Accuracy - Two-Team Clearance Game": "Smelly Socks",
-  "Team Coordination - Multi-Stage Ball & Hurley Relay": "The Wheel",
-  "Spatial Awareness - Colour Cone Movement Tasks": "Traffic Jammer",
-  "Target Accuracy - Chute-to-Cone Target Game": "Aim and Shoot",
-  "Ball Control - Around-the-Body Movement": "Around the World",
-  "Passing - Circle Pass vs Runner Race": "Beat the Circle",
-  "Target Accuracy - Move the Large Ball": "Big Ball Bombardment",
-  "Target Accuracy - Two-Team Large Ball Push": "Boulder Bowling",
-  "Ball Control - Bubble Tracking & Striking": "Bubble World",
-  "Passing - Captain Target Passing Game": "Captain Ball",
-  "Movement - Partner Follow & Mirror": "Chasing Shadows",
-  "Passing - Clear & Return Ball Game": "Clear the Circle",
-  "Agility - Traffic-Light Movement Course": "Crazy Cars",
-  "Passing - Moving Gate Passing Challenge": "Find the Goal",
-  "Coordination - Hoop Stepping Race": "Frog Race",
-  "Target Accuracy - Moving Hoop Passing": "Hoop Hurrah",
-  "Team Coordination - Linked Circle Hoop Pass": "Hula Hoop Loop",
-  "Throwing Accuracy - Javelin Through Hoops": "Javelin",
-  "Ball Control - Team Keep-Up Circle": "Keepie Uppies",
-  "Agility - Colour Cone Reaction Course": "Minefield",
-  "Coordination - Partner Mirror Movement": "Mirror Mirror",
-  "Team Coordination - Parachute Movement & Ball Control": "Parachute Play",
-  "Throwing Accuracy - Progressive Hoop Targets": "Pot of Gold",
-  "Balance - Stepping-Stone Ball Carry": "Rescue Ball",
-  "Passing - Line Passing Relay": "Speed Lines",
-  "Speed - Hoop-to-Hoop Ball Relay": "Swap Shop",
-  "Support Play - Wide-Zone Conditioned Game": "Wide Player",
-  "Reaction Speed - Colour Cone Collection Race": "Colour Grab",
-  "Chest Catch - Circle Catch vs Runner Race": "Chest Catch - Beat the Circle",
-  "Chest Catch - Captain Target Catch Game": "Chest Catch - Captain Ball",
-  "Hook - Timed Chase & Hook Race": "Hook - A Race against Time",
-  "Hook - Chase & Hook Tag": "Hook - Catch Me if You Can",
-  "Dribble - Fill-the-Circle Possession Game": "Dribble - Fill the Circle",
-  "Stopping a Ground Ball - Goal-to-Goal Blocking": "Stopping a Ground Ball - Goal to Goal",
-  "Stopping a Ground Ball - Guarded Lane Blocking": "Stopping a Ground Ball - Pass the Guards",
-  "Stopping a Ground Ball - Central Defender Blocking": "Stopping a Ground Ball - Piggy in the Middle",
-  "Ground Strike - Accuracy Through Gates": "Strike on the Ground - Golf Goals",
-  "Ground Strike - Four-Goal Scoring Game": "Strike on the Ground - Four Goal Game",
-  "Frontal Ground Block - Points-Based Blocking Game": "Frontal Ground Block - Skill Point Game",
-  "Strike from the Hand - Wide Target Striking": "Strike from the Hand - Keep it Wide",
-  "Strike from the Hand - Possession Striking Game": "Strike from the Hand - Keep Ball",
-  "Strike from the Hand - Points-Based Striking Game": "Strike from the Hand - Skill Point Game",
-  "Ground Strike on the Run - Wide Target Striking": "Ground Strike On the Run - Keep it Wide",
-  "Ground Strike on the Run - Rounders Game": "Ground Strike On the Run - Ground Strike Rounders",
-  "Roll Lift - Moving Cone Reaction Game": "Roll Lift - Musical Chairs",
-  "Overhead Catch - Points-Based Catching Game": "Overhead Catch - Skill Point Game",
-  "Jab Lift - Moving Cone Reaction Game": "Jab Lift - Musical Chairs",
-  "Solo Run - Central Channel Solo": "Solo Run - Through the Middle",
-  "Solo Run - Grid-to-Grid Solo": "Solo Run - Grid Swap",
-  "Solo Run - Tag & Evasion Game": "Solo Run - Solo Tag",
-  "Ground Flick - Possession Game": "Ground Flick - Keep Ball",
-  "Ground Flick - 1v1 Opposed Flick": "Ground Flick - One on One",
-  "Ground Flick - Points-Based Flicking Game": "Ground Flick - Skill Point Game",
-  "Overhead Striking - Zone Clearance Game": "Overhead Striking - No Mans Land",
-  "Overhead Striking - 1v1 Opposed Strike": "Overhead Striking - One on One"
-};
-
-function getActivityDiagram(activity, diagramMap) {
-  if (!activity || !diagramMap) return null;
-  return (
-    diagramMap[activity.title] ||
-    diagramMap[DESCRIPTIVE_DRILL_TITLE_ALIASES[activity.title]] ||
-    null
-  );
-}
-
 function DrillCardBuilder({ diagramMap, allActivities, userRole, copyFrom, onBack }) {
   const [title, setTitle] = useState(copyFrom?.title ? copyFrom.title + " (Copy)" : "");
   const [description, setDescription] = useState(copyFrom?.description || "");
@@ -7726,7 +5759,7 @@ function DrillCardBuilder({ diagramMap, allActivities, userRole, copyFrom, onBac
   const [difficulty, setDifficulty] = useState(copyFrom?.difficulty || "foundation");
   const [duration, setDuration] = useState(String(copyFrom?.duration_mins || copyFrom?.duration || "10"));
   const [selectedDiagram, setSelectedDiagram] = useState(() => {
-    if (copyFrom && getActivityDiagram(copyFrom, diagramMap)) return getActivityDiagram(copyFrom, diagramMap);
+    if (copyFrom && diagramMap[copyFrom.title]) return diagramMap[copyFrom.title];
     return copyFrom?.diagram || "";
   });
   const [diagramSearch, setDiagramSearch] = useState("");
@@ -7753,12 +5786,12 @@ function DrillCardBuilder({ diagramMap, allActivities, userRole, copyFrom, onBac
   function saveCard() {
     if (!title.trim()) { showToast("Add a title first"); return; }
     if (title.trim().endsWith("(Copy)")) { showToast("Rename the card — remove '(Copy)' and give it a unique name"); return; }
-    if (!spraoiRichPlain(description).trim()) { showToast("Add a description"); return; }
-    if (!spraoiRichPlain(coachingPoints).trim()) { showToast("Add at least one coaching point"); return; }
+    if (!description.trim()) { showToast("Add a description"); return; }
+    if (!coachingPoints.trim()) { showToast("Add at least one coaching point"); return; }
     // Duplicate title check (skip if editing the same card)
     const isDuplicate = savedCards.some((c, i) => c.title.toLowerCase() === title.trim().toLowerCase() && i !== editingIdx);
     if (isDuplicate) { showToast("A card with this title already exists"); return; }
-    const card = { id: editingIdx !== null ? savedCards[editingIdx].id : Date.now().toString(), title: title.trim(), description: spraoiRichPlain(description), descriptionHtml: spraoiRichHtml(description), coachingPoints: spraoiRichPlain(coachingPoints), coachingPointsHtml: spraoiRichHtml(coachingPoints), setup, equipment, sport, category, difficulty, duration: parseInt(duration) || 10, diagram: selectedDiagram, customDiagram: customDiagram || null, diagramElements: diagramElements.length > 0 ? diagramElements : null, createdAt: editingIdx !== null ? savedCards[editingIdx].createdAt : new Date().toISOString() };
+    const card = { id: editingIdx !== null ? savedCards[editingIdx].id : Date.now().toString(), title: title.trim(), description, coachingPoints, setup, equipment, sport, category, difficulty, duration: parseInt(duration) || 10, diagram: selectedDiagram, customDiagram: customDiagram || null, diagramElements: diagramElements.length > 0 ? diagramElements : null, createdAt: editingIdx !== null ? savedCards[editingIdx].createdAt : new Date().toISOString() };
     let updated;
     if (editingIdx !== null) { updated = [...savedCards]; updated[editingIdx] = card; } else { updated = [...savedCards, card]; }
     setSavedCards(updated);
@@ -7783,7 +5816,7 @@ function DrillCardBuilder({ diagramMap, allActivities, userRole, copyFrom, onBac
     if (!c) return;
     const proceed = window.confirm(`Edit "${c.title}"?\n\nThis card may be in use in coaching plans. Changes will apply everywhere it appears.`);
     if (!proceed) return;
-    setTitle(c.title || ""); setDescription(c.descriptionHtml || c.description || ""); setCoachingPoints(c.coachingPointsHtml || c.coachingPoints || "");
+    setTitle(c.title || ""); setDescription(c.description || ""); setCoachingPoints(c.coachingPoints || "");
     setSetup(c.setup || ""); setEquipment(c.equipment || ""); setSport(c.sport || "football");
     setCategory(c.category || ""); setDifficulty(c.difficulty || "foundation");
     setDuration(String(c.duration || 10)); setSelectedDiagram(c.diagram || "");
@@ -7801,12 +5834,12 @@ function DrillCardBuilder({ diagramMap, allActivities, userRole, copyFrom, onBac
   }
 
   function copyFromExisting(activity) {
-    setTitle((activity.title || "") + " (Copy)"); setDescription(activity.description_html || activity.description || "");
-    setCoachingPoints(activity.coaching_points_html || activity.coaching_points || ""); setSetup(activity.setup || "");
+    setTitle((activity.title || "") + " (Copy)"); setDescription(activity.description || "");
+    setCoachingPoints(activity.coaching_points || ""); setSetup(activity.setup || "");
     setEquipment(activity.equipment || ""); setSport(activity.sport || "football");
     setCategory(activity.category || ""); setDifficulty(activity.difficulty || "foundation");
     setDuration(String(activity.duration_mins || 10));
-    if (getActivityDiagram(activity, diagramMap)) setSelectedDiagram(getActivityDiagram(activity, diagramMap));
+    if (diagramMap[activity.title]) setSelectedDiagram(diagramMap[activity.title]);
   }
 
   const { sportIcon, catIcon } = getDrillIcons({ sport, category, title });
@@ -7815,7 +5848,7 @@ function DrillCardBuilder({ diagramMap, allActivities, userRole, copyFrom, onBac
     <div style={{ padding: "16px 24px" }}>
       {/* Back button */}
       <div style={{ marginBottom: 14 }}>
-        <button onClick={onBack} style={{ padding: "6px 14px", borderRadius: 8, border: `1.5px solid ${P.line}`, background: P.white, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, cursor: "pointer" }}>{String.fromCodePoint(0x2190)} Back</button>
+        <button onClick={onBack} style={{ padding: "6px 14px", borderRadius: 8, border: `1.5px solid ${P.line}`, background: P.white, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, cursor: "pointer" }}>â† Back to Library</button>
       </div>
       <div style={{ display: "flex", gap: 20 }}>
         {/* LEFT — Form */}
@@ -7870,63 +5903,19 @@ function DrillCardBuilder({ diagramMap, allActivities, userRole, copyFrom, onBac
 
             {/* Description */}
             <label style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, color: P.muted, textTransform: "uppercase", marginBottom: 4, display: "block" }}>Description</label>
-            <SpraoiRichTextEditor value={description} onChange={setDescription} placeholder="Describe the drill..." />
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Describe the drill..." rows={3} style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 12, resize: "vertical", marginBottom: 12 }} />
 
             {/* Coaching Points */}
             <label style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, color: P.muted, textTransform: "uppercase", marginBottom: 4, display: "block" }}>Coaching Points</label>
-            <SpraoiRichTextEditor value={coachingPoints} onChange={setCoachingPoints} placeholder="Add clear coaching points..." />
+            <textarea value={coachingPoints} onChange={(e) => setCoachingPoints(e.target.value)} placeholder="Key points, use bullet • for separation..." rows={3} style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 12, resize: "vertical", marginBottom: 12 }} />
 
             {/* Setup */}
             <label style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, color: P.muted, textTransform: "uppercase", marginBottom: 4, display: "block" }}>Setup</label>
-            <textarea
-            value={setup}
-            onChange={(e) => setSetup(e.target.value)}
-            placeholder="Describe how to set up the drill..."
-            rows={3}
-            style={{
-              display: "block",
-              width: "100%",
-              maxWidth: "100%",
-              boxSizing: "border-box",
-              minHeight: 92,
-              padding: "10px 12px",
-              margin: "0 0 12px 0",
-              borderRadius: 8,
-              border: `1.5px solid ${P.line}`,
-              outline: "none",
-              fontFamily: F.body,
-              fontSize: 12,
-              lineHeight: 1.55,
-              resize: "vertical",
-              background: P.white,
-              color: P.ink,
-            }}
-          />
+            <textarea value={setup} onChange={(e) => setSetup(e.target.value)} placeholder="How to set up the drill..." rows={2} style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 12, resize: "vertical", marginBottom: 12 }} />
 
             {/* Equipment */}
             <label style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, color: P.muted, textTransform: "uppercase", marginBottom: 4, display: "block" }}>Equipment</label>
-            <input
-            type="text"
-            value={equipment}
-            onChange={(e) => setEquipment(e.target.value)}
-            placeholder="e.g. cones, footballs, bibs"
-            style={{
-              display: "block",
-              width: "100%",
-              maxWidth: "100%",
-              boxSizing: "border-box",
-              height: 38,
-              padding: "0 12px",
-              margin: "0 0 12px 0",
-              borderRadius: 8,
-              border: `1.5px solid ${P.line}`,
-              outline: "none",
-              fontFamily: F.body,
-              fontSize: 12,
-              background: P.white,
-              color: P.ink,
-            }}
-          />
+            <input type="text" value={equipment} onChange={(e) => setEquipment(e.target.value)} placeholder="e.g. Cones, bibs, sliotars" style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 12, marginBottom: 12 }} />
 
             {/* Diagram picker */}
             <label style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, color: P.muted, textTransform: "uppercase", marginBottom: 4, display: "block" }}>Diagram</label>
@@ -8030,12 +6019,12 @@ function DrillCardBuilder({ diagramMap, allActivities, userRole, copyFrom, onBac
                   <span style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}> - </span>
                   <span style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, color: P.ink }}>{duration || "?"}min</span>
                 </div>
-                {description && <SpraoiRichTextDisplay value={description} style={{ fontFamily: F.body, fontSize: 11, color: P.ink, lineHeight: 1.5, marginBottom: 8 }} />}
+                {description && <div style={{ fontFamily: F.body, fontSize: 11, color: P.ink, lineHeight: 1.5, marginBottom: 8 }}>{description}</div>}
                 {coachingPoints && (
                   <div style={{ marginBottom: 8 }}>
                     <div style={{ fontFamily: F.body, fontSize: 9, fontWeight: 700, color: P.p600, textTransform: "uppercase", marginBottom: 4 }}>Coaching Points</div>
                     <div style={{ fontFamily: F.body, fontSize: 10, color: P.ink, lineHeight: 1.5, background: P.soft, borderRadius: 6, padding: 8 }}>
-                      <SpraoiRichTextDisplay value={coachingPoints} />
+                      {coachingPoints.split("•").filter(Boolean).map((pt, i) => <div key={i} style={{ display: "flex", gap: 4, marginBottom: 2 }}><span style={{ color: P.p600, fontWeight: 700 }}>•</span><span>{pt.trim()}</span></div>)}
                     </div>
                   </div>
                 )}
@@ -9360,65 +7349,7 @@ function getAcademyWeeklyRecommendations(planSessions, skills = [], overrides = 
       return b.totalScore - a.totalScore;
     });
 
-    /*
-     * Academy recommendation priority:
-     * 1. Explicit coach override is applied below.
-     * 2. Stable linked skill IDs from Coach activities.
-     * 3. Existing ranked/text matching.
-     * 4. Existing combined-text fallback.
-     *
-     * This keeps Academy recommendations stable when drill titles
-     * or display labels change.
-     */
-    const linkedSkillCounts = new Map();
-
-    sourceActivities.forEach((activity) => {
-      const linkedSkillId =
-        activity?.skillId ||
-        activity?.skill_id ||
-        activity?.skillObject?.id ||
-        activity?.skill?.id ||
-        null;
-
-      if (!linkedSkillId) return;
-
-      linkedSkillCounts.set(
-        linkedSkillId,
-        (linkedSkillCounts.get(linkedSkillId) || 0) + 1
-      );
-    });
-
-    const rankedLinkedSkills = [...linkedSkillCounts.entries()]
-      .map(([skillId, frequency]) => {
-        const skill = codeSkills.find(
-          (candidate) => candidate?.id === skillId
-        );
-
-        return skill
-          ? {
-              skill,
-              frequency,
-              totalScore: 1000 + frequency,
-              sources: sourceActivities.filter((activity) => {
-                const activitySkillId =
-                  activity?.skillId ||
-                  activity?.skill_id ||
-                  activity?.skillObject?.id ||
-                  activity?.skill?.id ||
-                  null;
-
-                return activitySkillId === skillId;
-              }),
-            }
-          : null;
-      })
-      .filter(Boolean)
-      .sort((a, b) => b.frequency - a.frequency);
-
-    let selectedTheme =
-      rankedLinkedSkills[0] ||
-      rankedThemes[0] ||
-      null;
+    let selectedTheme = rankedThemes[0] || null;
 
     if (!selectedTheme && codeSkills.length) {
       const corpusActivity = {
@@ -9504,7 +7435,7 @@ function AcademyPhonePreview({ planSessions = [], extras = [], skills = [], over
   const taskRow=(item)=><div key={item.id} style={{ display:"flex",alignItems:"center",gap:8,padding:"8px 9px",borderRadius:10,background:"#f8fafc" }}><div style={{flex:1,minWidth:0}}><div style={{fontFamily:F.body,fontSize:10,fontWeight:800,color:P.ink}}>{item.title}</div><div style={{fontFamily:F.body,fontSize:8,color:P.muted,marginTop:2}}>{item.target || item.description || item.instruction || "Complete this mission"}</div></div><span style={{fontFamily:F.body,fontSize:8,fontWeight:800,color:"#b45309"}}>+{item.xp || item.xp_reward || 10} XP</span></div>;
   const skillRow=(item)=><div key={item.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 9px",borderRadius:10,background:"#f8fafc"}}><div style={{width:32,height:32,borderRadius:9,background:"#e0f2fe",display:"grid",placeItems:"center"}}>▶</div><div style={{flex:1,minWidth:0}}><div style={{fontFamily:F.body,fontSize:10,fontWeight:800,color:P.ink}}>{item.matchedSkill?.name || "Choose weekly video"}</div><div style={{fontFamily:F.body,fontSize:8,color:P.muted,marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>Based on {item.sourceDrills.length} Coach drill{item.sourceDrills.length===1?"":"s"}</div></div><span style={{fontFamily:F.body,fontSize:8,fontWeight:800,color:"#b45309"}}>+20 XP</span></div>;
   const visibleCount = football.length+hurling.length+Object.values(grouped).reduce((sum,items)=>sum+items.length,0);
-  return <div style={{ width: compact ? 300 : "min(390px,100%)", maxHeight: compact ? 600 : "none", overflow:"hidden", background:"#fff",borderRadius:compact?26:32,border:compact?"6px solid #16324a":"8px solid #16324a",boxShadow:"0 22px 52px rgba(7,89,133,.2)" }}><div style={{background:"linear-gradient(135deg,#38bdf8,#0284c7)",padding:compact?"16px 14px":"22px 18px",color:"#fff",position:"relative",overflow:"hidden"}}><img src="/spraoi-academy-icon.png" alt="" style={{position:"absolute",right:8,bottom:-8,width:compact?68:88,height:compact?68:88,objectFit:"contain",background:"#fff",borderRadius:18,padding:6}}/><div style={{fontFamily:F.body,fontSize:8,fontWeight:800,opacity:.85,textTransform:"uppercase"}}>Club Spraoi Academy</div><div style={{fontFamily:F.display,fontSize:compact?18:24,fontWeight:800,marginTop:3,maxWidth:"70%"}}>Your weekly adventure</div><div style={{display:"flex",gap:6,marginTop:11}}><span style={previewPill}>⭐ {recommendations.length*20+extras.reduce((s,x)=>s+Number(x.xp||x.xp_reward||0),0)} XP</span><span style={previewPill}>Badges</span></div></div><div style={{padding:compact?10:15,background:"#f3f9fd",maxHeight:compact?460:"none",overflowY:"auto"}}>{visibleCount===0?<div style={{padding:18,textAlign:"center",fontFamily:F.body,fontSize:10,color:P.muted}}>Add weekly content to see the child experience here.</div>:<>{section("Step Goals",grouped.steps,"#0f9f6e","👟",taskRow)}{section("Exercises",grouped.exercises,"#7c3aed","💪",taskRow)}{section("Run Challenge",grouped.runs,"#D89A00","🏃",taskRow)}{section("Football Skills",football,"#2563eb","⚽",skillRow)}{section(selectedTeam?.gender === "girls" ? "Camogie Skills" : "Hurling Skills",hurling,"#dc2626","🏑",skillRow)}{section("Bonus",grouped.bonus,"#d97706","✨",taskRow)}{section("Rest & Recovery",grouped.recovery,"#0f766e","🌙",taskRow)}</>}<div style={{marginTop:10,padding:9,borderRadius:11,background:published?"#dcfce7":"#fff7ed",color:published?"#15803d":"#b45309",fontFamily:F.body,fontSize:8,fontWeight:800,textAlign:"center"}}>{published?"✓ Published to children":"Preview mode — not published"}</div></div></div>;
+  return <div style={{ width: compact ? 300 : "min(390px,100%)", maxHeight: compact ? 600 : "none", overflow:"hidden", background:"#fff",borderRadius:compact?26:32,border:compact?"6px solid #16324a":"8px solid #16324a",boxShadow:"0 22px 52px rgba(7,89,133,.2)" }}><div style={{background:"linear-gradient(135deg,#38bdf8,#0284c7)",padding:compact?"16px 14px":"22px 18px",color:"#fff",position:"relative",overflow:"hidden"}}><img src="/spraoi-academy-icon.png" alt="" style={{position:"absolute",right:8,bottom:-8,width:compact?68:88,height:compact?68:88,objectFit:"contain",background:"#fff",borderRadius:18,padding:6}}/><div style={{fontFamily:F.body,fontSize:8,fontWeight:800,opacity:.85,textTransform:"uppercase"}}>Club Spraoi Academy</div><div style={{fontFamily:F.display,fontSize:compact?18:24,fontWeight:800,marginTop:3,maxWidth:"70%"}}>Your weekly adventure</div><div style={{display:"flex",gap:6,marginTop:11}}><span style={previewPill}>⭐ {recommendations.length*20+extras.reduce((s,x)=>s+Number(x.xp||x.xp_reward||0),0)} XP</span><span style={previewPill}>ðŸ… Badges</span></div></div><div style={{padding:compact?10:15,background:"#f3f9fd",maxHeight:compact?460:"none",overflowY:"auto"}}>{visibleCount===0?<div style={{padding:18,textAlign:"center",fontFamily:F.body,fontSize:10,color:P.muted}}>Add weekly content to see the child experience here.</div>:<>{section("Step Goals",grouped.steps,"#0f9f6e","👟",taskRow)}{section("Exercises",grouped.exercises,"#7c3aed","💪",taskRow)}{section("Run Challenge",grouped.runs,"#D89A00","🏃",taskRow)}{section("Football Skills",football,"#2563eb","⚽",skillRow)}{section(selectedTeam?.gender === "girls" ? "Camogie Skills" : "Hurling Skills",hurling,"#dc2626","🏑",skillRow)}{section("Bonus",grouped.bonus,"#d97706","✨",taskRow)}{section("Rest & Recovery",grouped.recovery,"#0f766e","🌙",taskRow)}</>}<div style={{marginTop:10,padding:9,borderRadius:11,background:published?"#dcfce7":"#fff7ed",color:published?"#15803d":"#b45309",fontFamily:F.body,fontSize:8,fontWeight:800,textAlign:"center"}}>{published?"✓ Published to children":"Preview mode — not published"}</div></div></div>;
 }
 
 function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras = [], skills = [], overrides = {}, published = false, onSetOverride, onNav }) {
@@ -11753,7 +9684,7 @@ export default function App() {
           {activities.map((sa, i) => {
             const act = sa.activity || {};
             const { sportIcon, catIcon } = getDrillIcons(act);
-            const df = getActivityDiagram(act, diagramMap);
+            const df = diagramMap[act.title];
             return (
               <div key={sa.id} style={{ background: P.white, borderRadius: 12, border: `1px solid ${P.line}`, padding: 14, marginBottom: 8 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
@@ -12410,4 +10341,3 @@ export default function App() {
     </div>
   );
 }
-
