@@ -5186,7 +5186,7 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
   const [filterCat, setFilterCat] = useState("");
   const [filterSport, setFilterSport] = useState("");
   const [filterSkill, setFilterSkill] = useState("");
-  const [selectedIdx, setSelectedIdx] = useState(null); // index in filtered array
+  const [selectedDrillId, setSelectedDrillId] = useState(null);
   const [mode, setMode] = useState("library"); // "library" or "builder"
   const [builderDrill, setBuilderDrill] = useState(null); // drill to copy into builder
   const [customDrillsVersion, setCustomDrillsVersion] = useState(0); // trigger re-render when custom drills change
@@ -5282,6 +5282,139 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
       a.name.localeCompare(b.name)
   );
 
+  function normaliseDrillSearch(value) {
+    return String(value || "")
+      .toLowerCase()
+      .replace(/&/g, " and ")
+      .replace(/side\s*line/g, "sideline")
+      .replace(/hand\s*pass/g, "handpass")
+      .replace(/kick\s*pass/g, "kickpass")
+      .replace(/roll\s*lift/g, "rolllift")
+      .replace(/solo\s*run/g, "solorun")
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim()
+      .replace(/\s+/g, " ");
+  }
+
+  function drillSearchWords(value) {
+    return normaliseDrillSearch(value)
+      .split(" ")
+      .filter(Boolean);
+  }
+
+  function drillWordSimilarity(a, b) {
+    if (!a || !b) return 0;
+    if (a === b) return 1;
+    if (a.includes(b) || b.includes(a)) return 0.9;
+
+    const longer = a.length >= b.length ? a : b;
+    const shorter = a.length >= b.length ? b : a;
+
+    if (longer.length < 4) return 0;
+
+    let matches = 0;
+    let cursor = 0;
+
+    for (const ch of shorter) {
+      const index = longer.indexOf(ch, cursor);
+      if (index !== -1) {
+        matches += 1;
+        cursor = index + 1;
+      }
+    }
+
+    return matches / longer.length;
+  }
+
+  function drillSearchScore(activity, rawQuery) {
+    const q = normaliseDrillSearch(rawQuery);
+    if (!q) return 0;
+
+    const title = normaliseDrillSearch(activity?.title);
+    const skill = normaliseDrillSearch(
+      activity?.coach_skill?.name ||
+      activity?.skill?.name
+    );
+    const category = normaliseDrillSearch(
+      activity?.category ||
+      activity?.skill?.category
+    );
+    const description = normaliseDrillSearch(activity?.description);
+    const coaching = normaliseDrillSearch(activity?.coaching_points);
+    const setup = normaliseDrillSearch(activity?.setup);
+
+    const queryWords = drillSearchWords(q);
+    const titleWords = drillSearchWords(title);
+
+    let score = 0;
+
+    if (title === q) score += 1000;
+    else if (title.startsWith(q)) score += 800;
+    else if (title.includes(q)) score += 650;
+
+    if (skill === q) score += 550;
+    else if (skill.startsWith(q)) score += 450;
+    else if (skill.includes(q)) score += 350;
+
+    if (category === q) score += 300;
+    else if (category.includes(q)) score += 220;
+
+    let allWordsFound = true;
+
+    for (const queryWord of queryWords) {
+      let wordScore = 0;
+
+      if (titleWords.includes(queryWord)) {
+        wordScore = 120;
+      } else {
+        const bestTitleSimilarity = titleWords.reduce(
+          (best, titleWord) =>
+            Math.max(
+              best,
+              drillWordSimilarity(queryWord, titleWord)
+            ),
+          0
+        );
+
+        if (bestTitleSimilarity >= 0.78) {
+          wordScore = 75 * bestTitleSimilarity;
+        }
+      }
+
+      if (!wordScore && skill.includes(queryWord)) {
+        wordScore = 70;
+      }
+
+      if (!wordScore && category.includes(queryWord)) {
+        wordScore = 55;
+      }
+
+      if (!wordScore && description.includes(queryWord)) {
+        wordScore = 35;
+      }
+
+      if (!wordScore && coaching.includes(queryWord)) {
+        wordScore = 25;
+      }
+
+      if (!wordScore && setup.includes(queryWord)) {
+        wordScore = 20;
+      }
+
+      if (!wordScore) {
+        allWordsFound = false;
+      }
+
+      score += wordScore;
+    }
+
+    if (queryWords.length > 1 && allWordsFound) {
+      score += 180;
+    }
+
+    return score;
+  }
+
   let filtered = [...mergedActivities];
 
   if (filterSport) {
@@ -5308,19 +5441,23 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
   }
 
   if (search.trim()) {
-    const q = search.toLowerCase();
-
-    filtered = filtered.filter(
-      (a) =>
-        a.title?.toLowerCase().includes(q) ||
-        a.coach_skill?.name
-          ?.toLowerCase()
-          .includes(q) ||
-        a.description?.toLowerCase().includes(q) ||
-        a.coaching_points
-          ?.toLowerCase()
-          .includes(q)
-    );
+    filtered = filtered
+      .map((activity) => ({
+        activity,
+        searchScore: drillSearchScore(
+          activity,
+          search
+        ),
+      }))
+      .filter((row) => row.searchScore >= 20)
+      .sort(
+        (a, b) =>
+          b.searchScore - a.searchScore ||
+          String(a.activity.title || "").localeCompare(
+            String(b.activity.title || "")
+          )
+      )
+      .map((row) => row.activity);
   }
 
   if (filterSport) {
@@ -5336,34 +5473,70 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
     );
   }
 
-  // Sort favourites first only while browsing the grid.
-  // Keeping the order stable while the modal is open prevents the selected
-  // drill from changing when it is favourited/unfavourited.
-  if (selectedIdx === null) {
+  // When no search is active, favourites stay at the top.
+  // Search results are already ranked by relevance.
+  if (!search.trim()) {
     filtered.sort((a, b) => {
       const af = (favouriteIds || []).includes(a.id) ? 0 : 1;
       const bf = (favouriteIds || []).includes(b.id) ? 0 : 1;
+
       if (af !== bf) return af - bf;
-      return a.title.localeCompare(b.title);
+
+      return String(a.title || "").localeCompare(
+        String(b.title || "")
+      );
     });
   }
 
-  const selectedDrill = selectedIdx !== null ? filtered[selectedIdx] : null;
+  const selectedDrillIndex = selectedDrillId
+    ? filtered.findIndex(
+        (activity) =>
+          String(activity.id) ===
+          String(selectedDrillId)
+      )
+    : -1;
 
-  function goNext() { if (selectedIdx !== null && selectedIdx < filtered.length - 1) setSelectedIdx(selectedIdx + 1); }
-  function goPrev() { if (selectedIdx !== null && selectedIdx > 0) setSelectedIdx(selectedIdx - 1); }
+  const selectedDrill =
+    selectedDrillIndex >= 0
+      ? filtered[selectedDrillIndex]
+      : selectedDrillId
+        ? mergedActivities.find(
+            (activity) =>
+              String(activity.id) ===
+              String(selectedDrillId)
+          ) || null
+        : null;
+
+  function goNext() {
+    if (
+      selectedDrillIndex >= 0 &&
+      selectedDrillIndex < filtered.length - 1
+    ) {
+      setSelectedDrillId(
+        filtered[selectedDrillIndex + 1].id
+      );
+    }
+  }
+
+  function goPrev() {
+    if (selectedDrillIndex > 0) {
+      setSelectedDrillId(
+        filtered[selectedDrillIndex - 1].id
+      );
+    }
+  }
 
   // Keyboard nav
   useEffect(() => {
     function handleKey(e) {
-      if (selectedIdx === null) return;
+      if (!selectedDrillId) return;
       if (e.key === "ArrowRight" || e.key === "ArrowDown") { e.preventDefault(); goNext(); }
       if (e.key === "ArrowLeft" || e.key === "ArrowUp") { e.preventDefault(); goPrev(); }
-      if (e.key === "Escape") setSelectedIdx(null);
+      if (e.key === "Escape") setSelectedDrillId(null);
     }
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [selectedIdx, filtered.length]);
+  }, [selectedDrillId, selectedDrillIndex, filtered.length]);
 
   return (
     <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
@@ -5383,7 +5556,7 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
             onClick={() => {
               setMode("library");
               setBuilderDrill(null);
-              setSelectedIdx(null);
+              setSelectedDrillId(null);
             }}
             style={{
               padding: "6px 14px",
@@ -5413,7 +5586,7 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
           <button
             onClick={() => {
               setMode("videos");
-              setSelectedIdx(null);
+              setSelectedDrillId(null);
               setBuilderDrill(null);
             }}
             style={{
@@ -5559,7 +5732,7 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
               const { sportIcon, catIcon } = getDrillIcons(a);
               const df = a.customDiagram || getActivityDiagram(a, diagramMap);
               return (
-                <div key={a.id} onClick={() => setSelectedIdx(idx)} style={{ background: P.white, borderRadius: 14, border: `1.5px solid ${isFav ? "#fbc02d55" : P.line}`, overflow: "hidden", cursor: "pointer", boxShadow: Sh.card, position: "relative", transition: "transform .15s, box-shadow .15s" }} onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-2px)"} onMouseLeave={(e) => e.currentTarget.style.transform = "none"}>
+                <div key={a.id} onClick={() => setSelectedDrillId(a.id)} style={{ background: P.white, borderRadius: 14, border: `1.5px solid ${isFav ? "#fbc02d55" : P.line}`, overflow: "hidden", cursor: "pointer", boxShadow: Sh.card, position: "relative", transition: "transform .15s, box-shadow .15s" }} onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-2px)"} onMouseLeave={(e) => e.currentTarget.style.transform = "none"}>
                   {/* Badges — sport + category + difficulty */}
                   <div style={{ position: "absolute", top: 8, left: 8, display: "flex", gap: 4, zIndex: 1, flexWrap: "wrap" }}>
                     {a.isCustom && <span style={{ background: P.p600, borderRadius: 4, padding: "2px 6px", fontFamily: F.body, fontSize: 8, fontWeight: 700, color: "#fff", textTransform: "uppercase" }}>Custom</span>}
@@ -5605,21 +5778,21 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
 
       {/* Drill detail modal with arrow nav + favourite */}
       {selectedDrill && createPortal(
-        <div onClick={() => setSelectedIdx(null)} style={{ position: "fixed", inset: 0, zIndex: 99999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+        <div onClick={() => setSelectedDrillId(null)} style={{ position: "fixed", inset: 0, zIndex: 99999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: P.white, borderRadius: 16, maxWidth: 500, width: "100%", maxHeight: "85vh", overflowY: "auto", boxShadow: Sh.lift }}>
             {/* Header with nav arrows + favourite */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 18px", borderBottom: `1px solid ${P.line}`, position: "sticky", top: 0, background: P.white, borderRadius: "16px 16px 0 0", zIndex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <button onClick={goPrev} disabled={selectedIdx === 0} style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${P.line}`, background: P.white, cursor: selectedIdx > 0 ? "pointer" : "not-allowed", fontSize: 14, opacity: selectedIdx > 0 ? 1 : 0.3 }}>◀</button>
-                <span style={{ fontFamily: F.body, fontSize: 11, color: P.muted }}>{selectedIdx + 1} / {filtered.length}</span>
-                <button onClick={goNext} disabled={selectedIdx >= filtered.length - 1} style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${P.line}`, background: P.white, cursor: selectedIdx < filtered.length - 1 ? "pointer" : "not-allowed", fontSize: 14, opacity: selectedIdx < filtered.length - 1 ? 1 : 0.3 }}>▶</button>
+                <button onClick={goPrev} disabled={selectedDrillIndex <= 0} style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${P.line}`, background: P.white, cursor: selectedDrillIndex > 0 ? "pointer" : "not-allowed", fontSize: 14, opacity: selectedDrillIndex > 0 ? 1 : 0.3 }}>◀</button>
+                <span style={{ fontFamily: F.body, fontSize: 11, color: P.muted }}>{selectedDrillIndex >= 0 ? selectedDrillIndex + 1 : 1} / {filtered.length}</span>
+                <button onClick={goNext} disabled={selectedDrillIndex < 0 || selectedDrillIndex >= filtered.length - 1} style={{ width: 30, height: 30, borderRadius: 8, border: `1px solid ${P.line}`, background: P.white, cursor: selectedDrillIndex >= 0 && selectedDrillIndex < filtered.length - 1 ? "pointer" : "not-allowed", fontSize: 14, opacity: selectedDrillIndex >= 0 && selectedDrillIndex < filtered.length - 1 ? 1 : 0.3 }}>▶</button>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <button onClick={() => onToggleFavourite && onToggleFavourite(selectedDrill.id)} style={{ padding: "5px 10px", borderRadius: 6, border: `1.5px solid ${(favouriteIds || []).includes(selectedDrill.id) ? "#fbc02d" : P.line}`, background: (favouriteIds || []).includes(selectedDrill.id) ? "#fbc02d15" : P.white, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: (favouriteIds || []).includes(selectedDrill.id) ? "#f59e0b" : P.muted, cursor: "pointer" }}>
                   {(favouriteIds || []).includes(selectedDrill.id) ? "★ Saved to Favourites" : "☆ Add to Favourites"}
                 </button>
-                {canWriteLibrary && <button onClick={() => { if (!window.confirm(`Copy & edit "${selectedDrill.title}"?\n\nThis will create an editable copy in your custom cards.`)) return; setBuilderDrill(selectedDrill); setMode("builder"); setSelectedIdx(null); }} style={{ padding: "5px 10px", borderRadius: 6, border: `1.5px solid ${P.p600}`, background: P.p50, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.p600, cursor: "pointer" }}>Copy & Edit</button>}
-                <button onClick={() => setSelectedIdx(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: P.muted }}>x</button>
+                {canWriteLibrary && <button onClick={() => { if (!window.confirm(`Copy & edit "${selectedDrill.title}"?\n\nThis will create an editable copy in your custom cards.`)) return; setBuilderDrill(selectedDrill); setMode("builder"); setSelectedDrillId(null); }} style={{ padding: "5px 10px", borderRadius: 6, border: `1.5px solid ${P.p600}`, background: P.p50, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.p600, cursor: "pointer" }}>Copy & Edit</button>}
+                <button onClick={() => setSelectedDrillId(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: P.muted }}>x</button>
               </div>
             </div>
             {/* Content */}
@@ -8428,6 +8601,15 @@ function PlayersScreen({
 
         .coach-player-mobile-label {
           display: none;
+        }
+
+        /* Desktop: each sport selector occupies its own grid column */
+        .coach-player-mobile-panels {
+          display: contents;
+        }
+
+        .coach-player-field {
+          min-width: 0;
         }
 
         .coach-player-field select {

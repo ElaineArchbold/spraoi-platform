@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+ width="900"
+ height="560"
+ viewBox="0 0 900 560">
+
+<rect width="900" height="560" fill="#37863d"/>
+
+<rect
+ x="35"
+ y="35"
+ width="830"
+ height="490"
+ rx="18"
+ fill="none"
+ stroke="#fff"
+ stroke-width="5"/>
+
+<defs>
+ <marker
+  id="moveArrow"
+  markerWidth="10"
+  markerHeight="10"
+  refX="8"
+  refY="3"
+  orient="auto">
+  <path d="M0,0 L0,6 L9,3 z"
+   fill="#123d83"/>
+ </marker>
+
+ <marker
+  id="ballArrow"
+  markerWidth="10"
+  markerHeight="10"
+  refX="8"
+  refY="3"
+  orient="auto">
+  <path d="M0,0 L0,6 L9,3 z"
+   fill="#fff"/>
+ </marker>
+</defs>
+
+
+    
+<circle cx="130" cy="430" r="22"
+ fill="#123d83" stroke="#fff" stroke-width="4"/>
+<text x="130" y="436"
+ text-anchor="middle"
+ font-family="Arial,sans-serif"
+ font-size="17"
+ font-weight="700"
+ fill="#fff">A</text>
+
+    
+<path d="M220,356
+ L208,384
+ L232,384 Z"
+ fill="#f59e0b"/>
+    
+<path d="M320,271
+ L308,299
+ L332,299 Z"
+ fill="#f59e0b"/>
+    
+<path d="M420,356
+ L408,384
+ L432,384 Z"
+ fill="#f59e0b"/>
+    
+<path d="M520,271
+ L508,299
+ L532,299 Z"
+ fill="#f59e0b"/>
+    
+<path d="M620,356
+ L608,384
+ L632,384 Z"
+ fill="#f59e0b"/>
+    
+<path d="M720,271
+ L708,299
+ L732,299 Z"
+ fill="#f59e0b"/>
+
+    
+<path
+ d="M145,415
+ Q182.5,335
+ 220,370"
+ fill="none"
+ stroke="#123d83"
+ stroke-width="6"
+ marker-end="url(#moveArrow)"/>
+    
+<path
+ d="M230,360
+ Q275,250
+ 320,285"
+ fill="none"
+ stroke="#123d83"
+ stroke-width="6"
+ marker-end="url(#moveArrow)"/>
+    
+<path
+ d="M330,295
+ Q375,260
+ 420,370"
+ fill="none"
+ stroke="#123d83"
+ stroke-width="6"
+ marker-end="url(#moveArrow)"/>
+    
+<path
+ d="M430,360
+ Q475,250
+ 520,285"
+ fill="none"
+ stroke="#123d83"
+ stroke-width="6"
+ marker-end="url(#moveArrow)"/>
+    
+<path
+ d="M530,295
+ Q575,260
+ 620,370"
+ fill="none"
+ stroke="#123d83"
+ stroke-width="6"
+ marker-end="url(#moveArrow)"/>
+    
+<path
+ d="M630,360
+ Q675,250
+ 720,285"
+ fill="none"
+ stroke="#123d83"
+ stroke-width="6"
+ marker-end="url(#moveArrow)"/>
+  
+
+<image
+ href="/favicon-spraoi-v6.png"
+ x="824"
+ y="484"
+ width="42"
+ height="42"
+ preserveAspectRatio="xMidYMid meet"/>
+</svg>
