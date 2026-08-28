@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="560" viewBox="0 0 900 560">
+  <rect width="900" height="560" fill="#2f7d32"/>
+  <rect x="35" y="35" width="830" height="490" rx="18" fill="none" stroke="#ffffff" stroke-width="5"/>
+  <line x1="450" y1="35" x2="450" y2="525" stroke="#ffffff" stroke-width="3" opacity="0.8"/>
+
+  <defs>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#0b3d91"/>
+    </marker>
+    <marker id="arrowWhite" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#ffffff"/>
+    </marker>
+  </defs>
+
+  
+    <path d="M170,266 L158,294 L182,294 Z"
+    fill="#f59e0b" stroke="#7c4a00" stroke-width="2"/>
+    <path d="M650,156 L638,184 L662,184 Z"
+    fill="#f59e0b" stroke="#7c4a00" stroke-width="2"/>
+    <path d="M650,376 L638,404 L662,404 Z"
+    fill="#f59e0b" stroke="#7c4a00" stroke-width="2"/>
+
+    
+    <circle cx="210" cy="280" r="22" fill="#0b3d91" stroke="#fff" stroke-width="4"/>
+    <text x="210" y="286" text-anchor="middle"
+          font-family="Arial, sans-serif" font-size="18" font-weight="700"
+          fill="#fff">P</text>
+    
+    <circle cx="610" cy="420" r="22" fill="#0b3d91" stroke="#fff" stroke-width="4"/>
+    <text x="610" y="426" text-anchor="middle"
+          font-family="Arial, sans-serif" font-size="18" font-weight="700"
+          fill="#fff">R</text>
+
+    <circle cx="240" cy="265" r="9" fill="#fff" stroke="#111827" stroke-width="2"/>
+
+    <path d="M610,420 Q630,375 650,260"
+    fill="none" stroke="#0b3d91" stroke-width="6"
+    marker-end="url(#arrowBlue)"/>
+    <line x1="245" y1="265" x2="635" y2="250"
+    stroke="#ffffff" stroke-width="5" stroke-dasharray="10 8"
+    marker-end="url(#arrowWhite)"/>
+
+    <rect x="620" y="175" width="80" height="210"
+          fill="none" stroke="#facc15" stroke-width="4" stroke-dasharray="10 8"/>
+  
+
+  <image href="/favicon-spraoi-v6.png"
+         x="824" y="484" width="42" height="42"
+         preserveAspectRatio="xMidYMid meet"/>
+</svg>

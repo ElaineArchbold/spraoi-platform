@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="560" viewBox="0 0 900 560">
+  <rect width="900" height="560" fill="#2f7d32"/>
+  <rect x="35" y="35" width="830" height="490" rx="18" fill="none" stroke="#ffffff" stroke-width="5"/>
+  <line x1="450" y1="35" x2="450" y2="525" stroke="#ffffff" stroke-width="3" opacity="0.8"/>
+
+  <defs>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#0b3d91"/>
+    </marker>
+    <marker id="arrowWhite" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#ffffff"/>
+    </marker>
+  </defs>
+
+  
+    
+    <circle cx="200" cy="280" r="22" fill="#0b3d91" stroke="#fff" stroke-width="4"/>
+    <text x="200" y="286" text-anchor="middle"
+          font-family="Arial, sans-serif" font-size="18" font-weight="700"
+          fill="#fff">K</text>
+    
+    <circle cx="480" cy="310" r="22" fill="#0b3d91" stroke="#fff" stroke-width="4"/>
+    <text x="480" y="316" text-anchor="middle"
+          font-family="Arial, sans-serif" font-size="18" font-weight="700"
+          fill="#fff">R</text>
+    
+    <circle cx="530" cy="310" r="22" fill="#dc2626" stroke="#fff" stroke-width="4"/>
+    <text x="530" y="316" text-anchor="middle"
+          font-family="Arial, sans-serif" font-size="18" font-weight="700"
+          fill="#fff">D</text>
+    
+    <circle cx="720" cy="220" r="22" fill="#0b3d91" stroke="#fff" stroke-width="4"/>
+    <text x="720" y="226" text-anchor="middle"
+          font-family="Arial, sans-serif" font-size="18" font-weight="700"
+          fill="#fff">T</text>
+
+    <circle cx="235" cy="260" r="9" fill="#fff" stroke="#111827" stroke-width="2"/>
+
+    <path d="M235,260 Q390,100 490,255"
+          fill="none" stroke="#ffffff" stroke-width="5"
+          stroke-dasharray="10 8" marker-end="url(#arrowWhite)"/>
+
+    <path d="M480,315 Q520,270 560,250"
+    fill="none" stroke="#0b3d91" stroke-width="6"
+    marker-end="url(#arrowBlue)"/>
+    <line x1="565" y1="250" x2="690" y2="220"
+    stroke="#ffffff" stroke-width="5" stroke-dasharray="10 8"
+    marker-end="url(#arrowWhite)"/>
+  
+
+  <image href="/favicon-spraoi-v6.png"
+         x="824" y="484" width="42" height="42"
+         preserveAspectRatio="xMidYMid meet"/>
+</svg>

@@ -683,7 +683,7 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
         <div className="spraoi-module-title-block" style={{ height: 118, minHeight: 118, boxSizing: "border-box", padding: "18px 16px", borderBottom: activeModule === "connect" ? "1px solid rgba(51,40,0,.18)" : `1px solid ${mod.color}33` }}>
           <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
             <div style={{ width: 54, height: 54, borderRadius: 16, background: "#fff", display: "grid", placeItems: "center", border: "1px solid rgba(15,23,42,.10)", boxShadow: "0 7px 18px rgba(0,0,0,.16)", overflow: "hidden", flexShrink: 0 }}>
-              <img src="/spraoi-logo.png" alt="Spraoi Sports" style={{ width: 42, height: 42, objectFit: "contain" }} />
+              <img src="/favicon-spraoi-v6.png" alt="Spraoi Sports" style={{ width: 42, height: 42, objectFit: "contain" }} />
             </div>
             <div style={{ minWidth: 0 }}>
               <div style={{ fontFamily: F.display, fontSize: 21, fontWeight: 800, letterSpacing: "-.02em", color: activeModule === "connect" ? "#332800" : "#fff", lineHeight: 1.05 }}>{mod.label}</div>
@@ -5209,7 +5209,62 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
     isCustom: true, skill: { name: c.category?.replace(/_/g, " ") || "", category: c.category },
   }))];
 
-  const categories = [...new Set(mergedActivities.map((a) => a.category || a.skill?.category).filter(Boolean))].sort();
+  function normalisedDrillCategory(activity) {
+    return String(
+      activity?.category ||
+      activity?.skill?.category ||
+      ""
+    )
+      .trim()
+      .toLowerCase()
+      .replace(/[_-]+/g, " ")
+      .replace(/\s+/g, " ");
+  }
+
+  function drillCode(activity) {
+    const sport = String(activity?.sport || "").toLowerCase();
+
+    const text = [
+      activity?.title,
+      activity?.description,
+      activity?.category,
+      activity?.skill?.name,
+      activity?.skill?.category,
+      activity?.coach_skill?.name
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    const isAgility =
+      /(agility|athletic|movement|speed|balance|coordination|footwork|reaction|mobility|fitness)/.test(text);
+
+    if (isAgility) return "agility";
+
+    if (sport === "hurling" || sport === "camogie") {
+      return "hurling";
+    }
+
+    if (sport === "football") {
+      return "football";
+    }
+
+    return "";
+  }
+
+  const categorySource = filterSport
+    ? mergedActivities.filter(
+        (activity) => drillCode(activity) === filterSport
+      )
+    : mergedActivities;
+
+  const categories = [
+    ...new Set(
+      categorySource
+        .map(normalisedDrillCategory)
+        .filter(Boolean)
+    )
+  ].sort();
 
   const taxonomySkills = [
     ...new Map(
@@ -5268,11 +5323,16 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
     );
   }
 
+  if (filterSport) {
+    filtered = filtered.filter(
+      (activity) => drillCode(activity) === filterSport
+    );
+  }
+
   if (filterCat) {
     filtered = filtered.filter(
-      (a) =>
-        a.category === filterCat ||
-        a.skill?.category === filterCat
+      (activity) =>
+        normalisedDrillCategory(activity) === filterCat
     );
   }
 
@@ -5447,9 +5507,47 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
           {/* Search + Filter */}
           <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
             <input type="text" placeholder="Search drills..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ flex: 1, padding: "10px 14px", borderRadius: 10, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 13, background: P.white }} />
-            <select value={filterCat} onChange={(e) => setFilterCat(e.target.value)} style={{ padding: "10px 12px", borderRadius: 10, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 12, background: P.white }}>
+            <select
+              value={filterSport}
+              onChange={(e) => {
+                setFilterSport(e.target.value);
+                setFilterCat("");
+              }}
+              style={{
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: `1.5px solid ${P.line}`,
+                fontFamily: F.body,
+                fontSize: 12,
+                background: P.white
+              }}
+            >
+              <option value="">All codes</option>
+              <option value="football">Football</option>
+              <option value="hurling">Hurling</option>
+              <option value="agility">Agility</option>
+            </select>
+
+            <select
+              value={filterCat}
+              onChange={(e) => setFilterCat(e.target.value)}
+              style={{
+                padding: "10px 12px",
+                borderRadius: 10,
+                border: `1.5px solid ${P.line}`,
+                fontFamily: F.body,
+                fontSize: 12,
+                background: P.white
+              }}
+            >
               <option value="">All categories</option>
-              {categories.map((c) => <option key={c} value={c}>{c.replace(/_/g, " ")}</option>)}
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {c.replace(/\b\w/g, (letter) =>
+                    letter.toUpperCase()
+                  )}
+                </option>
+              ))}
             </select>
           </div>
           {/* Grid */}
@@ -5477,7 +5575,10 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
                   {hasVideo && <div style={{ position: "absolute", top: 8, right: isFav ? 32 : 8, background: "rgba(0,0,0,0.6)", borderRadius: 4, padding: "2px 6px", fontFamily: F.body, fontSize: 9, fontWeight: 700, color: "#fff", zIndex: 1 }}>▶</div>}
                   {/* Image: diagram if available, otherwise sport icon gradient */}
                   {df ? (
-                    <img src={df.startsWith("data:") ? df : `/diagrams/${df}`} alt="" style={{ width: "100%", height: 130, objectFit: "cover", display: "block" }} />
+                    <BrandedDrillDiagram
+                      src={df}
+                      height={130}
+                    />
                   ) : (
                     <div style={{ width: "100%", height: 130, background: sportIcon.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
                       <img src={sportIcon.icon} alt="" style={{ width: 48, height: 48, objectFit: "contain", filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.25))", marginBottom: 4 }} />
@@ -5527,7 +5628,11 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
               {(() => {
                 const { sportIcon, catIcon } = getDrillIcons(selectedDrill); const df = selectedDrill.customDiagram || getActivityDiagram(selectedDrill, diagramMap); return df ? (
                   <div style={{ position: "relative", marginBottom: 14 }}>
-                    <img src={df.startsWith("data:") ? df : `/diagrams/${df}`} alt="" style={{ width: "100%", borderRadius: 12 }} />
+                    <BrandedDrillDiagram
+                      src={df}
+                      height={326}
+                      borderRadius={12}
+                    />
                     <div style={{ position: "absolute", top: 8, left: 8, display: "flex", gap: 4 }}>
                       <span style={{ background: sportIcon.color, borderRadius: 6, padding: "3px 8px", display: "flex", alignItems: "center", gap: 4 }}>
                         <img src={sportIcon.icon} alt="" style={{ width: 14, height: 14, objectFit: "contain" }} />
@@ -7705,6 +7810,78 @@ const DESCRIPTIVE_DRILL_TITLE_ALIASES = {
   "Overhead Striking - Zone Clearance Game": "Overhead Striking - No Mans Land",
   "Overhead Striking - 1v1 Opposed Strike": "Overhead Striking - One on One"
 };
+
+function BrandedDrillDiagram({
+  src,
+  height = 130,
+  objectFit = "cover",
+  borderRadius = 0,
+}) {
+  if (!src) return null;
+
+  const value = String(src);
+
+  const isGenerated =
+    value.startsWith("data:");
+
+  const resolvedSrc =
+    isGenerated ||
+    value.startsWith("/") ||
+    value.startsWith("http")
+      ? value
+      : `/diagrams/${value}`;
+
+  return (
+    <div
+      style={{
+        position: "relative",
+        width: "100%",
+        height,
+        overflow: "hidden",
+        borderRadius,
+        background: "#eef2f5",
+      }}
+    >
+      <img
+        src={resolvedSrc}
+        alt=""
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit,
+          display: "block",
+
+          // Legacy diagrams have the old SPRAOI SPORTS
+          // watermark baked into their bottom edge.
+          transform: isGenerated
+            ? "none"
+            : "scale(1.075)",
+
+          transformOrigin: "center top",
+        }}
+      />
+
+      {!isGenerated && (
+        <img
+          src="/favicon-spraoi-v6.png"
+          alt=""
+          style={{
+            position: "absolute",
+            right: 8,
+            bottom: 8,
+            width: 30,
+            height: 30,
+            objectFit: "contain",
+            display: "block",
+            pointerEvents: "none",
+            filter:
+              "drop-shadow(0 1px 3px rgba(0,0,0,.22))",
+          }}
+        />
+      )}
+    </div>
+  );
+}
 
 function getActivityDiagram(activity, diagramMap) {
   if (!activity || !diagramMap) return null;

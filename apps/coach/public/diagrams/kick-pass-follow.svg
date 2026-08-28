@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="560" viewBox="0 0 900 560">
+  <rect width="900" height="560" fill="#2f7d32"/>
+  <rect x="35" y="35" width="830" height="490" rx="18" fill="none" stroke="#ffffff" stroke-width="5"/>
+  <line x1="450" y1="35" x2="450" y2="525" stroke="#ffffff" stroke-width="3" opacity="0.8"/>
+
+  <defs>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#0b3d91"/>
+    </marker>
+    <marker id="arrowWhite" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#ffffff"/>
+    </marker>
+  </defs>
+
+  
+    <path d="M220,376 L208,404 L232,404 Z"
+    fill="#f59e0b" stroke="#7c4a00" stroke-width="2"/> <path d="M450,126 L438,154 L462,154 Z"
+    fill="#f59e0b" stroke="#7c4a00" stroke-width="2"/> <path d="M680,376 L668,404 L692,404 Z"
+    fill="#f59e0b" stroke="#7c4a00" stroke-width="2"/>
+
+    
+    <circle cx="220" cy="350" r="22" fill="#0b3d91" stroke="#fff" stroke-width="4"/>
+    <text x="220" y="356" text-anchor="middle"
+          font-family="Arial, sans-serif" font-size="18" font-weight="700"
+          fill="#fff">A</text>
+    
+    <circle cx="450" cy="180" r="22" fill="#0b3d91" stroke="#fff" stroke-width="4"/>
+    <text x="450" y="186" text-anchor="middle"
+          font-family="Arial, sans-serif" font-size="18" font-weight="700"
+          fill="#fff">B</text>
+    
+    <circle cx="680" cy="350" r="22" fill="#0b3d91" stroke="#fff" stroke-width="4"/>
+    <text x="680" y="356" text-anchor="middle"
+          font-family="Arial, sans-serif" font-size="18" font-weight="700"
+          fill="#fff">C</text>
+
+    <circle cx="245" cy="330" r="9" fill="#fff" stroke="#111827" stroke-width="2"/>
+
+    <line x1="245" y1="330" x2="425" y2="195"
+    stroke="#ffffff" stroke-width="5" stroke-dasharray="10 8"
+    marker-end="url(#arrowWhite)"/>
+    <line x1="475" y1="195" x2="655" y2="330"
+    stroke="#ffffff" stroke-width="5" stroke-dasharray="10 8"
+    marker-end="url(#arrowWhite)"/>
+    <line x1="655" y1="370" x2="245" y2="370"
+    stroke="#ffffff" stroke-width="5" stroke-dasharray="10 8"
+    marker-end="url(#arrowWhite)"/>
+
+    <path d="M220,320 Q315,275 410,210"
+    fill="none" stroke="#0b3d91" stroke-width="6"
+    marker-end="url(#arrowBlue)"/>
+    <path d="M475,210 Q560,165 645,330"
+    fill="none" stroke="#0b3d91" stroke-width="6"
+    marker-end="url(#arrowBlue)"/>
+    <path d="M650,380 Q467.5,335 285,390"
+    fill="none" stroke="#0b3d91" stroke-width="6"
+    marker-end="url(#arrowBlue)"/>
+  
+
+  <image href="/favicon-spraoi-v6.png"
+         x="824" y="484" width="42" height="42"
+         preserveAspectRatio="xMidYMid meet"/>
+</svg>
