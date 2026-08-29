@@ -195,6 +195,9 @@ export default function App(){
   );
   const [players,setPlayers]=useState([]); const [events,setEvents]=useState([]); const [responses,setResponses]=useState([]); const [groups,setGroups]=useState([]); const [groupMembers,setGroupMembers]=useState([]); const [messages,setMessages]=useState([]); const [delegates,setDelegates]=useState([]);
   const [composer,setComposer]=useState(null); const [groupModal,setGroupModal]=useState(false); const [permissionModal,setPermissionModal]=useState(false); const [status,setStatus]=useState("");
+  const [sendReceipt,setSendReceipt]=useState(null);
+  const [messageView,setMessageView]=useState("active");
+  const [deleteMessageTarget,setDeleteMessageTarget]=useState(null);
   const [newGroupName,setNewGroupName]=useState(""); const [newGroupDescription,setNewGroupDescription]=useState(""); const [newGroupPlayers,setNewGroupPlayers]=useState([]); const [mobileModulesOpen,setMobileModulesOpen]=useState(false);
 
   async function centralLogout() {
@@ -364,7 +367,29 @@ const selectedTeam=visibleTeams.find(
         String(row.role||"").toLowerCase()
       )
     );
-  const noResponseCount=(event)=>teamPlayers.filter(p=>p.parent_user_id&&p.parent_user_id!==ZERO&&!responses.some(r=>r.event_id===event.id&&r.player_id===p.id)).length;
+  const eventPlayers=(event)=>{
+    if(event?._has_recipient_snapshot){
+      const ids=Array.isArray(event._recipient_player_ids)
+        ? event._recipient_player_ids
+        : [];
+
+      return teamPlayers.filter(p=>ids.includes(p.id));
+    }
+
+    // Legacy events created before recipient snapshots existed.
+    return teamPlayers;
+  };
+
+  const noResponseCount=(event)=>eventPlayers(event)
+    .filter(
+      p=>
+        p.parent_user_id &&
+        p.parent_user_id!==ZERO &&
+        !responses.some(
+          r=>r.event_id===event.id&&r.player_id===p.id
+        )
+    )
+    .length;
 
   useEffect(()=>{supabase.auth.getSession().then(({data:{session:s}})=>{setSession(s);if(s)loadAll(s);else setLoading(false)});const {data:{subscription}}=supabase.auth.onAuthStateChange((_e,s)=>{setSession(s);if(s)loadAll(s);else setLoading(false)});return()=>subscription.unsubscribe();},[]);
 
@@ -413,18 +438,48 @@ const selectedTeam=visibleTeams.find(
     let clubId=roleRow?.club_id||mine[0]?.team?.club_id||null;
     if(!clubId){const {data:fallback}=await supabase.from("clubs").select("*").eq("slug","fingallians").maybeSingle();clubId=fallback?.id||null;}
     if(!clubId){setLoading(false);setStatus("No club is linked to this account yet.");return;}
-    const [{data:clubData},{data:teamData},{data:playerData},{data:eventData},{data:respData},{data:groupData},{data:memberData},{data:messageData},{data:delegateData}] = await Promise.all([
+    const [{data:clubData},{data:teamData},{data:playerData},{data:eventData},{data:respData},{data:groupData},{data:memberData},{data:messageData},{data:delegateData},{data:eventRecipientData}] = await Promise.all([
       supabase.from("clubs").select("*").eq("id",clubId).maybeSingle(),
       supabase.from("age_groups").select("*").eq("club_id",clubId).order("label"),
-      supabase.from("journey_players").select("id,name,age_group_id,parent_user_id,club_id").eq("club_id",clubId).order("name"),
+      supabase.from("journey_players").select("id,name,age_group_id,parent_user_id,club_id,football_panel,hurling_panel").eq("club_id",clubId).order("name"),
       supabase.from("club_events").select("*,facility:facilities(id,name,location)").eq("club_id",clubId).gte("starts_at",new Date(Date.now()-2*86400000).toISOString()).order("starts_at").limit(150),
       supabase.from("availability_responses").select("*").order("responded_at",{ascending:false}).limit(1000),
       supabase.from("connect_groups").select("*").eq("club_id",clubId).order("name"),
       supabase.from("connect_group_members").select("*").limit(5000),
       supabase.from("connect_messages").select("*").eq("club_id",clubId).order("created_at",{ascending:false}).limit(100),
       supabase.from("connect_sender_permissions").select("*").eq("club_id",clubId),
+      supabase
+        .from("connect_event_recipients")
+        .select("event_id,player_id,parent_user_id,audience_type,subgroup_key,sport_code,panel")
+        .eq("club_id",clubId)
+        .limit(10000),
     ]);
-    setClub(clubData||null); setStaff(staffRows); setTeams(teamData||[]); setPlayers(playerData||[]); setEvents(eventData||[]); setResponses(respData||[]); setGroups(groupData||[]); setGroupMembers(memberData||[]); setMessages(messageData||[]); setDelegates(delegateData||[]);
+    const recipientIdsByEvent=new Map();
+
+    (eventRecipientData||[]).forEach(row=>{
+      if(!recipientIdsByEvent.has(row.event_id)){
+        recipientIdsByEvent.set(row.event_id,[]);
+      }
+
+      recipientIdsByEvent.get(row.event_id).push(row.player_id);
+    });
+
+    const eventRows=(eventData||[]).map(event=>({
+      ...event,
+      _has_recipient_snapshot:recipientIdsByEvent.has(event.id),
+      _recipient_player_ids:recipientIdsByEvent.get(event.id)||[]
+    }));
+
+    setClub(clubData||null);
+    setStaff(staffRows);
+    setTeams(teamData||[]);
+    setPlayers(playerData||[]);
+    setEvents(eventRows);
+    setResponses(respData||[]);
+    setGroups(groupData||[]);
+    setGroupMembers(memberData||[]);
+    setMessages(messageData||[]);
+    setDelegates(delegateData||[]);
     setAssignedTeamIds(assignedIds);
     const adminAccount=["super_admin","admin","club_admin"].includes(accountRole);
     const allowed=adminAccount?(teamData||[]):(teamData||[]).filter(t=>assignedIds.includes(t.id));
@@ -433,9 +488,41 @@ const selectedTeam=visibleTeams.find(
 
   function audiencePlayers(draft){
     if(draft.audienceType==="club")return players;
+
+    if(draft.audienceType==="ab_subgroup"){
+      const subgroupKey=String(draft.subgroupKey||"").toLowerCase();
+
+      if(subgroupKey==="football_a"){
+        return teamPlayers.filter(p=>p.football_panel==="A");
+      }
+
+      if(subgroupKey==="football_b"){
+        return teamPlayers.filter(p=>p.football_panel==="B");
+      }
+
+      if(subgroupKey==="hurling_a"){
+        return teamPlayers.filter(p=>p.hurling_panel==="A");
+      }
+
+      if(subgroupKey==="hurling_b"){
+        return teamPlayers.filter(p=>p.hurling_panel==="B");
+      }
+
+      return [];
+    }
     if(draft.audienceType==="selected")return players.filter(p=>draft.playerIds?.includes(p.id));
     if(draft.audienceType==="group"){const ids=groupMembers.filter(m=>m.group_id===draft.groupId).map(m=>m.player_id);return players.filter(p=>ids.includes(p.id));}
-    if(draft.audienceType==="no_response"){const eventResponses=responses.filter(r=>r.event_id===draft.eventId);return teamPlayers.filter(p=>!eventResponses.some(r=>r.player_id===p.id));}
+    if(draft.audienceType==="no_response"){
+      const eventResponses=responses.filter(r=>r.event_id===draft.eventId);
+      const targetEvent=events.find(e=>e.id===draft.eventId);
+      const invitedPlayers=targetEvent
+        ? eventPlayers(targetEvent)
+        : teamPlayers;
+
+      return invitedPlayers.filter(
+        p=>!eventResponses.some(r=>r.player_id===p.id)
+      );
+    }
     return teamPlayers;
   }
   async function sendMessage(draft){
@@ -445,7 +532,43 @@ const selectedTeam=visibleTeams.find(
     const audience=audiencePlayers(draft).filter(p=>p.parent_user_id&&p.parent_user_id!==ZERO);
     if(!audience.length){setStatus("There are no linked parent accounts in this audience.");return;}
     const now=new Date().toISOString();
-    const payload={club_id:club.id,age_group_id:draft.audienceType==="club"?null:selectedTeam?.id||null,group_id:draft.groupId||null,event_id:draft.eventId||null,sender_user_id:session.user.id,audience_type:draft.audienceType,message_type:draft.messageType||"announcement",title:draft.title.trim(),body:draft.body.trim(),sent_at:now};
+    const subgroupLabel=(()=>{
+      const key=String(draft.subgroupKey||"").toLowerCase();
+      if(key==="football_a")return "Football A";
+      if(key==="football_b")return "Football B";
+      if(key==="hurling_a"){
+        return String(selectedTeam?.gender||"").toLowerCase()==="girls"
+          ? "Camogie A"
+          : "Hurling A";
+      }
+      if(key==="hurling_b"){
+        return String(selectedTeam?.gender||"").toLowerCase()==="girls"
+          ? "Camogie B"
+          : "Hurling B";
+      }
+      return null;
+    })();
+
+    const payload={
+      club_id:club.id,
+      age_group_id:draft.audienceType==="club"?null:selectedTeam?.id||null,
+      group_id:draft.groupId||null,
+      event_id:draft.eventId||null,
+      sender_user_id:session.user.id,
+      audience_type:draft.audienceType,
+      subgroup_key:draft.audienceType==="ab_subgroup"
+        ? draft.subgroupKey||null
+        : null,
+      audience_label:draft.audienceType==="ab_subgroup"
+        ? subgroupLabel
+        : draft.audienceType==="team"
+          ? shortTeam(selectedTeam)
+          : null,
+      message_type:draft.messageType||"announcement",
+      title:draft.title.trim(),
+      body:draft.body.trim(),
+      sent_at:now
+    };
     const messageQuery=draft.draftId
       ? supabase.from("connect_messages").update(payload).eq("id",draft.draftId).select("*").single()
       : supabase.from("connect_messages").insert(payload).select("*").single();
@@ -456,7 +579,74 @@ const selectedTeam=visibleTeams.find(
     const idsByUser={}; (created||[]).forEach(n=>{if(!idsByUser[n.user_id])idsByUser[n.user_id]=[];idsByUser[n.user_id].push(n.id)});
     const recipientRows=rows.map((p,i)=>({message_id:msg.id,parent_user_id:p.parent_user_id,player_id:p.id,notification_id:(idsByUser[p.parent_user_id]||[]).shift()||created?.[i]?.id||null,delivery_status:"sent"}));
     await supabase.from("connect_message_recipients").insert(recipientRows);
-    setComposer(null); setStatus(`Sent to ${rows.length} child${rows.length===1?"":"ren"} / parent link${rows.length===1?"":"s"}.`); await loadAll();
+
+    if(draft.eventId){
+      const subgroupKey=
+        draft.audienceType==="ab_subgroup"
+          ? draft.subgroupKey||null
+          : null;
+
+      let sportCode=null;
+      let panel=null;
+
+      if(subgroupKey?.startsWith("football_")){
+        sportCode="football";
+        panel=subgroupKey.endsWith("_a")?"A":"B";
+      }
+
+      if(subgroupKey?.startsWith("hurling_")){
+        sportCode="hurling";
+        panel=subgroupKey.endsWith("_a")?"A":"B";
+      }
+
+      const eventRecipientRows=rows.map(p=>({
+        event_id:draft.eventId,
+        player_id:p.id,
+        parent_user_id:p.parent_user_id,
+        club_id:club.id,
+        age_group_id:p.age_group_id,
+        audience_type:draft.audienceType,
+        subgroup_key:subgroupKey,
+        sport_code:sportCode,
+        panel:panel,
+        created_by:session.user.id
+      }));
+
+      if(eventRecipientRows.length){
+        const {error:eventRecipientError}=await supabase
+          .from("connect_event_recipients")
+          .upsert(
+            eventRecipientRows,
+            {
+              onConflict:"event_id,player_id",
+              ignoreDuplicates:true
+            }
+          );
+
+        if(eventRecipientError){
+          setStatus(eventRecipientError.message);
+          return;
+        }
+      }
+    }
+
+    setComposer(null);
+    setStatus("");
+    setSendReceipt({
+      title:draft.title.trim(),
+      audience:
+        draft.audienceType==="ab_subgroup"
+          ? subgroupLabel
+          : draft.audienceType==="team"
+            ? shortTeam(selectedTeam)
+            : draft.audienceType==="club"
+              ? "Whole club"
+              : draft.audienceType==="no_response"
+                ? "No response"
+                : "Selected recipients",
+      count:rows.length
+    });
+    await loadAll();
   }
   function eventComposer(event,mode="event_invite"){
     const location=event.facility?.name||event.location||"Location TBC"; const when=fmt(event.starts_at); const title=event.event_type==="match"?(event.opponent?`${shortTeam(selectedTeam)} v ${event.opponent}`:`${shortTeam(selectedTeam)} match`):`${shortTeam(selectedTeam)} training`;
@@ -466,7 +656,7 @@ const selectedTeam=visibleTeams.find(
       : isTrainingAllocation
         ? `Training confirmed for ${shortTeam(selectedTeam)}\n${when}\n${location}${event.notes?`\n${event.notes}`:""}\n\nPlease confirm availability in Spraoi Academy.`
         : `${event.title||title}\n${when}\n${location}${event.notes?`\n${event.notes}`:""}\n\nPlease confirm availability in Spraoi Academy.`;
-    setComposer({audienceType:mode==="reminder"?"no_response":"team",messageType:mode,title:mode==="reminder"?`Response reminder · ${title}`:isTrainingAllocation?`Training confirmed · ${shortTeam(selectedTeam)}`:title,body,eventId:event.id,groupId:"",playerIds:[],priority:event.status==="changed"?"important":"normal"});
+    setComposer({audienceType:mode==="reminder"?"no_response":"team",subgroupKey:"",messageType:mode,title:mode==="reminder"?`Response reminder · ${title}`:isTrainingAllocation?`Training confirmed · ${shortTeam(selectedTeam)}`:title,body,eventId:event.id,groupId:"",playerIds:[],priority:event.status==="changed"?"important":"normal"});
   }
   function openSavedDraft(message){
     setComposer({
@@ -477,10 +667,77 @@ const selectedTeam=visibleTeams.find(
       body: message.body || "",
       eventId: message.event_id || null,
       groupId: message.group_id || "",
+      subgroupKey: message.subgroup_key || "",
       playerIds: [],
       priority: "normal",
     });
   }
+  async function archiveMessage(message){
+    if(!message?.id || !message?.sent_at)return;
+
+    const {error}=await supabase
+      .from("connect_messages")
+      .update({archived_at:new Date().toISOString()})
+      .eq("id",message.id);
+
+    if(error){
+      setStatus(error.message);
+      return;
+    }
+
+    await loadAll();
+  }
+
+  async function deleteArchivedMessage(message){
+    if(!message?.id || !message?.archived_at)return;
+
+    /*
+      Delete recipient records first so the message can be removed
+      cleanly even if foreign-key cascading is not configured.
+    */
+
+    const {error:recipientError}=await supabase
+      .from("connect_message_recipients")
+      .delete()
+      .eq("message_id",message.id);
+
+    if(recipientError){
+      setStatus(recipientError.message);
+      return;
+    }
+
+    const {error:messageError}=await supabase
+      .from("connect_messages")
+      .delete()
+      .eq("id",message.id)
+      .not("archived_at","is",null);
+
+    if(messageError){
+      setStatus(messageError.message);
+      return;
+    }
+
+    setDeleteMessageTarget(null);
+    setStatus("");
+    await loadAll();
+  }
+
+  async function restoreMessage(message){
+    if(!message?.id)return;
+
+    const {error}=await supabase
+      .from("connect_messages")
+      .update({archived_at:null})
+      .eq("id",message.id);
+
+    if(error){
+      setStatus(error.message);
+      return;
+    }
+
+    await loadAll();
+  }
+
   async function createGroup(){
     if(!canSendSelected){
       setStatus("You have read-only Connect access for this team.");
@@ -536,7 +793,7 @@ const selectedTeam=visibleTeams.find(
         </div>
       </header>
       <ConnectTopBar title={nav.find(([id])=>id===tab)?.[2]||"Dashboard"} sub={selectedTeam?`${shortTeam(selectedTeam)} · ${club?.name||"Club Spraoi"}`:(club?.name||"Club Spraoi")}>
-        {tab==="dashboard"&&canSendSelected&&<Btn onClick={()=>setComposer({audienceType:"team",messageType:"announcement",title:"",body:"",eventId:null,groupId:"",playerIds:[],priority:"normal"})}>New Message</Btn>}
+        {tab==="dashboard"&&canSendSelected&&<Btn onClick={()=>setComposer({audienceType:"team",messageType:"announcement",title:"",body:"",eventId:null,groupId:"",subgroupKey:"",playerIds:[],priority:"normal"})}>New Message</Btn>}
       </ConnectTopBar>
       <main style={{maxWidth:1220,margin:"0 auto",padding:"22px 24px 40px"}}>
         
@@ -566,19 +823,195 @@ const selectedTeam=visibleTeams.find(
         <div className="connect-dashboard-columns" style={{display:"grid",gridTemplateColumns:"minmax(0,1.55fr) minmax(280px,.75fr)",gap:14,marginTop:14}}>
           <Card style={{padding:18}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginBottom:10}}><div><div style={{fontFamily:F.display,fontSize:16,fontWeight:750}}>Upcoming events</div><div style={{fontSize:10,color:C.muted}}>Send invitations or chase only missing responses.</div></div><Btn ghost onClick={()=>setTab("events")}>View all</Btn></div>{upcoming.slice(0,5).map(e=><div key={e.id} style={{padding:"12px 0",borderTop:`1px solid ${C.line}`,display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}><div style={{flex:1,minWidth:220}}><b style={{fontSize:12}}>{e.title}</b><div style={{fontSize:10,color:C.muted,marginTop:3}}>{fmt(e.starts_at)} · {e.facility?.name||e.location||"Location TBC"}</div></div><Pill tone={noResponseCount(e)?"warn":"yes"}>{noResponseCount(e)} no response</Pill>{canSendSelected&&<Btn ghost onClick={()=>eventComposer(e)}>Send</Btn>}</div>)}{!upcoming.length&&<div style={{fontSize:11,color:C.muted,padding:"12px 0"}}>No upcoming events for this team.</div>}</Card>
           <div style={{display:"grid",gap:14,alignContent:"start"}}>
-            <Card style={{padding:18}}><div style={{fontSize:16,fontWeight:800,marginBottom:10}}>Quick actions</div><div style={{display:"grid",gap:8}}>{canSendSelected&&<Btn onClick={()=>setComposer({audienceType:"team",messageType:"announcement",title:"",body:"",eventId:null,groupId:"",playerIds:[],priority:"normal"})}>Send team message</Btn>}<Btn ghost onClick={()=>setTab("responses")}>Review responses</Btn>{canSendSelected&&<Btn ghost onClick={()=>setGroupModal(true)}>Create subgroup</Btn>}</div></Card>
+            <Card style={{padding:18}}><div style={{fontSize:16,fontWeight:800,marginBottom:10}}>Quick actions</div><div style={{display:"grid",gap:8}}>{canSendSelected&&<Btn onClick={()=>setComposer({audienceType:"team",messageType:"announcement",title:"",body:"",eventId:null,groupId:"",subgroupKey:"",playerIds:[],priority:"normal"})}>Send team message</Btn>}<Btn ghost onClick={()=>setTab("responses")}>Review responses</Btn>{canSendSelected&&<Btn ghost onClick={()=>setGroupModal(true)}>Create subgroup</Btn>}</div></Card>
             <Card style={{padding:18}}><div style={{fontFamily:F.display,fontSize:16,fontWeight:750}}>Sending access</div><div style={{fontSize:11,color:C.muted,lineHeight:1.5,marginTop:6}}>{canSendSelected?"You can send messages for this team.":"You can view this team's Connect activity but cannot send messages."}</div>{canManageDelegates&&<Btn ghost style={{marginTop:11}} onClick={()=>setPermissionModal(true)}>Manage authorised senders</Btn>}</Card>
           </div>
         </div>
       </>}
 
-      {tab==="events"&&<div>{upcoming.map(e=><Card key={e.id} style={{padding:16,marginBottom:10}}><div style={{display:"flex",justifyContent:"space-between",gap:8,flexWrap:"wrap"}}><div><div style={{fontWeight:800}}>{e.title}</div><div style={{fontSize:10,color:C.muted,marginTop:3}}>{fmt(e.starts_at)} · {e.facility?.name||e.location||"Location TBC"}</div></div><Pill>{e.event_type}</Pill></div><div style={{display:"flex",gap:7,marginTop:12,flexWrap:"wrap"}}><Pill tone="yes">{teamPlayers.filter(p=>responses.some(r=>r.event_id===e.id&&r.player_id===p.id&&r.response==="yes")).length} Yes</Pill><Pill tone="no">{teamPlayers.filter(p=>responses.some(r=>r.event_id===e.id&&r.player_id===p.id&&r.response==="no")).length} No</Pill><Pill tone="maybe">{teamPlayers.filter(p=>responses.some(r=>r.event_id===e.id&&r.player_id===p.id&&r.response==="maybe")).length} Maybe</Pill><Pill tone="warn">{noResponseCount(e)} No response</Pill></div>{canSendSelected&&<div style={{display:"flex",gap:8,marginTop:12,flexWrap:"wrap"}}><Btn onClick={()=>eventComposer(e)}>Send / resend event</Btn>{noResponseCount(e)>0&&<Btn ghost onClick={()=>eventComposer(e,"reminder")}>Message no response only</Btn>}</div>}</Card>)}</div>}
+      {tab==="events"&&<div>{upcoming.map(e=><Card key={e.id} style={{padding:16,marginBottom:10}}><div style={{display:"flex",justifyContent:"space-between",gap:8,flexWrap:"wrap"}}><div><div style={{fontWeight:800}}>{e.title}</div><div style={{fontSize:10,color:C.muted,marginTop:3}}>{fmt(e.starts_at)} · {e.facility?.name||e.location||"Location TBC"}</div></div><Pill>{e.event_type}</Pill></div><div style={{display:"flex",gap:7,marginTop:12,flexWrap:"wrap"}}><Pill tone="yes">{eventPlayers(e).filter(p=>responses.some(r=>r.event_id===e.id&&r.player_id===p.id&&r.response==="yes")).length} Yes</Pill><Pill tone="no">{eventPlayers(e).filter(p=>responses.some(r=>r.event_id===e.id&&r.player_id===p.id&&r.response==="no")).length} No</Pill><Pill tone="maybe">{eventPlayers(e).filter(p=>responses.some(r=>r.event_id===e.id&&r.player_id===p.id&&r.response==="maybe")).length} Maybe</Pill><Pill tone="warn">{noResponseCount(e)} No response</Pill></div>{canSendSelected&&<div style={{display:"flex",gap:8,marginTop:12,flexWrap:"wrap"}}><Btn onClick={()=>eventComposer(e)}>Send / resend event</Btn>{noResponseCount(e)>0&&<Btn ghost onClick={()=>eventComposer(e,"reminder")}>Message no response only</Btn>}</div>}</Card>)}</div>}
 
-      {tab==="messages"&&<><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:12,flexWrap:"wrap"}}><div><h2 style={{margin:0,fontSize:18}}>Messages</h2><div style={{fontSize:10,color:C.muted}}>Team, subgroup, selected parents or clubwide.</div></div>{canSendSelected&&<div style={{display:"flex",gap:7,flexWrap:"wrap"}}>{nextPublishedTraining&&<><Btn ghost onClick={()=>eventComposer(nextPublishedTraining)}>Training details</Btn><Btn ghost onClick={()=>eventComposer(nextPublishedTraining,"reminder")}>Training response reminder</Btn></>}<Btn onClick={()=>setComposer({audienceType:"team",messageType:"announcement",title:"",body:"",eventId:null,groupId:"",playerIds:[],priority:"normal"})}>New Message</Btn></div>}</div>{nextPublishedTraining&&<Card style={{padding:12,marginBottom:10,background:C.yellowSoft,borderColor:"#fed7aa"}}><div style={{fontSize:10,fontWeight:800,color:C.ink}}>Club training allocation available</div><div style={{fontSize:10,color:C.muted,marginTop:3}}>{fmt(nextPublishedTraining.starts_at)} · {nextPublishedTraining.facility?.name||nextPublishedTraining.location||"Location TBC"}. Use the training templates above to message parents without retyping the details.</div></Card>}{messages.filter(m=>isAdmin||m.age_group_id===selectedTeam?.id).map(m=><Card key={m.id} style={{padding:14,marginBottom:8}}><div style={{display:"flex",justifyContent:"space-between",gap:8}}><div style={{minWidth:0,flex:1}}><b style={{fontSize:12}}>{m.title}</b>{m.message_type==="coach_session_draft"&&<div style={{fontSize:9,fontWeight:800,color:C.orange,marginTop:3,textTransform:"uppercase"}}>Auto-created from Coach session</div>}<div style={{fontSize:10,color:C.muted,marginTop:3,whiteSpace:"pre-line"}}>{m.body}</div></div><Pill>{m.audience_type}</Pill></div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:8,marginTop:8}}><div style={{fontSize:9,color:C.muted}}>{m.sent_at?`Sent ${fmt(m.sent_at)}`:"Draft — review before sending"}</div>{!m.sent_at&&canSendSelected&&<Btn ghost onClick={()=>openSavedDraft(m)}>Review draft</Btn>}</div></Card>)}</>}
+      {tab==="messages"&&<>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:12,flexWrap:"wrap"}}>
+          <div>
+            <h2 style={{margin:0,fontSize:18}}>Messages</h2>
+            <div style={{fontSize:10,color:C.muted}}>
+              Sent messages are retained as communication history. Archive hides them without deleting them.
+            </div>
+          </div>
 
-      {tab==="groups"&&<><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:12}}><div><h2 style={{margin:0,fontSize:18}}>Groups & subgroups</h2><div style={{fontSize:10,color:C.muted}}>Internal staff groups; parents only see messages relevant to their child.</div></div>{canSendSelected&&<Btn onClick={()=>setGroupModal(true)}>Create subgroup</Btn>}</div>{teamGroups.map(g=>{const ids=groupMembers.filter(m=>m.group_id===g.id).map(m=>m.player_id);return <Card key={g.id} style={{padding:15,marginBottom:9}}><div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"center"}}><div><b>{g.name}</b><div style={{fontSize:10,color:C.muted,marginTop:3}}>{g.description||"Custom subgroup"} · {ids.length} player{ids.length===1?"":"s"}</div></div>{canSendSelected&&<Btn ghost onClick={()=>setComposer({audienceType:"group",messageType:"announcement",title:"",body:"",eventId:null,groupId:g.id,playerIds:[],priority:"normal"})}>Message</Btn>}</div></Card>})}{!teamGroups.length&&<Card style={{padding:18,fontSize:11,color:C.muted}}>No subgroups yet. Examples: Saturday squad, Féile panel, goalkeepers, bus group.</Card>}</>}
+          {canSendSelected&&
+            <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
+              {nextPublishedTraining&&<>
+                <Btn ghost onClick={()=>eventComposer(nextPublishedTraining)}>Training details</Btn>
+                <Btn ghost onClick={()=>eventComposer(nextPublishedTraining,"reminder")}>Training response reminder</Btn>
+              </>}
 
-      {tab==="responses"&&<div>{upcoming.map(e=><Card key={e.id} style={{padding:15,marginBottom:10}}><div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"center",marginBottom:9}}><div><b>{e.title}</b><div style={{fontSize:9,color:C.muted}}>{fmt(e.starts_at)}</div></div><Pill tone={noResponseCount(e)?"warn":"yes"}>{noResponseCount(e)} outstanding</Pill></div>{teamPlayers.map(p=>{const r=responses.find(x=>x.event_id===e.id&&x.player_id===p.id);return <div key={p.id} style={{display:"flex",justifyContent:"space-between",gap:10,padding:"8px 0",borderTop:`1px solid ${C.line}`,fontSize:11}}><span>{p.name}</span><Pill tone={r?.response||"warn"}>{r?.response?r.response.toUpperCase():"NO RESPONSE"}</Pill></div>})}</Card>)}</div>}
+              <Btn onClick={()=>setComposer({
+                audienceType:"team",
+                messageType:"announcement",
+                title:"",
+                body:"",
+                eventId:null,
+                groupId:"",
+                subgroupKey:"",
+                playerIds:[],
+                priority:"normal"
+              })}>
+                New Message
+              </Btn>
+            </div>
+          }
+        </div>
+
+        <div style={{display:"flex",gap:8,marginBottom:12}}>
+          <Btn
+            ghost={messageView!=="active"}
+            onClick={()=>setMessageView("active")}
+          >
+            Active
+          </Btn>
+
+          <Btn
+            ghost={messageView!=="archived"}
+            onClick={()=>setMessageView("archived")}
+          >
+            Archived
+          </Btn>
+        </div>
+
+        {nextPublishedTraining&&messageView==="active"&&
+          <Card style={{
+            padding:12,
+            marginBottom:10,
+            background:C.yellowSoft,
+            borderColor:"#fed7aa"
+          }}>
+            <div style={{fontSize:10,fontWeight:800,color:C.ink}}>
+              Club training allocation available
+            </div>
+
+            <div style={{fontSize:10,color:C.muted,marginTop:3}}>
+              {fmt(nextPublishedTraining.starts_at)} · {nextPublishedTraining.facility?.name||nextPublishedTraining.location||"Location TBC"}.
+              Use the training templates above to message parents without retyping the details.
+            </div>
+          </Card>
+        }
+
+        {messages
+          .filter(m=>isAdmin||m.age_group_id===selectedTeam?.id)
+          .filter(m=>
+            messageView==="archived"
+              ? Boolean(m.archived_at)
+              : !m.archived_at
+          )
+          .map(m=>
+            <Card key={m.id} style={{padding:14,marginBottom:8}}>
+              <div style={{
+                display:"flex",
+                justifyContent:"space-between",
+                gap:8
+              }}>
+                <div style={{minWidth:0,flex:1}}>
+                  <b style={{fontSize:12}}>{m.title}</b>
+
+                  {m.message_type==="coach_session_draft"&&
+                    <div style={{
+                      fontSize:9,
+                      fontWeight:800,
+                      color:C.orange,
+                      marginTop:3,
+                      textTransform:"uppercase"
+                    }}>
+                      Auto-created from Coach session
+                    </div>
+                  }
+
+                  <div style={{
+                    fontSize:10,
+                    color:C.muted,
+                    marginTop:3,
+                    whiteSpace:"pre-line"
+                  }}>
+                    {m.body}
+                  </div>
+                </div>
+
+                <Pill>
+                  {m.audience_label||m.audience_type}
+                </Pill>
+              </div>
+
+              <div style={{
+                display:"flex",
+                justifyContent:"space-between",
+                alignItems:"center",
+                gap:8,
+                marginTop:10,
+                flexWrap:"wrap"
+              }}>
+                <div style={{fontSize:9,color:C.muted}}>
+                  {m.sent_at
+                    ? `Sent ${fmt(m.sent_at)}`
+                    : "Draft — review before sending"
+                  }
+
+                  {m.archived_at
+                    ? ` · Archived ${fmt(m.archived_at)}`
+                    : ""
+                  }
+                </div>
+
+                <div style={{display:"flex",gap:7}}>
+                  {!m.sent_at&&canSendSelected&&
+                    <Btn ghost onClick={()=>openSavedDraft(m)}>
+                      Review draft
+                    </Btn>
+                  }
+
+                  {m.sent_at&&canSendSelected&&messageView==="active"&&
+                    <Btn ghost onClick={()=>archiveMessage(m)}>
+                      Archive
+                    </Btn>
+                  }
+
+                  {m.sent_at&&canSendSelected&&messageView==="archived"&&<>
+                    <Btn ghost onClick={()=>restoreMessage(m)}>
+                      Restore
+                    </Btn>
+
+                    <Btn
+                      ghost
+                      onClick={()=>setDeleteMessageTarget(m)}
+                    >
+                      Delete
+                    </Btn>
+                  </>}
+                </div>
+              </div>
+            </Card>
+          )
+        }
+
+        {messages
+          .filter(m=>isAdmin||m.age_group_id===selectedTeam?.id)
+          .filter(m=>
+            messageView==="archived"
+              ? Boolean(m.archived_at)
+              : !m.archived_at
+          ).length===0&&
+          <Card style={{padding:18,fontSize:11,color:C.muted}}>
+            {messageView==="archived"
+              ? "No archived messages."
+              : "No active messages."
+            }
+          </Card>
+        }
+      </>}
+
+      {tab==="groups"&&<><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:12}}><div><h2 style={{margin:0,fontSize:18}}>Groups & subgroups</h2><div style={{fontSize:10,color:C.muted}}>Internal staff groups; parents only see messages relevant to their child.</div></div>{canSendSelected&&<Btn onClick={()=>setGroupModal(true)}>Create subgroup</Btn>}</div>{teamGroups.map(g=>{const ids=groupMembers.filter(m=>m.group_id===g.id).map(m=>m.player_id);return <Card key={g.id} style={{padding:15,marginBottom:9}}><div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"center"}}><div><b>{g.name}</b><div style={{fontSize:10,color:C.muted,marginTop:3}}>{g.description||"Custom subgroup"} · {ids.length} player{ids.length===1?"":"s"}</div></div>{canSendSelected&&<Btn ghost onClick={()=>setComposer({audienceType:"group",messageType:"announcement",title:"",body:"",eventId:null,groupId:g.id,subgroupKey:"",playerIds:[],priority:"normal"})}>Message</Btn>}</div></Card>})}{!teamGroups.length&&<Card style={{padding:18,fontSize:11,color:C.muted}}>No subgroups yet. Examples: Saturday squad, Féile panel, goalkeepers, bus group.</Card>}</>}
+
+      {tab==="responses"&&<div>{upcoming.map(e=><Card key={e.id} style={{padding:15,marginBottom:10}}><div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"center",marginBottom:9}}><div><b>{e.title}</b><div style={{fontSize:9,color:C.muted}}>{fmt(e.starts_at)}</div></div><Pill tone={noResponseCount(e)?"warn":"yes"}>{noResponseCount(e)} outstanding</Pill></div>{eventPlayers(e).map(p=>{const r=responses.find(x=>x.event_id===e.id&&x.player_id===p.id);return <div key={p.id} style={{display:"flex",justifyContent:"space-between",gap:10,padding:"8px 0",borderTop:`1px solid ${C.line}`,fontSize:11}}><span>{p.name}</span><Pill tone={r?.response||"warn"}>{r?.response?r.response.toUpperCase():"NO RESPONSE"}</Pill></div>})}</Card>)}</div>}
 
       {tab==="more"&&<><Card style={{padding:16,marginBottom:10}}><h2 style={{fontSize:17,margin:"0 0 5px"}}>Sending permissions</h2><div style={{fontSize:11,color:C.muted,lineHeight:1.5}}>Lead Mentors can send automatically. They can grant another assigned mentor permission for this team. Club Admin and Super Admin can send clubwide.</div>{canManageDelegates&&<Btn style={{marginTop:12}} onClick={()=>setPermissionModal(true)}>Manage authorised senders</Btn>}</Card><Card style={{padding:16}}><b>Account</b><div style={{fontSize:10,color:C.muted,marginTop:4}}>{session.user.email}</div><Btn ghost style={{marginTop:12}} onClick={centralLogout}>Log out</Btn></Card></>}
       </main>
@@ -598,7 +1031,166 @@ const selectedTeam=visibleTeams.find(
       })}
     </div>
 
-    <Modal open={!!composer} title="Send with Spraoi Connect" onClose={()=>setComposer(null)}>{composer&&<Composer draft={composer} setDraft={setComposer} teamPlayers={teamPlayers} groups={teamGroups} isAdmin={isAdmin} event={events.find(e=>e.id===composer.eventId)} onSend={()=>sendMessage(composer)}/>}</Modal>
+    <Modal open={!!composer} title="Send with Spraoi Connect" onClose={()=>setComposer(null)}>{composer&&<Composer draft={composer} setDraft={setComposer} teamPlayers={teamPlayers} groups={teamGroups} selectedTeam={selectedTeam} isAdmin={isAdmin} event={events.find(e=>e.id===composer.eventId)} onSend={()=>sendMessage(composer)}/>}</Modal>
+
+    <Modal
+      open={!!deleteMessageTarget}
+      title="Delete message permanently?"
+      onClose={()=>setDeleteMessageTarget(null)}
+      width={440}
+    >
+      {deleteMessageTarget&&
+        <div>
+          <div style={{
+            width:58,
+            height:58,
+            borderRadius:"50%",
+            display:"grid",
+            placeItems:"center",
+            margin:"2px auto 14px",
+            background:"#fef2f2",
+            color:"#dc2626",
+            fontSize:27,
+            fontWeight:900
+          }}>
+            !
+          </div>
+
+          <div style={{
+            textAlign:"center",
+            fontSize:17,
+            fontWeight:900,
+            color:C.ink
+          }}>
+            This cannot be undone
+          </div>
+
+          <div style={{
+            textAlign:"center",
+            fontSize:11,
+            lineHeight:1.6,
+            color:C.muted,
+            marginTop:8
+          }}>
+            You are about to permanently delete
+            <br/>
+            <b>{deleteMessageTarget.title}</b>
+          </div>
+
+          <div style={{
+            marginTop:15,
+            padding:12,
+            borderRadius:11,
+            background:"#fef2f2",
+            border:"1px solid #fecaca",
+            fontSize:10,
+            lineHeight:1.55,
+            color:"#991b1b"
+          }}>
+            The sent message and its saved recipient history will be permanently removed.
+            This action is only available for messages that have already been archived.
+          </div>
+
+          <div style={{
+            display:"flex",
+            gap:8,
+            justifyContent:"flex-end",
+            marginTop:17
+          }}>
+            <Btn
+              ghost
+              onClick={()=>setDeleteMessageTarget(null)}
+            >
+              Cancel
+            </Btn>
+
+            <button
+              type="button"
+              onClick={()=>deleteArchivedMessage(deleteMessageTarget)}
+              style={{
+                border:0,
+                borderRadius:10,
+                padding:"9px 13px",
+                background:"#dc2626",
+                color:"#fff",
+                fontWeight:900,
+                cursor:"pointer"
+              }}
+            >
+              Delete permanently
+            </button>
+          </div>
+        </div>
+      }
+    </Modal>
+
+    <Modal
+      open={!!sendReceipt}
+      title="Message sent"
+      onClose={()=>setSendReceipt(null)}
+      width={420}
+    >
+      {sendReceipt&&
+        <div>
+          <div style={{
+            width:58,
+            height:58,
+            borderRadius:"50%",
+            display:"grid",
+            placeItems:"center",
+            margin:"2px auto 14px",
+            background:"#ecfdf5",
+            color:"#15803d",
+            fontSize:28,
+            fontWeight:900
+          }}>
+            ✓
+          </div>
+
+          <div style={{
+            textAlign:"center",
+            fontSize:17,
+            fontWeight:900,
+            color:C.ink
+          }}>
+            Sent successfully
+          </div>
+
+          <div style={{
+            textAlign:"center",
+            fontSize:11,
+            lineHeight:1.6,
+            color:C.muted,
+            marginTop:8
+          }}>
+            <b>{sendReceipt.title}</b><br/>
+            {sendReceipt.audience}<br/>
+            Sent for {sendReceipt.count} child{sendReceipt.count===1?"":"ren"}
+          </div>
+
+          <div style={{
+            padding:11,
+            borderRadius:11,
+            background:C.soft,
+            color:C.muted,
+            fontSize:10,
+            lineHeight:1.5,
+            marginTop:15
+          }}>
+            This message has been saved to communication history.
+            Archiving it will not delete the message or its recipient record.
+          </div>
+
+          <div style={{
+            display:"flex",
+            justifyContent:"center",
+            marginTop:16
+          }}>
+            <Btn onClick={()=>setSendReceipt(null)}>Done</Btn>
+          </div>
+        </div>
+      }
+    </Modal>
 
 
 
@@ -1039,8 +1631,19 @@ const selectedTeam=visibleTeams.find(
   </div>;
 }
 
-function Composer({draft,setDraft,teamPlayers,groups,isAdmin,event,onSend}){
+function Composer({draft,setDraft,teamPlayers,groups,selectedTeam,isAdmin,event,onSend}){
   const set=(key,value)=>setDraft(d=>({...d,[key]:value}));
-  const canSend=Boolean(draft.title?.trim()&&draft.body?.trim());
-  return <div><Field label="Audience"><select style={inputStyle} value={draft.audienceType} onChange={e=>set("audienceType",e.target.value)}><option value="team">Whole team</option><option value="group">Subgroup</option><option value="selected">Selected children / parents</option>{event&&<option value="no_response">No response to this event</option>}{isAdmin&&<option value="club">Whole club</option>}</select></Field>{draft.audienceType==="group"&&<Field label="Subgroup"><select style={inputStyle} value={draft.groupId||""} onChange={e=>set("groupId",e.target.value)}><option value="">Choose group</option>{groups.map(g=><option key={g.id} value={g.id}>{g.name}</option>)}</select></Field>}{draft.audienceType==="selected"&&<div style={{marginBottom:12}}><div style={{fontSize:10,fontWeight:800,color:C.muted,textTransform:"uppercase",marginBottom:7}}>Recipients</div><div style={{maxHeight:180,overflow:"auto",border:`1px solid ${C.line}`,borderRadius:11,padding:7}}>{teamPlayers.map(p=><label key={p.id} style={{display:"flex",gap:8,padding:"6px 4px",fontSize:11}}><input type="checkbox" checked={draft.playerIds?.includes(p.id)} onChange={e=>set("playerIds",e.target.checked?[...(draft.playerIds||[]),p.id]:(draft.playerIds||[]).filter(id=>id!==p.id))}/>{p.name}</label>)}</div></div>}<Field label="Title"><input style={inputStyle} value={draft.title} onChange={e=>set("title",e.target.value)} placeholder="Message title"/></Field><Field label="Message"><textarea style={{...inputStyle,minHeight:150,resize:"vertical",lineHeight:1.5}} value={draft.body} onChange={e=>set("body",e.target.value)} placeholder="Write your message…"/></Field><label style={{display:"flex",gap:8,alignItems:"center",fontSize:11,color:C.muted,marginBottom:14}}><input type="checkbox" checked={draft.priority==="important"} onChange={e=>set("priority",e.target.checked?"important":"normal")}/> Important update (show prominently in Academy)</label><div style={{padding:10,borderRadius:11,background:C.soft,fontSize:10,color:C.muted,marginBottom:14}}>Parents receive this in Spraoi with the session attached. Use Whole team for normal training, or switch Audience to Subgroup for a selected squad. Availability is collected as Yes / Maybe / No against the linked session event.</div><div style={{display:"flex",justifyContent:"flex-end"}}><Btn disabled={!canSend} onClick={onSend}>Send message</Btn></div></div>;
+  const canSend=Boolean(
+    draft.title?.trim() &&
+    draft.body?.trim() &&
+    (
+      draft.audienceType!=="ab_subgroup" ||
+      Boolean(draft.subgroupKey)
+    ) &&
+    (
+      draft.audienceType!=="group" ||
+      Boolean(draft.groupId)
+    )
+  );
+  return <div><Field label="Audience"><select style={inputStyle} value={draft.audienceType} onChange={e=>set("audienceType",e.target.value)}><option value="team">Whole team</option><option value="ab_subgroup">A/B team</option><option value="group">Custom subgroup</option><option value="selected">Selected children / parents</option>{event&&<option value="no_response">No response to this event</option>}{isAdmin&&<option value="club">Whole club</option>}</select></Field>{draft.audienceType==="ab_subgroup"&&<Field label="A/B team"><select style={inputStyle} value={draft.subgroupKey||""} onChange={e=>set("subgroupKey",e.target.value)}><option value="">Choose A/B team</option><option value="football_a">Football A</option><option value="football_b">Football B</option><option value="hurling_a">{String(selectedTeam?.gender||"").toLowerCase()==="girls"?"Camogie A":"Hurling A"}</option><option value="hurling_b">{String(selectedTeam?.gender||"").toLowerCase()==="girls"?"Camogie B":"Hurling B"}</option></select></Field>}{draft.audienceType==="group"&&<Field label="Custom subgroup"><select style={inputStyle} value={draft.groupId||""} onChange={e=>set("groupId",e.target.value)}><option value="">Choose group</option>{groups.map(g=><option key={g.id} value={g.id}>{g.name}</option>)}</select></Field>}{draft.audienceType==="selected"&&<div style={{marginBottom:12}}><div style={{fontSize:10,fontWeight:800,color:C.muted,textTransform:"uppercase",marginBottom:7}}>Recipients</div><div style={{maxHeight:180,overflow:"auto",border:`1px solid ${C.line}`,borderRadius:11,padding:7}}>{teamPlayers.map(p=><label key={p.id} style={{display:"flex",gap:8,padding:"6px 4px",fontSize:11}}><input type="checkbox" checked={draft.playerIds?.includes(p.id)} onChange={e=>set("playerIds",e.target.checked?[...(draft.playerIds||[]),p.id]:(draft.playerIds||[]).filter(id=>id!==p.id))}/>{p.name}</label>)}</div></div>}<Field label="Title"><input style={inputStyle} value={draft.title} onChange={e=>set("title",e.target.value)} placeholder="Message title"/></Field><Field label="Message"><textarea style={{...inputStyle,minHeight:150,resize:"vertical",lineHeight:1.5}} value={draft.body} onChange={e=>set("body",e.target.value)} placeholder="Write your message…"/></Field><label style={{display:"flex",gap:8,alignItems:"center",fontSize:11,color:C.muted,marginBottom:14}}><input type="checkbox" checked={draft.priority==="important"} onChange={e=>set("priority",e.target.checked?"important":"normal")}/> Important update (show prominently in Academy)</label><div style={{padding:10,borderRadius:11,background:C.soft,fontSize:10,color:C.muted,marginBottom:14}}>Parents receive this in Spraoi with the session attached. Use Whole team for normal training, or switch Audience to Subgroup for a selected squad. Availability is collected as Yes / Maybe / No against the linked session event.</div><div style={{display:"flex",justifyContent:"flex-end"}}><Btn disabled={!canSend} onClick={onSend}>Send message</Btn></div></div>;
 }
