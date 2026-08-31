@@ -1082,6 +1082,201 @@ export default function ClubScheduling({ club, ageGroups = [], currentUserId, hi
             </div>
           </div>
 
+
+          {/* WEEK PUBLICATION STATUS */}
+          {(() => {
+            const publishedForWeek = allocations.filter(
+              (allocation) => allocation.status === "published"
+            ).length;
+
+            const draftsForWeek = allocations.filter(
+              (allocation) => allocation.status === "draft"
+            ).length;
+
+            const activeForWeek = allocations.filter(
+              (allocation) => allocation.status !== "cancelled"
+            ).length;
+
+            const selectedStart = new Date(`${weekStart}T12:00:00`);
+            const selectedEnd = new Date(selectedStart);
+            selectedEnd.setDate(selectedEnd.getDate() + 6);
+
+            const mondayOf = (date) => {
+              const d = new Date(date);
+              d.setHours(12, 0, 0, 0);
+              const day = d.getDay() || 7;
+              d.setDate(d.getDate() - day + 1);
+              return d;
+            };
+
+            const currentMonday = mondayOf(new Date());
+
+            const sameWeek =
+              selectedStart.getFullYear() === currentMonday.getFullYear() &&
+              selectedStart.getMonth() === currentMonday.getMonth() &&
+              selectedStart.getDate() === currentMonday.getDate();
+
+            const weekLabel =
+              selectedStart.toLocaleDateString("en-IE", {
+                day: "numeric",
+                month: "short",
+              }) +
+              " – " +
+              selectedEnd.toLocaleDateString("en-IE", {
+                day: "numeric",
+                month: "short",
+              });
+
+            let status = "Not prepared";
+            let statusColor = "#6b7280";
+            let statusBackground = "#f8fafc";
+            let statusBorder = "#e2e8f0";
+
+            if (publishedForWeek > 0 && draftsForWeek === 0) {
+              status = "Published";
+              statusColor = "#15803d";
+              statusBackground = "#f0fdf4";
+              statusBorder = "#86efac";
+            } else if (publishedForWeek > 0 && draftsForWeek > 0) {
+              status = "Needs review";
+              statusColor = "#b45309";
+              statusBackground = "#fffbeb";
+              statusBorder = "#fde68a";
+            } else if (draftsForWeek > 0) {
+              status = "Draft";
+              statusColor = "#b45309";
+              statusBackground = "#fffbeb";
+              statusBorder = "#fde68a";
+            }
+
+            const moveToWeek = (offset) => {
+              const next = new Date(currentMonday);
+              next.setDate(next.getDate() + offset * 7);
+
+              const y = next.getFullYear();
+              const m = String(next.getMonth() + 1).padStart(2, "0");
+              const d = String(next.getDate()).padStart(2, "0");
+
+              setWeekStart(`${y}-${m}-${d}`);
+            };
+
+            return (
+              <div
+                style={{
+                  ...card,
+                  marginBottom: 14,
+                  border: `1px solid ${statusBorder}`,
+                  background: statusBackground,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: 14,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <div>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      <div style={sectionTitle}>
+                        {sameWeek ? "Current week" : "Selected week"}
+                      </div>
+
+                      <span
+                        style={{
+                          padding: "5px 9px",
+                          borderRadius: 999,
+                          fontSize: 9,
+                          fontWeight: 900,
+                          color: statusColor,
+                          background: "#fff",
+                          border: `1px solid ${statusBorder}`,
+                        }}
+                      >
+                        {status === "Published" ? "✓ " : ""}
+                        {status}
+                      </span>
+                    </div>
+
+                    <div
+                      style={{
+                        fontSize: 15,
+                        fontWeight: 900,
+                        color: INK,
+                        marginTop: 6,
+                      }}
+                    >
+                      {weekLabel}
+                    </div>
+
+                    <div style={{ ...sectionSub, marginTop: 5 }}>
+                      {status === "Published"
+                        ? `${publishedForWeek} training allocation${publishedForWeek === 1 ? "" : "s"} are live for coaches.`
+                        : status === "Draft"
+                        ? `${draftsForWeek} draft allocation${draftsForWeek === 1 ? "" : "s"} awaiting review and publishing.`
+                        : status === "Needs review"
+                        ? `${publishedForWeek} published · ${draftsForWeek} still awaiting review.`
+                        : "This week has not been prepared yet. Generate the recurring slots to create its draft."}
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: 6,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    {[
+                      [0, "This week"],
+                      [1, "Next week"],
+                      [2, "+2 weeks"],
+                      [3, "+3 weeks"],
+                    ].map(([offset, label]) => (
+                      <button
+                        key={offset}
+                        type="button"
+                        onClick={() => moveToWeek(offset)}
+                        style={{
+                          ...btn(false),
+                          height: 32,
+                          padding: "0 10px",
+                          fontSize: 9,
+                        }}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {activeForWeek === 0 && (
+                  <div
+                    style={{
+                      marginTop: 12,
+                      paddingTop: 10,
+                      borderTop: `1px solid ${statusBorder}`,
+                      fontSize: 9.5,
+                      color: MUTED,
+                    }}
+                  >
+                    Select a future week above, then use <strong>Generate Drafts</strong> and
+                    review the pitch plan before choosing <strong>Publish Week</strong>.
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           {/* RECURRING SLOT PREVIEW */}
           <div
             style={{

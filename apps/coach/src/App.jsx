@@ -2756,8 +2756,12 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
       setNotesState("");
       setPlannedStartTimeState("");
       setPlannedLocationState("");
-      setPublishedAllocation(null);
-      setAllocationConflict(false);
+
+      // Do NOT clear publishedAllocation here.
+      // The allocation effect owns this state for the newly-selected date.
+      // Clearing it here creates a race where a valid Club allocation
+      // can be erased immediately after it has been loaded.
+
       setNextId(2);
       userTouchedSessionRef.current = false;
       setHasUnsavedChanges(false);
@@ -2811,6 +2815,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
         .order("starts_at")
         .limit(1)
         .maybeSingle();
+
       if (
         cancelled ||
         requestId !== allocationRequestRef.current ||
@@ -2858,49 +2863,30 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
         sessionDate
       });
 
-      // SELF-HEAL EXISTING COACH SESSION
-      // Never create a session here.
-      // Only link the currently-open saved session when date/time match.
-      if (
-        editingSession?.id &&
-        plannedStartTime
-      ) {
-        const plannedIso =
-          localDateTimeIso(
-            sessionDate,
-            plannedStartTime
+      // Attach the Club-published allocation to any saved Coach
+      // session for this team/date.
+      //
+      // The Club allocation is authoritative once published.
+      // A different Coach planned time/location is retained only
+      // so the UI can show that the Club allocation differs.
+      if (editingSession?.id) {
+        const { error: linkExistingError } =
+          await supabase
+            .from("sessions")
+            .update({
+              weekly_allocation_id: allocation.id,
+              confirmed_starts_at: allocation.starts_at,
+              confirmed_ends_at: allocation.ends_at,
+              confirmed_facility_id:
+                allocation.facility_id || null
+            })
+            .eq("id", editingSession.id);
+
+        if (linkExistingError) {
+          console.error(
+            "Could not link published allocation:",
+            linkExistingError
           );
-
-        const plannedMs = plannedIso
-          ? new Date(plannedIso).getTime()
-          : NaN;
-
-        const allocationMs =
-          new Date(allocation.starts_at).getTime();
-
-        if (
-          Number.isFinite(plannedMs) &&
-          Number.isFinite(allocationMs) &&
-          Math.abs(plannedMs - allocationMs) < 60000
-        ) {
-          const { error: linkExistingError } =
-            await supabase
-              .from("sessions")
-              .update({
-                weekly_allocation_id: allocation.id,
-                confirmed_starts_at: allocation.starts_at,
-                confirmed_ends_at: allocation.ends_at,
-                confirmed_facility_id:
-                  allocation.facility_id || null
-              })
-              .eq("id", editingSession.id);
-
-          if (linkExistingError) {
-            console.error(
-              "Could not link published allocation:",
-              linkExistingError
-            );
-          }
         }
       }
 
@@ -3707,10 +3693,53 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
                 })
                 .slice(0, 30)
                 .map((a) => {
-                const targetSection = sections.find((s) => s.type === "stations") || sections[sections.length - 1];
                 const { sportIcon, catIcon } = getDrillIcons(a);
+
+                const addLibraryDrill = () => {
+                  const existingStations =
+                    sections.find((s) => s.type === "stations");
+
+                  if (existingStations) {
+                    addDrillToSection(existingStations.id, a);
+                    return;
+                  }
+
+                  // No Stations section yet:
+                  // create one and place the clicked drill in it immediately.
+                  setSections((current) => {
+                    const alreadyExists =
+                      current.find((s) => s.type === "stations");
+
+                    if (alreadyExists) {
+                      return current.map((section) =>
+                        section.id === alreadyExists.id
+                          ? {
+                              ...section,
+                              drills: [
+                                ...(section.drills || []),
+                                a,
+                              ],
+                            }
+                          : section
+                      );
+                    }
+
+                    const newSection = {
+                      id: Date.now(),
+                      type: "stations",
+                      label: "Stations",
+                      drills: [a],
+                    };
+
+                    return [...current, newSection];
+                  });
+
+                  userTouchedSessionRef.current = true;
+                  setHasUnsavedChanges(true);
+                };
+
                 return (
-                  <div key={a.id} onClick={() => targetSection && addDrillToSection(targetSection.id, a)} style={{ padding: "7px 6px", borderBottom: `1px solid ${P.line}`, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, borderRadius: 6, transition: "background .12s" }} onMouseEnter={(e) => e.currentTarget.style.background = P.soft} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+                  <div key={a.id} onClick={addLibraryDrill} style={{ padding: "7px 6px", borderBottom: `1px solid ${P.line}`, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, borderRadius: 6, transition: "background .12s" }} onMouseEnter={(e) => e.currentTarget.style.background = P.soft} onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
                     <div style={{ width: 32, height: 32, borderRadius: 8, background: sportIcon.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, position: "relative" }}>
                       <img src={sportIcon.icon} alt="" style={{ width: 18, height: 18, objectFit: "contain", filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.2))" }} />
                       {catIcon && <img src={catIcon.icon} alt="" style={{ position: "absolute", bottom: -2, right: -2, width: 12, height: 12, objectFit: "contain", background: "#fff", borderRadius: 3, padding: 1 }} />}
