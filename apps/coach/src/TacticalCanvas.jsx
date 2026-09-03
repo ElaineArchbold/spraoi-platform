@@ -163,12 +163,26 @@ export default function TacticalCanvas({
     setSelectedId(null);
   }
 
-  function nextPlayerNumber() {
-    return (
-      board.objects.filter((obj) =>
-        ["playerA", "playerB", "keeper"].includes(obj.type)
-      ).length + 1
-    );
+  function nextPlayerNumber(type) {
+    const teamType =
+      type === "playerA"
+        ? "playerA"
+        : type === "playerB"
+        ? "playerB"
+        : "keeper";
+
+    const usedNumbers = board.objects
+      .filter((obj) => obj.type === teamType)
+      .map((obj) => Number(obj.number))
+      .filter((value) => Number.isFinite(value) && value > 0);
+
+    let next = 1;
+
+    while (usedNumbers.includes(next)) {
+      next += 1;
+    }
+
+    return next;
   }
 
   function addObject(type, p) {
@@ -206,7 +220,7 @@ export default function TacticalCanvas({
           x: p.x,
           y: p.y,
           number: ["playerA", "playerB", "keeper"].includes(type)
-            ? nextPlayerNumber()
+            ? nextPlayerNumber(type)
             : null,
         },
       ],
