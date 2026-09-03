@@ -40,6 +40,7 @@ export default function TacticalCanvas({
   const [arrowDraft, setArrowDraft] = useState(null);
 
   const [presentation, setPresentation] = useState(false);
+  const [presentationMore, setPresentationMore] = useState(false);
 
   const teamName = useMemo(() => {
     if (!selectedTeam) return "Coach";
@@ -771,10 +772,24 @@ export default function TacticalCanvas({
           : "tc-root"
       }
     >
-      {!presentation && !readOnly && (
+      {!readOnly && (
         <div className="tc-toolbar">
           <div className="tc-tools">
-            {tools.map(([id, label]) => (
+            {(presentation
+              ? tools.filter(([id]) =>
+                  [
+                    "select",
+                    "playerA",
+                    "playerB",
+                    "keeper",
+                    "ball",
+                    "cone",
+                    "arrow",
+                    "pen",
+                  ].includes(id)
+                )
+              : tools
+            ).map(([id, label]) => (
               <button
                 key={id}
                 className={tool === id ? "active" : ""}
@@ -804,72 +819,101 @@ export default function TacticalCanvas({
               Redo
             </button>
 
-            <button
-              onClick={editSelected}
-              disabled={!selectedId}
-            >
-              Edit
-            </button>
-
-            <button
-              onClick={duplicateSelected}
-              disabled={!selectedId}
-            >
-              Duplicate
-            </button>
-
-            <button
-              onClick={deleteSelected}
-              disabled={!selectedId}
-            >
-              Delete
-            </button>
-
-            <button onClick={clearBoard}>
-              Clear
-            </button>
-          </div>
-
-          <div className="tc-options">
-            <label>
-              Sport
-              <select
-                value={board.sport}
-                onChange={(event) =>
-                  setSport(event.target.value)
+            {presentation && (
+              <button
+                onClick={() =>
+                  setPresentationMore((value) => !value)
                 }
               >
-                <option value="gaa">GAA</option>
-                <option value="soccer">
-                  Soccer — coming soon
-                </option>
-                <option value="rugby">
-                  Rugby — coming soon
-                </option>
-                <option value="basketball">
-                  Basketball — coming soon
-                </option>
-                <option value="hockey">
-                  Hockey — coming soon
-                </option>
-              </select>
-            </label>
+                {presentationMore ? "Less" : "More"}
+              </button>
+            )}
 
-            <label className="tc-checkbox">
-              <input
-                type="checkbox"
-                checked={board.halfPitch}
-                onChange={(event) =>
-                  setHalfPitch(event.target.checked)
-                }
-              />
-              Half pitch
-            </label>
+            {(!presentation || presentationMore) && (
+              <>
+                {presentation && (
+                  <button
+                    className={tool === "text" ? "active" : ""}
+                    onClick={() => {
+                      setTool("text");
+                      setArrowDraft(null);
+                      setDrawing(null);
+                    }}
+                  >
+                    Text
+                  </button>
+                )}
 
-            <span className="tc-autosave">
-              ✓ Draft auto-saved
-            </span>
+                <button
+                  onClick={editSelected}
+                  disabled={!selectedId}
+                >
+                  Edit
+                </button>
+
+                <button
+                  onClick={duplicateSelected}
+                  disabled={!selectedId}
+                >
+                  Duplicate
+                </button>
+
+                <button
+                  onClick={deleteSelected}
+                  disabled={!selectedId}
+                >
+                  Delete
+                </button>
+
+                <button onClick={clearBoard}>
+                  Clear
+                </button>
+              </>
+            )}
           </div>
+
+          {!presentation && (
+            <div className="tc-options">
+              <label>
+                Sport
+                <select
+                  value={board.sport}
+                  onChange={(event) =>
+                    setSport(event.target.value)
+                  }
+                >
+                  <option value="gaa">GAA</option>
+                  <option value="soccer">
+                    Soccer ? coming soon
+                  </option>
+                  <option value="rugby">
+                    Rugby ? coming soon
+                  </option>
+                  <option value="basketball">
+                    Basketball ? coming soon
+                  </option>
+                  <option value="hockey">
+                    Hockey ? coming soon
+                  </option>
+                </select>
+              </label>
+
+              <label className="tc-checkbox">
+                <input
+                  type="checkbox"
+                  checked={board.halfPitch}
+                  onChange={(event) =>
+                    setHalfPitch(event.target.checked)
+                  }
+                />
+                Half pitch
+              </label>
+
+              <span className="tc-autosave">
+                ? Draft auto-saved
+              </span>
+            </div>
+          )}
         </div>
       )}
 
@@ -877,7 +921,10 @@ export default function TacticalCanvas({
         {presentation && (
           <button
             className="tc-exit-presentation"
-            onClick={() => setPresentation(false)}
+            onClick={() => {
+              setPresentation(false);
+              setPresentationMore(false);
+            }}
           >
             Exit presentation
           </button>
@@ -1084,15 +1131,38 @@ export default function TacticalCanvas({
           inset: 0;
           z-index: 9999;
           background: #10243e;
-          padding: 0;
+          padding: 12px;
+          box-sizing: border-box;
           display: flex;
-          align-items: center;
-          justify-content: center;
+          flex-direction: column;
+          align-items: stretch;
+          justify-content: stretch;
+          overflow: hidden;
+        }
+
+        .tc-presentation .tc-tools {
+          position: fixed;
+          left: 14px;
+          right: 150px;
+          top: 12px;
+          z-index: 10002;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+          padding: 8px;
+          border-radius: 12px;
+          background: rgba(255,255,255,.96);
+          box-shadow: 0 8px 30px rgba(0,0,0,.18);
         }
 
         .tc-presentation .tc-board-shell {
-          width: 100vw;
-          height: 100vh;
+          position: fixed;
+          left: 12px;
+          right: 12px;
+          top: 82px;
+          bottom: 12px;
+          width: auto;
+          height: auto;
           padding: 0;
           border: 0;
           border-radius: 0;
@@ -1100,20 +1170,30 @@ export default function TacticalCanvas({
           align-items: center;
           justify-content: center;
           background: #10243e;
+          overflow: hidden;
         }
 
         .tc-presentation svg {
-          width: 100vw !important;
-          height: 100vh;
-          max-height: 100vh;
+          width: 100% !important;
+          height: 100% !important;
+          max-width: 100%;
+          max-height: 100%;
+          object-fit: contain;
+          display: block;
+        }
+
+        .tc-presentation .tc-footer,
+        .tc-presentation .tc-options {
+          display: none;
         }
 
         .tc-exit-presentation {
           position: fixed;
           top: 14px;
           right: 14px;
-          z-index: 10002;
-          background: rgba(255,255,255,.94);
+          z-index: 10003;
+          background: rgba(255,255,255,.96);
+          box-shadow: 0 8px 30px rgba(0,0,0,.18);
         }
 
         @media (max-width: 760px) {
