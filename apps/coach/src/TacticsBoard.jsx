@@ -1,8 +1,8 @@
-﻿import { useMemo } from "react";
+import { useMemo } from "react";
 import TacticalCanvas from "./TacticalCanvas";
+import { supabase } from "./supabaseClient";
 
-const makeId = () =>
-  "board_" + Date.now() + "_" + Math.random().toString(36).slice(2);
+const CLUB_ID = "76df4b9c-666c-48e1-9cd6-0d9ed2471503";
 
 export default function TacticsBoard({ selectedTeam }) {
   const draftKey = useMemo(
@@ -37,7 +37,18 @@ export default function TacticsBoard({ selectedTeam }) {
     }
   }
 
-  function saveNamedBoard() {
+  async function currentUser() {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    return user;
+  }
+
+  async function saveBoard({
+    shared = false,
+    name = null,
+  } = {}) {
     const board = currentBoard();
 
     if (!board) {
@@ -45,40 +56,125 @@ export default function TacticsBoard({ selectedTeam }) {
       return;
     }
 
-    const name =
+    const user = await currentUser();
+
+    if (!user) {
+      alert("You need to be signed in to save boards.");
+      return;
+    }
+
+    const boardName =
+      name ||
       window.prompt(
-        "Board name",
+        shared
+          ? "Name this board before sharing"
+          : "Board name",
         teamName + " tactics"
-      ) || teamName + " tactics";
+      );
 
-    const rows = JSON.parse(
-      localStorage.getItem("spraoi_tactics_boards") || "[]"
+    if (!boardName) return;
+
+    const { error } = await supabase
+      .from("tactics_boards")
+      .insert({
+        club_id: CLUB_ID,
+        age_group_id: selectedTeam?.id || null,
+        created_by: user.id,
+        name: boardName.trim(),
+        board_data: board,
+        shared_with_team: shared,
+      });
+
+    if (error) {
+      console.error(error);
+      alert("Could not save this board.");
+      return;
+    }
+
+    alert(
+      shared
+        ? "Board shared with your team coaches."
+        : "Board saved to My Boards."
     );
-
-    const record = {
-      id: makeId(),
-      name,
-      teamId: selectedTeam?.id || null,
-      teamName,
-      board,
-      updatedAt: new Date().toISOString(),
-    };
-
-    localStorage.setItem(
-      "spraoi_tactics_boards",
-      JSON.stringify([record, ...rows])
-    );
-
-    alert("Board saved to My Boards.");
   }
 
-  function openNamedBoard() {
-    const rows = JSON.parse(
-      localStorage.getItem("spraoi_tactics_boards") || "[]"
+  async function openNamedBoard() {
+    const user = await currentUser();
+
+    if (!user) {
+      alert("You need to be signed in.");
+      return;
+    }
+
+    let query = supabase
+      .from("tactics_boards")
+      .select(
+        "id,name,board_data,shared_with_team,created_by,updated_at"
+      )
+      .order("updated_at", { ascending: false });
+
+    if (selectedTeam?.id) {
+      query = query.eq(
+        "age_group_id",
+        selectedTeam.id
+      );
+    }
+
+    const { data: rows, error } = await query;
+
+    if (error) {
+      console.error(error);
+      alert("Could not load your boards.");
+      return;
+    }
+
+    if (!rows?.length) {
+      alert("There are no saved or shared boards yet.");
+      return;
+    }
+
+    const menu = rows
+      .map((row, index) => {
+        const source =
+          row.created_by === user.id
+            ? "My board"
+            : "Shared";
+
+        return `${index + 1}. ${row.name} ? ${source}`;
+      })
+      .join("\n");
+
+    const answer = window.prompt(
+      "Enter the board number to open:\n\n" + menu
     );
 
-    if (!rows.length) {
-      alert("You haven't saved any named boards yet.");
+    if (!answer) return;
+
+    const chosen = rows[Number(answer) - 1];
+
+    if (!chosen?.board_data) return;
+
+    localStorage.setItem(
+      draftKey,
+      JSON.stringify(chosen.board_data)
+    );
+
+    window.location.reload();
+  }
+
+  async function deleteMyBoard() {
+    const user = await currentUser();
+
+    if (!user) return;
+
+    const { data: rows, error } = await supabase
+      .from("tactics_boards")
+      .select("id,name")
+      .eq("created_by", user.id)
+      .order("updated_at", { ascending: false });
+
+    if (error || !rows?.length) {
+      alert("You don't have any saved boards to delete.");
       return;
     }
 
@@ -90,21 +186,37 @@ export default function TacticsBoard({ selectedTeam }) {
       .join("\n");
 
     const answer = window.prompt(
-      "Enter the board number to open:\n\n" + menu
+      "Enter the board number to delete:\n\n" +
+        menu
     );
 
     if (!answer) return;
 
     const chosen = rows[Number(answer) - 1];
 
-    if (!chosen?.board) return;
+    if (!chosen) return;
 
-    localStorage.setItem(
-      draftKey,
-      JSON.stringify(chosen.board)
-    );
+    if (
+      !window.confirm(
+        `Delete "${chosen.name}"?`
+      )
+    ) {
+      return;
+    }
 
-    window.location.reload();
+    const { error: deleteError } = await supabase
+      .from("tactics_boards")
+      .delete()
+      .eq("id", chosen.id)
+      .eq("created_by", user.id);
+
+    if (deleteError) {
+      console.error(deleteError);
+      alert("Could not delete this board.");
+      return;
+    }
+
+    alert("Board deleted.");
   }
 
   function exportPng() {
@@ -209,7 +321,7 @@ export default function TacticsBoard({ selectedTeam }) {
                 color: "#64748b",
               }}
             >
-              {teamName} · Your current board is
+              {teamName} ? Your current board is
               saved automatically
             </div>
           </div>
@@ -229,10 +341,33 @@ export default function TacticsBoard({ selectedTeam }) {
             </button>
 
             <button
-              onClick={saveNamedBoard}
+              onClick={() =>
+                saveBoard({ shared: false })
+              }
               style={buttonStyle}
             >
               Save Copy
+            </button>
+
+            <button
+              onClick={() =>
+                saveBoard({ shared: true })
+              }
+              style={{
+                ...buttonStyle,
+                background: "#0F766E",
+                borderColor: "#0F766E",
+                color: "#fff",
+              }}
+            >
+              Share with Team
+            </button>
+
+            <button
+              onClick={deleteMyBoard}
+              style={buttonStyle}
+            >
+              Delete Board
             </button>
 
             <button

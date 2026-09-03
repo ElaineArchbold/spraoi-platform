@@ -1,4 +1,5 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 const WIDTH = 900;
 const HEIGHT = 560;
@@ -762,7 +763,7 @@ export default function TacticalCanvas({
     ["text", "Text"],
   ];
 
-  return (
+  const content = (
     <div
       className={
         presentation
@@ -1133,4 +1134,8 @@ export default function TacticalCanvas({
       `}</style>
     </div>
   );
+
+  return presentation && typeof document !== "undefined"
+    ? createPortal(content, document.body)
+    : content;
 }
