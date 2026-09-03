@@ -140,7 +140,7 @@ export default function TacticsBoard({ selectedTeam }) {
             ? "My board"
             : "Shared";
 
-        return `${index + 1}. ${row.name} ? ${source}`;
+        return `${index + 1}. ${row.name} - ${source}`;
       })
       .join("\n");
 
