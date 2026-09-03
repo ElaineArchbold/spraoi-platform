@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect, useRef } from "react";
+import TacticsBoard from "./TacticsBoard";
 import { createPortal } from "react-dom";
 import { supabase } from "./supabaseClient";
 
@@ -433,6 +434,7 @@ function secondaryNavAsset(moduleKey, id) {
       "coach-planner": "/icons/coach/planner.svg",
       "coach-sessions": "/icons/coach/sessions.svg",
       "coach-drills": "/icons/coach/drills.svg",
+      "coach-tactics": "/icons/coach/drills.svg",
       "coach-players": "/icons/coach/player.svg",
     },
     academy: {
@@ -574,6 +576,7 @@ const MODULES = {
       { id: "coach-planner", icon: "◫", label: "Planner" },
       { id: "coach-sessions", icon: "▶", label: "Sessions" },
       { id: "coach-drills", icon: "◇", label: "Drills" },
+      { id: "coach-tactics", icon: "✎", label: "Tactics Board" },
       { id: "coach-players", icon: "●", label: "Players" },
     ]
   },
@@ -656,10 +659,16 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
   const clubName = club?.name || "Club Spraoi";
 
   function openModule(key, module) {
+    if (!enabledModules.includes(key)) {
+      onNav(`access-denied-${key}`);
+      return;
+    }
+
     if (key !== APP_MODULE) {
       openAdminModule(key, module.nav[0].id);
       return;
     }
+
     setActiveModule(APP_MODULE);
     onNav(module.nav[0].id);
   }
@@ -10571,7 +10580,7 @@ function MobileHeader({ activeModule, setActiveModule, onNav, enabledModules, cl
                     </span>
                     <div>
                       <div style={{ fontFamily: F.display, fontWeight: 700, color: P.ink, fontSize: 13 }}>{m.label}</div>
-                      <div style={{ fontFamily: F.body, color: unlocked ? P.muted : m.color, fontSize: 9 }}>{unlocked ? "Open module" : "Access required"}</div>
+                      <div style={{ fontFamily: F.body, color: unlocked ? P.muted : m.color, fontSize: 9 }}>{unlocked ? "Open module" : "Coming soon"}</div>
                     </div>
                     {!unlocked && <span style={{ position: "absolute", top: 8, right: 8, fontSize: 10 }}>🔒</span>}
                   </button>
@@ -10595,6 +10604,7 @@ function MobileNav({ activeModule, screen, onNav, enabledModules, userRole }) {
     { id: "coach-planner", label: "Planner" },
     { id: "coach-sessions", label: "Sessions" },
     { id: "coach-drills", label: "Drills" },
+    { id: "coach-tactics", label: "Tactics Board" },
   ];
 
   const visibleItems = coachNavForRole(
@@ -10760,6 +10770,9 @@ export function CoachModule({
         skills={skills}
         club={club}
       />}
+      {screen === "coach-tactics" && (
+        <TacticsBoard selectedTeam={selectedTeam} />
+      )}
       {screen === "coach-players" && <PlayersScreen club={club} ageGroups={ageGroups} selectedTeam={selectedTeam} userRole={selectedTeamUserRole} />}
     </>
   );
@@ -11355,8 +11368,16 @@ export default function App() {
   async function loadUserRole(userId, userEmail) {
     const allModules = ["coach", "club", "cup", "connect", "academy", "plus"];
 
-    const modulesForRole = (role, capabilities = {}) => {
+    const modulesForRole = (role, capabilities = {}, explicitModules = null) => {
       const normalized = String(role || "").toLowerCase();
+
+      // A per-user override is only used when explicitly configured.
+      // Everyone else keeps the existing role-based module access.
+      if (Array.isArray(explicitModules) && explicitModules.length > 0) {
+        return [...new Set(
+          explicitModules.filter((moduleKey) => allModules.includes(moduleKey))
+        )];
+      }
 
       if (["super_admin", "admin", "club_admin"].includes(normalized)) {
         return allModules;
@@ -11539,7 +11560,11 @@ export default function App() {
       );
 
       setEnabledModules(
-        modulesForRole(effectiveRole, capabilities)
+        modulesForRole(
+          effectiveRole,
+          capabilities,
+          roleData?.enabled_modules
+        )
       );
 
       setUserRole({
@@ -12547,6 +12572,9 @@ export default function App() {
         skills={skills}
         club={club}
       />}
+      {screen === "coach-tactics" && (
+        <TacticsBoard selectedTeam={selectedTeam} />
+      )}
       {screen === "coach-players" && <PlayersScreen club={club} ageGroups={ageGroups} selectedTeam={selectedTeam} userRole={selectedTeamUserRole} />}
 
       {/* CLUB screens */}
