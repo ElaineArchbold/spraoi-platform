@@ -1131,7 +1131,7 @@ function DashboardScreen({ club, ageGroups, planSessions, weeklyPlan, upcomingSe
     async function loadPanelPlayers() {
       if (!selectedTeam?.id) { setPanelPlayers([]); return; }
       const { data, error } = await supabase
-        .from("journey_players")
+        .from("players")
         .select("id,name,football_panel,hurling_panel")
         .eq("age_group_id", selectedTeam.id)
         .order("name");
@@ -8635,7 +8635,7 @@ function PlayersScreen({
     setMessage("");
 
     let query = supabase
-      .from("journey_players")
+      .from("players")
       .select(
         "id,name,age_group_id,football_panel,hurling_panel"
       )
@@ -8688,7 +8688,7 @@ function PlayersScreen({
     setMessage("");
 
     const { error } = await supabase
-      .from("journey_players")
+      .from("players")
       .update({
         [field]: value || null,
       })
