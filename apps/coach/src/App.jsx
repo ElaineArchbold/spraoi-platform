@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import TacticsBoard from "./TacticsBoard";
 import { createPortal } from "react-dom";
 import { supabase } from "./supabaseClient";
@@ -174,41 +174,12 @@ function roleCapabilities(role, grants = {}) {
 }
 
 
-const TEAM_ADMIN_COACH_SCREENS = new Set([
-  "coach-dashboard",
-  "coach-attendance",
-]);
-
 function coachNavForRole(role, nav = []) {
-  const normalized = String(role || "").toLowerCase();
-
-  if (normalized === "team_admin") {
-    return nav.filter((item) =>
-      ["coach-dashboard", "coach-attendance"].includes(item.id)
-    );
-  }
-
   return nav;
 }
 
 function canAccessCoachScreen(role, screen) {
-  const normalized = String(role || "").toLowerCase();
-
-  if (
-    ["super_admin", "admin", "club_admin", "lead_coach"].includes(normalized)
-  ) {
-    return true;
-  }
-
-  if (normalized === "team_admin") {
-    return TEAM_ADMIN_COACH_SCREENS.has(screen);
-  }
-
-  if (["coach_mentor", "coach", "mentor"].includes(normalized)) {
-    return true;
-  }
-
-  return false;
+  return true;
 }
 
 function teamDisplayName(team, fallback = "Team") {
@@ -2814,7 +2785,13 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
       const sessionDate = selectedSessionDate();
       if (!selectedTeam?.id || !sessionDate) return;
       const { start: dayStart, end: dayEnd } = localDayIsoBounds(sessionDate);
-      const { data: allocation } = await supabase
+
+      let allocation = null;
+
+      const {
+        data: exactAllocation,
+        error: exactAllocationError
+      } = await supabase
         .from("weekly_training_allocations")
         .select("*,facility:facilities(id,name,location)")
         .eq("age_group_id", selectedTeam.id)
@@ -2824,6 +2801,64 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
         .order("starts_at")
         .limit(1)
         .maybeSingle();
+
+      if (exactAllocationError) {
+        console.warn(
+          "Exact Club allocation lookup failed:",
+          exactAllocationError
+        );
+      }
+
+      allocation = exactAllocation || null;
+
+      // Fallback:
+      // Match the Club allocation by the selected Dublin calendar date.
+      // This protects the Coach Builder from UTC / DST day-boundary issues.
+      if (!allocation) {
+        const weekStart = mondayKeyForDate(sessionDate);
+
+        const {
+          data: weekAllocations,
+          error: weekAllocationError
+        } = await supabase
+          .from("weekly_training_allocations")
+          .select("*,facility:facilities(id,name,location)")
+          .eq("age_group_id", selectedTeam.id)
+          .eq("status", "published")
+          .eq("week_start", weekStart)
+          .order("starts_at");
+
+        if (weekAllocationError) {
+          console.error(
+            "Club allocation fallback lookup failed:",
+            weekAllocationError
+          );
+        } else {
+          allocation =
+            (weekAllocations || []).find((row) => {
+              if (!row?.starts_at) return false;
+
+              const d = new Date(row.starts_at);
+              if (Number.isNaN(d.getTime())) return false;
+
+              const parts =
+                new Intl.DateTimeFormat("en-CA", {
+                  timeZone: "Europe/Dublin",
+                  year: "numeric",
+                  month: "2-digit",
+                  day: "2-digit"
+                }).formatToParts(d);
+
+              const get = (type) =>
+                parts.find((part) => part.type === type)?.value || "";
+
+              const rowDate =
+                `${get("year")}-${get("month")}-${get("day")}`;
+
+              return rowDate === sessionDate;
+            }) || null;
+        }
+      }
 
       if (
         cancelled ||
@@ -12826,4 +12861,3 @@ export default function App() {
     </div>
   );
 }
-
