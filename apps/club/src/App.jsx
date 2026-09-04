@@ -5092,6 +5092,11 @@ function ClubCoachesScreen({ club, ageGroups, coaches, selectedTeam, onReloadCoa
   const [invitationTeams, setInvitationTeams] = useState([]);
   const [invitationChildren, setInvitationChildren] = useState([]);
   const [journeyPlayers, setJourneyPlayers] = useState([]);
+  const [clubPlayers, setClubPlayers] = useState([]);
+  const [playerGuardians, setPlayerGuardians] = useState([]);
+  const [childLinkCoach, setChildLinkCoach] = useState(null);
+  const [childLinkIds, setChildLinkIds] = useState([]);
+  const [childLinkSaving, setChildLinkSaving] = useState(false);
 
   const [name, setName] = useState("");
   const [emailValue, setEmailValue] = useState("");
@@ -5129,6 +5134,8 @@ function ClubCoachesScreen({ club, ageGroups, coaches, selectedTeam, onReloadCoa
       staffResult,
       inviteResult,
       playerResult,
+      clubPlayerResult,
+      guardianResult,
     ] = await Promise.all([
       supabase
         .from("team_staff")
@@ -5147,11 +5154,24 @@ function ClubCoachesScreen({ club, ageGroups, coaches, selectedTeam, onReloadCoa
         .select("id,name,age_group_id,parent_user_id,club_id")
         .eq("club_id", club.id)
         .order("name"),
+
+      supabase
+        .from("players")
+        .select("id,name,age_group_id,club_id,football_panel,hurling_panel")
+        .eq("club_id", club.id)
+        .order("name"),
+
+      supabase
+        .from("player_guardians")
+        .select("id,club_id,player_id,guardian_user_id,guardian_coach_id,relationship")
+        .eq("club_id", club.id),
     ]);
 
     setStaff(staffResult.data || []);
     setInvitations(inviteResult.data || []);
     setJourneyPlayers(playerResult.data || []);
+    setClubPlayers(clubPlayerResult.data || []);
+    setPlayerGuardians(guardianResult.data || []);
 
     const inviteIds = (inviteResult.data || []).map((row) => row.id);
 
@@ -5357,6 +5377,101 @@ function ClubCoachesScreen({ club, ageGroups, coaches, selectedTeam, onReloadCoa
           (team) => String(team.id) === String(row.age_group_id)
         ),
       }));
+  }
+
+  function linkedChildrenForCoach(coach) {
+    if (!coach?.id) return [];
+
+    const playerIds = (playerGuardians || [])
+      .filter(
+        (row) =>
+          String(row.guardian_coach_id || "") === String(coach.id)
+      )
+      .map((row) => String(row.player_id));
+
+    return (clubPlayers || []).filter((player) =>
+      playerIds.includes(String(player.id))
+    );
+  }
+
+  function openChildLinkEditor(coach) {
+    if (!isAdmin || !coach?.id || !coach?.user_id) {
+      if (!coach?.user_id) {
+        setMessage(
+          "This coach does not yet have a linked login account, so children cannot be attached."
+        );
+      }
+      return;
+    }
+
+    setChildLinkCoach(coach);
+    setChildLinkIds(
+      linkedChildrenForCoach(coach).map((player) => String(player.id))
+    );
+  }
+
+  function toggleChildLink(playerId) {
+    const id = String(playerId);
+
+    setChildLinkIds((current) =>
+      current.includes(id)
+        ? current.filter((item) => item !== id)
+        : [...current, id]
+    );
+  }
+
+  async function saveChildLinks() {
+    if (
+      !isAdmin ||
+      !club?.id ||
+      !childLinkCoach?.id ||
+      !childLinkCoach?.user_id ||
+      childLinkSaving
+    ) {
+      return;
+    }
+
+    setChildLinkSaving(true);
+    setMessage("");
+
+    try {
+      const { error: deleteError } = await supabase
+        .from("player_guardians")
+        .delete()
+        .eq("club_id", club.id)
+        .eq("guardian_coach_id", childLinkCoach.id);
+
+      if (deleteError) throw deleteError;
+
+      if (childLinkIds.length) {
+        const rows = childLinkIds.map((playerId) => ({
+          club_id: club.id,
+          player_id: playerId,
+          guardian_user_id: childLinkCoach.user_id,
+          guardian_coach_id: childLinkCoach.id,
+          relationship: "parent_guardian",
+          created_by: currentUserId || null,
+        }));
+
+        const { error: insertError } = await supabase
+          .from("player_guardians")
+          .insert(rows);
+
+        if (insertError) throw insertError;
+      }
+
+      setChildLinkCoach(null);
+      setChildLinkIds([]);
+      setMessage("Linked children updated.");
+      await loadPeopleData();
+    } catch (error) {
+      setMessage(
+        "Could not update linked children: " +
+          (error?.message || "Unknown error")
+      );
+    } finally {
+      setChildLinkSaving(false);
+    }
   }
 
   function openPermissionEditor(coach) {
@@ -6061,10 +6176,66 @@ function ClubCoachesScreen({ club, ageGroups, coaches, selectedTeam, onReloadCoa
                       ))
                     )}
                   </div>
+
+                  <div
+                    style={{
+                      marginTop: 7,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontFamily: F.body,
+                        fontSize: 9,
+                        fontWeight: 800,
+                        color: P.muted,
+                      }}
+                    >
+                      Linked children:
+                    </span>
+
+                    {linkedChildrenForCoach(coach).length === 0 ? (
+                      <span
+                        style={{
+                          fontFamily: F.body,
+                          fontSize: 9,
+                          color: P.muted,
+                        }}
+                      >
+                        None
+                      </span>
+                    ) : (
+                      linkedChildrenForCoach(coach).map((player) => (
+                        <span
+                          key={player.id}
+                          style={{
+                            padding: "3px 7px",
+                            borderRadius: 999,
+                            background: "#f8fafc",
+                            border: `1px solid ${P.line}`,
+                            fontFamily: F.body,
+                            fontSize: 9,
+                            fontWeight: 700,
+                            color: P.ink,
+                          }}
+                        >
+                          {player.name}
+                        </span>
+                      ))
+                    )}
+                  </div>
                 </div>
 
                 {isAdmin && (
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    <Btn
+                      label="Linked children"
+                      variant="ghost"
+                      onClick={() => openChildLinkEditor(coach)}
+                    />
                     <Btn
                       label="Permissions"
                       variant="ghost"
@@ -6084,6 +6255,151 @@ function ClubCoachesScreen({ club, ageGroups, coaches, selectedTeam, onReloadCoa
         )}
       </ClubCard>
 
+
+      {childLinkCoach && (
+        <div
+          onClick={() => {
+            if (!childLinkSaving) {
+              setChildLinkCoach(null);
+              setChildLinkIds([]);
+            }
+          }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 10000,
+            background: "rgba(15,23,42,.55)",
+            display: "grid",
+            placeItems: "center",
+            padding: 16,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "min(620px,calc(100vw - 32px))",
+              maxHeight: "calc(100vh - 40px)",
+              overflowY: "auto",
+              background: P.white,
+              borderRadius: 18,
+              padding: 20,
+              boxShadow: "0 24px 60px rgba(15,23,42,.28)",
+            }}
+          >
+            <div
+              style={{
+                fontFamily: F.display,
+                fontSize: 19,
+                fontWeight: 800,
+                color: P.ink,
+              }}
+            >
+              Linked children
+            </div>
+
+            <div
+              style={{
+                marginTop: 4,
+                fontFamily: F.body,
+                fontSize: 10,
+                color: P.muted,
+              }}
+            >
+              {childLinkCoach.name || "Coach"} - select the children this
+              person is a parent or guardian of.
+            </div>
+
+            <div
+              style={{
+                marginTop: 16,
+                display: "grid",
+                gridTemplateColumns:
+                  "repeat(auto-fit,minmax(210px,1fr))",
+                gap: 8,
+              }}
+            >
+              {(clubPlayers || []).map((player) => {
+                const checked = childLinkIds.includes(String(player.id));
+
+                return (
+                  <label
+                    key={player.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 9,
+                      padding: "10px 11px",
+                      borderRadius: 10,
+                      border: `1px solid ${
+                        checked ? CLUB_RED : P.line
+                      }`,
+                      background: checked ? CLUB_SOFT : P.white,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleChildLink(player.id)}
+                    />
+
+                    <div style={{ minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontFamily: F.body,
+                          fontSize: 11,
+                          fontWeight: 800,
+                          color: P.ink,
+                        }}
+                      >
+                        {player.name}
+                      </div>
+
+                      <div
+                        style={{
+                          marginTop: 2,
+                          fontFamily: F.body,
+                          fontSize: 8,
+                          color: P.muted,
+                        }}
+                      >
+                        Football: {player.football_panel || "Unassigned"} /
+                        Hurling: {player.hurling_panel || "Unassigned"}
+                      </div>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 8,
+                marginTop: 18,
+                flexWrap: "wrap",
+              }}
+            >
+              <Btn
+                label="Cancel"
+                variant="ghost"
+                onClick={() => {
+                  setChildLinkCoach(null);
+                  setChildLinkIds([]);
+                }}
+              />
+
+              <Btn
+                label={childLinkSaving ? "Saving..." : "Save linked children"}
+                variant="primary"
+                disabled={childLinkSaving}
+                onClick={saveChildLinks}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {personPermissionCoach && (
         <div
