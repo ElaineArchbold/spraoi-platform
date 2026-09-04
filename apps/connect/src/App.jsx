@@ -129,10 +129,10 @@ function initialsFromName(value, fallback="U") {
 function connectSidebarAsset(id) {
   const map = {
     dashboard: `${BASE}icons/connect/home.svg`,
-    events: `${BASE}icons/connect/events-v2.svg`,
+    events: `${BASE}icons/connect/events.svg`,
     messages: `${BASE}icons/connect/messages.svg`,
     groups: `${BASE}icons/connect/groups.svg`,
-    responses: `${BASE}icons/connect/responses-v2.svg`,
+    responses: `${BASE}icons/connect/responses.svg`,
     settings: `${BASE}icons/connect/settings.svg`,
     more: `${BASE}icons/connect/settings.svg`,
   };
@@ -163,7 +163,16 @@ function DesktopNav({nav,tab,setTab,club,selectedTeam,visibleTeams,setSelectedTe
       </div>
 
       <nav style={{flex:1,padding:"9px 10px",display:"flex",flexDirection:"column",gap:3,overflowY:"auto"}}>
-        {nav.map(([id,icon,label])=>{const active=tab===id;return <button className="spraoi-module-nav-button" data-active={active} key={id} onClick={()=>setTab(id)} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 11px",borderRadius:10,border:active?"1px solid rgba(255,255,255,.75)":"1px solid transparent",cursor:"pointer",width:"100%",background:active?"#fff":"transparent",textAlign:"left",boxShadow:active?"0 4px 12px rgba(16,36,62,.14)":"none"}}><span className="spraoi-secondary-nav-icon-wrap" style={{background:"transparent",border:0,boxShadow:"none",padding:0}}><img className="spraoi-secondary-nav-icon" src={connectSidebarAsset(id)} alt="" aria-hidden="true" style={{background:"transparent"}}/></span><span style={{fontFamily:F.body,fontSize:12,fontWeight:active?700:600,letterSpacing:"-.01em",color:active?"#b94700":"#fff"}}>{label}</span></button>})}
+        {nav.map(([id,icon,label])=>{const active=tab===id;return <button className="spraoi-module-nav-button" data-active={active} key={id} onClick={()=>setTab(id)} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 11px",borderRadius:10,border:active?"1px solid rgba(255,255,255,.75)":"1px solid transparent",cursor:"pointer",width:"100%",background:active?"#fff":"transparent",textAlign:"left",boxShadow:active?"0 4px 12px rgba(16,36,62,.14)":"none"}}><span className="spraoi-secondary-nav-icon-wrap" style={{background:"transparent",border:0,boxShadow:"none",padding:0}}><img
+  className="spraoi-secondary-nav-icon"
+  src={connectSidebarAsset(id)}
+  alt=""
+  aria-hidden="true"
+  style={{
+    background:"transparent",
+    transform:id==="events"?"scale(1.35)":"none"
+  }}
+/></span><span style={{fontFamily:F.body,fontSize:12,fontWeight:active?700:600,letterSpacing:"-.01em",color:active?"#b94700":"#fff"}}>{label}</span></button>})}
       </nav>
     </aside>
   </div>;
@@ -441,7 +450,7 @@ const selectedTeam=visibleTeams.find(
     const [{data:clubData},{data:teamData},{data:playerData},{data:eventData},{data:respData},{data:groupData},{data:memberData},{data:messageData},{data:delegateData},{data:eventRecipientData}] = await Promise.all([
       supabase.from("clubs").select("*").eq("id",clubId).maybeSingle(),
       supabase.from("age_groups").select("*").eq("club_id",clubId).order("label"),
-      supabase.from("journey_players").select("id,name,age_group_id,parent_user_id,club_id,football_panel,hurling_panel").eq("club_id",clubId).order("name"),
+      supabase.from("players").select("id,name,age_group_id,club_id,football_panel,hurling_panel").eq("club_id",clubId).order("name"),
       supabase.from("club_events").select("*,facility:facilities(id,name,location)").eq("club_id",clubId).gte("starts_at",new Date(Date.now()-2*86400000).toISOString()).order("starts_at").limit(150),
       supabase.from("availability_responses").select("*").order("responded_at",{ascending:false}).limit(1000),
       supabase.from("connect_groups").select("*").eq("club_id",clubId).order("name"),
@@ -529,8 +538,66 @@ const selectedTeam=visibleTeams.find(
     if(!session?.user||!club?.id)return;
     if(draft.audienceType==="club"&&!isAdmin){setStatus("Only Club Admin or Super Admin can send clubwide messages.");return;}
     if(draft.audienceType!=="club"&&!canSendSelected){setStatus("Only the Lead Mentor or an authorised mentor can send for this team.");return;}
-    const audience=audiencePlayers(draft).filter(p=>p.parent_user_id&&p.parent_user_id!==ZERO);
-    if(!audience.length){setStatus("There are no linked parent accounts in this audience.");return;}
+    const targetedPlayers=audiencePlayers(draft);
+
+    if(!targetedPlayers.length){
+      setStatus("There are no players in this audience.");
+      return;
+    }
+
+    const targetedPlayerIds=targetedPlayers.map(p=>p.id);
+
+    const {data:guardianRows,error:guardianError}=await supabase
+      .from("player_guardians")
+      .select("player_id,guardian_user_id")
+      .eq("club_id",club.id)
+      .in("player_id",targetedPlayerIds);
+
+    if(guardianError){
+      setStatus(guardianError.message);
+      return;
+    }
+
+    const guardiansByPlayer=new Map();
+
+    (guardianRows||[]).forEach(row=>{
+      if(!row.player_id||!row.guardian_user_id)return;
+
+      if(!guardiansByPlayer.has(row.player_id)){
+        guardiansByPlayer.set(row.player_id,[]);
+      }
+
+      const linked=guardiansByPlayer.get(row.player_id);
+
+      if(!linked.includes(row.guardian_user_id)){
+        linked.push(row.guardian_user_id);
+      }
+    });
+
+    const deliveryLinks=[];
+
+    targetedPlayers.forEach(player=>{
+      const guardians=guardiansByPlayer.get(player.id)||[];
+
+      if(guardians.length){
+        guardians.forEach(guardianUserId=>{
+          deliveryLinks.push({
+            ...player,
+            parent_user_id:guardianUserId
+          });
+        });
+      }else{
+        deliveryLinks.push({
+          ...player,
+          parent_user_id:null
+        });
+      }
+    });
+
+    const audience=deliveryLinks.filter(
+      p=>p.parent_user_id&&p.parent_user_id!==ZERO
+    );
+
     const now=new Date().toISOString();
     const subgroupLabel=(()=>{
       const key=String(draft.subgroupKey||"").toLowerCase();
@@ -577,8 +644,25 @@ const selectedTeam=visibleTeams.find(
     const notificationRows=rows.map(p=>({club_id:club.id,user_id:p.parent_user_id,age_group_id:p.age_group_id,event_id:draft.eventId||null,type:`connect_${draft.messageType||"announcement"}`,title:draft.title.trim(),message:draft.body.trim(),action_url:"/academy/?screen=updates",priority:draft.priority||"normal"}));
     const {data:created,error:notErr}=await supabase.from("notifications").insert(notificationRows).select("id,user_id"); if(notErr){setStatus(notErr.message);return;}
     const idsByUser={}; (created||[]).forEach(n=>{if(!idsByUser[n.user_id])idsByUser[n.user_id]=[];idsByUser[n.user_id].push(n.id)});
-    const recipientRows=rows.map((p,i)=>({message_id:msg.id,parent_user_id:p.parent_user_id,player_id:p.id,notification_id:(idsByUser[p.parent_user_id]||[]).shift()||created?.[i]?.id||null,delivery_status:"sent"}));
-    await supabase.from("connect_message_recipients").insert(recipientRows);
+    const recipientRows=deliveryLinks.map(p=>{
+      const linked=
+        p.parent_user_id &&
+        p.parent_user_id!==ZERO;
+
+      return {
+        message_id:msg.id,
+        parent_user_id:linked?p.parent_user_id:null,
+        player_id:p.id,
+        notification_id:linked
+          ? (idsByUser[p.parent_user_id]||[]).shift()||null
+          : null,
+        delivery_status:linked?"sent":"unlinked"
+      };
+    });
+
+    await supabase
+      .from("connect_message_recipients")
+      .insert(recipientRows);
 
     if(draft.eventId){
       const subgroupKey=
@@ -599,7 +683,7 @@ const selectedTeam=visibleTeams.find(
         panel=subgroupKey.endsWith("_a")?"A":"B";
       }
 
-      const eventRecipientRows=rows.map(p=>({
+      const eventRecipientRows=deliveryLinks.map(p=>({
         event_id:draft.eventId,
         player_id:p.id,
         parent_user_id:p.parent_user_id,
@@ -618,7 +702,7 @@ const selectedTeam=visibleTeams.find(
           .upsert(
             eventRecipientRows,
             {
-              onConflict:"event_id,player_id",
+              onConflict:"event_id,player_id,parent_user_id",
               ignoreDuplicates:true
             }
           );
@@ -801,7 +885,21 @@ const selectedTeam=visibleTeams.find(
 
       {tab==="dashboard"&&<>
         <div className="connect-grid" style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:12}}>
-          {[[upcoming.length,"Upcoming events",`${BASE}icons/connect/events-v2.svg`,"Shared calendar"],[outstanding,"Responses due",`${BASE}icons/connect/responses-v2.svg`,"Awaiting parents"],[teamGroups.length,"Subgroups",`${BASE}icons/connect/groups.svg`,"Custom audiences"],[messages.filter(m=>m.age_group_id===selectedTeam?.id||!m.age_group_id).length,"Messages sent",`${BASE}icons/connect/messages.svg`,"Communication history"]].map(([value,label,icon,sub])=><div key={label} className="spraoi-admin-metric-card" style={{"--card-accent":"#F97316",background:C.white,borderRadius:16,padding:"16px 18px",border:`1px solid ${C.line}`,boxShadow:"0 5px 16px rgba(15,35,60,.055)"}}><div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:8}}><span className="spraoi-admin-metric-label" style={{fontFamily:F.body,fontSize:11,fontWeight:700,color:C.muted,textTransform:"uppercase",letterSpacing:".08em"}}>{label}</span><span className="spraoi-card-icon-chip" style={{"--card-accent":"#F97316"}}><img className="spraoi-card-icon" src={icon} alt="" aria-hidden="true"/></span></div><div className="spraoi-admin-metric-value" style={{fontFamily:F.display,fontSize:28,fontWeight:750,color:C.ink,letterSpacing:"-.04em",lineHeight:1}}>{value}</div><div className="spraoi-admin-metric-copy" style={{fontFamily:F.body,fontSize:11,color:C.muted,marginTop:6}}>{sub}</div></div>)}
+          {[[upcoming.length,"Upcoming events",`${BASE}icons/connect/events.svg`,"Shared calendar"],[outstanding,"Responses due",`${BASE}icons/connect/responses.svg`,"Awaiting parents"],[teamGroups.length,"Subgroups",`${BASE}icons/connect/groups.svg`,"Custom audiences"],[messages.filter(m=>m.age_group_id===selectedTeam?.id||!m.age_group_id).length,"Messages sent",`${BASE}icons/connect/messages.svg`,"Communication history"]].map(([value,label,icon,sub])=><div key={label} className="spraoi-admin-metric-card" style={{"--card-accent":"#F97316",background:C.white,borderRadius:16,padding:"16px 18px",border:`1px solid ${C.line}`,boxShadow:"0 5px 16px rgba(15,35,60,.055)"}}><div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:8}}><span className="spraoi-admin-metric-label" style={{fontFamily:F.body,fontSize:11,fontWeight:700,color:C.muted,textTransform:"uppercase",letterSpacing:".08em"}}>{label}</span><span className="spraoi-card-icon-chip" style={{"--card-accent":"#F97316"}}><img
+  className="spraoi-card-icon"
+  src={icon}
+  alt=""
+  aria-hidden="true"
+  style={{
+    width:22,
+    height:22,
+    objectFit:"contain",
+    transform:
+      label==="Upcoming events"?"scale(1.3)":
+      label==="Responses due"?"scale(1.3)":
+      "none"
+  }}
+/></span></div><div className="spraoi-admin-metric-value" style={{fontFamily:F.display,fontSize:28,fontWeight:750,color:C.ink,letterSpacing:"-.04em",lineHeight:1}}>{value}</div><div className="spraoi-admin-metric-copy" style={{fontFamily:F.body,fontSize:11,color:C.muted,marginTop:6}}>{sub}</div></div>)}
         </div>
         <div className="spraoi-dashboard-analytics connect-dashboard-analytics" style={{marginTop:14}}>
           <div className="spraoi-dashboard-section-head">
@@ -817,7 +915,7 @@ const selectedTeam=visibleTeams.find(
               <div className="spraoi-bar-row"><div className="spraoi-bar-label"><span>Outstanding responses</span><strong>{outstanding}</strong></div><div className="spraoi-bar-track"><div className="spraoi-bar-fill" style={{width:`${Math.min(100,outstanding*10)}%`,background:"#F97316"}}/></div></div>
               <div className="spraoi-bar-row"><div className="spraoi-bar-label"><span>Upcoming events</span><strong>{upcoming.length}</strong></div><div className="spraoi-bar-track"><div className="spraoi-bar-fill" style={{width:`${Math.min(100,upcoming.length*20)}%`,background:"#FB923C"}}/></div></div>
             </div></div>
-            <div className="spraoi-chart-card"><div className="spraoi-chart-card-title">Communication activity</div><div className="spraoi-mini-kpis"><div><img src={`${BASE}icons/connect/messages.svg`} alt=""/><span>Messages sent</span><strong>{messages.filter(m=>m.age_group_id===selectedTeam?.id||!m.age_group_id).length}</strong></div><div><img src={`${BASE}icons/connect/groups.svg`} alt=""/><span>Subgroups</span><strong>{teamGroups.length}</strong></div><div><img src={`${BASE}icons/connect/events-v2.svg`} alt=""/><span>Upcoming events</span><strong>{upcoming.length}</strong></div></div></div>
+            <div className="spraoi-chart-card"><div className="spraoi-chart-card-title">Communication activity</div><div className="spraoi-mini-kpis"><div><img src={`${BASE}icons/connect/messages.svg`} alt=""/><span>Messages sent</span><strong>{messages.filter(m=>m.age_group_id===selectedTeam?.id||!m.age_group_id).length}</strong></div><div><img src={`${BASE}icons/connect/groups.svg`} alt=""/><span>Subgroups</span><strong>{teamGroups.length}</strong></div><div><img src={`${BASE}icons/connect/events.svg`} alt=""/><span>Upcoming events</span><strong>{upcoming.length}</strong></div></div></div>
           </div>
         </div>
         <div className="connect-dashboard-columns" style={{display:"grid",gridTemplateColumns:"minmax(0,1.55fr) minmax(280px,.75fr)",gap:14,marginTop:14}}>
