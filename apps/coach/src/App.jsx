@@ -3352,10 +3352,93 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
         <Btn label="Share" variant="ghost" onClick={shareAsImage} />
         <Btn label="Save Session" variant="primary" onClick={saveSession} style={{ opacity: allDrills.length > 0 ? 1 : 0.5 }} />
       </TopBar>
+
+      <style>{`
+        @media (max-width: 767px) {
+          .session-builder-layout {
+            flex-direction: column !important;
+            padding: 12px !important;
+            gap: 14px !important;
+          }
+
+          .session-builder-main {
+            width: 100% !important;
+            min-width: 0 !important;
+          }
+
+          .session-builder-date-fields {
+            grid-template-columns: 1fr !important;
+            gap: 10px !important;
+          }
+
+          .session-builder-summary {
+            align-items: flex-start !important;
+            flex-direction: column !important;
+            gap: 5px !important;
+          }
+
+          .session-builder-drill-row {
+            flex-wrap: wrap !important;
+            align-items: flex-start !important;
+            gap: 8px !important;
+          }
+
+          .session-builder-drill-row > div:nth-child(2) {
+            flex: 1 1 calc(100% - 35px) !important;
+          }
+
+          .session-builder-drill-row select,
+          .session-builder-drill-row input {
+            min-height: 40px !important;
+            font-size: 14px !important;
+          }
+
+          .session-builder-phase-row {
+            flex-wrap: wrap !important;
+            align-items: stretch !important;
+          }
+
+          .session-builder-phase-row > input[type="text"],
+          .session-builder-phase-row > select {
+            flex: 1 1 100% !important;
+            width: 100% !important;
+            min-height: 42px !important;
+            font-size: 14px !important;
+          }
+
+          .session-builder-add-sections {
+            flex-wrap: wrap !important;
+          }
+
+          .session-builder-add-sections button {
+            flex: 1 1 calc(50% - 6px);
+            min-height: 40px;
+          }
+
+          .session-drill-library {
+            width: 100% !important;
+            max-width: none !important;
+            flex: 0 0 auto !important;
+          }
+
+          .session-drill-library > div {
+            position: static !important;
+            top: auto !important;
+          }
+
+          .session-builder-layout input,
+          .session-builder-layout select,
+          .session-builder-layout textarea {
+            font-size: 16px !important;
+            box-sizing: border-box !important;
+          }
+        }
+      `}</style>
+
       {showFirstSessionModal && <div style={{ position:"fixed", inset:0, zIndex:3000, background:"rgba(11,37,69,.58)", display:"grid", placeItems:"center", padding:18 }}><div style={{ width:"min(430px,100%)", background:"#fff", borderRadius:20, padding:22, boxShadow:"0 24px 70px rgba(0,0,0,.24)" }}><div style={{ fontFamily:F.display, fontSize:22, fontWeight:800, color:P.ink }}>Nice work — your first session is ready!</div><div style={{ fontFamily:F.body, fontSize:12, lineHeight:1.55, color:P.muted, marginTop:8 }}>Invite parents now so they can access Academy activities, team updates and their child’s progress.</div><div style={{ display:"flex", gap:8, marginTop:18 }}><button onClick={async()=>{ await supabase.from("team_onboarding").update({ parent_invite_prompt_dismissed_at:new Date().toISOString(), updated_at:new Date().toISOString() }).eq("club_id",club.id).eq("age_group_id",selectedTeam.id); setShowFirstSessionModal(false); onNav("coach-sessions"); }} style={{ flex:1, height:40, borderRadius:10, border:`1px solid ${P.line}`, background:"#fff", fontWeight:800 }}>Maybe later</button><button onClick={async()=>{ await supabase.from("team_onboarding").update({ parent_invite_prompt_completed_at:new Date().toISOString(), updated_at:new Date().toISOString() }).eq("club_id",club.id).eq("age_group_id",selectedTeam.id); localStorage.setItem("spraoi_active_team_id",String(selectedTeam.id)); openAdminModule("academy","academy-parents"); }} style={{ flex:1, height:40, borderRadius:10, border:0, background:P.p600, color:"#fff", fontWeight:800 }}>Invite parents</button></div></div></div>}
       <div className="session-builder-layout" style={{ padding: "16px 20px", display: "flex", gap: 16 }}>
         {/* Main — session structure */}
-        <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="session-builder-main" style={{ flex: 1, minWidth: 0 }}>
           {/* Week diary picker */}
           <div style={{ background: P.white, borderRadius: 12, padding: 14, border: `1px solid ${P.line}`, marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
@@ -3383,7 +3466,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
                 <strong>{allocationConflict ? "Club allocation differs from the draft." : "Club allocation confirmed."}</strong> The published training time and facility are now attached to this session.
               </div>
             )}
-            <div style={{ display:"grid", gridTemplateColumns:"1fr 1.5fr", gap:8, marginTop:10 }}>
+            <div className="session-builder-date-fields" style={{ display:"grid", gridTemplateColumns:"1fr 1.5fr", gap:8, marginTop:10 }}>
               <div>
                 <div style={{ fontFamily:F.body, fontSize:9, fontWeight:800, color:P.muted, marginBottom:4 }}>{publishedAllocation?"CONFIRMED TIME":"PLANNED TIME (OPTIONAL)"}</div>
                 <input type="time" value={publishedAllocation ? confirmedAllocationTime : plannedStartTime}  onChange={(e)=>setPlannedStartTime(e.target.value)} style={{ width:"100%", boxSizing:"border-box", height:36, borderRadius:8, border:`1px solid ${P.line}`, padding:"0 9px", fontFamily:F.body, background:P.white }} />
@@ -3394,7 +3477,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
                 <datalist id="spraoi-club-facilities">{facilities.map((facility)=><option key={facility.id} value={facility.name}>{facility.location||"Club facility"}</option>)}</datalist>
               </div>
             </div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
+            <div className="session-builder-summary" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
               <span style={{ fontFamily: F.body, fontSize: 11, color: P.muted }}>{day ? `Selected: ${day}` : "Pick a day"}</span>
               <span><strong style={{ fontFamily: F.display, fontSize: 16, color: P.ink }}>{totalTime}</strong> <span style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>min</span> — <strong style={{ fontFamily: F.display, fontSize: 16, color: P.ink }}>{allDrills.length}</strong> <span style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>drills</span></span>
             </div>
@@ -3423,7 +3506,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
                     </div>
                   ) : (
                     sec.drills.map((d, di) => (
-                      <div key={di} style={{ background: P.white, borderRadius: 10, padding: "10px 12px", border: `1px solid ${P.line}`, marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
+                      <div key={di} className="session-builder-drill-row" style={{ background: P.white, borderRadius: 10, padding: "10px 12px", border: `1px solid ${P.line}`, marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
                         <span style={{ fontFamily: F.display, fontSize: 12, fontWeight: 800, color: sectionColors[sec.type], width: 18 }}>{di + 1}</span>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontFamily: F.body, fontSize: 12, fontWeight: 700, color: P.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.title}</div>
@@ -3447,7 +3530,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
                   )
                 ) : (
                   /* Warmup / Cooldown / Match — time + coach only */
-                  <div style={{ background: P.white, borderRadius: 10, padding: "12px 14px", border: `1px solid ${P.line}`, display: "flex", alignItems: "center", gap: 10 }}>
+                  <div className="session-builder-phase-row" style={{ background: P.white, borderRadius: 10, padding: "12px 14px", border: `1px solid ${P.line}`, display: "flex", alignItems: "center", gap: 10 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                       <input type="number" placeholder="10" value={sec.duration || ""} onChange={(e) => setSections((s) => s.map((ss) => ss.id === sec.id ? { ...ss, duration: e.target.value } : ss))} style={{ width: 44, padding: "6px", borderRadius: 6, border: `1.5px solid ${P.line}`, fontSize: 12, textAlign: "center", fontFamily: F.body }} />
                       <span style={{ fontFamily: F.body, fontSize: 10, color: P.muted }}>min</span>
@@ -3468,7 +3551,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
           </div>
 
           {/* Add section buttons */}
-          <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+          <div className="session-builder-add-sections" style={{ display: "flex", gap: 6, marginTop: 8 }}>
             {[["warmup", "Warm-up"], ["stations", "Stations"], ["match", "Match"], ["cooldown", "Cool-down"]].map(([type, label]) => (
               <button key={type} onClick={() => addSection(type)} style={{ padding: "6px 12px", borderRadius: 8, border: `1.5px solid ${P.line}`, background: P.white, fontFamily: F.body, fontSize: 10, fontWeight: 700, color: P.muted, cursor: "pointer" }}>
                 + {label}
