@@ -6797,10 +6797,8 @@ export default function App() {
     } else if (!found && selectedTeam && !allowedTeams.some((ag) => String(ag.id) === String(selectedTeam.id))) {
       setSelectedTeam(null);
     } else if (!selectedTeam && allowedTeams.length > 0) {
-      // Cup needs a context team for shared club data, but state changes must
-      // happen in an effect, never while rendering.
-      setSelectedTeam(allowedTeams[0]);
-      saveActiveContext(allowedTeams[0], club);
+      // Do not choose the first team automatically.
+      // Wait for the saved/shared team or an explicit selection.
     }
   }, [ageGroups, myTeams, userRole?.role, selectedTeam?.id, permissions.isClubAdmin, club?.id]);
 

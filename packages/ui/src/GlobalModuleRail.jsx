@@ -103,8 +103,17 @@ export default function GlobalModuleRail({
 
   // One canonical team across every module. The shared shell value wins;
   // module-local state follows it through the shared context event.
+  const storedTeamIsVisible = Boolean(
+    storedTeam?.id &&
+    visibleTeams.some(
+      (team) => String(team.id) === String(storedTeam.id)
+    )
+  );
+
   const canonicalTeamId = String(
-    storedTeam?.id || selectedTeam?.id || ""
+    selectedTeam?.id ||
+    (storedTeamIsVisible ? storedTeam?.id : "") ||
+    ""
   );
 
   const displayedTeam =
@@ -198,46 +207,6 @@ export default function GlobalModuleRail({
             alt={club?.name ? `${club.name} crest` : "Club crest"}
             style={{ width: 50, height: 50, objectFit: "contain" }}
           />
-        </div>
-
-        <div style={{ width: "100%", display: "grid", placeItems: "center", gap: 3 }}>
-          <div
-            style={{
-              fontSize: 8,
-              lineHeight: 1,
-              textTransform: "uppercase",
-              letterSpacing: ".08em",
-              color: "#64748B",
-              fontWeight: 800,
-            }}
-          >
-            Team
-          </div>
-          <select
-            aria-label="Active team"
-            value={canonicalTeamId}
-            title={compactTeamName(displayedTeam) || "Select team"}
-            onChange={(e) => selectTeam(e.target.value)}
-            style={{
-              width: 62,
-              height: 32,
-              borderRadius: 9,
-              border: "1px solid #DDE4EE",
-              background: "#fff",
-              color: "#10243e",
-              fontSize: 11,
-              fontWeight: 800,
-              padding: "0 3px",
-              cursor: "pointer",
-            }}
-          >
-            {!canonicalTeamId && <option value="">—</option>}
-            {visibleTeams.map((team) => (
-              <option key={team.id} value={team.id}>
-                {compactTeamName(team)}
-              </option>
-            ))}
-          </select>
         </div>
 
         <div

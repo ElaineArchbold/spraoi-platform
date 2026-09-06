@@ -9768,7 +9768,10 @@ const [showProfile, setShowProfile] = useState(false);
   // Restore and synchronise the one active team shared by every Spraoi module.
   useEffect(() => {
     if (!ageGroups.length) return;
-    const savedId = requestedTeamFromUrl(null) || localStorage.getItem(ACTIVE_TEAM_KEY) || localStorage.getItem("spraoi_team_id");
+    const savedId =
+      localStorage.getItem(ACTIVE_TEAM_KEY) ||
+      localStorage.getItem("spraoi_team_id") ||
+      requestedTeamFromUrl(null);
     const found = ageGroups.find((ag) => String(ag.id) === String(savedId));
     if (found && String(found.id) !== String(selectedTeam?.id || "")) {
       setSelectedTeam(found);
@@ -10458,9 +10461,8 @@ const [showProfile, setShowProfile] = useState(false);
         </div>
       );
     }
-    // Has teams — auto-select the first one
-    const firstTeam = ageGroups.find((ag) => myTeams.includes(ag.id));
-    if (firstTeam) selectTeam(firstTeam);
+    // Assigned teams exist. Do not auto-select the first team.
+    // The saved/shared active-team restore logic owns team selection.
     return null;
   }
 

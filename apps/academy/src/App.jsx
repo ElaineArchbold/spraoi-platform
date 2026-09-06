@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabaseClient";
 import html2canvas from "html2canvas";
 import { openAdminModule, requestedScreenFromUrl, requestedTeamFromUrl, readModuleScreen, writeModuleScreen } from "../../../packages/ui/src/platformNavigation.js";
@@ -7023,9 +7023,8 @@ export default function App() {
         </div>
       );
     }
-    // Has teams — auto-select the first one
-    const firstTeam = ageGroups.find((ag) => myTeams.includes(ag.id));
-    if (firstTeam) selectTeam(firstTeam);
+    // Assigned teams exist. Do not auto-select the first team.
+    // The saved/shared active-team restore logic owns team selection.
     return null;
   }
 

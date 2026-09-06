@@ -48,7 +48,18 @@ setActiveModule(key);
       const url = new URL(window.location.href);
       url.searchParams.set("module", key);
       url.searchParams.set("screen", screen || DEFAULT_SCREEN[key]);
-      if (team) url.searchParams.set("team", team);
+      const canonicalTeam =
+        team ||
+        localStorage.getItem("spraoi_active_team_id") ||
+        localStorage.getItem("spraoi_team_id") ||
+        "";
+
+      if (canonicalTeam) {
+        url.searchParams.set("team", canonicalTeam);
+      } else {
+        url.searchParams.delete("team");
+      }
+
       window.history.replaceState({}, "", url);
 
       window.dispatchEvent(new CustomEvent("spraoi:shell-screen", {
