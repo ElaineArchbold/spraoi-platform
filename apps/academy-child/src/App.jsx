@@ -8,15 +8,15 @@ import { registerSW } from "virtual:pwa-register";
 registerSW({
   immediate: true,
   onNeedRefresh() {
-    console.log("A new Spraoi Academy version is available.");
+    console.log("A new Spraoi version is available.");
   },
   onOfflineReady() {
-    console.log("Spraoi Academy is ready for offline use.");
+    console.log("Spraoi is ready for offline use.");
   },
 });
 
 /* ============================================================
-   SPRAOI ACADEMY   Kid-facing weekly practice & progress
+   SPRAOI   Player and parent experience
    Green brand (matches spraoisports.com), sport-colored cards,
    practice, streaks, XP, badges.
    ============================================================ */
@@ -296,10 +296,10 @@ function CoachExerciseManager({ coachTeams, coachSelectedTeam, coachPlan, coachE
 
           {/* PREVIEW TAB */}
           {tab === "preview" && (<div>
-            <div style={{ fontSize: 10, fontWeight: 800, color: C.textSecondary, textTransform: "uppercase", marginBottom: 10 }}>What players will see this week</div>
+            <div style={{ fontSize: 10, fontWeight: 800, color: C.textSecondary, textTransform: "uppercase", marginBottom: 10 }}>This week</div>
             {previewDrills.length > 0 ? (
               <div style={{ marginBottom: 14 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.text, marginBottom: 6 }}>Training Drills ({previewDrills.length})</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.text, marginBottom: 6 }}>Training ({previewDrills.length})</div>
                 {previewDrills.map((d, i) => (
                   <div key={d.id + "-" + i} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 10px", marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
                     <div style={{ width: 6, height: 6, borderRadius: "50%", background: d.sport === "hurling" ? C.hurling : C.football }} />
@@ -647,6 +647,12 @@ export default function App() {
   const [parentModeUnlocked, setParentModeUnlocked] = useState(false);
   const [parentPin, setParentPin] = useState("");
   const [showParentGate, setShowParentGate] = useState(false);
+  const [parentGateTarget, setParentGateTarget] = useState("parent-home");
+  const [parentPinError, setParentPinError] = useState("");
+  const [pinSetupOpen, setPinSetupOpen] = useState(false);
+  const [newParentPin, setNewParentPin] = useState("");
+  const [confirmParentPinValue, setConfirmParentPinValue] = useState("");
+  const [pinSaving, setPinSaving] = useState(false);
   const parentNotifications = useParentNotifications(session?.user?.id);
   const [showXpPop, setShowXpPop] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -718,6 +724,83 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  async function loadLinkedPlayers(userId, clubId = null) {
+    if (!userId) return [];
+
+    const { data: links, error: linkError } = await supabase
+      .from("player_guardians")
+      .select("player_id")
+      .eq("guardian_user_id", userId);
+
+    if (linkError) {
+      console.error("player_guardians lookup failed:", linkError);
+      return [];
+    }
+
+    const playerIds = [
+      ...new Set(
+        (links || [])
+          .map((link) => link.player_id)
+          .filter(Boolean)
+      )
+    ];
+
+    if (!playerIds.length) {
+      console.warn("No player_guardians links found for:", userId);
+      return [];
+    }
+
+    let query = supabase
+      .from("players")
+      .select("*")
+      .in("id", playerIds)
+      .order("name");
+
+    if (clubId) {
+      query = query.eq("club_id", clubId);
+    }
+
+    const { data: linkedPlayers, error: playerError } = await query;
+
+    if (playerError) {
+      console.error("players lookup failed:", playerError);
+      return [];
+    }
+
+    const playerRows = linkedPlayers || [];
+
+    const ageGroupIds = [
+      ...new Set(
+        playerRows
+          .map((player) => player.age_group_id)
+          .filter(Boolean)
+      )
+    ];
+
+    let ageGroupMap = {};
+
+    if (ageGroupIds.length > 0) {
+      const { data: ageGroupRows, error: ageGroupError } =
+        await supabase
+          .from("age_groups")
+          .select("id,label,gender")
+          .in("id", ageGroupIds);
+
+      if (ageGroupError) {
+        console.warn("age_groups lookup failed:", ageGroupError);
+      } else {
+        ageGroupMap = Object.fromEntries(
+          (ageGroupRows || []).map((row) => [row.id, row])
+        );
+      }
+    }
+
+    return playerRows.map((player) => ({
+      ...player,
+      age_group: ageGroupMap[player.age_group_id] || null,
+    }));
+  }
+
   async function loadParentData(userId) {
     const { data: clubData } = await supabase.from("clubs").select("*").eq("slug", "fingallians").single();
     setClub(clubData);
@@ -746,7 +829,7 @@ export default function App() {
         setCoachTeams(allTeams || []);
       }
     }
-    const { data: kids } = await supabase.from("journey_players").select("*").eq("parent_user_id", userId).order("name");
+    const kids = await loadLinkedPlayers(userId, clubData?.id || null);
     setPlayers(kids || []);
     const { data: b } = await supabase.from("badges").select("*"); setBadges(b || []);
     // Load the skill library for the Learn tab. Weekly Academy content no longer uses the challenges table.
@@ -1533,27 +1616,39 @@ export default function App() {
   if (!selectedPlayer && !isAdminUrl) {
     async function loadAvailable() {
       if (!club) return;
-      const { data } = await supabase.from("journey_players").select("*, age_group:age_groups(label)").eq("club_id", club.id).order("name");
-      const scoped = inviteTeamId ? (data || []).filter((p) => p.age_group_id === inviteTeamId) : (data || []);
-      const mine = scoped.filter((p) => p.parent_user_id === session.user.id);
-      const unclaimed = scoped.filter((p) => p.parent_user_id === "00000000-0000-0000-0000-000000000000");
-      setAvailablePlayers([...mine, ...unclaimed]); setPlayers(mine);
-      if (mine.length > 0) selectPlayer(mine[0]);
+      const linkedPlayers = await loadLinkedPlayers(
+        session.user.id,
+        club.id
+      );
+
+      const mine = inviteTeamId
+        ? linkedPlayers.filter(
+            (p) => String(p.age_group_id) === String(inviteTeamId)
+          )
+        : linkedPlayers;
+
+      setAvailablePlayers(mine);
+      setPlayers(mine);
+
+      if (mine.length > 0) {
+        selectPlayer(mine[0]);
+      }
+
       setLoadingPlayers(false);
     }
     if (loadingPlayers && club) loadAvailable();
-    const unclaimed = availablePlayers.filter((p) => p.parent_user_id === "00000000-0000-0000-0000-000000000000");
+    const unclaimed = [];
 
     return (
       <div style={{ minHeight: "100vh", background: C.background, fontFamily: "Inter, sans-serif" }}>
         <div style={{ maxWidth: 420, margin: "0 auto", padding: "20px 16px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 18, color: C.text }}>Find Your Child</div>
+            <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 18, color: C.text }}>Your Child</div>
             <button onClick={logout} style={{ background: "none", border: "none", color: C.textSecondary, cursor: "pointer", fontSize: 12 }}><LogOut size={14} /></button>
           </div>
           {unclaimed.length > 0 ? (
             <div style={{ background: C.surface, borderRadius: 16, padding: 16, boxShadow: "0 4px 14px rgba(0,0,0,0.06)", border: `1px solid ${C.border}` }}>
-              <p style={{ fontSize: 12, color: C.textSecondary, margin: "0 0 12px" }}>Tap your child's name to link them to your account.</p>
+              <p style={{ fontSize: 12, color: C.textSecondary, margin: "0 0 12px" }}>Choose the child linked to your Spraoi account.</p>
               {unclaimed.map((p) => (
                 <button key={p.id} onClick={async () => { await supabase.from("journey_players").update({ parent_user_id: session.user.id }).eq("id", p.id); selectPlayer({ ...p, parent_user_id: session.user.id }); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, background: C.surfaceAlt, border: `1px solid ${C.border}`, borderRadius: 12, padding: "12px 14px", marginBottom: 8, cursor: "pointer", textAlign: "left" }}>
                   <div style={{ width: 36, height: 36, borderRadius: "50%", background: C.primary, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 16 }}>{p.name[0]}</div>
@@ -1578,17 +1673,85 @@ export default function App() {
     if (screen !== "coach") setScreen("coach");
   }
 
-  const openParentMode = () => {
+  const openParentMode = async (target = "parent-home") => {
+    setParentGateTarget(target);
     setParentPin("");
+    setParentPinError("");
+
+    const { data, error } = await supabase.rpc(
+      "has_spraoi_parent_pin"
+    );
+
+    if (error) {
+      setParentPinError(error.message);
+      setShowParentGate(true);
+      return;
+    }
+
+    if (!data) {
+      setNewParentPin("");
+      setConfirmParentPinValue("");
+      setPinSetupOpen(true);
+      return;
+    }
+
     setShowParentGate(true);
   };
 
-  const confirmParentMode = () => {
-    if (/^\d{4}$/.test(parentPin)) {
-      setParentModeUnlocked(true);
-      setShowParentGate(false);
-      setScreen("parent-home");
+  const confirmParentMode = async (pinValue = parentPin) => {
+    if (!/^\d{4}$/.test(pinValue)) return;
+
+    setParentPinError("");
+
+    const { data, error } = await supabase.rpc(
+      "verify_spraoi_parent_pin",
+      { check_pin: pinValue }
+    );
+
+    if (error) {
+      setParentPinError(error.message);
+      return;
     }
+
+    if (!data) {
+      setParentPinError("Incorrect PIN. Please try again.");
+      return;
+    }
+
+    setParentModeUnlocked(true);
+    setShowParentGate(false);
+    setParentPin("");
+    setScreen(parentGateTarget || "parent-home");
+  };
+
+  const saveParentPin = async () => {
+    if (!/^\d{4}$/.test(newParentPin)) return;
+
+    if (newParentPin !== confirmParentPinValue) {
+      setParentPinError("The PINs do not match.");
+      return;
+    }
+
+    setPinSaving(true);
+    setParentPinError("");
+
+    const { error } = await supabase.rpc(
+      "set_spraoi_parent_pin",
+      { new_pin: newParentPin }
+    );
+
+    setPinSaving(false);
+
+    if (error) {
+      setParentPinError(error.message);
+      return;
+    }
+
+    setPinSetupOpen(false);
+    setParentModeUnlocked(true);
+    setNewParentPin("");
+    setConfirmParentPinValue("");
+    setScreen(parentGateTarget || "parent-home");
   };
 
   function renderCalendarPlaceholder() {
@@ -1598,7 +1761,7 @@ export default function App() {
           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
             <img src="/icons/academy/weekly-content.svg" alt="" style={{ width:34, height:34 }} />
             <div>
-              <div style={{ fontFamily:"'League Spartan',sans-serif", fontSize:20, fontWeight:900, color:C.text }}>Calendar</div>
+              <div style={{ fontFamily:"'League Spartan',sans-serif", fontSize:20, fontWeight:900, color:C.text }}>Events</div>
               <div style={{ fontSize:12, color:C.textSecondary, marginTop:3 }}>Training, matches and club events for this child will appear here.</div>
             </div>
           </div>
@@ -1613,14 +1776,14 @@ export default function App() {
         <div style={{ background:"linear-gradient(135deg,#10243E,#1D4ED8)", color:"#fff", borderRadius:20, padding:18, marginBottom:14 }}>
           <div style={{ fontSize:10, textTransform:"uppercase", letterSpacing:".12em", fontWeight:900, opacity:.8 }}>Parent mode</div>
           <div style={{ fontFamily:"'League Spartan',sans-serif", fontSize:24, fontWeight:900, marginTop:4 }}>{selectedPlayer?.name || "Your child"}</div>
-          <div style={{ fontSize:12, opacity:.82, marginTop:4 }}>Calendar, messages, availability and Academy progress.</div>
+          <div style={{ fontSize:12, opacity:.82, marginTop:4 }}>Events, messages, skills and profile settings.</div>
         </div>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
           {[
-            ["Calendar","/icons/academy/weekly-content.svg","calendar"],
-            ["Messages","/icons/academy/parents.svg","updates"],
-            ["Academy progress","/icons/academy/completion.svg","progress"],
-            ["Child profile","/icons/academy/child-profile.svg","profile"],
+            ["Events","/icons/academy/weekly-content.svg","calendar"],
+            ["Messages & Updates","/icons/academy/parents.svg","updates"],
+            ["Skills & Progress","/icons/academy/completion.svg","progress"],
+            ["Profile","/icons/academy/child-profile.svg","profile"],
           ].map(([label,icon,target]) => (
             <button key={label} onClick={()=>setScreen(target)} style={{ minHeight:112, textAlign:"left", border:`1px solid ${C.border}`, borderRadius:16, background:"#fff", padding:14, cursor:"pointer" }}>
               <img src={icon} alt="" style={{ width:30, height:30, marginBottom:14 }} />
@@ -2116,12 +2279,19 @@ export default function App() {
 
         {/* Content */}
         {screen === "home" && selectedPlayer && renderWeeklyPractice()}
-        {screen === "calendar" && selectedPlayer && renderCalendarPlaceholder()}
+        {screen === "calendar" && selectedPlayer && (
+          <ParentUpdates
+            userId={session?.user?.id}
+            players={players}
+            selectedPlayer={selectedPlayer}
+            view="calendar"
+          />
+        )}
         {screen === "parent-home" && selectedPlayer && renderParentHome()}
         {screen === "progress" && selectedPlayer && renderProgress()}
         {screen === "learn" && (
           <div>
-            <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 16, color: C.text, textTransform: "uppercase", marginBottom: 12 }}>Skills Library</div>
+            <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 16, color: C.text, textTransform: "uppercase", marginBottom: 12 }}>Skills</div>
             {/* Filter */}
             <div style={{ display: "flex", gap: 4, marginBottom: 14, background: C.surfaceAlt, borderRadius: 10, padding: 3 }}>
               {[{ id: "all", label: "All" }, { id: "hurling", label: "Hurling" }, { id: "football", label: "Football" }].map((f) => (
@@ -2144,7 +2314,7 @@ export default function App() {
                       <div style={{ fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 14, color: C.text }}>{skill.name}</div>
                       <div style={{ fontSize: 9, color: C.textSecondary, textTransform: "capitalize" }}>{skill.category?.replace(/_/g, " ") || skill.sport}</div>
                     </div>
-                    {skill.video_url && <span style={{ fontSize: 10, background: "#ff000015", color: "#cc0000", padding: "2px 6px", borderRadius: 4, fontWeight: 700 }}>? Video</span>}
+                    {skill.video_url && <span style={{ fontSize: 10, background: "#ff000015", color: "#cc0000", padding: "2px 6px", borderRadius: 4, fontWeight: 700 }}>Video</span>}
                   </div>
                   {skill.video_url && (
                     <div style={{ padding: "0 14px 10px" }}>
@@ -2201,7 +2371,7 @@ export default function App() {
 
                 {players.length > 1 && (
                   <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.border}` }}>
-                    <div style={{ fontSize: 10, fontWeight: 800, color: C.textSecondary, textTransform: "uppercase", marginBottom: 8 }}>Switch child</div>
+                    <div style={{ fontSize: 10, fontWeight: 800, color: C.textSecondary, textTransform: "uppercase", marginBottom: 8 }}>Your children</div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                       {players.map((player) => {
                         const active = player.id === selectedPlayer.id;
@@ -2219,6 +2389,62 @@ export default function App() {
                 )}
               </div>
             )}
+
+            
+            <div style={{
+              background:C.surface,
+              borderRadius:16,
+              padding:18,
+              border:`1px solid ${C.border}`,
+              boxShadow:"0 4px 14px rgba(0,0,0,0.05)",
+              marginBottom:14
+            }}>
+              <div style={{
+                fontFamily:"'League Spartan',sans-serif",
+                fontWeight:800,
+                fontSize:14,
+                color:C.text
+              }}>
+                Parent PIN
+              </div>
+
+              <div style={{
+                fontSize:11,
+                color:C.textSecondary,
+                lineHeight:1.5,
+                marginTop:5,
+                marginBottom:12
+              }}>
+                Your 4-digit PIN protects messages, events
+                and parent-only controls.
+              </div>
+
+              <button
+                type="button"
+                onClick={()=>{
+                  setParentGateTarget("profile");
+                  setNewParentPin("");
+                  setConfirmParentPinValue("");
+                  setParentPinError("");
+                  setPinSetupOpen(true);
+                }}
+                style={{
+                  width:"100%",
+                  boxSizing:"border-box",
+                  padding:"11px 14px",
+                  borderRadius:12,
+                  border:`1px solid ${C.border}`,
+                  background:"#fff",
+                  color:C.text,
+                  fontFamily:"'League Spartan',sans-serif",
+                  fontWeight:800,
+                  fontSize:12,
+                  cursor:"pointer"
+                }}
+              >
+                Change parent PIN
+              </button>
+            </div>
 
             <button onClick={logout} style={{ width: "100%", boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px 14px", borderRadius: 12, border: "1.5px solid #fecaca", background: "#fff5f5", color: "#dc2626", fontFamily: "'League Spartan', sans-serif", fontWeight: 800, fontSize: 13, cursor: "pointer" }}>
               <LogOut size={17} />
@@ -2245,17 +2471,269 @@ export default function App() {
         )}
       </div>
 
-      {showParentGate && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(15,23,42,.56)", zIndex:200, display:"grid", placeItems:"center", padding:20 }}>
-          <div style={{ width:"100%", maxWidth:340, background:"#fff", borderRadius:20, padding:20, boxShadow:"0 24px 70px rgba(15,23,42,.28)" }}>
-            <div style={{ fontFamily:"'League Spartan',sans-serif", fontSize:22, fontWeight:900, color:C.text }}>Parent mode</div>
-            <div style={{ fontSize:12, color:C.textSecondary, lineHeight:1.5, marginTop:6 }}>Enter your 4-digit parent PIN to open messages, calendar and parent controls on this device.</div>
-            <input value={parentPin} onChange={(e)=>setParentPin(e.target.value.replace(/\D/g,"").slice(0,4))} inputMode="numeric" maxLength={4} autoFocus placeholder="••••" style={{ width:"100%", boxSizing:"border-box", marginTop:16, height:52, border:`1.5px solid ${C.border}`, borderRadius:14, textAlign:"center", fontSize:26, letterSpacing:10, fontWeight:900 }} />
-            <div style={{ display:"flex", gap:8, marginTop:12 }}>
-              <button onClick={()=>setShowParentGate(false)} style={{ flex:1, height:42, border:`1px solid ${C.border}`, borderRadius:12, background:"#fff", fontWeight:800 }}>Cancel</button>
-              <button onClick={confirmParentMode} disabled={parentPin.length!==4} style={{ flex:1, height:42, border:0, borderRadius:12, background:parentPin.length===4?"#2563EB":"#CBD5E1", color:"#fff", fontWeight:900 }}>Open</button>
+      {pinSetupOpen && (
+        <div style={{
+          position:"fixed",
+          inset:0,
+          background:"rgba(15,23,42,.56)",
+          zIndex:210,
+          display:"grid",
+          placeItems:"center",
+          padding:20
+        }}>
+          <div style={{
+            width:"100%",
+            maxWidth:350,
+            background:"#fff",
+            borderRadius:20,
+            padding:20,
+            boxShadow:"0 24px 70px rgba(15,23,42,.28)"
+          }}>
+            <div style={{
+              fontFamily:"'League Spartan',sans-serif",
+              fontSize:22,
+              fontWeight:900,
+              color:C.text
+            }}>
+              Set parent PIN
             </div>
-            <div style={{ fontSize:9, color:C.textSecondary, marginTop:10, lineHeight:1.4 }}>This PIN is a child-safety UX gate on this device; account permissions remain enforced by the signed-in parent account.</div>
+
+            <div style={{
+              fontSize:12,
+              color:C.textSecondary,
+              lineHeight:1.5,
+              marginTop:6
+            }}>
+              Choose a 4-digit PIN for parent-only areas
+              of Spraoi.
+            </div>
+
+            <input
+              value={newParentPin}
+              onChange={e=>
+                setNewParentPin(
+                  e.target.value.replace(/\D/g,"").slice(0,4)
+                )
+              }
+              inputMode="numeric"
+              maxLength={4}
+              autoFocus
+              placeholder="••••"
+              style={{
+                width:"100%",
+                boxSizing:"border-box",
+                marginTop:16,
+                height:52,
+                border:`1.5px solid ${C.border}`,
+                borderRadius:14,
+                textAlign:"center",
+                fontSize:26,
+                letterSpacing:10,
+                fontWeight:900
+              }}
+            />
+
+            <input
+              value={confirmParentPinValue}
+              onChange={e=>
+                setConfirmParentPinValue(
+                  e.target.value.replace(/\D/g,"").slice(0,4)
+                )
+              }
+              inputMode="numeric"
+              maxLength={4}
+              placeholder="Confirm PIN"
+              style={{
+                width:"100%",
+                boxSizing:"border-box",
+                marginTop:10,
+                height:48,
+                border:`1.5px solid ${C.border}`,
+                borderRadius:14,
+                textAlign:"center",
+                fontSize:20,
+                letterSpacing:7,
+                fontWeight:900
+              }}
+            />
+
+            {parentPinError &&
+              <div style={{
+                marginTop:10,
+                padding:9,
+                borderRadius:10,
+                background:"#fef2f2",
+                color:"#b91c1c",
+                fontSize:10,
+                fontWeight:700
+              }}>
+                {parentPinError}
+              </div>
+            }
+
+            <div style={{
+              display:"flex",
+              gap:8,
+              marginTop:12
+            }}>
+              <button
+                type="button"
+                onClick={()=>{
+                  setPinSetupOpen(false);
+                  setParentPinError("");
+                }}
+                style={{
+                  flex:1,
+                  height:42,
+                  border:`1px solid ${C.border}`,
+                  borderRadius:12,
+                  background:"#fff",
+                  fontWeight:800
+                }}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={saveParentPin}
+                disabled={
+                  pinSaving ||
+                  newParentPin.length !== 4 ||
+                  confirmParentPinValue.length !== 4
+                }
+                style={{
+                  flex:1,
+                  height:42,
+                  border:0,
+                  borderRadius:12,
+                  background:
+                    newParentPin.length === 4 &&
+                    confirmParentPinValue.length === 4
+                      ? "#2563EB"
+                      : "#CBD5E1",
+                  color:"#fff",
+                  fontWeight:900
+                }}
+              >
+                {pinSaving ? "Saving..." : "Save PIN"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showParentGate && (
+        <div style={{
+          position:"fixed",
+          inset:0,
+          background:"rgba(15,23,42,.56)",
+          zIndex:200,
+          display:"grid",
+          placeItems:"center",
+          padding:20
+        }}>
+          <div style={{
+            width:"100%",
+            maxWidth:340,
+            background:"#fff",
+            borderRadius:20,
+            padding:20,
+            boxShadow:"0 24px 70px rgba(15,23,42,.28)"
+          }}>
+            <div style={{
+              fontFamily:"'League Spartan',sans-serif",
+              fontSize:22,
+              fontWeight:900,
+              color:C.text
+            }}>
+              Parent mode
+            </div>
+
+            <div style={{
+              fontSize:12,
+              color:C.textSecondary,
+              lineHeight:1.5,
+              marginTop:6
+            }}>
+              Enter your 4-digit parent PIN.
+            </div>
+
+            <input
+              value={parentPin}
+              onChange={e=>{
+                const nextPin =
+                  e.target.value.replace(/\D/g,"").slice(0,4);
+
+                setParentPin(nextPin);
+                setParentPinError("");
+
+                if (nextPin.length === 4) {
+                  confirmParentMode(nextPin);
+                }
+              }}
+              onKeyDown={e=>{
+                if (e.key === "Enter" && parentPin.length === 4) {
+                  confirmParentMode();
+                }
+              }}
+              inputMode="numeric"
+              maxLength={4}
+              autoFocus
+              placeholder="••••"
+              style={{
+                width:"100%",
+                boxSizing:"border-box",
+                marginTop:16,
+                height:52,
+                border:`1.5px solid ${C.border}`,
+                borderRadius:14,
+                textAlign:"center",
+                fontSize:26,
+                letterSpacing:10,
+                fontWeight:900
+              }}
+            />
+
+            {parentPinError &&
+              <div style={{
+                marginTop:10,
+                padding:9,
+                borderRadius:10,
+                background:"#fef2f2",
+                color:"#b91c1c",
+                fontSize:10,
+                fontWeight:700
+              }}>
+                {parentPinError}
+              </div>
+            }
+
+            <div style={{
+              display:"flex",
+              gap:8,
+              marginTop:12
+            }}>
+              <button
+                type="button"
+                onClick={()=>{
+                  setShowParentGate(false);
+                  setParentPinError("");
+                }}
+                style={{
+                  flex:1,
+                  height:42,
+                  border:`1px solid ${C.border}`,
+                  borderRadius:12,
+                  background:"#fff",
+                  fontWeight:800
+                }}
+              >
+                Cancel
+              </button>
+
+
+            </div>
           </div>
         </div>
       )}
@@ -2263,7 +2741,19 @@ export default function App() {
       <ImportantNotificationModal
         notification={parentNotifications.important}
         onClose={() => parentNotifications.important && parentNotifications.markModalShown(parentNotifications.important)}
-        onView={() => { if (parentNotifications.important) parentNotifications.markModalShown(parentNotifications.important); setScreen("updates"); }}
+        onView={() => {
+          if (parentNotifications.important) {
+            parentNotifications.markModalShown(
+              parentNotifications.important
+            );
+          }
+
+          if (parentModeUnlocked) {
+            setScreen("updates");
+          } else {
+            openParentMode("updates");
+          }
+        }}
       />
 
       {/* Bottom nav */}
@@ -2271,17 +2761,28 @@ export default function App() {
         <div style={{ position:"fixed", left:"50%", transform:"translateX(-50%)", bottom:0, width:"100%", maxWidth:460, background:"#fff", borderTop:`1px solid ${C.border}`, padding:"7px 8px calc(7px + env(safe-area-inset-bottom))", display:"flex", gap:4, zIndex:50, boxShadow:"0 -8px 24px rgba(15,23,42,.08)" }}>
           {[
             { key:"home", label:"Home", icon:Home },
-            { key:"calendar", label:"Calendar", icon:CalendarDays },
+            { key:"calendar", label:"Events", icon:CalendarDays },
             { key:"updates", label:"Messages", icon:Bell },
-            { key:"learn", label:"Academy", icon:BookOpen },
-            { key:"more", label:"More", icon:User },
+            { key:"learn", label:"Skills", icon:BookOpen },
+            { key:"more", label:"Profile", icon:User },
           ].map((item) => {
-            const target = item.key === "more" ? (parentModeUnlocked ? "parent-home" : "profile") : item.key;
-            const active = screen === target || (item.key === "more" && screen === "parent-home");
+            const target = item.key === "more" ? "profile" : item.key;
+            const active = screen === target;
             const Icon = item.icon;
             return (
               <button key={item.key} onClick={() => {
-                if (item.key === "more" && !parentModeUnlocked) { openParentMode(); return; }
+                if (
+                  ["calendar","updates","more"].includes(item.key) &&
+                  !parentModeUnlocked
+                ) {
+                  openParentMode(
+                    item.key === "more"
+                      ? "parent-home"
+                      : item.key
+                  );
+                  return;
+                }
+
                 setScreen(target);
               }} style={{ flex:1, minWidth:0, border:0, borderRadius:12, background:active ? "#EEF5FF" : "transparent", color:active ? "#2563EB" : C.textSecondary, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:3, padding:"6px 2px", cursor:"pointer" }}>
                 <Icon size={22} strokeWidth={active ? 2.5 : 2} />
