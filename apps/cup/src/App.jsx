@@ -6996,6 +6996,7 @@ setAgeGroups(data || []);
 
   // Auth loading
   if (authLoading && !shareToken) {
+    if (window.__SPRAOI_ADMIN_SHELL__) return null;
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: P.navy, fontFamily: F.body }}>
         <div style={{ width: 66, height: 66, borderRadius: 20, background: "#fff", display: "grid", placeItems: "center", boxShadow: "0 10px 28px rgba(0,0,0,.18)" }}><img src="/spraoi-cup-icon.png" alt="Spraoi Cup" style={{ width: 48, height: 48, objectFit: "contain" }} /></div>

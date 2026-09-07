@@ -170,7 +170,7 @@ function DesktopNav({nav,tab,setTab,club,selectedTeam,visibleTeams,setSelectedTe
   aria-hidden="true"
   style={{
     background:"transparent",
-    transform:id==="events"?"scale(1.35)":"none"
+    transform:"none"
   }}
 /></span><span style={{fontFamily:F.body,fontSize:12,fontWeight:active?700:600,letterSpacing:"-.01em",color:active?"#b94700":"#fff"}}>{label}</span></button>})}
       </nav>

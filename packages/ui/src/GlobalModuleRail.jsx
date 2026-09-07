@@ -3,7 +3,7 @@ import { openAdminModule } from "./platformNavigation.js";
 
 const MODULES = {
   coach: { label: "Coach", color: "#7C3AED", icon: "/spraoi-coach-icon.png", screen: "coach-dashboard" },
-  academy: { label: "Academy", color: "#2563EB", icon: "/spraoi-academy-icon.png", screen: "academy-dashboard" },
+  academy: { label: "Academy", color: "#2563EB", icon: "/spraoi-academy-icon.png", iconSize: 34, screen: "academy-dashboard" },
   connect: { label: "Connect", color: "#F97316", icon: "/spraoi-connect-icon.png", screen: "connect-dashboard" },
   cup: { label: "Cup", color: "#E4A400", icon: "/spraoi-cup-icon.png", screen: "cup-dashboard" },
   club: { label: "Club", color: "#DC2626", icon: "/spraoi-club-icon.png", screen: "club-dashboard" },
@@ -252,8 +252,8 @@ export default function GlobalModuleRail({
                     alt=""
                     aria-hidden="true"
                     style={{
-                      width: 44,
-                      height: 44,
+                      width: module.iconSize || 44,
+                      height: module.iconSize || 44,
                       objectFit: "contain",
                       filter: locked ? "grayscale(1) opacity(.42)" : "none",
                     }}

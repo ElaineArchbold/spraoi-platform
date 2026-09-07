@@ -535,7 +535,7 @@ function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, sel
                 <span className="spraoi-secondary-nav-icon-wrap" style={{ background: "transparent", border: 0, boxShadow: "none", padding: 0 }}>
                   <SecondarySidebarIcon moduleKey={activeModule} id={item.id} />
                 </span>
-                <span style={{ fontFamily: F.body, fontSize: 12, fontWeight: isActive ? 750 : 650, letterSpacing: "-.01em", color: isActive ? (activeModule === "connect" ? "#5b4600" : mod.color) : "#fff", opacity: 1 }}>{item.label}</span>
+                <span style={{ fontFamily: F.body, fontSize: 11, fontWeight: isActive ? 750 : 650, letterSpacing: "-.01em", color: isActive ? (activeModule === "connect" ? "#5b4600" : mod.color) : "#fff", opacity: 1 }}>{item.label}</span>
               </button>
             );
           })}
@@ -573,8 +573,8 @@ function TopBar({ title, sub, children, moduleKey }) {
           <img src={module.icon} alt="" style={{ width: 48, height: 48, objectFit: "contain" }} />
         </div>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontFamily: F.display, fontSize: 21, fontWeight: 700, color: isConnect ? "#332800" : P.ink, lineHeight: 1.1 }}>{title}</div>
-          {sub && <div style={{ fontFamily: F.body, fontSize: 12, color: isConnect ? "rgba(51,40,0,.72)" : P.muted, marginTop: 6 }}>{sub}</div>}
+          <div style={{ fontFamily: F.display, fontSize: key === "club" ? 18 : 21, fontWeight: 700, color: isConnect ? "#332800" : P.ink, lineHeight: 1.1 }}>{title}</div>
+          {sub && <div style={{ fontFamily: F.body, fontSize: key === "club" ? 10 : 12, color: isConnect ? "rgba(51,40,0,.72)" : P.muted, marginTop: 6 }}>{sub}</div>}
         </div>
       </div>
       {children && <div style={{ display: "flex", alignItems: "center", gap: 8 }}>{children}</div>}
@@ -608,11 +608,11 @@ function StatCard({ label, value, sub, color = P.p600, icon }) {
   return (
     <div className="spraoi-stat-card" style={{ background: P.white, borderRadius: 14, padding: "16px 18px", border: `1px solid ${P.line}`, borderTop: `3px solid ${color}`, boxShadow: Sh.card }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 8 }}>
-        <span style={{ fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.muted, textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</span>
+        <span style={{ fontFamily: F.body, fontSize: 10, fontWeight: 700, color: P.muted, textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</span>
         {icon && (typeof icon === "string" && icon.startsWith("/") ? <span className="spraoi-card-icon-chip" style={{ "--card-accent": color }}><img className="spraoi-card-icon" src={icon} alt="" aria-hidden="true" /></span> : <span className="spraoi-card-icon-fallback" style={{ "--card-accent": color }}>{icon}</span>)}
       </div>
-      <div style={{ fontFamily: F.display, fontSize: 28, fontWeight: 800, color: P.ink, letterSpacing: "-0.04em", lineHeight: 1 }}>{value}</div>
-      {sub && <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 6 }}>{sub}</div>}
+      <div style={{ fontFamily: F.display, fontSize: 22, fontWeight: 800, color: P.ink, letterSpacing: "-0.04em", lineHeight: 1 }}>{value}</div>
+      {sub && <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 6 }}>{sub}</div>}
     </div>
   );
 }
@@ -2438,7 +2438,7 @@ function ClubDashboardScreen({ club, ageGroups, coaches, selectedTeam, onNav }) 
           <div style={{ padding: 14, borderRadius: 12, background: CLUB_SOFT, border: "1px solid #f4caca" }}>
             <div style={{ fontFamily: F.body, fontSize: 10, fontWeight: 800, color: CLUB_RED, textTransform: "uppercase" }}>Currently selected</div>
             <div style={{ fontFamily: F.display, fontSize: 23, fontWeight: 800, color: P.ink, marginTop: 4 }}>{selectedTeam ? teamDisplayName(selectedTeam) : "No team selected"}</div>
-            <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted, marginTop: 6 }}>
+            <div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 6 }}>
               Coach, Academy, Cup, Connect and Plus use this same team selection.
             </div>
           </div>
@@ -9952,6 +9952,7 @@ const [showProfile, setShowProfile] = useState(false);
 
   // Auth loading
   if (authLoading && !shareToken) {
+    if (window.__SPRAOI_ADMIN_SHELL__) return null;
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: P.navy, fontFamily: F.body }}>
         <img src="/spraoi-icon.png" alt="Spraoi" style={{ width: 48, height: 48, opacity: 0.7 }} />

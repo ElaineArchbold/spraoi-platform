@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import CoachApp from "../../coach/src/App.jsx";
 import AcademyApp from "../../academy/src/App.jsx";
 import ConnectApp from "../../connect/src/App.jsx";
@@ -37,17 +37,30 @@ function requestedModule() {
 export default function App() {
   const initial = useMemo(() => requestedModule(), []);
   const [activeModule, setActiveModule] = useState(initial);
+  const [mountedModules, setMountedModules] = useState([initial]);
+  const mountedModulesRef = useRef(new Set([initial]));
+  const [switchingModule, setSwitchingModule] = useState(false);
   useEffect(() => {
     window.__SPRAOI_ADMIN_SHELL__ = true;
 
     const switchModule = (moduleId, screen = null, team = null) => {
       const key = String(moduleId || "").toLowerCase();
       if (!MODULE_ORDER.includes(key)) return;
-setActiveModule(key);
+
+      const isFirstMount = !mountedModulesRef.current.has(key);
+
+      if (isFirstMount) {
+        mountedModulesRef.current.add(key);
+        setMountedModules(Array.from(mountedModulesRef.current));
+        setSwitchingModule(true);
+      }
+
+      setActiveModule(key);
 
       const url = new URL(window.location.href);
       url.searchParams.set("module", key);
       url.searchParams.set("screen", screen || DEFAULT_SCREEN[key]);
+
       const canonicalTeam =
         team ||
         localStorage.getItem("spraoi_active_team_id") ||
@@ -65,6 +78,10 @@ setActiveModule(key);
       window.dispatchEvent(new CustomEvent("spraoi:shell-screen", {
         detail: { moduleId: key, screen: screen || DEFAULT_SCREEN[key], team: team || null }
       }));
+
+      window.setTimeout(() => {
+        setSwitchingModule(false);
+      }, 250);
     };
 
     const onSwitch = (event) => {
@@ -100,10 +117,46 @@ setActiveModule(key);
         background: "#f7f9fc"
       }}
     >
-      {(() => {
-        const ModuleApp = apps[activeModule];
-        return ModuleApp ? <ModuleApp key={activeModule} /> : null;
-      })()}
+      {mountedModules.map((moduleId) => {
+        const ModuleApp = apps[moduleId];
+        if (!ModuleApp) return null;
+
+        return (
+          <div
+            key={moduleId}
+            style={{
+              display: activeModule === moduleId ? "block" : "none",
+              width: "100%",
+              minHeight: "100vh"
+            }}
+          >
+            <ModuleApp />
+          </div>
+        );
+      })}
+
+      {switchingModule && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 2147483647,
+            display: "grid",
+            placeItems: "center",
+            background: "#0B2A4A"
+          }}
+        >
+          <img
+            src="/spraoi-logo.png"
+            alt="Spraoi Sports"
+            style={{
+              width: 54,
+              height: 54,
+              objectFit: "contain"
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
