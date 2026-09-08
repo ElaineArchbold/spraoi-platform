@@ -432,6 +432,7 @@ export default function ParentUpdates({
 
   const [events,setEvents] = useState([]);
   const [responses,setResponses] = useState([]);
+  const [declineReasons,setDeclineReasons] = useState({});
   const [status,setStatus] = useState("");
   const [selectedMessage,setSelectedMessage] = useState(null);
 
@@ -489,7 +490,7 @@ export default function ParentUpdates({
       const {data,error} = await supabase
         .from("connect_event_recipients")
         .select(
-          "event_id,player_id,parent_user_id,audience_type,subgroup_key,sport_code,panel"
+          "event_id,player_id,parent_user_id,audience_type,subgroup_key,sport_code,panel,require_decline_reason"
         )
         .in("event_id",eventIds);
 
@@ -539,7 +540,9 @@ export default function ParentUpdates({
           _sport_code:
             recipient?.sport_code || null,
           _panel:
-            recipient?.panel || null
+            recipient?.panel || null,
+          _require_decline_reason:
+            Boolean(recipient?.require_decline_reason)
         };
       });
 
@@ -574,7 +577,7 @@ export default function ParentUpdates({
     });
   }
 
-  async function respond(event,response) {
+  async function respond(event,response,note="") {
     const child =
       players.find(
         p => p.id === event._recipient_player_id
@@ -599,6 +602,10 @@ export default function ParentUpdates({
           player_id:child.id,
           parent_user_id:userId,
           response,
+          note:
+            response === "declined"
+              ? (String(note).trim() || null)
+              : null,
           responded_at:new Date().toISOString()
         },
         {
@@ -800,7 +807,7 @@ export default function ParentUpdates({
                       <button
                         onClick={(e)=>{
                           e.preventDefault();
-                          respond(event,"accepted");
+                          respond(event,"accepted","");
                         }}
                         style={{
                           flex:1,
@@ -819,7 +826,28 @@ export default function ParentUpdates({
                       <button
                         onClick={(e)=>{
                           e.preventDefault();
-                          respond(event,"declined");
+                          const reason =
+                            String(
+                              declineReasons[event.id] ??
+                              response?.note ??
+                              ""
+                            ).trim();
+
+                          if (
+                            event._require_decline_reason &&
+                            !reason
+                          ) {
+                            setStatus(
+                              "Please enter a reason before declining."
+                            );
+                            return;
+                          }
+
+                          respond(
+                            event,
+                            "declined",
+                            reason
+                          );
                         }}
                         style={{
                           flex:1,
@@ -834,6 +862,55 @@ export default function ParentUpdates({
                       >
                         ✕ Decline
                       </button>
+                    </div>
+                  }
+
+                  {event.status !== "cancelled" &&
+                    event._require_decline_reason &&
+                    <div style={{marginTop:10}}>
+                      <label style={{
+                        display:"block",
+                        fontSize:10,
+                        fontWeight:900,
+                        color:C.text,
+                        marginBottom:5
+                      }}>
+                        Reason required
+                      </label>
+
+                      <textarea
+                        value={
+                          declineReasons[event.id] ??
+                          response?.note ??
+                          ""
+                        }
+                        onChange={e=>
+                          setDeclineReasons(current=>({
+                            ...current,
+                            [event.id]:e.target.value
+                          }))
+                        }
+                        placeholder="Please let us know why they can't attend"
+                        style={{
+                          width:"100%",
+                          boxSizing:"border-box",
+                          minHeight:70,
+                          resize:"vertical",
+                          padding:"9px 10px",
+                          border:`1px solid ${C.line}`,
+                          borderRadius:9,
+                          fontFamily:"inherit",
+                          fontSize:11
+                        }}
+                      />
+
+                      <div style={{
+                        fontSize:9,
+                        color:C.muted,
+                        marginTop:4
+                      }}>
+                        Required when you select Decline.
+                      </div>
                     </div>
                   }
                 </div>

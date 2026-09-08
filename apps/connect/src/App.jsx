@@ -693,6 +693,8 @@ const selectedTeam=visibleTeams.find(
         subgroup_key:subgroupKey,
         sport_code:sportCode,
         panel:panel,
+        require_decline_reason:
+          Boolean(draft.requireDeclineReason),
         created_by:session.user.id
       }));
 
@@ -703,7 +705,7 @@ const selectedTeam=visibleTeams.find(
             eventRecipientRows,
             {
               onConflict:"event_id,player_id,parent_user_id",
-              ignoreDuplicates:true
+              ignoreDuplicates:false
             }
           );
 
@@ -740,7 +742,7 @@ const selectedTeam=visibleTeams.find(
       : isTrainingAllocation
         ? `Training confirmed for ${shortTeam(selectedTeam)}\n${when}\n${location}${event.notes?`\n${event.notes}`:""}\n\nPlease confirm availability in Spraoi Academy.`
         : `${event.title||title}\n${when}\n${location}${event.notes?`\n${event.notes}`:""}\n\nPlease confirm availability in Spraoi Academy.`;
-    setComposer({audienceType:mode==="reminder"?"no_response":"team",subgroupKey:"",messageType:mode,title:mode==="reminder"?`Response reminder · ${title}`:isTrainingAllocation?`Training confirmed · ${shortTeam(selectedTeam)}`:title,body,eventId:event.id,groupId:"",playerIds:[],priority:event.status==="changed"?"important":"normal"});
+    setComposer({audienceType:mode==="reminder"?"no_response":"team",subgroupKey:"",messageType:mode,title:mode==="reminder"?`Response reminder · ${title}`:isTrainingAllocation?`Training confirmed · ${shortTeam(selectedTeam)}`:title,body,eventId:event.id,groupId:"",playerIds:[],priority:event.status==="changed"?"important":"normal",requireDeclineReason:false});
   }
   function openSavedDraft(message){
     setComposer({
@@ -833,17 +835,7 @@ const selectedTeam=visibleTeams.find(
 
   async function toggleDelegate(staffRow){if(!canManageDelegates||!selectedTeam?.id||!staffRow.user_id)return;const existing=delegates.find(d=>d.age_group_id===selectedTeam.id&&String(d.user_id)===String(staffRow.user_id));if(existing){await supabase.from("connect_sender_permissions").update({active:!existing.active,granted_by:session.user.id,updated_at:new Date().toISOString()}).eq("id",existing.id);}else{await supabase.from("connect_sender_permissions").insert({club_id:club.id,age_group_id:selectedTeam.id,user_id:staffRow.user_id,granted_by:session.user.id,active:true});}await loadAll();}
 
-  if(loading)return (
-    <div style={{minHeight:"100vh",display:"grid",placeItems:"center",background:C.soft,fontFamily:F.body,color:C.navy}}>
-      <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:12}}>
-        <div style={{width:72,height:72,borderRadius:20,background:"#fff",display:"grid",placeItems:"center",border:`1px solid ${C.line}`,boxShadow:"0 8px 24px rgba(16,36,62,.08)"}}>
-          <img src={`${BASE}spraoi-connect-icon.png`} alt="Spraoi Connect" style={{width:58,height:58,objectFit:"contain"}}/>
-        </div>
-        <div style={{fontFamily:F.display,fontSize:20,fontWeight:800,color:C.ink}}>Spraoi Connect</div>
-        <div style={{fontSize:11,color:C.muted}}>Loading your team communications...</div>
-      </div>
-    </div>
-  );
+  if(loading)return null;
   if(!session)return <Login onSignedIn={()=>supabase.auth.getSession().then(({data:{session:s}})=>s&&loadAll(s))}/>;
 
   const nav=CONNECT_NAV;
@@ -1109,7 +1101,22 @@ const selectedTeam=visibleTeams.find(
 
       {tab==="groups"&&<><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:12}}><div><h2 style={{margin:0,fontSize:18}}>Groups & subgroups</h2><div style={{fontSize:10,color:C.muted}}>Internal staff groups; parents only see messages relevant to their child.</div></div>{canSendSelected&&<Btn onClick={()=>setGroupModal(true)}>Create subgroup</Btn>}</div>{teamGroups.map(g=>{const ids=groupMembers.filter(m=>m.group_id===g.id).map(m=>m.player_id);return <Card key={g.id} style={{padding:15,marginBottom:9}}><div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"center"}}><div><b>{g.name}</b><div style={{fontSize:10,color:C.muted,marginTop:3}}>{g.description||"Custom subgroup"} · {ids.length} player{ids.length===1?"":"s"}</div></div>{canSendSelected&&<Btn ghost onClick={()=>setComposer({audienceType:"group",messageType:"announcement",title:"",body:"",eventId:null,groupId:g.id,subgroupKey:"",playerIds:[],priority:"normal"})}>Message</Btn>}</div></Card>})}{!teamGroups.length&&<Card style={{padding:18,fontSize:11,color:C.muted}}>No subgroups yet. Examples: Saturday squad, Féile panel, goalkeepers, bus group.</Card>}</>}
 
-      {tab==="responses"&&<div>{upcoming.map(e=><Card key={e.id} style={{padding:15,marginBottom:10}}><div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"center",marginBottom:9}}><div><b>{e.title}</b><div style={{fontSize:9,color:C.muted}}>{fmt(e.starts_at)}</div></div><Pill tone={noResponseCount(e)?"warn":"yes"}>{noResponseCount(e)} outstanding</Pill></div>{eventPlayers(e).map(p=>{const r=responses.find(x=>x.event_id===e.id&&x.player_id===p.id);return <div key={p.id} style={{display:"flex",justifyContent:"space-between",gap:10,padding:"8px 0",borderTop:`1px solid ${C.line}`,fontSize:11}}><span>{p.name}</span><Pill tone={r?.response||"warn"}>{r?.response?r.response.toUpperCase():"NO RESPONSE"}</Pill></div>})}</Card>)}</div>}
+      {tab==="responses"&&<div>{upcoming.map(e=><Card key={e.id} style={{padding:15,marginBottom:10}}><div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"center",marginBottom:9}}><div><b>{e.title}</b><div style={{fontSize:9,color:C.muted}}>{fmt(e.starts_at)}</div></div><Pill tone={noResponseCount(e)?"warn":"yes"}>{noResponseCount(e)} outstanding</Pill></div>{eventPlayers(e).map(p=>{const r=responses.find(x=>x.event_id===e.id&&x.player_id===p.id);return <div key={p.id} style={{display:"flex",justifyContent:"space-between",gap:10,padding:"8px 0",borderTop:`1px solid ${C.line}`,fontSize:11}}><span style={{minWidth:0}}>
+  <span>{p.name}</span>
+  {r?.response==="declined"&&r?.note&&
+    <div style={{
+      fontSize:9,
+      color:C.muted,
+      marginTop:3,
+      lineHeight:1.35
+    }}>
+      Reason: {r.note}
+    </div>
+  }
+</span>
+<Pill tone={r?.response||"warn"}>
+  {r?.response?r.response.toUpperCase():"NO RESPONSE"}
+</Pill></div>})}</Card>)}</div>}
 
       {tab==="more"&&<><Card style={{padding:16,marginBottom:10}}><h2 style={{fontSize:17,margin:"0 0 5px"}}>Sending permissions</h2><div style={{fontSize:11,color:C.muted,lineHeight:1.5}}>Lead Mentors can send automatically. They can grant another assigned mentor permission for this team. Club Admin and Super Admin can send clubwide.</div>{canManageDelegates&&<Btn style={{marginTop:12}} onClick={()=>setPermissionModal(true)}>Manage authorised senders</Btn>}</Card><Card style={{padding:16}}><b>Account</b><div style={{fontSize:10,color:C.muted,marginTop:4}}>{session.user.email}</div><Btn ghost style={{marginTop:12}} onClick={centralLogout}>Log out</Btn></Card></>}
       </main>
@@ -1743,5 +1750,44 @@ function Composer({draft,setDraft,teamPlayers,groups,selectedTeam,isAdmin,event,
       Boolean(draft.groupId)
     )
   );
-  return <div><Field label="Audience"><select style={inputStyle} value={draft.audienceType} onChange={e=>set("audienceType",e.target.value)}><option value="team">Whole team</option><option value="ab_subgroup">A/B team</option><option value="group">Custom subgroup</option><option value="selected">Selected children / parents</option>{event&&<option value="no_response">No response to this event</option>}{isAdmin&&<option value="club">Whole club</option>}</select></Field>{draft.audienceType==="ab_subgroup"&&<Field label="A/B team"><select style={inputStyle} value={draft.subgroupKey||""} onChange={e=>set("subgroupKey",e.target.value)}><option value="">Choose A/B team</option><option value="football_a">Football A</option><option value="football_b">Football B</option><option value="hurling_a">{String(selectedTeam?.gender||"").toLowerCase()==="girls"?"Camogie A":"Hurling A"}</option><option value="hurling_b">{String(selectedTeam?.gender||"").toLowerCase()==="girls"?"Camogie B":"Hurling B"}</option></select></Field>}{draft.audienceType==="group"&&<Field label="Custom subgroup"><select style={inputStyle} value={draft.groupId||""} onChange={e=>set("groupId",e.target.value)}><option value="">Choose group</option>{groups.map(g=><option key={g.id} value={g.id}>{g.name}</option>)}</select></Field>}{draft.audienceType==="selected"&&<div style={{marginBottom:12}}><div style={{fontSize:10,fontWeight:800,color:C.muted,textTransform:"uppercase",marginBottom:7}}>Recipients</div><div style={{maxHeight:180,overflow:"auto",border:`1px solid ${C.line}`,borderRadius:11,padding:7}}>{teamPlayers.map(p=><label key={p.id} style={{display:"flex",gap:8,padding:"6px 4px",fontSize:11}}><input type="checkbox" checked={draft.playerIds?.includes(p.id)} onChange={e=>set("playerIds",e.target.checked?[...(draft.playerIds||[]),p.id]:(draft.playerIds||[]).filter(id=>id!==p.id))}/>{p.name}</label>)}</div></div>}<Field label="Title"><input style={inputStyle} value={draft.title} onChange={e=>set("title",e.target.value)} placeholder="Message title"/></Field><Field label="Message"><textarea style={{...inputStyle,minHeight:150,resize:"vertical",lineHeight:1.5}} value={draft.body} onChange={e=>set("body",e.target.value)} placeholder="Write your message…"/></Field><label style={{display:"flex",gap:8,alignItems:"center",fontSize:11,color:C.muted,marginBottom:14}}><input type="checkbox" checked={draft.priority==="important"} onChange={e=>set("priority",e.target.checked?"important":"normal")}/> Important update (show prominently in Academy)</label><div style={{padding:10,borderRadius:11,background:C.soft,fontSize:10,color:C.muted,marginBottom:14}}>Parents receive this in Spraoi with the session attached. Use Whole team for normal training, or switch Audience to Subgroup for a selected squad. Availability is collected as Yes / Maybe / No against the linked session event.</div><div style={{display:"flex",justifyContent:"flex-end"}}><Btn disabled={!canSend} onClick={onSend}>Send message</Btn></div></div>;
+  return <div><Field label="Audience"><select style={inputStyle} value={draft.audienceType} onChange={e=>set("audienceType",e.target.value)}><option value="team">Whole team</option><option value="ab_subgroup">A/B team</option><option value="group">Custom subgroup</option><option value="selected">Selected children / parents</option>{event&&<option value="no_response">No response to this event</option>}{isAdmin&&<option value="club">Whole club</option>}</select></Field>{draft.audienceType==="ab_subgroup"&&<Field label="A/B team"><select style={inputStyle} value={draft.subgroupKey||""} onChange={e=>set("subgroupKey",e.target.value)}><option value="">Choose A/B team</option><option value="football_a">Football A</option><option value="football_b">Football B</option><option value="hurling_a">{String(selectedTeam?.gender||"").toLowerCase()==="girls"?"Camogie A":"Hurling A"}</option><option value="hurling_b">{String(selectedTeam?.gender||"").toLowerCase()==="girls"?"Camogie B":"Hurling B"}</option></select></Field>}{draft.audienceType==="group"&&<Field label="Custom subgroup"><select style={inputStyle} value={draft.groupId||""} onChange={e=>set("groupId",e.target.value)}><option value="">Choose group</option>{groups.map(g=><option key={g.id} value={g.id}>{g.name}</option>)}</select></Field>}{draft.audienceType==="selected"&&<div style={{marginBottom:12}}><div style={{fontSize:10,fontWeight:800,color:C.muted,textTransform:"uppercase",marginBottom:7}}>Recipients</div><div style={{maxHeight:180,overflow:"auto",border:`1px solid ${C.line}`,borderRadius:11,padding:7}}>{teamPlayers.map(p=><label key={p.id} style={{display:"flex",gap:8,padding:"6px 4px",fontSize:11}}><input type="checkbox" checked={draft.playerIds?.includes(p.id)} onChange={e=>set("playerIds",e.target.checked?[...(draft.playerIds||[]),p.id]:(draft.playerIds||[]).filter(id=>id!==p.id))}/>{p.name}</label>)}</div></div>}<Field label="Title"><input style={inputStyle} value={draft.title} onChange={e=>set("title",e.target.value)} placeholder="Message title"/></Field><Field label="Message"><textarea style={{...inputStyle,minHeight:150,resize:"vertical",lineHeight:1.5}} value={draft.body} onChange={e=>set("body",e.target.value)} placeholder="Write your message…"/></Field>{event&&
+  <label style={{
+    display:"flex",
+    gap:9,
+    alignItems:"flex-start",
+    fontSize:11,
+    color:C.ink,
+    marginBottom:14,
+    padding:10,
+    border:`1px solid ${C.line}`,
+    borderRadius:11,
+    background:C.soft
+  }}>
+    <input
+      type="checkbox"
+      checked={Boolean(draft.requireDeclineReason)}
+      onChange={e=>
+        set("requireDeclineReason",e.target.checked)
+      }
+      style={{marginTop:2}}
+    />
+    <span>
+      <strong style={{
+        display:"block",
+        fontSize:11
+      }}>
+        Require reason if unavailable
+      </strong>
+      <span style={{
+        display:"block",
+        fontSize:9,
+        color:C.muted,
+        marginTop:3,
+        lineHeight:1.4
+      }}>
+        When a player cannot attend, the parent must provide a reason before submitting.
+      </span>
+    </span>
+  </label>
+}<label style={{display:"flex",gap:8,alignItems:"center",fontSize:11,color:C.muted,marginBottom:14}}><input type="checkbox" checked={draft.priority==="important"} onChange={e=>set("priority",e.target.checked?"important":"normal")}/> Important update (show prominently in Academy)</label><div style={{padding:10,borderRadius:11,background:C.soft,fontSize:10,color:C.muted,marginBottom:14}}>Parents receive this in Spraoi with the session attached. Use Whole team for normal training, or switch Audience to Subgroup for a selected squad. Availability is collected as Yes / Maybe / No against the linked session event.</div><div style={{display:"flex",justifyContent:"flex-end"}}><Btn disabled={!canSend} onClick={onSend}>Send message</Btn></div></div>;
 }

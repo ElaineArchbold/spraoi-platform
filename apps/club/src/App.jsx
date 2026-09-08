@@ -1074,17 +1074,47 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
       } else {
         const { data: existing } = await supabase.from("weekly_plans").select("week_number").eq("age_group_id", selectedTeam.id).order("week_number", { ascending: false }).limit(1);
         const nextWeek = (existing?.[0]?.week_number || 0) + 1;
+        if (!day) {
+          alert("Please select the session date before saving.");
+          setSaving(false);
+          return;
+        }
+
+        const selectedDayIndex =
+          ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].indexOf(day);
+
+        if (selectedDayIndex < 0) {
+          alert("The selected session date is invalid.");
+          setSaving(false);
+          return;
+        }
+
+        const selectedDate = new Date();
+        selectedDate.setHours(12, 0, 0, 0);
+        selectedDate.setDate(
+          selectedDate.getDate() -
+          (selectedDate.getDay() || 7) +
+          1 +
+          (weekOffset || 0) * 7 +
+          selectedDayIndex
+        );
+
+        const selectedSessionDate =
+          `${selectedDate.getFullYear()}-` +
+          `${String(selectedDate.getMonth() + 1).padStart(2, "0")}-` +
+          `${String(selectedDate.getDate()).padStart(2, "0")}`;
+
         const { data: plan, error: planErr } = await supabase.from("weekly_plans").insert({
           club_id: club.id, age_group_id: selectedTeam.id, week_number: nextWeek, season: "2026-27",
           mode: selectedTeam.gender === "girls" ? "camogie" : "hurling", coach_notes: notes, published: true,
-          starts_at: day ? (() => { const d = new Date(); const dayMap = { Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 0 }; const diff = dayMap[day] - d.getDay(); d.setDate(d.getDate() + (diff < 0 ? diff + 7 : diff)); return d.toISOString().split("T")[0]; })() : new Date().toISOString().split("T")[0],
+          starts_at: selectedSessionDate,
         }).select().single();
         if (planErr || !plan) { alert("Save failed: " + (planErr?.message || "")); setSaving(false); return; }
         planId = plan.id;
         const { data: sess } = await supabase.from("sessions").insert({
           plan_id: plan.id, session_number: 1, sport: selectedTeam.gender === "girls" ? "camogie" : "hurling",
           format: "stations", total_duration_mins: totalTime, station_count: allDrills.length, notes: phasesJson,
-          ...(plan.starts_at ? { session_date: plan.starts_at } : {}),
+          session_date: selectedSessionDate,
         }).select().single();
         sessionId = sess?.id;
       }
