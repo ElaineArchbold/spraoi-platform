@@ -3523,9 +3523,37 @@ function AcademyDashboardScreen({ club, selectedTeam, weeklyPlan, planSessions, 
         if (playerResult.error) throw playerResult.error;
         if (guardianResult.error) throw guardianResult.error;
 
-        const players = playerResult.data || [];
+        const academyPlayers = playerResult.data || [];
         const guardians = guardianResult.data || [];
         const invitations = inviteResult.data || [];
+
+        const { data: rosterRows, error: rosterError } = await supabase
+          .from("players")
+          .select("id,name,age_group_id")
+          .eq("club_id", club.id)
+          .eq("age_group_id", selectedTeam.id)
+          .order("name");
+
+        if (rosterError) throw rosterError;
+
+        const rosterPlayers = rosterRows || [];
+
+        const normaliseRosterName = (value) =>
+          String(value || "")
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g, " ");
+
+        const rosterNames = new Set(
+          rosterPlayers.map((player) =>
+            normaliseRosterName(player.name)
+          )
+        );
+
+        const players = academyPlayers.filter((player) =>
+          rosterNames.has(normaliseRosterName(player.name))
+        );
+
         const playerIds = players.map((player) => player.id);
 
         let links = [];
@@ -3695,7 +3723,7 @@ function AcademyDashboardScreen({ club, selectedTeam, weeklyPlan, planSessions, 
         }
 
         const possibleCompletions =
-          players.length * exerciseCount;
+          rosterPlayers.length * exerciseCount;
 
         const completionRate =
           possibleCompletions > 0
@@ -3709,7 +3737,7 @@ function AcademyDashboardScreen({ club, selectedTeam, weeklyPlan, planSessions, 
               )
             : 0;
 
-        const playerCount = players.length;
+        const playerCount = rosterPlayers.length;
         const childAccess = childrenWithAccess.size;
 
         const childAccessPercent = playerCount
@@ -4411,6 +4439,8 @@ function AcademyParents({ club, selectedTeam }) {
   const [copiedId, setCopiedId] = useState("");
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState("");
+  const [parentDrafts, setParentDrafts] = useState({});
+  const [savingParentId, setSavingParentId] = useState("");
 
   const academyChildBase =
     import.meta.env.VITE_ACADEMY_CHILD_URL ||
@@ -4433,94 +4463,131 @@ function AcademyParents({ club, selectedTeam }) {
 
       setLoading(true);
 
-      const [guardianResult, playerResult, inviteResult] =
-        await Promise.all([
-          supabase
-            .from("club_guardians")
-            .select("id,name,email,user_id")
-            .eq("club_id", club.id)
-            .order("name"),
+      const [
+        guardianResult,
+        coachResult,
+        playerResult,
+        inviteResult,
+        linkResult,
+      ] = await Promise.all([
+        supabase
+          .from("club_guardians")
+          .select("id,name,email,phone,user_id")
+          .eq("club_id", club.id)
+          .order("name"),
 
-          supabase
-            .from("journey_players")
-            .select("id,name,age_group_id")
-            .eq("club_id", club.id)
-            .order("name"),
+        supabase
+          .from("coaches")
+          .select("id,name,email,user_id")
+          .eq("club_id", club.id)
+          .order("name"),
 
-          supabase
-            .from("spraoi_invitations")
-            .select("id,email,status,invite_type,created_at")
-            .eq("club_id", club.id)
-            .eq("invite_type", "parent_guardian")
-            .order("created_at", { ascending: false }),
-        ]);
+        supabase
+          .from("players")
+          .select("id,name,age_group_id,football_panel,hurling_panel")
+          .eq("club_id", club.id)
+          .order("name"),
 
-      const guardians = guardianResult.data || [];
+        supabase
+          .from("spraoi_invitations")
+          .select("id,email,status,invite_type,created_at")
+          .eq("club_id", club.id)
+          .eq("invite_type", "parent_guardian")
+          .order("created_at", { ascending: false }),
+
+        supabase
+          .from("player_guardians")
+          .select(
+            "id,player_id,guardian_id,guardian_user_id,guardian_coach_id,relationship"
+          )
+          .eq("club_id", club.id),
+      ]);
+
+      const clubGuardians = guardianResult.data || [];
+      const coachGuardians = coachResult.data || [];
       const players = playerResult.data || [];
       const invitations = inviteResult.data || [];
+      const links = linkResult.data || [];
 
-      let links = [];
+      const teamPlayers = (players || []).filter(
+        (player) =>
+          !selectedTeam?.id ||
+          String(player.age_group_id) === String(selectedTeam.id)
+      );
 
-      if (guardians.length) {
-        const { data } = await supabase
-          .from("club_player_guardians")
-          .select("player_id,guardian_id")
-          .in("guardian_id", guardians.map((g) => g.id));
+      const assembled = teamPlayers.map((child) => {
+        const link = links.find(
+          (item) => String(item.player_id) === String(child.id)
+        );
 
-        links = data || [];
-      }
+        if (!link) {
+          return {
+            id: `unlinked-${child.id}`,
+            name: "No parent linked",
+            email: "",
+            children: [child],
+            status: "No parent",
+            unlinked: true,
+          };
+        }
 
-      const assembled = guardians
-        .map((guardian) => {
-          const children = links
-            .filter(
-              (link) =>
-                String(link.guardian_id) ===
-                String(guardian.id)
-            )
-            .map((link) =>
-              players.find(
-                (player) =>
-                  String(player.id) ===
-                  String(link.player_id)
+        const guardian =
+          clubGuardians.find(
+            (item) =>
+              String(item.id || "") === String(link.guardian_id || "") ||
+              (
+                item.user_id &&
+                String(item.user_id) ===
+                  String(link.guardian_user_id || "")
               )
-            )
-            .filter(Boolean)
-            .filter(
-              (child) =>
-                !selectedTeam?.id ||
-                String(child.age_group_id) ===
-                  String(selectedTeam.id)
-            );
-
-          const latestInvite = invitations.find(
-            (invite) =>
-              String(invite.email || "").toLowerCase() ===
-              String(guardian.email || "").toLowerCase()
+          ) ||
+          coachGuardians.find(
+            (item) =>
+              String(item.id || "") ===
+                String(link.guardian_coach_id || "") ||
+              (
+                item.user_id &&
+                String(item.user_id) ===
+                  String(link.guardian_user_id || "")
+              )
           );
 
-          let status = "Not invited";
-
-          if (
-            guardian.user_id ||
-            latestInvite?.status === "accepted"
-          ) {
-            status = "Active";
-          } else if (latestInvite?.status === "pending") {
-            status = "Pending";
-          }
-
+        if (!guardian) {
           return {
-            ...guardian,
-            children,
-            status,
+            id: `unresolved-${child.id}`,
+            name: "Parent details required",
+            email: "",
+            children: [child],
+            status: "No parent",
+            unlinked: true,
           };
-        })
-        .filter(
-          (guardian) =>
-            !selectedTeam?.id ||
-            guardian.children.length > 0
+        }
+
+        const latestInvite = invitations.find(
+          (invite) =>
+            String(invite.email || "").toLowerCase() ===
+            String(guardian.email || "").toLowerCase()
         );
+
+        let status = "Not invited";
+
+        if (
+          guardian.user_id ||
+          latestInvite?.status === "accepted"
+        ) {
+          status = "Active";
+        } else if (latestInvite?.status === "pending") {
+          status = "Pending";
+        }
+
+        return {
+          ...guardian,
+          id: `${guardian.id}-${child.id}`,
+          children: [child],
+          status,
+          unlinked: false,
+        };
+      });
 
       if (live) {
         setRows(assembled);
@@ -4539,7 +4606,7 @@ function AcademyParents({ club, selectedTeam }) {
     if (filter === "active") return row.status === "Active";
     if (filter === "pending") return row.status === "Pending";
     if (filter === "not-invited") {
-      return row.status === "Not invited";
+      return row.status === "Not invited" || row.status === "No parent";
     }
     return true;
   });
@@ -4550,6 +4617,138 @@ function AcademyParents({ club, selectedTeam }) {
         ? current.filter((item) => item !== id)
         : [...current, id]
     );
+  }
+
+  function updateParentDraft(childId, field, value) {
+    setParentDrafts((current) => ({
+      ...current,
+      [childId]: {
+        ...(current[childId] || {}),
+        [field]: value,
+      },
+    }));
+  }
+
+  async function saveParentDetails(parent) {
+    const child = parent.children?.[0];
+
+    if (!club?.id || !child?.id) return;
+
+    const draft = parentDrafts[child.id] || {};
+
+    const cleanName = String(draft.name || "").trim();
+    const cleanEmail = String(draft.email || "").trim().toLowerCase();
+    const cleanPhone = String(draft.phone || "").trim();
+
+    if (!cleanName || !cleanEmail) {
+      setMessage("Please enter the parent name and email address.");
+      return;
+    }
+
+    setSavingParentId(child.id);
+    setMessage("");
+
+    try {
+      const { data: guardian, error: guardianError } =
+        await supabase
+          .from("club_guardians")
+          .upsert(
+            {
+              club_id: club.id,
+              name: cleanName,
+              email: cleanEmail,
+              phone: cleanPhone || null,
+            },
+            {
+              onConflict: "club_id,email",
+            }
+          )
+          .select("id,name,email,phone,user_id")
+          .single();
+
+      if (guardianError) throw guardianError;
+
+      const { data: existingLink, error: existingLinkError } =
+        await supabase
+          .from("player_guardians")
+          .select("id")
+          .eq("club_id", club.id)
+          .eq("player_id", child.id)
+          .maybeSingle();
+
+      if (existingLinkError) throw existingLinkError;
+
+      if (existingLink?.id) {
+        const { error: updateLinkError } =
+          await supabase
+            .from("player_guardians")
+            .update({
+              guardian_id: guardian.id,
+              guardian_user_id: guardian.user_id || null,
+              relationship: "parent_guardian",
+            })
+            .eq("id", existingLink.id)
+            .eq("club_id", club.id);
+
+        if (updateLinkError) throw updateLinkError;
+      } else {
+        const { error: insertLinkError } =
+          await supabase
+            .from("player_guardians")
+            .insert({
+              club_id: club.id,
+              player_id: child.id,
+              guardian_id: guardian.id,
+              guardian_user_id: guardian.user_id || null,
+              relationship: "parent_guardian",
+            });
+
+        if (insertLinkError) throw insertLinkError;
+      }
+
+      const savedParent = {
+        id: `${guardian.id}-${child.id}`,
+        guardianId: guardian.id,
+        name: guardian.name || cleanName,
+        email: guardian.email || cleanEmail,
+        phone: guardian.phone || cleanPhone || "",
+        user_id: guardian.user_id || null,
+        children: [child],
+        status: guardian.user_id ? "Active" : "Not invited",
+        unlinked: false,
+      };
+
+      setRows((current) =>
+        current.map((row) =>
+          String(row.children?.[0]?.id) === String(child.id)
+            ? savedParent
+            : row
+        )
+      );
+
+      setSelected((current) =>
+        current.filter(
+          (id) => id !== parent.id
+        )
+      );
+
+      setParentDrafts((current) => {
+        const next = { ...current };
+        delete next[child.id];
+        return next;
+      });
+
+      setMessage(
+        `${cleanName} saved and linked to ${child.name}. You can now send or share the Spraoi App link.`
+      );
+    } catch (error) {
+      setMessage(
+        "Could not save parent details: " +
+          (error?.message || "Unknown error")
+      );
+    } finally {
+      setSavingParentId("");
+    }
   }
 
   async function sendParentInvites(parents) {
@@ -4681,10 +4880,15 @@ function AcademyParents({ club, selectedTeam }) {
     (row) => row.status === "Not invited"
   );
 
+  const missingParents = rows.filter(
+    (row) => row.status === "No parent"
+  );
+
   const selectedParents = rows.filter(
     (row) =>
       selected.includes(row.id) &&
-      row.status === "Not invited"
+      !row.unlinked &&
+      Boolean(String(row.email || "").trim())
   );
 
   return (
@@ -4809,7 +5013,7 @@ function AcademyParents({ club, selectedTeam }) {
                     marginTop: 3,
                   }}
                 >
-                  Invite everyone linked to this team.
+                  Send the Spraoi App link to every linked parent who has not been invited yet.
                 </div>
               </div>
 
@@ -4838,7 +5042,7 @@ function AcademyParents({ club, selectedTeam }) {
               >
                 {sending
                   ? "Sending…"
-                  : `Invite all (${notInvited.length})`}
+                  : `Send all links (${notInvited.length})`}
               </button>
             </div>
           </AcademyCard>
@@ -4875,7 +5079,7 @@ function AcademyParents({ club, selectedTeam }) {
                     marginTop: 3,
                   }}
                 >
-                  Ready to invite to the Academy app.
+                  Send or resend the Spraoi App link to the selected parents.
                 </div>
               </div>
 
@@ -4895,7 +5099,7 @@ function AcademyParents({ club, selectedTeam }) {
                   cursor: "pointer",
                 }}
               >
-                Invite selected
+                Send selected links
               </button>
             </div>
           </AcademyCard>
@@ -4928,116 +5132,278 @@ function AcademyParents({ club, selectedTeam }) {
             </div>
           ) : (
             <div style={{ display: "grid", gap: 9 }}>
-              {filteredRows.map((parent) => (
-                <div
-                  key={parent.id}
-                  style={{
-                    border: `1px solid ${P.line}`,
-                    borderRadius: 12,
-                    padding: 12,
-                    display: "grid",
-                    gridTemplateColumns: "auto minmax(0,1fr) auto",
-                    gap: 10,
-                    alignItems: "center",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selected.includes(parent.id)}
-                    onChange={() => toggleSelected(parent.id)}
-                    aria-label={`Select ${parent.name}`}
-                  />
+              {filteredRows.map((parent) => {
+                const child = parent.children?.[0];
+                const draft = parentDrafts[child?.id] || {};
 
-                  <div style={{ minWidth: 0 }}>
-                    <div
-                      style={{
-                        fontFamily: F.body,
-                        fontSize: 12,
-                        fontWeight: 800,
-                        color: P.ink,
-                      }}
-                    >
-                      {parent.name}
-                    </div>
-
-                    <div
-                      style={{
-                        fontFamily: F.body,
-                        fontSize: 10,
-                        color: P.muted,
-                        marginTop: 2,
-                      }}
-                    >
-                      {parent.email}
-                    </div>
-
-                    <div
-                      style={{
-                        fontFamily: F.body,
-                        fontSize: 10,
-                        color: P.ink,
-                        marginTop: 5,
-                      }}
-                    >
-                      Linked child
-                      {parent.children.length === 1 ? "" : "ren"}:{" "}
-                      {parent.children.length
-                        ? parent.children
-                            .map((child) => child.name)
-                            .join(", ")
-                        : "None"}
-                    </div>
-                  </div>
-
+                return (
                   <div
+                    key={parent.id}
                     style={{
+                      border: `1px solid ${P.line}`,
+                      borderRadius: 12,
+                      padding: 14,
                       display: "grid",
-                      justifyItems: "end",
-                      gap: 7,
+                      gap: 10,
                     }}
                   >
-                    <AcademyBadge
-                      color={
-                        parent.status === "Active"
-                          ? "#15803d"
-                          : parent.status === "Pending"
-                          ? "#b45309"
-                          : P.muted
-                      }
-                      bg={
-                        parent.status === "Active"
-                          ? "#dcfce7"
-                          : parent.status === "Pending"
-                          ? "#fff7ed"
-                          : P.soft
-                      }
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        justifyContent: "space-between",
+                        gap: 12,
+                      }}
                     >
-                      {parent.status}
-                    </AcademyBadge>
-
-                    {parent.children.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => shareChildLink(parent)}
+                      <div
                         style={{
-                          border: `1px solid ${P.line}`,
-                          background: "#fff",
-                          borderRadius: 8,
-                          padding: "6px 9px",
-                          fontFamily: F.body,
-                          fontSize: 9,
-                          fontWeight: 800,
-                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "flex-start",
+                          gap: 10,
+                          minWidth: 0,
                         }}
                       >
-                        {copiedId === parent.id
-                          ? "Copied"
-                          : "Share child link"}
-                      </button>
+                        {!parent.unlinked && (
+                          <input
+                            type="checkbox"
+                            checked={selected.includes(parent.id)}
+                            onChange={() => toggleSelected(parent.id)}
+                            aria-label={`Select ${child?.name || parent.name}`}
+                            style={{
+                              marginTop: 3,
+                              cursor: "pointer",
+                            }}
+                          />
+                        )}
+
+                        <div style={{ minWidth: 0 }}>
+                          <div
+                            style={{
+                              fontFamily: F.body,
+                              fontSize: 13,
+                              fontWeight: 900,
+                              color: P.ink,
+                            }}
+                          >
+                            {child?.name || "Player"}
+                          </div>
+
+                        {!parent.unlinked && (
+                          <>
+                            <div
+                              style={{
+                                fontFamily: F.body,
+                                fontSize: 11,
+                                fontWeight: 700,
+                                color: P.ink,
+                                marginTop: 5,
+                              }}
+                            >
+                              {parent.name}
+                            </div>
+
+                            <div
+                              style={{
+                                fontFamily: F.body,
+                                fontSize: 10,
+                                color: P.muted,
+                                marginTop: 2,
+                              }}
+                            >
+                              {parent.email}
+                              {parent.phone ? ` ? ${parent.phone}` : ""}
+                            </div>
+                          </>
+                        )}
+
+                          {parent.unlinked && (
+                            <div
+                              style={{
+                                fontFamily: F.body,
+                                fontSize: 10,
+                                color: P.muted,
+                                marginTop: 4,
+                              }}
+                            >
+                              No parent linked
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {!parent.unlinked && (
+                        <AcademyBadge
+                          color={
+                            parent.status === "Active"
+                              ? "#15803d"
+                              : parent.status === "Pending"
+                              ? "#b45309"
+                              : P.muted
+                          }
+                          bg={
+                            parent.status === "Active"
+                              ? "#dcfce7"
+                              : parent.status === "Pending"
+                              ? "#fff7ed"
+                              : P.soft
+                          }
+                        >
+                          {parent.status}
+                        </AcademyBadge>
+                      )}
+                    </div>
+
+                    {parent.unlinked ? (
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns:
+                            "repeat(auto-fit,minmax(180px,1fr))",
+                          gap: 8,
+                          marginTop: 3,
+                        }}
+                      >
+                        <input
+                          type="text"
+                          placeholder="Parent name"
+                          value={draft.name || ""}
+                          onChange={(event) =>
+                            updateParentDraft(
+                              child.id,
+                              "name",
+                              event.target.value
+                            )
+                          }
+                          style={{
+                            height: 36,
+                            border: `1px solid ${P.line}`,
+                            borderRadius: 8,
+                            padding: "0 10px",
+                            fontFamily: F.body,
+                            fontSize: 10,
+                          }}
+                        />
+
+                        <input
+                          type="email"
+                          placeholder="Parent email"
+                          value={draft.email || ""}
+                          onChange={(event) =>
+                            updateParentDraft(
+                              child.id,
+                              "email",
+                              event.target.value
+                            )
+                          }
+                          style={{
+                            height: 36,
+                            border: `1px solid ${P.line}`,
+                            borderRadius: 8,
+                            padding: "0 10px",
+                            fontFamily: F.body,
+                            fontSize: 10,
+                          }}
+                        />
+
+                        <input
+                          type="tel"
+                          placeholder="Parent phone"
+                          value={draft.phone || ""}
+                          onChange={(event) =>
+                            updateParentDraft(
+                              child.id,
+                              "phone",
+                              event.target.value
+                            )
+                          }
+                          style={{
+                            height: 36,
+                            border: `1px solid ${P.line}`,
+                            borderRadius: 8,
+                            padding: "0 10px",
+                            fontFamily: F.body,
+                            fontSize: 10,
+                          }}
+                        />
+
+                        <button
+                          type="button"
+                          disabled={savingParentId === child.id}
+                          onClick={() => saveParentDetails(parent)}
+                          style={{
+                            height: 36,
+                            border: 0,
+                            borderRadius: 8,
+                            background: ACADEMY_BLUE,
+                            color: "#fff",
+                            padding: "0 12px",
+                            fontFamily: F.body,
+                            fontSize: 10,
+                            fontWeight: 800,
+                            cursor:
+                              savingParentId === child.id
+                                ? "default"
+                                : "pointer",
+                          }}
+                        >
+                          {savingParentId === child.id
+                            ? "Saving?"
+                            : "Save parent"}
+                        </button>
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "flex-end",
+                          gap: 7,
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        <button
+                          type="button"
+                          disabled={sending}
+                          onClick={() => sendParentInvites([parent])}
+                          style={{
+                            border: 0,
+                            background: ACADEMY_BLUE,
+                            color: "#fff",
+                            borderRadius: 8,
+                            padding: "7px 10px",
+                            fontFamily: F.body,
+                            fontSize: 9,
+                            fontWeight: 800,
+                            cursor: sending ? "default" : "pointer",
+                          }}
+                        >
+                          {parent.status === "Not invited"
+                            ? "Send Spraoi App link"
+                            : "Resend Spraoi App link"}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => shareChildLink(parent)}
+                          style={{
+                            border: `1px solid ${P.line}`,
+                            background: "#fff",
+                            borderRadius: 8,
+                            padding: "6px 9px",
+                            fontFamily: F.body,
+                            fontSize: 9,
+                            fontWeight: 800,
+                            cursor: "pointer",
+                          }}
+                        >
+                          {copiedId === parent.id
+                            ? "Copied"
+                            : "Share child link"}
+                        </button>
+                      </div>
                     )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </AcademyCard>
@@ -5057,8 +5423,65 @@ function AcademyLeaderboard({ selectedTeam }) {
     async function load() {
       if (!selectedTeam?.id) { if (live) { setPlayers([]); setLoading(false); } return; }
       setLoading(true);
-      const { data, error } = await supabase.from("journey_players").select("id,name,xp_total,last_active").eq("age_group_id", selectedTeam.id).order("xp_total", { ascending: false });
-      if (live) { setPlayers(error ? [] : (data || [])); setLoading(false); }
+      const [rosterResult, academyResult] = await Promise.all([
+        supabase
+          .from("players")
+          .select("id,name,age_group_id")
+          .eq("age_group_id", selectedTeam.id)
+          .order("name"),
+
+        supabase
+          .from("journey_players")
+          .select("id,name,xp_total,last_active")
+          .eq("age_group_id", selectedTeam.id),
+      ]);
+
+      const normaliseRosterName = (value) =>
+        String(value || "")
+          .trim()
+          .toLowerCase()
+          .replace(/\s+/g, " ");
+
+      const academyByName = new Map();
+
+      (academyResult.data || []).forEach((player) => {
+        const key = normaliseRosterName(player.name);
+        const existing = academyByName.get(key);
+
+        if (
+          !existing ||
+          Number(player.xp_total || 0) >
+            Number(existing.xp_total || 0)
+        ) {
+          academyByName.set(key, player);
+        }
+      });
+
+      const assembled = (rosterResult.data || [])
+        .map((player) => {
+          const academy = academyByName.get(
+            normaliseRosterName(player.name)
+          );
+
+          return {
+            id: player.id,
+            name: player.name,
+            xp_total: Number(academy?.xp_total || 0),
+            last_active: academy?.last_active || null,
+          };
+        })
+        .sort(
+          (a, b) =>
+            Number(b.xp_total || 0) -
+            Number(a.xp_total || 0)
+        );
+
+      if (live) {
+        setPlayers(
+          rosterResult.error ? [] : assembled
+        );
+        setLoading(false);
+      }
     }
     load();
     return () => { live = false; };
@@ -5074,13 +5497,48 @@ function AcademyEngagement({ selectedTeam }) {
     try {
       setLoading(true); setErrorText("");
       if(!selectedTeam?.id){ if(live){setStats({players:0,active:0,completions:0,xp:0});setLoading(false);} return; }
-      const {data:players,error:pe}=await supabase.from("journey_players").select("id,last_active,xp_total").eq("age_group_id",selectedTeam.id);
-      if(pe) throw pe; const safe=players||[]; const ids=safe.map(p=>p.id);
+      const [rosterResult, academyResult] = await Promise.all([
+        supabase
+          .from("players")
+          .select("id,name")
+          .eq("age_group_id", selectedTeam.id),
+
+        supabase
+          .from("journey_players")
+          .select("id,name,last_active,xp_total")
+          .eq("age_group_id", selectedTeam.id),
+      ]);
+
+      if (rosterResult.error) throw rosterResult.error;
+      if (academyResult.error) throw academyResult.error;
+
+      const roster = rosterResult.data || [];
+
+      const normaliseRosterName = (value) =>
+        String(value || "")
+          .trim()
+          .toLowerCase()
+          .replace(/\s+/g, " ");
+
+      const rosterNames = new Set(
+        roster.map((player) =>
+          normaliseRosterName(player.name)
+        )
+      );
+
+      const safe = (academyResult.data || []).filter(
+        (player) =>
+          rosterNames.has(
+            normaliseRosterName(player.name)
+          )
+      );
+
+      const ids = safe.map((p) => p.id);
       let progress=[]; if(ids.length){ const {data,error}=await supabase.from("player_progress").select("id,player_id,xp_earned").in("player_id",ids); if(error) console.warn("Engagement progress unavailable",error.message); else progress=data||[]; }
       const monday=mondayKeyForDate(new Date().toISOString().slice(0,10)); const cutoff=new Date(`${monday}T00:00:00`);
       const active=safe.filter(p=>p.last_active && new Date(p.last_active)>=cutoff).length;
       const xp=progress.reduce((sum,row)=>sum+Number(row.xp_earned||0),0);
-      if(live) setStats({players:safe.length,active,completions:progress.length,xp});
+      if(live) setStats({players:roster.length,active,completions:progress.length,xp});
     } catch(err){ console.error("Academy engagement failed",err); if(live)setErrorText(err?.message||"Could not load engagement data"); }
     finally { if(live)setLoading(false); }
   })(); return()=>{live=false}; },[selectedTeam?.id]);
