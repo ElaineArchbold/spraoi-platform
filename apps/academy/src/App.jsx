@@ -256,52 +256,6 @@ function teamDisplayName(team, fallback = "Team") {
 }
 
 
-function SpraoiNavIcon({ name = "", size = 18 }) {
-  const key = String(name || "").toLowerCase();
-  const secondary = (() => {
-    if (key.startsWith("academy")) {
-      if (key.includes("dashboard")) return "/icons/academy/home.png";
-      if (key.includes("content")) return "/icons/academy/mission.png";
-      if (key.includes("player")) return "/icons/academy/child-profile.png";
-      if (key.includes("parent")) return "/icons/academy/parent-lock.png";
-      if (key.includes("leader")) return "/icons/academy/leaderboard.png";
-      if (key.includes("engagement")) return "/icons/academy/progress.png";
-      if (key.includes("setting")) return "/icons/global/settings.png";
-    }
-    if (key.startsWith("cup")) {
-      if (key.includes("dashboard")) return "/icons/cup/dashboard.png";
-      if (key.includes("team")) return "/icons/cup/teams.png";
-      if (key.includes("event") || key.includes("matchday")) return "/icons/cup/matchday.png";
-      if (key.includes("standing")) return "/icons/cup/standings.png";
-      if (key.includes("food")) return "/icons/cup/food.png";
-      if (key.includes("announcement")) return "/icons/cup/announcements.png";
-      if (key.includes("participant")) return "/icons/cup/participant-view.png";
-      if (key.includes("setting")) return "/icons/cup/settings.png";
-    }
-    return null;
-  })();
-  if (secondary) return <img src={secondary} alt="" aria-hidden="true" style={{width:size,height:size,objectFit:"contain"}} />;
-
-  const common = { width:size, height:size, viewBox:"0 0 24 24", fill:"none", stroke:"currentColor", strokeWidth:1.9, strokeLinecap:"round", strokeLinejoin:"round", "aria-hidden":true };
-  let shape;
-  if (key.includes("dashboard")) shape=<><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V20h13v-9.5"/><path d="M9.5 20v-6h5v6"/></>;
-  else if (key.includes("planner")||key.includes("schedule")||key.includes("event")) shape=<><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M7 3v4M17 3v4M3.5 9h17"/></>;
-  else if (key.includes("session")||key.includes("matchday")) shape=<><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m10 9 5 3-5 3V9Z"/></>;
-  else if (key.includes("drill")||key.includes("content")||key.includes("template")) shape=<><path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H20v17H7.5A2.5 2.5 0 0 0 5 21.5v-17Z"/><path d="M5 18.5A2.5 2.5 0 0 1 7.5 16H20"/></>;
-  else if (key.includes("team")||key.includes("player")||key.includes("participant")||key.includes("audience")||key.includes("member")) shape=<><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3.5 20c.4-4 2.3-6 5.5-6s5.1 2 5.5 6M14.5 14.5c3.4-.3 5.3 1.5 6 4.5"/></>;
-  else if (key.includes("parent")||key.includes("coach")) shape=<><circle cx="8" cy="8" r="3"/><path d="M2.8 20c.6-4 2.4-6 5.2-6s4.6 2 5.2 6"/><path d="M16 8h5M18.5 5.5v5"/></>;
-  else if (key.includes("preview")) shape=<><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.8"/></>;
-  else if (key.includes("leader")||key.includes("result")||key.includes("competition")||key.includes("reward")) shape=<><path d="M8 4h8v4a4 4 0 0 1-8 0V4Z"/><path d="M8 6H4v1a4 4 0 0 0 4 4M16 6h4v1a4 4 0 0 1-4 4M12 12v5M8 21h8M9 17h6"/></>;
-  else if (key.includes("engagement")||key.includes("report")) shape=<><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></>;
-  else if (key.includes("setting")||key.includes("setup")) shape=<><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.12 2.12-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V20.3h-3v-.08a1.7 1.7 0 0 0-1.03-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06-2.12-2.12.06-.06A1.7 1.7 0 0 0 5 15a1.7 1.7 0 0 0-1.56-1.03H3.3v-3h.14A1.7 1.7 0 0 0 5 9.94a1.7 1.7 0 0 0-.34-1.88L4.6 8l2.12-2.12.06.06A1.7 1.7 0 0 0 8.66 6.3a1.7 1.7 0 0 0 1.03-1.56V4.7h3v.04a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06L17.8 8l-.06.06a1.7 1.7 0 0 0-.34 1.88 1.7 1.7 0 0 0 1.56 1.03h.14v3h-.14A1.7 1.7 0 0 0 19.4 15Z"/></>;
-  else if (key.includes("permission")||key.includes("compliance")) shape=<><path d="M12 3 5 6v5c0 4.7 2.8 8 7 10 4.2-2 7-5.3 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></>;
-  else if (key.includes("food")) shape=<><path d="M7 3v8M4 3v5a3 3 0 0 0 6 0V3M7 11v10M16 3v18M16 3c3 2 4 6 4 9h-4"/></>;
-  else if (key.includes("compose")||key.includes("announcement")||key.includes("inbox")) shape=<><path d="M4 5h16v12H8l-4 4V5Z"/><path d="m7 9 5 3 5-3"/></>;
-  else if (key.includes("more")) shape=<><circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none"/></>;
-  else shape=<><circle cx="12" cy="12" r="8"/><path d="M8 12h8"/></>;
-  return <svg {...common}>{shape}</svg>;
-}
-
 function getDrillIcons(activity) {
   const sport = (activity.sport || "").toLowerCase();
   const cat = (activity.category || activity.skill?.category || "").toLowerCase();
@@ -322,11 +276,6 @@ function getDrillIcons(activity) {
   return { sportIcon, catIcon };
 }
 // Backwards-compatible helper (used in smaller contexts)
-function getCategoryIcon(activity) {
-  const { sportIcon, catIcon } = getDrillIcons(activity);
-  return catIcon || sportIcon;
-}
-
 /* ============================================================
    MODULE CONFIG
    ============================================================ */
@@ -356,7 +305,6 @@ function secondaryNavAsset(moduleKey, id) {
       "academy-leaderboard": "/icons/academy/leaderboard.svg",
       "academy-engagement": "/icons/academy/engagement.svg",
       "academy-approvals": "/icons/academy/approvals.svg",
-      "academy-settings": "/icons/global/settings.png",
     },
     connect: {
       "dashboard": "/icons/connect/home.png",
@@ -430,10 +378,6 @@ function academyIconAsset(name) {
     lock: "/icons/academy/lock.svg",
   };
   return map[name] || "/icons/academy/child-profile.svg";
-}
-
-function AcademyUiIcon({ name, size = 20, className = "" }) {
-  return <img src={academyIconAsset(name)} alt="" aria-hidden="true" className={className} style={{ width: size, height: size, objectFit: "contain" }} />;
 }
 
 function SecondarySidebarIcon({ moduleKey, id }) {
@@ -517,18 +461,6 @@ const MODULES = {
   },
 };
 
-function normalizeModuleIds(moduleIds = []) {
-  const aliases = {
-    journey: "academy",
-    blitz: "cup",
-    challenge: "plus",
-  };
-  return [...new Set(moduleIds.map((id) => aliases[id] || id))];
-}
-
-/* ============================================================
-   SIDEBAR — with module switcher
-   ============================================================ */
 function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, selectedTeam, onSelectTeam, enabledModules, onLogout, ageGroups, myTeams, onShowProfile, userRole, userInitial }) {
   const visibleTeams = myTeams?.length ? (ageGroups || []).filter((ag) => myTeams.includes(ag.id)) : (ageGroups || []);
   const mod = MODULES[activeModule];
@@ -2739,74 +2671,6 @@ function academyBestSkill(activity, skills = []) {
     return { skill, score };
   }).sort((a,b) => b.score-a.score)[0] || null;
 }
-function getAcademyFoundationReviews(planSessions, skills = [], overrides = {}) {
-  return getFoundationActivities(planSessions).map((foundation) => {
-    const sourceActivity = (planSessions || []).flatMap((session) => session.session_activities || []).find((link) => (link.activity?.id || link.activity_id) === foundation.id)?.activity || foundation;
-    const overrideId = overrides?.[foundation.id];
-    const override = (skills || []).find((skill) => skill.id === overrideId && skill.video_url);
-    const linked = sourceActivity?.skill?.video_url ? sourceActivity.skill : null;
-    const ranked = academyBestSkill(sourceActivity, skills);
-    const matched = override || linked || ranked?.skill || null;
-    return { ...foundation, sourceActivity, matchedSkill: matched, matchScore: override ? 999 : linked ? 120 : ranked?.score || 0, overridden: Boolean(override) };
-  });
-}
-
-function academyCodeFor(item) {
-  const sport = String(item?.matchedSkill?.sport || item?.sourceActivity?.sport || item?.sport || "").toLowerCase();
-  if (sport.includes("football")) return "football";
-  if (sport.includes("hurl") || sport.includes("camogie")) return "hurling";
-  return null;
-}
-function academySkillScoreForCode(activity, skill, code) {
-  if (!skill?.video_url) return 0;
-  const skillSport = String(skill.sport || "").toLowerCase();
-  const validForCode = code === "football"
-    ? skillSport.includes("football")
-    : (skillSport.includes("hurl") || skillSport.includes("camogie"));
-  if (!validForCode) return 0;
-
-  const sourceText = [
-    activity?.title,
-    activity?.description,
-    activity?.coaching_points,
-    activity?.category,
-    activity?.skill?.name,
-    activity?.sessionTitle,
-  ].filter(Boolean).join(" ");
-  const sourceWords = new Set(academyWords(sourceText));
-  const skillWords = academyWords([skill.name, skill.category, skill.description].filter(Boolean).join(" "));
-  const sourceSport = String(activity?.sport || activity?.skill?.sport || "").toLowerCase();
-
-  let score = 0;
-  if (activity?.skill_id === skill.id || activity?.skill?.id === skill.id) score += 160;
-  if (sourceSport) {
-    if (code === "football" && sourceSport.includes("football")) score += 34;
-    if (code === "hurling" && (sourceSport.includes("hurl") || sourceSport.includes("camogie"))) score += 34;
-  }
-
-  skillWords.forEach((word) => {
-    if (sourceWords.has(word)) score += 10;
-  });
-
-  const concepts = [
-    ["lift", "jab", "roll", "scoop", "pick"],
-    ["strike", "shoot", "accuracy", "score"],
-    ["kick", "punt"],
-    ["pass", "handpass", "hand"],
-    ["catch", "receive", "high"],
-    ["carry", "solo", "run", "bounce"],
-    ["tackle", "block", "hook"],
-    ["move", "space", "support"],
-  ];
-  concepts.forEach((terms) => {
-    const sourceHas = terms.some((term) => [...sourceWords].some((word) => word.includes(term)));
-    const skillHas = terms.some((term) => skillWords.some((word) => word.includes(term)));
-    if (sourceHas && skillHas) score += 24;
-  });
-
-  return score;
-}
-
 function getAcademyWeeklyRecommendations(
   planSessions,
   skills = [],
@@ -5537,16 +5401,6 @@ function AcademyApprovals({ selectedTeam, weeklyPlan }) {
   </div>;
 }
 
-function AcademySettings({ published, onNav }) {
-  const items = [
-    { title: "Parent Access", desc: "Manage linked parents, Academy access and invitations using the Club roster.", label: "Open", action: () => onNav?.("academy-parents") },
-    { title: "Weekly Content", desc: "Review the Coach plan, choose Football/Hurling skills and publish homework.", label: published ? "Published" : "Open", action: () => onNav?.("academy-content") },
-    { title: "Coach Approvals", desc: "Verify attendance and coach-approved Academy activities.", label: "Open", action: () => onNav?.("academy-approvals") },
-    { title: "Teams", desc: "Create and amend teams in Spraoi Club. Academy uses those teams rather than maintaining a separate team list.", label: "Open Spraoi Club", action: () => window.location.assign(MODULE_URLS.club) },
-  ];
-  return <div style={{ flex: 1, overflow: "auto", background: P.soft }}><AcademyPageHeader title="Settings" sub="Academy setup and shortcuts" /><div style={{ padding: 24, maxWidth: 900, margin: "0 auto", display: "grid", gap: 12 }}>{items.map((item) => <AcademyCard key={item.title}><div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", flexWrap: "wrap" }}><div style={{ flex: 1, minWidth: 220 }}><div style={{ fontFamily: F.body, fontSize: 12, fontWeight: 800, color: P.ink }}>{item.title}</div><div style={{ fontFamily: F.body, fontSize: 10, color: P.muted, marginTop: 3 }}>{item.desc}</div></div><button onClick={item.action} style={{ height: 34, border: 0, borderRadius: 9, background: ACADEMY_BLUE, color: "#fff", padding: "0 12px", fontFamily: F.body, fontSize: 10, fontWeight: 800, cursor: "pointer" }}>{item.label}</button></div></AcademyCard>)}</div></div>;
-}
-
 function AcademySectionScreen({ screen, onNav, club, selectedTeam, weeklyPlan, planSessions, extras, skills, overrides, onSetOverride, onAddExtra, onUpdateExtra, onRemoveExtra, onMoveExtra, published, onPublish, onRefreshCoach, parentRows, setParentRows }) {
   if (screen === "academy-content") return <AcademyWeeklyContent selectedTeam={selectedTeam} weeklyPlan={weeklyPlan} planSessions={planSessions} extras={extras} skills={skills} overrides={overrides} onSetOverride={onSetOverride} onAddExtra={onAddExtra} onUpdateExtra={onUpdateExtra} onRemoveExtra={onRemoveExtra} onMoveExtra={onMoveExtra} published={published} onPublish={onPublish} onRefreshCoach={onRefreshCoach} />;
   if (screen === "academy-parents") return <AcademyParents club={club} selectedTeam={selectedTeam}/>;
@@ -5728,7 +5582,6 @@ function MobileNav({ activeModule, screen, onNav, enabledModules }) {
   const moreItems = [
     { id: "academy-parents", label: "Parents" },
     { id: "academy-approvals", label: "Approvals" },
-    { id: "academy-settings", label: "Settings" }
   ];
 
   const moreActive = moreItems.some((item) => item.id === screen);
@@ -5804,82 +5657,6 @@ function MobileNav({ activeModule, screen, onNav, enabledModules }) {
    ACADEMY MODULE ENTRY
    Single source of truth for Academy screens rendered by Admin.
    ============================================================ */
-export function AcademyModule({
-  screen, onNav, club, selectedTeam, weeklyPlan, planSessions, extras, skills,
-  overrides, published, onSetOverride, onAddExtra, onUpdateExtra, onRemoveExtra,
-  onMoveExtra, onPublish, parentRows, setParentRows, userRole,
-}) {
-  if (
-    userRole?.role &&
-    !canAccessAcademyScreen(userRole.role, screen)
-  ) {
-    return (
-      <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
-        <AcademyPageHeader
-          title="Academy"
-          sub="Access restricted"
-        />
-        <div
-          style={{
-            margin: 24,
-            padding: 18,
-            background: P.white,
-            borderRadius: 14,
-            border: `1px solid ${P.line}`,
-            fontFamily: F.body,
-            fontSize: 11,
-            color: P.muted,
-          }}
-        >
-          Your role does not include access to this Academy section.
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <>
-      {screen === "academy-dashboard" && (
-        <AcademyDashboardScreen
-          club={club}
-          selectedTeam={selectedTeam}
-          weeklyPlan={weeklyPlan}
-          planSessions={planSessions}
-          extras={extras}
-          skills={skills}
-          overrides={overrides}
-          published={published}
-          onSetOverride={onSetOverride}
-          onNav={onNav}
-        />
-      )}
-      {screen.startsWith("academy-") && screen !== "academy-dashboard" && (
-        <AcademySectionScreen
-          screen={screen}
-          onNav={onNav}
-          club={club}
-          selectedTeam={selectedTeam}
-          weeklyPlan={weeklyPlan}
-          planSessions={planSessions}
-          extras={extras}
-          skills={skills}
-          overrides={overrides}
-          onSetOverride={onSetOverride}
-          onAddExtra={onAddExtra}
-          onUpdateExtra={onUpdateExtra}
-          onRemoveExtra={onRemoveExtra}
-          onMoveExtra={onMoveExtra}
-          published={published}
-          onPublish={onPublish}
-          parentRows={parentRows}
-          setParentRows={setParentRows}
-        />
-      )}
-    </>
-  );
-}
-
-
 function SpraoiPasswordRecovery({
   accent = "#2563EB",
   lightBackground = false,
