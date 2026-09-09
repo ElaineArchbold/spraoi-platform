@@ -1,3 +1,4 @@
+import ProfileModal from "../../../packages/ui/src/ProfileModal.jsx";
 import { useState, useEffect, useRef } from "react";
 import TacticsBoard from "./TacticsBoard";
 import { createPortal } from "react-dom";
@@ -12740,62 +12741,23 @@ export default function App() {
         }
       />
 
-      {/* Profile Modal */}
-      {showProfile && (
-        <div onClick={() => setShowProfile(false)} style={{ position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ background: P.white, borderRadius: 18, maxWidth: 420, width: "100%", maxHeight: "80vh", overflowY: "auto", boxShadow: Sh.lift }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px", borderBottom: `1px solid ${P.line}` }}>
-              <div style={{ fontFamily: F.display, fontSize: 17, fontWeight: 800, color: P.ink }}>Profile</div>
-              <button onClick={() => setShowProfile(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: P.muted }}>x</button>
-            </div>
-            <div style={{ padding: 20 }}>
-              {/* User info */}
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-                <div style={{ width: 48, height: 48, borderRadius: "50%", background: `${P.p600}20`, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F.display, fontSize: 18, fontWeight: 800, color: P.p600 }}>
-                  {session?.user?.email?.[0]?.toUpperCase() || "C"}
-                </div>
-                <div>
-                  <div style={{ fontFamily: F.body, fontSize: 14, fontWeight: 700, color: P.ink }}>{session?.user?.email || "Coach"}</div>
-                  <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted }}>{userRole?.role?.replace("_", " ") || "Coach"} — {club?.name}</div>
-                </div>
-              </div>
-
-              {/* My Teams */}
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ fontFamily: F.display, fontSize: 14, fontWeight: 800, color: P.ink, marginBottom: 8 }}>My Teams</div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
-                  {ageGroups.filter((ag) => myTeams.includes(ag.id)).map((ag) => (
-                    <div key={ag.id} style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 10px", borderRadius: 8, background: P.soft, border: `1px solid ${P.line}` }}>
-                      <span style={{ fontFamily: F.body, fontSize: 11, fontWeight: 600, color: P.ink }}>{teamDisplayName(ag)}</span>
-                      {permissions.canManageTeamStaff && <button onClick={async () => {
-                        await removeProfileTeam(ag.id);
-                      }} title="Remove team" style={{ background: "none", border: "none", color: P.coral, cursor: "pointer", fontSize: 12, padding: 0 }}>x</button>}
-                    </div>
-                  ))}
-                  {myTeams.length === 0 && <div style={{ fontFamily: F.body, fontSize: 11, color: P.muted }}>No teams selected yet</div>}
-                </div>
-                {/* Add more teams — only users with team-management permission */}
-                {permissions.canManageTeamStaff && <select onChange={async (e) => {
-                  const agId = e.target.value;
-                  if (!agId || myTeams.includes(agId)) return;
-                  await addProfileTeam(agId);
-                  e.target.value = "";
-                }} style={{ width: "100%", padding: "8px 10px", borderRadius: 8, border: `1.5px solid ${P.line}`, fontFamily: F.body, fontSize: 12, color: P.muted }}>
-                  <option value="">Add another team...</option>
-                  {ageGroups.filter((ag) => !myTeams.includes(ag.id)).sort((a, b) => parseInt(a.label.replace("U", "")) - parseInt(b.label.replace("U", ""))).map((ag) => (
-                    <option key={ag.id} value={ag.id}>{teamDisplayName(ag)}</option>
-                  ))}
-                </select>}
-              </div>
-
-              {/* Logout */}
-              <button onClick={() => { setShowProfile(false); logout(); }} style={{ width: "100%", padding: 12, borderRadius: 10, border: `1.5px solid ${P.coral}33`, background: `${P.coral}08`, fontFamily: F.body, fontSize: 12, fontWeight: 700, color: P.coral, cursor: "pointer" }}>
-                Sign Out
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ProfileModal
+        open={showProfile}
+        onClose={() => setShowProfile(false)}
+        user={session?.user}
+        role={userRole?.role}
+        clubName={club?.name}
+        teams={ageGroups.filter((ag) =>
+          (myTeams || []).some(
+            (id) => String(id) === String(ag.id)
+          )
+        )}
+        allTeams={ageGroups}
+        canManageTeams={Boolean(permissions.canManageTeamStaff)}
+        onAddTeam={addProfileTeam}
+        onRemoveTeam={removeProfileTeam}
+        onSignOut={logout}
+      />
 
       {/* Share Link Modal */}
       {shareUrl && (
