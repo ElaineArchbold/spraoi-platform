@@ -183,6 +183,7 @@ export default function GlobalModuleRail({
           />
         </div>
 
+        {activeModule !== "club" && (
         <div
           style={{
             width: "100%",
@@ -232,6 +233,7 @@ export default function GlobalModuleRail({
             ))}
           </select>
         </div>
+        )}
 
         <div
           style={{
