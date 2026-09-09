@@ -1,3 +1,4 @@
+import { assignedTeams, loadAssignedTeamIds } from "../../../packages/ui/src/assignedTeams.js";
 import ProfileModal from "../../../packages/ui/src/ProfileModal.jsx";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabaseClient";
@@ -463,7 +464,7 @@ const MODULES = {
 };
 
 function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, selectedTeam, onSelectTeam, enabledModules, onLogout, ageGroups, myTeams, onShowProfile, userRole, userInitial }) {
-  const visibleTeams = myTeams?.length ? (ageGroups || []).filter((ag) => myTeams.includes(ag.id)) : (ageGroups || []);
+  const visibleTeams = assignedTeams(ageGroups, myTeams);
   const mod = MODULES[activeModule];
   const clubName = club?.name || "Club Spraoi";
 
@@ -6309,7 +6310,7 @@ export default function App() {
         // Actual write permissions remain team-scoped.
         staffAssignments: staffRows || [],
       });
-      setMyTeams([...new Set(assignedTeamIds)]);
+      setMyTeams(await loadAssignedTeamIds(supabase, userId, effectiveClubId));
     } catch (error) {
       console.error("Unable to initialise platform access:", error);
       // Fail closed: a permissions error must never grant elevated access.
@@ -6368,7 +6369,7 @@ export default function App() {
       if (error) console.warn("Could not sync team_staff assignment:", error.message);
     }
 
-    setMyTeams((current) => [...new Set([...(current || []), ageGroupId])]);
+    setMyTeams(await loadAssignedTeamIds(supabase, session.user.id, club.id));
   }
 
   async function removeProfileTeam(ageGroupId) {
@@ -6390,7 +6391,7 @@ export default function App() {
     const { error } = await staffDelete;
     if (error) console.warn("Could not remove team_staff assignment:", error.message);
 
-    setMyTeams((current) => (current || []).filter((id) => String(id) !== String(ageGroupId)));
+    setMyTeams(await loadAssignedTeamIds(supabase, session.user.id, club.id));
     if (String(selectedTeam?.id || "") === String(ageGroupId)) {
       const nextId = (myTeams || []).find((id) => String(id) !== String(ageGroupId));
       const nextTeam = ageGroups.find((team) => String(team.id) === String(nextId));
@@ -7217,11 +7218,7 @@ export default function App() {
         user={session?.user}
         role={userRole?.role}
         clubName={club?.name}
-        teams={ageGroups.filter((ag) =>
-          (myTeams || []).some(
-            (id) => String(id) === String(ag.id)
-          )
-        )}
+        teams={assignedTeams(ageGroups, myTeams)}
         allTeams={ageGroups}
         canManageTeams={Boolean(permissions.canManageTeamStaff)}
         onAddTeam={addProfileTeam}

@@ -1,3 +1,4 @@
+import { assignedTeams, loadAssignedTeamIds } from "../../../packages/ui/src/assignedTeams.js";
 import ProfileModal from "../../../packages/ui/src/ProfileModal.jsx";
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabaseClient";
@@ -419,9 +420,7 @@ function normalizeModuleIds(moduleIds = []) {
    SIDEBAR — with module switcher
    ============================================================ */
 function Sidebar({ activeModule, setActiveModule, activeScreen, onNav, club, selectedTeam, onSelectTeam, enabledModules, onLogout, ageGroups, myTeams, onShowProfile, canManageAllTeams = false, userInitial = "U" }) {
-  const visibleTeams = canManageAllTeams
-    ? (ageGroups || [])
-    : (ageGroups || []).filter((ag) => (myTeams || []).some((id) => String(id) === String(ag.id)));
+  const visibleTeams = assignedTeams(ageGroups, myTeams);
   const mod = MODULES[activeModule];
   const clubName = club?.name || "Club Spraoi";
   const [cupSidebarEvents, setCupSidebarEvents] = useState([]);
@@ -6727,7 +6726,7 @@ export default function App() {
         staffAssignments: staffRows || [],
       });
 
-      setMyTeams([...new Set(assignedTeamIds)]);
+      setMyTeams(await loadAssignedTeamIds(supabase, userId, effectiveClubId));
     } catch (error) {
       console.error("Unable to initialise platform access:", error);
       setEnabledModules([]);
@@ -7372,11 +7371,7 @@ setAgeGroups(data || []);
         user={session?.user}
         role={userRole?.role}
         clubName={club?.name}
-        teams={ageGroups.filter((ag) =>
-          (myTeams || []).some(
-            (id) => String(id) === String(ag.id)
-          )
-        )}
+        teams={assignedTeams(ageGroups, myTeams)}
         canManageTeams={false}
         onSignOut={logout}
       />

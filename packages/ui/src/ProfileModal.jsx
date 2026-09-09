@@ -1,11 +1,12 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 function cleanRole(value) {
   const raw = String(value || "Coach / Mentor")
     .replaceAll("_", " ")
     .trim();
 
-  if (!raw) return "Coach / Mentor";
+  if (!raw || ["coach mentor", "coach", "mentor"].includes(raw.toLowerCase())) return "Coach / Mentor";
 
   return raw
     .split(/\s+/)
@@ -33,7 +34,8 @@ function initialsFor(user) {
   if (!name) return "U";
 
   if (name.includes("@")) {
-    return name.charAt(0).toUpperCase();
+    const parts = name.split("@")[0].split(/[._-]+/).filter(Boolean);
+    return ((parts[0]?.[0] || "U") + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
   }
 
   const parts = name.split(/\s+/).filter(Boolean);
@@ -90,6 +92,24 @@ export default function ProfileModal({
 }) {
   const [busyTeam, setBusyTeam] = useState("");
   const [adding, setAdding] = useState(false);
+  const [error, setError] = useState("");
+  const dialogRef = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    setError("");
+    const previous = document.activeElement;
+    dialogRef.current?.querySelector("button")?.focus();
+    const handleKey = (event) => {
+      if (event.key === "Escape") onClose?.();
+      if (event.key !== "Tab") return;
+      const controls = [...(dialogRef.current?.querySelectorAll("button:not(:disabled), select:not(:disabled)") || [])];
+      const first = controls[0], last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    document.addEventListener("keydown", handleKey);
+    return () => { document.removeEventListener("keydown", handleKey); previous?.focus?.(); };
+  }, [open]);
 
   const assignedIds = useMemo(
     () => new Set((teams || []).map((team) => String(team.id))),
@@ -111,22 +131,28 @@ export default function ProfileModal({
   if (!open) return null;
 
   async function removeTeam(teamId) {
-    if (!canManageTeams || !onRemoveTeam || busyTeam) return;
+    if (!canManageTeams || !onRemoveTeam || busyTeam || adding) return;
 
     try {
+      setError("");
       setBusyTeam(String(teamId));
       await onRemoveTeam(teamId);
+    } catch {
+      setError("Could not update team assignments. Please try again.");
     } finally {
       setBusyTeam("");
     }
   }
 
   async function addTeam(teamId) {
-    if (!teamId || !canManageTeams || !onAddTeam || adding) return;
+    if (!teamId || !canManageTeams || !onAddTeam || adding || busyTeam) return;
 
     try {
+      setError("");
       setAdding(true);
       await onAddTeam(teamId);
+    } catch {
+      setError("Could not update team assignments. Please try again.");
     } finally {
       setAdding(false);
     }
@@ -137,8 +163,9 @@ export default function ProfileModal({
     await onSignOut?.();
   }
 
-  return (
+  return createPortal(
     <div
+      className="spraoi-profile-modal"
       onClick={onClose}
       style={{
         position: "fixed",
@@ -150,9 +177,16 @@ export default function ProfileModal({
         justifyContent: "center",
         padding: 16,
         boxSizing: "border-box",
+        fontFamily: "Inter, Segoe UI, sans-serif",
+        lineHeight: 1.4,
+        textAlign: "left",
       }}
     >
+      <style>{`.spraoi-profile-modal *, .spraoi-profile-modal *::before, .spraoi-profile-modal *::after { box-sizing: border-box; }
+        .spraoi-profile-modal button, .spraoi-profile-modal select { font-family: inherit; letter-spacing: normal; text-transform: none; min-height: 0; }
+      `}</style>
       <div
+        ref={dialogRef}
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -162,8 +196,10 @@ export default function ProfileModal({
           borderRadius: 18,
           maxWidth: 420,
           width: "100%",
-          maxHeight: "80vh",
-          overflowY: "auto",
+          height: "min(420px, calc(100dvh - 32px))",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
           boxShadow: "0 24px 70px rgba(15,23,42,.24)",
           border: "1px solid #e5eaf1",
         }}
@@ -174,6 +210,7 @@ export default function ProfileModal({
             justifyContent: "space-between",
             alignItems: "center",
             padding: "16px 20px",
+            flexShrink: 0,
             borderBottom: "1px solid #e5eaf1",
           }}
         >
@@ -206,7 +243,7 @@ export default function ProfileModal({
           </button>
         </div>
 
-        <div style={{ padding: 20 }}>
+        <div style={{ padding: 20, display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflowY: "auto" }}>
           <div
             style={{
               display: "flex",
@@ -240,6 +277,7 @@ export default function ProfileModal({
                   color: "#10243e",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
                 }}
               >
                 {user?.email || userName(user)}
@@ -258,7 +296,7 @@ export default function ProfileModal({
             </div>
           </div>
 
-          <div style={{ marginBottom: 20 }}>
+          <div style={{ marginBottom: 20, flex: 1, display: "flex", flexDirection: "column" }}>
             <div
               style={{
                 fontSize: 14,
@@ -275,8 +313,10 @@ export default function ProfileModal({
                 display: "flex",
                 flexWrap: "wrap",
                 gap: 6,
-                marginBottom:
-                  canManageTeams && availableTeams.length ? 10 : 0,
+                marginBottom: 10,
+                alignContent: "flex-start",
+                flex: 1,
+                minHeight: 34,
               }}
             >
               {(teams || []).map((team) => (
@@ -302,10 +342,10 @@ export default function ProfileModal({
                     {teamName(team)}
                   </span>
 
-                  {canManageTeams && onRemoveTeam && (
+                  {canManageTeams && onRemoveTeam ? (
                     <button
                       type="button"
-                      disabled={Boolean(busyTeam)}
+                      disabled={Boolean(busyTeam) || adding}
                       title="Remove team"
                       aria-label={`Remove ${teamName(team)}`}
                       onClick={() => removeTeam(team.id)}
@@ -314,6 +354,8 @@ export default function ProfileModal({
                         border: "none",
                         color: "#d32f2f",
                         cursor: busyTeam ? "default" : "pointer",
+                        width: 14,
+                        height: 14,
                         fontSize: 14,
                         lineHeight: 1,
                         padding: 0,
@@ -321,7 +363,7 @@ export default function ProfileModal({
                     >
                       {"\u00d7"}
                     </button>
-                  )}
+                  ) : <span aria-hidden="true" style={{ width: 14, height: 14 }} />}
                 </div>
               ))}
 
@@ -332,12 +374,10 @@ export default function ProfileModal({
               )}
             </div>
 
-            {canManageTeams &&
-              onAddTeam &&
-              availableTeams.length > 0 && (
-                <select
+            <select
                   defaultValue=""
-                  disabled={adding}
+                  aria-label="Add another team"
+                  disabled={!canManageTeams || !onAddTeam || !availableTeams.length || adding || Boolean(busyTeam)}
                   onChange={async (event) => {
                     const value = event.target.value;
                     await addTeam(value);
@@ -355,23 +395,25 @@ export default function ProfileModal({
                   }}
                 >
                   <option value="">
-                    {adding ? "Adding team..." : "Add another team..."}
+                    {!canManageTeams || !onAddTeam ? "Assignments managed by your club" : adding ? "Adding team..." : availableTeams.length ? "Add another team..." : "All teams assigned"}
                   </option>
 
-                  {availableTeams.map((team) => (
+                  {(canManageTeams ? availableTeams : []).map((team) => (
                     <option key={team.id} value={team.id}>
                       {teamName(team)}
                     </option>
                   ))}
-                </select>
-              )}
+            </select>
           </div>
 
+          {error && <div role="alert" style={{ fontSize: 11, color: "#d32f2f", marginBottom: 8 }}>{error}</div>}
           <button
             type="button"
             onClick={signOut}
             style={{
               width: "100%",
+              flexShrink: 0,
+              marginTop: "auto",
               padding: 12,
               borderRadius: 10,
               border: "1.5px solid rgba(211,47,47,.20)",
@@ -386,6 +428,7 @@ export default function ProfileModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -1,3 +1,4 @@
+import { assignedTeams, loadAssignedTeamIds } from "../../../packages/ui/src/assignedTeams.js";
 import ProfileModal from "../../../packages/ui/src/ProfileModal.jsx";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabaseClient";
@@ -140,7 +141,7 @@ function connectSidebarAsset(id) {
   return map[id] || `${BASE}icons/global/chevron.png`;
 }
 
-function DesktopNav({nav,tab,setTab,club,selectedTeam,visibleTeams,setSelectedTeamId,canSendSelected,isAdmin,session,userInitials,onShowProfile,enabledModules=[]}){
+function DesktopNav({nav,tab,setTab,club,selectedTeam,visibleTeams,profileTeams,setSelectedTeamId,canSendSelected,isAdmin,session,userInitials,onShowProfile,enabledModules=[]}){
   const clubName = club?.name || "Club Spraoi";
   const initial = userInitials || "U";
   return <div className="connect-desktop-sidebar spraoi-desktop-shell-nav" style={{width:306,minHeight:"100vh",display:"flex",flexShrink:0,position:"sticky",top:0,alignSelf:"flex-start",height:"100vh",zIndex:30}}>
@@ -149,7 +150,7 @@ function DesktopNav({nav,tab,setTab,club,selectedTeam,visibleTeams,setSelectedTe
       enabledModules={enabledModules}
       club={club}
       selectedTeam={selectedTeam}
-      visibleTeams={visibleTeams}
+      visibleTeams={profileTeams}
       onSelectTeam={(team) => setSelectedTeamId(String(team.id))}
       initials={userInitials}
       onShowProfile={onShowProfile}
@@ -255,6 +256,7 @@ export default function App(){
     : teams.filter(t=>readableConnectTeamIds.some(
         id=>String(id)===String(t.id)
       ));
+  const profileTeams = assignedTeams(teams, assignedTeamIds);
   
   useEffect(() => {
     if (!selectedTeamId) return;
@@ -490,6 +492,7 @@ const selectedTeam=visibleTeams.find(
     setGroupMembers(memberData||[]);
     setMessages(messageData||[]);
     setDelegates(delegateData||[]);
+    assignedIds = await loadAssignedTeamIds(supabase, user.id, clubId);
     setAssignedTeamIds(assignedIds);
     const adminAccount=["super_admin","admin","club_admin"].includes(accountRole);
     const allowed=adminAccount?(teamData||[]):(teamData||[]).filter(t=>assignedIds.includes(t.id));
@@ -846,7 +849,7 @@ const selectedTeam=visibleTeams.find(
   const nextPublishedTraining=upcoming.find(e=>e.event_type==="training"&&e.source==="club_allocation")||upcoming.find(e=>e.event_type==="training")||null;
 
   return <div className="connect-shell" style={{minHeight:"100vh",background:C.soft,fontFamily:F.body,color:C.ink,display:"flex"}}>
-    <DesktopNav nav={nav} tab={tab} setTab={setTab} club={club} selectedTeam={selectedTeam} visibleTeams={visibleTeams} setSelectedTeamId={setSelectedTeamId} canSendSelected={canSendSelected} isAdmin={isAdmin} session={session} userInitials={userInitials} onShowProfile={()=>setProfileOpen(true)} enabledModules={enabledModules}/>
+    <DesktopNav nav={nav} tab={tab} setTab={setTab} club={club} selectedTeam={selectedTeam} visibleTeams={visibleTeams} profileTeams={profileTeams} setSelectedTeamId={setSelectedTeamId} canSendSelected={canSendSelected} isAdmin={isAdmin} session={session} userInitials={userInitials} onShowProfile={()=>setProfileOpen(true)} enabledModules={enabledModules}/>
     <div className="connect-content" style={{flex:1,minWidth:0,paddingBottom:86}}>
       <header className="connect-mobile-header spraoi-mobile-app-header" data-module="connect">
         <div className="spraoi-mobile-app-header-row">
@@ -1304,13 +1307,9 @@ const selectedTeam=visibleTeams.find(
       open={profileOpen}
       onClose={() => setProfileOpen(false)}
       user={session?.user}
-      role={isAdmin ? "Club Admin" : "Coach / Mentor"}
+      role={role}
       clubName={club?.name}
-      teams={(visibleTeams || []).filter((team) =>
-        (assignedTeamIds || []).some(
-          (id) => String(id) === String(team.id)
-        )
-      )}
+      teams={profileTeams}
       canManageTeams={false}
       onSignOut={centralLogout}
     />

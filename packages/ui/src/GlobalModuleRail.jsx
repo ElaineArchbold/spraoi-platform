@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { teamLabel } from "./assignedTeams.js";
 import { openAdminModule } from "./platformNavigation.js";
 
 const MODULES = {
@@ -22,19 +23,6 @@ function readJson(key, fallback) {
   }
 }
 
-function compactTeamName(team) {
-  if (!team) return "";
-  const label = String(team.label || team.name || "").trim();
-  const gender = String(team.gender || "").trim().toLowerCase();
-  let display = label;
-  if (gender === "boys" && !/\bboys$/i.test(display)) display += " Boys";
-  if (gender === "girls" && !/\bgirls$/i.test(display)) display += " Girls";
-  return display
-    .replace(/\s*Boys$/i, "B")
-    .replace(/\s*Girls$/i, "G")
-    .replace(/\s+/g, "");
-}
-
 export default function GlobalModuleRail({
   activeModule,
   enabledModules = [],
@@ -46,6 +34,20 @@ export default function GlobalModuleRail({
   onShowProfile,
 }) {
   const [permissionOpen, setPermissionOpen] = useState(false);
+  const [activeTeamId, setActiveTeamId] = useState(() =>
+    localStorage.getItem("spraoi_active_team_id") || localStorage.getItem("spraoi_team_id") || readJson(TEAM_KEY, null)?.id || ""
+  );
+  useEffect(() => {
+    const sync = (event) => setActiveTeamId(event.detail?.teamId || localStorage.getItem("spraoi_active_team_id") || "");
+    window.addEventListener("storage", sync);
+    window.addEventListener("spraoi-active-context", sync);
+    window.addEventListener("spraoi-team-change", sync);
+    return () => {
+      window.removeEventListener("storage", sync);
+      window.removeEventListener("spraoi-active-context", sync);
+      window.removeEventListener("spraoi-team-change", sync);
+    };
+  }, []);
 
   useEffect(() => {
     if (activeModule !== "coach") return;
@@ -56,17 +58,7 @@ export default function GlobalModuleRail({
     if (initials && initials !== "U") {
       localStorage.setItem(INITIALS_KEY, String(initials).toUpperCase());
     }
-    if (selectedTeam?.id) {
-      localStorage.setItem(
-        TEAM_KEY,
-        JSON.stringify({
-          id: selectedTeam.id,
-          label: selectedTeam.label || selectedTeam.name || "",
-          name: selectedTeam.name || selectedTeam.label || "",
-          gender: selectedTeam.gender || "",
-        })
-      );
-    }
+
   }, [
     activeModule,
     JSON.stringify(enabledModules),
@@ -75,6 +67,7 @@ export default function GlobalModuleRail({
     selectedTeam?.label,
     selectedTeam?.name,
     selectedTeam?.gender,
+    JSON.stringify(visibleTeams),
   ]);
 
   const storedModules = useMemo(
@@ -96,29 +89,10 @@ export default function GlobalModuleRail({
       ? (initials || storedInitials || "U")
       : (storedInitials || initials || "U");
 
-  const storedTeam = useMemo(
-    () => readJson(TEAM_KEY, null),
-    [activeModule, selectedTeam?.id]
-  );
-
-  // One canonical team across every module. The shared shell value wins;
-  // module-local state follows it through the shared context event.
-  const storedTeamIsVisible = Boolean(
-    storedTeam?.id &&
-    visibleTeams.some(
-      (team) => String(team.id) === String(storedTeam.id)
-    )
-  );
-
-  const canonicalTeamId = String(
-    selectedTeam?.id ||
-    (storedTeamIsVisible ? storedTeam?.id : "") ||
-    ""
-  );
-
-  const displayedTeam =
-    visibleTeams.find((team) => String(team.id) === canonicalTeamId) ||
-    (canonicalTeamId && storedTeam ? storedTeam : selectedTeam);
+  // Cached IDs are preferences, never evidence of membership.
+  const displayedTeam = visibleTeams.find((team) => String(team.id) === String(activeTeamId)) ||
+    visibleTeams.find((team) => String(team.id) === String(selectedTeam?.id)) || null;
+  const canonicalTeamId = displayedTeam ? String(displayedTeam.id) : "";
 
   const moduleKeys = ["coach", "academy", "connect", "cup", "club"].filter(
     (key) => key !== "club" || effectiveModules.includes("club")
@@ -207,6 +181,56 @@ export default function GlobalModuleRail({
             alt={club?.name ? `${club.name} crest` : "Club crest"}
             style={{ width: 50, height: 50, objectFit: "contain" }}
           />
+        </div>
+
+        <div
+          style={{
+            width: "100%",
+            display: "grid",
+            placeItems: "center",
+            gap: 3
+          }}
+        >
+          <div
+            style={{
+              fontSize: 8,
+              lineHeight: 1,
+              textTransform: "uppercase",
+              letterSpacing: ".08em",
+              color: "#64748B",
+              fontWeight: 800
+            }}
+          >
+            Team
+          </div>
+
+          <select
+            aria-label="Active team"
+            value={canonicalTeamId}
+            title={displayedTeam ? teamLabel(displayedTeam) : "Select team"}
+            disabled={!visibleTeams.length}
+            onChange={(e) => selectTeam(e.target.value)}
+            style={{
+              width: 62,
+              height: 32,
+              borderRadius: 9,
+              border: "1px solid #DDE4EE",
+              background: "#fff",
+              color: "#10243e",
+              fontSize: 9,
+              fontWeight: 800,
+              padding: "0 3px",
+              cursor: "pointer"
+            }}
+          >
+            {!canonicalTeamId && <option value="">{visibleTeams.length ? "Select" : "None"}</option>}
+
+            {visibleTeams.map((team) => (
+              <option key={team.id} value={team.id}>
+                {teamLabel(team)}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div
