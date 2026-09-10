@@ -578,6 +578,12 @@ export default function ParentUpdates({
   }
 
   async function respond(event,response,note="") {
+    if (event?.status === "cancelled") {
+      setStatus(
+        "This event has been cancelled. Availability can no longer be changed."
+      );
+      return;
+    }
     const child =
       players.find(
         p => p.id === event._recipient_player_id
