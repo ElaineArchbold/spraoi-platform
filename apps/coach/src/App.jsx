@@ -2284,82 +2284,1215 @@ function localDayIsoBounds(dateKey) {
   return { start: start.toISOString(), end: end.toISOString() };
 }
 
-function PlannerScreen({ onNav, upcomingSessions, onOpenSession, selectedTeam }) {
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
-  const [selectedYear] = useState(new Date().getFullYear());
+function PlannerScreen({ onNav, upcomingSessions, onOpenSession, selectedTeam, club }) {
+  const now = new Date();
 
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const fullMonths = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
 
-  const firstDay = new Date(selectedYear, selectedMonth, 1).getDay();
-  const startOffset = firstDay === 0 ? 6 : firstDay - 1;
-  const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
-  const calDays = [];
-  for (let i = 0; i < startOffset; i++) calDays.push(null);
-  for (let i = 1; i <= daysInMonth; i++) calDays.push(i);
+  const [teamEvents, setTeamEvents] = useState([]);
+  const [loadingEvents, setLoadingEvents] = useState(false);
 
-  const sessionsByDate = {};
-  (upcomingSessions || []).forEach((session) => {
-    if (!session?.session_date) return;
-    if (selectedTeam?.id && String(session?.plan?.age_group_id || "") !== String(selectedTeam.id)) return;
-    const [year, month, day] = String(session.session_date).split("-").map(Number);
-    if (year === selectedYear && month - 1 === selectedMonth) {
-      sessionsByDate[day] = sessionsByDate[day] || [];
-      sessionsByDate[day].push(session);
-    }
-  });
+  const [showEventModal, setShowEventModal] = useState(false);
+  const [editingEventId, setEditingEventId] = useState(null);
+  const [savingEvent, setSavingEvent] = useState(false);
+  const [eventError, setEventError] = useState("");
 
-  const today = new Date();
-  const isToday = (day) => day === today.getDate() && selectedMonth === today.getMonth() && selectedYear === today.getFullYear();
+  const emptyDraft = {
+    event_type: "match",
+    event_category: "Team Event",
+    title: "",
+    date: "",
+    start_time: "10:00",
+    end_time: "",
+    meet_time: "",
+    opponent: "",
+    home_away: "home",
+    location: "",
+    notes: "",
+    attendance_required: true,
+    require_decline_reason: false,
+    subgroup_keys: [],
+  };
 
-  function clickDate(day) {
-    const sessions = sessionsByDate[day] || [];
-    if (sessions.length) onOpenSession(sessions[0]);
+  const [eventDraft, setEventDraft] = useState(emptyDraft);
+
+  const months = [
+    "Jan","Feb","Mar","Apr","May","Jun",
+    "Jul","Aug","Sep","Oct","Nov","Dec"
+  ];
+
+  const fullMonths = [
+    "January","February","March","April","May","June",
+    "July","August","September","October","November","December"
+  ];
+
+  function pad(value) {
+    return String(value).padStart(2, "0");
   }
 
+  function previousMonth() {
+    setSelectedMonth((month) => {
+      if (month > 0) {
+        return month - 1;
+      }
+
+      setSelectedYear((year) => year - 1);
+      return 11;
+    });
+  }
+
+  function nextMonth() {
+    setSelectedMonth((month) => {
+      if (month < 11) {
+        return month + 1;
+      }
+
+      setSelectedYear((year) => year + 1);
+      return 0;
+    });
+  }
+  function dateKey(year, month, day) {
+    return `${year}-${pad(month + 1)}-${pad(day)}`;
+  }
+
+  function toIso(dateValue, timeValue) {
+    const date =
+      String(dateValue || "").trim();
+
+    const time =
+      String(timeValue || "").trim();
+
+    if (!date || !time) {
+      return null;
+    }
+
+    const value =
+      new Date(
+        `${date}T${time}:00`
+      );
+
+    if (
+      Number.isNaN(
+        value.getTime()
+      )
+    ) {
+      return null;
+    }
+
+    return value.toISOString();
+  }
+  function localDatePart(value) {
+    if (!value) return "";
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return "";
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+
+  function localTimePart(value) {
+    if (!value) return "";
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return "";
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  const firstDay =
+    new Date(
+      selectedYear,
+      selectedMonth,
+      1
+    ).getDay();
+
+  const startOffset =
+    firstDay === 0
+      ? 6
+      : firstDay - 1;
+
+  const daysInMonth =
+    new Date(
+      selectedYear,
+      selectedMonth + 1,
+      0
+    ).getDate();
+
+  const calDays = [];
+
+  for (
+    let i = 0;
+    i < startOffset;
+    i += 1
+  ) {
+    calDays.push(null);
+  }
+
+  for (
+    let day = 1;
+    day <= daysInMonth;
+    day += 1
+  ) {
+    calDays.push(day);
+  }
+
+
+  const sessionsByDate = {};
+
+  (upcomingSessions || []).forEach(
+    (session) => {
+      if (!session?.session_date) {
+        return;
+      }
+
+      if (
+        selectedTeam?.id &&
+        String(
+          session?.plan?.age_group_id || ""
+        ) !==
+          String(selectedTeam.id)
+      ) {
+        return;
+      }
+
+      const rawDate =
+        String(
+          session.session_date
+        ).slice(0, 10);
+
+      const parts =
+        rawDate
+          .split("-")
+          .map(Number);
+
+      if (parts.length !== 3) {
+        return;
+      }
+
+      const [
+        year,
+        month,
+        day
+      ] = parts;
+
+      if (
+        year === selectedYear &&
+        month - 1 === selectedMonth
+      ) {
+        if (!sessionsByDate[day]) {
+          sessionsByDate[day] = [];
+        }
+
+        sessionsByDate[day].push(
+          session
+        );
+      }
+    }
+  );
+
+
+  const eventsByDate = {};
+
+  (teamEvents || []).forEach(
+    (event) => {
+      const candidate =
+        event?.start_at ||
+        event?.starts_at ||
+        event?.event_date ||
+        event?.date ||
+        event?.start_time ||
+        "";
+
+      const rawDate =
+        localDatePart(candidate);
+
+      if (!rawDate) {
+        return;
+      }
+
+      const parts =
+        rawDate
+          .split("-")
+          .map(Number);
+
+      if (parts.length !== 3) {
+        return;
+      }
+
+      const [
+        year,
+        month,
+        day
+      ] = parts;
+
+      if (
+        year === selectedYear &&
+        month - 1 === selectedMonth
+      ) {
+        if (!eventsByDate[day]) {
+          eventsByDate[day] = [];
+        }
+
+        eventsByDate[day].push(
+          event
+        );
+      }
+    }
+  );
+
+
+  const plannerToday =
+    new Date();
+
+  function isToday(day) {
+    return (
+      day === plannerToday.getDate() &&
+      selectedMonth ===
+        plannerToday.getMonth() &&
+      selectedYear ===
+        plannerToday.getFullYear()
+    );
+  }
+
+  function subgroupDisplayName(key) {
+    const girls =
+      String(
+        selectedTeam?.gender || ""
+      ).toLowerCase() === "girls";
+
+    if (key === "football_a") {
+      return "Football A Team";
+    }
+
+    if (key === "football_b") {
+      return "Football B Team";
+    }
+
+    if (key === "hurling_a") {
+      return girls
+        ? "Camogie A Team"
+        : "Hurling A Team";
+    }
+
+    if (key === "hurling_b") {
+      return girls
+        ? "Camogie B Team"
+        : "Hurling B Team";
+    }
+
+    return "";
+  }
+
+  function calendarTeamLabel() {
+    return teamDisplayName(
+      selectedTeam
+    );
+  }
+
+  function suggestedEventTitle(draft) {
+    if (draft?.event_type !== "match") {
+      return (
+        draft?.event_category ||
+        "Team Event"
+      );
+    }
+
+    const opponent =
+      String(
+        draft?.opponent || ""
+      ).trim();
+
+    const teamName =
+      calendarTeamLabel();
+
+    const groups =
+      (
+        draft?.subgroup_keys ||
+        []
+      )
+        .map(
+          subgroupDisplayName
+        )
+        .filter(Boolean);
+
+    const audience =
+      groups.length === 1
+        ? groups[0]
+        : groups.length > 1
+          ? groups.join(" + ")
+          : "Whole Team";
+
+    const prefix =
+      `${teamName} - ${audience} Match`;
+
+    return opponent
+      ? `${prefix} vs ${opponent}`
+      : prefix;
+  }
+  function openAddEvent(day = null) {
+    const selectedDate =
+      day
+        ? dateKey(
+            selectedYear,
+            selectedMonth,
+            day
+          )
+        : dateKey(
+            selectedYear,
+            selectedMonth,
+            Math.min(today.getDate(), daysInMonth)
+          );
+
+    setEditingEventId(null);
+    setEventError("");
+
+    setEventDraft({
+      ...emptyDraft,
+      date: selectedDate,
+    });
+
+    setShowEventModal(true);
+  }
+
+  function openEditEvent(event) {
+    setEditingEventId(event.id);
+    setEventError("");
+
+    setEventDraft({
+      event_type:
+        event.event_type === "event"
+          ? "event"
+          : "match",
+
+      event_category:
+        event.event_category ||
+        "Team Event",
+
+      title:
+        event.title || "",
+
+      date:
+        localDatePart(event.starts_at),
+
+      start_time:
+        localTimePart(event.starts_at),
+
+      end_time:
+        localTimePart(event.ends_at),
+
+      meet_time:
+        localTimePart(event.meet_at),
+
+      opponent:
+        event.opponent || "",
+
+      home_away:
+        event.home_away || "home",
+
+      location:
+        event.location || "",
+
+      notes:
+        event.notes || "",
+
+      attendance_required:
+        event.attendance_required !== false,
+
+      require_decline_reason:
+        Boolean(event.require_decline_reason),
+
+      subgroup_keys:
+        Array.isArray(event.subgroup_keys)
+          ? event.subgroup_keys
+          : [],
+    });
+
+    setShowEventModal(true);
+  }
+
+  async function deleteEvent() {
+    if (!editingEvent?.id) return;
+
+    const title =
+      String(
+        editingEvent.title ||
+        eventDraft.title ||
+        "this event"
+      ).trim();
+
+    const confirmed =
+      window.confirm(
+        `Delete "${title}"?
+
+This will remove the event from the Coach calendar and Connect events.
+
+Previously sent Connect messages will remain in communication history.`
+      );
+
+    if (!confirmed) return;
+
+    setSavingEvent(true);
+    setEventError("");
+
+    try {
+      const { error } =
+        await supabase
+          .from("club_events")
+          .delete()
+          .eq("id", editingEvent.id);
+
+      if (error) throw error;
+
+      setTeamEvents((current) =>
+        current.filter(
+          (event) =>
+            String(event.id) !==
+            String(editingEvent.id)
+        )
+      );
+
+      setShowEventModal(false);
+      setEditingEvent(null);
+      setEventDraft({
+        ...emptyDraft
+      });
+    } catch (error) {
+      console.error(
+        "Could not delete event:",
+        error
+      );
+
+      setEventError(
+        error?.message ||
+        "Could not delete event."
+      );
+    } finally {
+      setSavingEvent(false);
+    }
+  }
+  async function cancelCalendarEvent() {
+    if (!editingEventId) return;
+
+    const title =
+      String(
+        eventDraft?.title ||
+        "this event"
+      ).trim();
+
+    const confirmed =
+      window.confirm(
+        `Cancel "${title}"?
+
+This keeps the event in Spraoi as CANCELLED.
+
+It will no longer appear as an active upcoming event, parents will no longer be able to respond, and existing event communication will remain in history.`
+      );
+
+    if (!confirmed) return;
+
+    setSavingEvent(true);
+    setEventError("");
+
+    try {
+      const now = new Date().toISOString();
+
+      const { error } =
+        await supabase
+          .from("club_events")
+          .update({
+            status: "cancelled",
+            updated_at: now
+          })
+          .eq("id", editingEventId);
+
+      if (error) throw error;
+
+      setTeamEvents((current) =>
+        (current || []).map((event) =>
+          String(event.id) === String(editingEventId)
+            ? {
+                ...event,
+                status: "cancelled",
+                updated_at: now
+              }
+            : event
+        )
+      );
+
+      window.dispatchEvent(
+        new CustomEvent("spraoi:club-events-changed", {
+          detail: {
+            clubId: club?.id,
+            teamId: selectedTeam?.id,
+            eventId: editingEventId,
+            action: "cancelled"
+          }
+        })
+      );
+
+      setShowEventModal(false);
+      setEditingEventId(null);
+    } catch (error) {
+      console.error("Could not cancel event:", error);
+
+      setEventError(
+        error?.message ||
+        "Could not cancel event."
+      );
+    } finally {
+      setSavingEvent(false);
+    }
+  }
+
+
+  async function deleteCalendarEvent() {
+    if (!editingEventId) return;
+
+    const title =
+      String(
+        eventDraft?.title ||
+        "this event"
+      ).trim();
+
+    setSavingEvent(true);
+    setEventError("");
+
+    try {
+      const [recipientResult, messageResult] =
+        await Promise.all([
+          supabase
+            .from("connect_event_recipients")
+            .select("id")
+            .eq("event_id", editingEventId)
+            .limit(1),
+
+          supabase
+            .from("connect_messages")
+            .select("id")
+            .eq("event_id", editingEventId)
+            .limit(1)
+        ]);
+
+      if (recipientResult.error) {
+        throw recipientResult.error;
+      }
+
+      if (messageResult.error) {
+        throw messageResult.error;
+      }
+
+      const hasBeenCommunicated =
+        Boolean(recipientResult.data?.length) ||
+        Boolean(messageResult.data?.length);
+
+      if (hasBeenCommunicated) {
+        window.alert(
+          `"${title}" has already been shared with parents.
+
+Please use Cancel Event instead.
+
+Cancelling keeps a clear record for parents and prevents the event from disappearing without explanation.`
+        );
+
+        return;
+      }
+
+      const confirmed =
+        window.confirm(
+          `Delete "${title}" permanently?
+
+This event has not been communicated to parents.
+
+Deleting it removes it completely from the Coach calendar, Connect and the parent app. This cannot be undone.`
+        );
+
+      if (!confirmed) return;
+
+      const { error } =
+        await supabase
+          .from("club_events")
+          .delete()
+          .eq("id", editingEventId);
+
+      if (error) throw error;
+
+      setTeamEvents((current) =>
+        (current || []).filter(
+          (event) =>
+            String(event.id) !== String(editingEventId)
+        )
+      );
+
+      window.dispatchEvent(
+        new CustomEvent("spraoi:club-events-changed", {
+          detail: {
+            clubId: club?.id,
+            teamId: selectedTeam?.id,
+            eventId: editingEventId,
+            action: "deleted"
+          }
+        })
+      );
+
+      setShowEventModal(false);
+      setEditingEventId(null);
+    } catch (error) {
+      console.error("Could not delete event:", error);
+
+      setEventError(
+        error?.message ||
+        "Could not delete event."
+      );
+    } finally {
+      setSavingEvent(false);
+    }
+  }
+
+  async function saveEvent() {
+    if (!club?.id || !selectedTeam?.id) {
+      setEventError("Please select a team first.");
+      return;
+    }
+
+    if (!eventDraft.date || !eventDraft.start_time) {
+      setEventError("Date and start time are required.");
+      return;
+    }
+
+    if (
+      eventDraft.event_type === "match" &&
+      !eventDraft.opponent.trim()
+    ) {
+      setEventError("Please enter the opponent.");
+      return;
+    }
+
+    const startsAt =
+      toIso(
+        eventDraft.date,
+        eventDraft.start_time
+      );
+
+    const endsAt =
+      eventDraft.end_time
+        ? toIso(
+            eventDraft.date,
+            eventDraft.end_time
+          )
+        : null;
+
+    const meetAt =
+      eventDraft.meet_time
+        ? toIso(
+            eventDraft.date,
+            eventDraft.meet_time
+          )
+        : null;
+
+    if (!startsAt) {
+      setEventError("Please enter a valid start time.");
+      return;
+    }
+
+    const fallbackTitle =
+      suggestedEventTitle(eventDraft);
+
+    const payload = {
+      club_id: club.id,
+      age_group_id: selectedTeam.id,
+      event_type: eventDraft.event_type,
+      event_category:
+        eventDraft.event_type === "event"
+          ? eventDraft.event_category || "Other"
+          : null,
+
+      title:
+        eventDraft.title.trim() ||
+        fallbackTitle,
+
+      opponent:
+        eventDraft.event_type === "match"
+          ? eventDraft.opponent.trim()
+          : null,
+
+      home_away:
+        eventDraft.event_type === "match"
+          ? eventDraft.home_away
+          : null,
+
+      location:
+        eventDraft.location.trim() || null,
+
+      starts_at: startsAt,
+      ends_at: endsAt,
+      meet_at: meetAt,
+
+      notes:
+        eventDraft.notes.trim() || null,
+
+      attendance_required:
+        Boolean(eventDraft.attendance_required),
+
+      require_decline_reason:
+        Boolean(eventDraft.require_decline_reason),
+
+      subgroup_keys:
+        Array.isArray(eventDraft.subgroup_keys)
+          ? eventDraft.subgroup_keys
+          : [],
+
+      status: "scheduled",
+      source: "coach",
+    };
+
+    setSavingEvent(true);
+    setEventError("");
+
+    let result;
+
+    if (editingEventId) {
+      result = await supabase
+        .from("club_events")
+        .update({
+          ...payload,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", editingEventId)
+        .select()
+        .single();
+    } else {
+      result = await supabase
+        .from("club_events")
+        .insert(payload)
+        .select()
+        .single();
+    }
+
+    setSavingEvent(false);
+
+    if (result.error) {
+      setEventError(result.error.message);
+      return;
+    }
+
+    const saved = result.data;
+
+    setTeamEvents((current) => {
+      const without =
+        current.filter(
+          (item) => item.id !== saved.id
+        );
+
+      return [...without, saved].sort(
+        (a, b) =>
+          new Date(a.starts_at) -
+          new Date(b.starts_at)
+      );
+    });
+
+    window.dispatchEvent(
+      new CustomEvent(
+        "spraoi:club-events-changed",
+        {
+          detail: {
+            clubId: club.id,
+            teamId: selectedTeam.id,
+            eventId: saved.id,
+          },
+        }
+      )
+    );
+
+    setShowEventModal(false);
+    setEditingEventId(null);
+  }
+
+  const inputStyle = {
+    width: "100%",
+    height: 38,
+    borderRadius: 9,
+    border: `1px solid ${P.line}`,
+    padding: "0 10px",
+    boxSizing: "border-box",
+    fontFamily: F.body,
+    fontSize: 12,
+    color: P.ink,
+    background: P.white,
+  };
+
+  const labelStyle = {
+    display: "block",
+    fontFamily: F.body,
+    fontSize: 10,
+    fontWeight: 800,
+    color: P.muted,
+    marginBottom: 5,
+  };
+
   return (
-    <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
-      <TopBar title="Planner" sub={`${fullMonths[selectedMonth]} ${selectedYear}`}>
-        <Btn label="New Session" variant="primary" onClick={() => onNav("coach-builder")} />
+    <div
+      style={{
+        flex: 1,
+        overflow: "auto",
+        background: P.soft
+      }}
+    >
+      <TopBar
+        title="Planner"
+        sub={`${fullMonths[selectedMonth]} ${selectedYear}`}
+      >
+        <Btn
+          label="New Session"
+          variant="secondary"
+          onClick={() =>
+            onNav("coach-builder")
+          }
+        />
+
+        <Btn
+          label="+ Add Event"
+          variant="primary"
+          onClick={() =>
+            openAddEvent()
+          }
+        />
       </TopBar>
-      <div className="coach-planner-layout" style={{ padding: "20px 24px", minWidth: 0 }}>
-        <div className="coach-planner-calendar-wrap" style={{ minWidth: 0 }}>
-          <div className="coach-planner-month-tabs" style={{ display: "flex", gap: 3, marginBottom: 16, overflowX: "auto", WebkitOverflowScrolling: "touch", paddingBottom: 2 }}>
+
+      <div
+        className="coach-planner-layout"
+        style={{
+          padding: "20px 24px",
+          minWidth: 0
+        }}
+      >
+        <div
+          className="coach-planner-calendar-wrap"
+          style={{ minWidth: 0 }}
+        >
+          <div
+            className="coach-planner-month-tabs"
+            style={{
+              display: "flex",
+              gap: 3,
+              marginBottom: 16,
+              overflowX: "auto",
+              WebkitOverflowScrolling: "touch",
+              paddingBottom: 2
+            }}
+          >
             {months.map((month, index) => (
-              <button key={month} onClick={() => setSelectedMonth(index)} style={{ padding: "6px 12px", borderRadius: 16, border: "none", cursor: "pointer", fontFamily: F.body, fontSize: 11, fontWeight: 700, background: selectedMonth === index ? P.p600 : "transparent", color: selectedMonth === index ? "#fff" : P.muted }}>{month}</button>
+              <button
+                key={month}
+                onClick={() =>
+                  setSelectedMonth(index)
+                }
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: 16,
+                  border: "none",
+                  cursor: "pointer",
+                  fontFamily: F.body,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  background:
+                    selectedMonth === index
+                      ? P.p600
+                      : "transparent",
+                  color:
+                    selectedMonth === index
+                      ? "#fff"
+                      : P.muted
+                }}
+              >
+                {month}
+              </button>
             ))}
           </div>
-          <div className="coach-planner-calendar-card" style={{ background: P.white, borderRadius: 14, padding: 16, border: `1px solid ${P.line}`, boxShadow: Sh.card, minWidth: 0 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8, gap: 10 }}>
-              <div style={{ fontFamily: F.display, fontSize: 16, fontWeight: 800, color: P.ink }}>{fullMonths[selectedMonth]} {selectedYear}</div>
-              <div style={{ display: "flex", gap: 4 }}>
-                <button onClick={() => setSelectedMonth((month) => month > 0 ? month - 1 : 11)} style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${P.line}`, background: P.white, cursor: "pointer", fontSize: 12 }}>◀</button>
-                <button onClick={() => setSelectedMonth((month) => month < 11 ? month + 1 : 0)} style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${P.line}`, background: P.white, cursor: "pointer", fontSize: 12 }}>▶</button>
+
+          <div
+            className="coach-planner-calendar-card"
+            style={{
+              background: P.white,
+              borderRadius: 14,
+              padding: 16,
+              border: `1px solid ${P.line}`,
+              boxShadow: Sh.card,
+              minWidth: 0
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent:
+                  "space-between",
+                alignItems: "center",
+                marginBottom: 8,
+                gap: 10
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: F.display,
+                  fontSize: 16,
+                  fontWeight: 800,
+                  color: P.ink
+                }}
+              >
+                {fullMonths[selectedMonth]}{" "}
+                {selectedYear}
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  gap: 4
+                }}
+              >
+                <button
+                  onClick={previousMonth}
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 6,
+                    border: `1px solid ${P.line}`,
+                    background: P.white,
+                    cursor: "pointer"
+                  }}
+                >
+                  {"<"}
+                </button>
+
+                <button
+                  onClick={nextMonth}
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 6,
+                    border: `1px solid ${P.line}`,
+                    background: P.white,
+                    cursor: "pointer"
+                  }}
+                >
+                  {">"}
+                </button>
               </div>
             </div>
-            <div className="coach-planner-legend" style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10, fontFamily: F.body, fontSize: 10, color: P.muted }}>
-              <span style={{ width: 8, height: 8, borderRadius: "50%", background: P.p600, display: "inline-block" }} />
-              Planned session — tap a session date to open it
+
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 12,
+                marginBottom: 12,
+                fontFamily: F.body,
+                fontSize: 10,
+                color: P.muted
+              }}
+            >
+              <span>
+                <b style={{ color: P.p600 }}>
+                  {"\u25cf"}
+                </b>{" "}
+                Training
+              </span>
+
+              <span>
+                <b style={{ color: "#DC2626" }}>
+                  {"\u25cf"}
+                </b>{" "}
+                Match
+              </span>
+
+              <span>
+                <b style={{ color: "#F59E0B" }}>
+                  {"\u25cf"}
+                </b>{" "}
+                Event
+              </span>
+
+              {loadingEvents && (
+                <span>Updating calendar...</span>
+              )}
             </div>
-            <div className="coach-planner-weekdays" style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 2, marginBottom: 4 }}>
-              {["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"].map((day) => (
-                <div key={day} style={{ textAlign: "center", fontFamily: F.body, fontSize: 9, fontWeight: 700, color: P.muted, padding: "4px 0" }}>{day}</div>
+
+            <div
+              className="coach-planner-weekdays"
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "repeat(7, minmax(0, 1fr))",
+                gap: 2,
+                marginBottom: 4
+              }}
+            >
+              {[
+                "MON","TUE","WED",
+                "THU","FRI","SAT","SUN"
+              ].map((day) => (
+                <div
+                  key={day}
+                  style={{
+                    textAlign: "center",
+                    fontFamily: F.body,
+                    fontSize: 9,
+                    fontWeight: 700,
+                    color: P.muted,
+                    padding: "4px 0"
+                  }}
+                >
+                  {day}
+                </div>
               ))}
             </div>
-            <div className="coach-planner-days" style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 2 }}>
+
+            <div
+              className="coach-planner-days"
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "repeat(7, minmax(0, 1fr))",
+                gap: 2
+              }}
+            >
               {calDays.map((day, index) => {
-                if (day === null) return <div key={`empty-${index}`} />;
-                const sessions = sessionsByDate[day] || [];
-                const todayBorder = isToday(day);
+                if (day === null) {
+                  return (
+                    <div
+                      key={`empty-${index}`}
+                    />
+                  );
+                }
+
+                const sessions =
+                  sessionsByDate[day] || [];
+
+                const events =
+                  eventsByDate[day] || [];
+
+                const todayBorder =
+                  isToday(day);
+
                 return (
-                  <div key={day} onClick={() => clickDate(day)} className={`coach-planner-day${sessions.length ? " has-session" : ""}`} style={{ minHeight: 58, minWidth: 0, padding: 4, borderRadius: 7, border: sessions.length ? `1.5px solid ${P.p300}` : (todayBorder ? `2px solid ${P.p600}` : `1px solid ${P.line}`), background: sessions.length ? P.p50 : (todayBorder ? P.p50 : P.white), cursor: sessions.length ? "pointer" : "default", overflow: "hidden", position: "relative" }}>
-                    <div className="coach-planner-day-number" style={{ fontFamily: F.body, fontSize: 11, fontWeight: todayBorder || sessions.length ? 800 : 500, color: todayBorder ? P.p600 : P.ink }}>{day}</div>
-                    {sessions.length > 0 && <div className="coach-planner-session-count" style={{ position: "absolute", top: 4, right: 4, minWidth: 16, height: 16, padding: "0 4px", borderRadius: 8, background: P.p600, color: "#fff", fontFamily: F.body, fontSize: 8, fontWeight: 800, display: "grid", placeItems: "center", boxSizing: "border-box" }}>{sessions.length}</div>}
+                  <div
+                    key={day}
+                    onClick={() =>
+                      openAddEvent(day)
+                    }
+                    className="coach-planner-day"
+                    style={{
+                      minHeight: 72,
+                      minWidth: 0,
+                      padding: 4,
+                      borderRadius: 7,
+                      border:
+                        todayBorder
+                          ? `2px solid ${P.p600}`
+                          : `1px solid ${P.line}`,
+                      background:
+                        todayBorder
+                          ? P.p50
+                          : P.white,
+                      cursor: "pointer",
+                      overflow: "hidden",
+                      position: "relative"
+                    }}
+                  >
+                    <div
+                      className="coach-planner-day-number"
+                      style={{
+                        fontFamily: F.body,
+                        fontSize: 11,
+                        fontWeight:
+                          todayBorder
+                            ? 800
+                            : 500,
+                        color:
+                          todayBorder
+                            ? P.p600
+                            : P.ink
+                      }}
+                    >
+                      {day}
+                    </div>
+
                     {sessions.map((session) => (
-                      <div key={session.id} className="coach-planner-session-chip" style={{ background: P.p100, borderRadius: 4, padding: "2px 4px", marginTop: 3, borderLeft: `3px solid ${P.p600}` }}>
-                        <div className="coach-planner-session-title" style={{ fontFamily: F.body, fontSize: 8, fontWeight: 800, color: P.p700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{session.plan?.hurling_skill?.name || "Training Session"}</div>
+                      <div
+                        key={session.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenSession(session);
+                        }}
+                        className="coach-planner-session-chip"
+                        style={{
+                          background: P.p100,
+                          borderRadius: 4,
+                          padding: "3px 4px",
+                          marginTop: 3,
+                          borderLeft:
+                            `3px solid ${P.p600}`
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontFamily: F.body,
+                            fontSize: 8,
+                            fontWeight: 800,
+                            color: P.p700,
+                            overflow: "hidden",
+                            textOverflow:
+                              "ellipsis",
+                            whiteSpace: "nowrap"
+                          }}
+                        >
+                          Training
+                        </div>
                       </div>
                     ))}
+
+                    {events.map((event) => {
+                      const match =
+                        event.event_type ===
+                        "match";
+
+                      const accent =
+                        match
+                          ? "#DC2626"
+                          : "#F59E0B";
+
+                      return (
+                        <div
+                          key={event.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditEvent(event);
+                          }}
+                          style={{
+                            background:
+                              match
+                                ? "#FEF2F2"
+                                : "#FFFBEB",
+                            borderRadius: 4,
+                            padding: "3px 4px",
+                            marginTop: 3,
+                            borderLeft:
+                              `3px solid ${accent}`
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontFamily: F.body,
+                              fontSize: 8,
+                              fontWeight: 800,
+                              color: accent,
+                              overflow: "hidden",
+                              textOverflow:
+                                "ellipsis",
+                              whiteSpace:
+                                "nowrap"
+                            }}
+                          >
+                            {event.title}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               })}
@@ -2367,10 +3500,744 @@ function PlannerScreen({ onNav, upcomingSessions, onOpenSession, selectedTeam })
           </div>
         </div>
       </div>
+
+      {showEventModal && (
+        <div
+          onClick={() =>
+            setShowEventModal(false)
+          }
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1500,
+            background:
+              "rgba(15,23,42,.55)",
+            display: "grid",
+            placeItems: "center",
+            padding: 18
+          }}
+        >
+          <div
+            onClick={(e) =>
+              e.stopPropagation()
+            }
+            style={{
+              width:
+                "min(620px, 100%)",
+              maxHeight: "90vh",
+              overflow: "auto",
+              background: P.white,
+              borderRadius: 20,
+              boxShadow:
+                "0 28px 80px rgba(15,23,42,.25)"
+            }}
+          >
+            <div
+              style={{
+                padding: "18px 20px",
+                borderBottom:
+                  `1px solid ${P.line}`,
+                display: "flex",
+                justifyContent:
+                  "space-between",
+                alignItems: "center"
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    fontFamily: F.display,
+                    fontSize: 20,
+                    fontWeight: 800,
+                    color: P.ink
+                  }}
+                >
+                  {editingEventId
+                    ? "Edit Event"
+                    : "Add to Calendar"}
+                </div>
+
+                <div
+                  style={{
+                    fontFamily: F.body,
+                    fontSize: 10,
+                    color: P.muted,
+                    marginTop: 3
+                  }}
+                >
+                  {selectedTeam
+                    ? teamDisplayName(selectedTeam)
+                    : "Select a team"}
+                </div>
+              </div>
+
+              <button
+                onClick={() =>
+                  setShowEventModal(false)
+                }
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 9,
+                  border:
+                    `1px solid ${P.line}`,
+                  background: P.white,
+                  cursor: "pointer",
+                  fontSize: 20
+                }}
+              >
+                {"\u00d7"}
+              </button>
+            </div>
+
+            <div
+              style={{
+                padding: 20,
+                display: "grid",
+                gap: 13
+              }}
+            >
+              <div>
+                <span style={labelStyle}>
+                  Event type
+                </span>
+
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 8
+                  }}
+                >
+                  <Btn
+                    label="Match"
+                    variant={
+                      eventDraft.event_type ===
+                      "match"
+                        ? "primary"
+                        : "ghost"
+                    }
+                    onClick={() =>
+                      setEventDraft(
+                        (draft) => ({
+                          ...draft,
+                          event_type:
+                            "match"
+                        })
+                      )
+                    }
+                  />
+
+                  <Btn
+                    label="Other Event"
+                    variant={
+                      eventDraft.event_type ===
+                      "event"
+                        ? "primary"
+                        : "ghost"
+                    }
+                    onClick={() =>
+                      setEventDraft(
+                        (draft) => ({
+                          ...draft,
+                          event_type:
+                            "event"
+                        })
+                      )
+                    }
+                  />
+                </div>
+              </div>
+
+              {eventDraft.event_type ===
+                "event" && (
+                <label>
+                  <span style={labelStyle}>
+                    Event category
+                  </span>
+
+                  <select
+                    value={
+                      eventDraft.event_category
+                    }
+                    onChange={(e) =>
+                      setEventDraft(
+                        (draft) => ({
+                          ...draft,
+                          event_category:
+                            e.target.value
+                        })
+                      )
+                    }
+                    style={inputStyle}
+                  >
+                    <option>
+                      Blitz
+                    </option>
+                    <option>
+                      Tournament
+                    </option>
+                    <option>
+                      Meeting
+                    </option>
+                    <option>
+                      Strength & Conditioning
+                    </option>
+                    <option>
+                      Team Social
+                    </option>
+                    <option>
+                      Fundraiser
+                    </option>
+                    <option>
+                      Team Event
+                    </option>
+                    <option>
+                      Other
+                    </option>
+                  </select>
+                </label>
+              )}
+
+              {eventDraft.event_type ===
+                "match" && (
+                <>
+                  <label>
+                    <span style={labelStyle}>
+                      Opponent
+                    </span>
+
+                    <input
+                      value={
+                        eventDraft.opponent
+                      }
+                      onChange={(e) =>
+                        setEventDraft(
+                          (draft) => ({
+                            ...draft,
+                            opponent:
+                              e.target.value
+                          })
+                        )
+                      }
+                      placeholder="e.g. St Sylvester's"
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label>
+                    <span style={labelStyle}>
+                      Home / Away
+                    </span>
+
+                    <select
+                      value={
+                        eventDraft.home_away
+                      }
+                      onChange={(e) =>
+                        setEventDraft(
+                          (draft) => ({
+                            ...draft,
+                            home_away:
+                              e.target.value
+                          })
+                        )
+                      }
+                      style={inputStyle}
+                    >
+                      <option value="home">
+                        Home
+                      </option>
+                      <option value="away">
+                        Away
+                      </option>
+                      <option value="neutral">
+                        Neutral
+                      </option>
+                    </select>
+                  </label>
+                </>
+              )}
+
+              <label>
+                <span style={labelStyle}>
+                  Title
+                </span>
+
+                <input
+                  value={eventDraft.title}
+                  onChange={(e) =>
+                    setEventDraft(
+                      (draft) => ({
+                        ...draft,
+                        title:
+                          e.target.value
+                      })
+                    )
+                  }
+                  placeholder={
+                    eventDraft.event_type ===
+                    "match"
+                      ? suggestedEventTitle(
+                          eventDraft
+                        )
+                      : "e.g. Hurling Blitz"
+                  }
+                  style={inputStyle}
+                />
+              </label>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns:
+                    "repeat(auto-fit,minmax(135px,1fr))",
+                  gap: 10
+                }}
+              >
+                <label>
+                  <span style={labelStyle}>
+                    Date
+                  </span>
+
+                  <input
+                    type="date"
+                    value={
+                      eventDraft.date
+                    }
+                    onChange={(e) =>
+                      setEventDraft(
+                        (draft) => ({
+                          ...draft,
+                          date:
+                            e.target.value
+                        })
+                      )
+                    }
+                    style={inputStyle}
+                  />
+                </label>
+
+                <label>
+                  <span style={labelStyle}>
+                    Meet time
+                  </span>
+
+                  <input
+                    type="time"
+                    value={
+                      eventDraft.meet_time
+                    }
+                    onChange={(e) =>
+                      setEventDraft(
+                        (draft) => ({
+                          ...draft,
+                          meet_time:
+                            e.target.value
+                        })
+                      )
+                    }
+                    style={inputStyle}
+                  />
+                </label>
+
+                <label>
+                  <span style={labelStyle}>
+                    Start
+                  </span>
+
+                  <input
+                    type="time"
+                    value={
+                      eventDraft.start_time
+                    }
+                    onChange={(e) =>
+                      setEventDraft(
+                        (draft) => ({
+                          ...draft,
+                          start_time:
+                            e.target.value
+                        })
+                      )
+                    }
+                    style={inputStyle}
+                  />
+                </label>
+
+                <label>
+                  <span style={labelStyle}>
+                    Finish
+                  </span>
+
+                  <input
+                    type="time"
+                    value={
+                      eventDraft.end_time
+                    }
+                    onChange={(e) =>
+                      setEventDraft(
+                        (draft) => ({
+                          ...draft,
+                          end_time:
+                            e.target.value
+                        })
+                      )
+                    }
+                    style={inputStyle}
+                  />
+                </label>
+              </div>
+
+              <label>
+                <span style={labelStyle}>
+                  Venue / location
+                </span>
+
+                <input
+                  value={
+                    eventDraft.location
+                  }
+                  onChange={(e) =>
+                    setEventDraft(
+                      (draft) => ({
+                        ...draft,
+                        location:
+                          e.target.value
+                      })
+                    )
+                  }
+                  placeholder="Venue or address"
+                  style={inputStyle}
+                />
+              </label>
+
+              <label>
+                <span style={labelStyle}>
+                  Notes
+                </span>
+
+                <textarea
+                  value={
+                    eventDraft.notes
+                  }
+                  onChange={(e) =>
+                    setEventDraft(
+                      (draft) => ({
+                        ...draft,
+                        notes:
+                          e.target.value
+                      })
+                    )
+                  }
+                  rows={4}
+                  style={{
+                    ...inputStyle,
+                    height: "auto",
+                    padding: 10,
+                    resize: "vertical"
+                  }}
+                />
+              </label>
+
+              <div>
+                <span style={labelStyle}>
+                  Who is this for?
+                </span>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns:
+                      "repeat(2, minmax(0, 1fr))",
+                    gap: 8
+                  }}
+                >
+                  {[
+                    [
+                      "football_a",
+                      "Football A"
+                    ],
+                    [
+                      "football_b",
+                      "Football B"
+                    ],
+                    [
+                      "hurling_a",
+                      String(
+                        selectedTeam?.gender || ""
+                      ).toLowerCase() === "girls"
+                        ? "Camogie A"
+                        : "Hurling A"
+                    ],
+                    [
+                      "hurling_b",
+                      String(
+                        selectedTeam?.gender || ""
+                      ).toLowerCase() === "girls"
+                        ? "Camogie B"
+                        : "Hurling B"
+                    ]
+                  ].map(([key, label]) => {
+                    const selected =
+                      (
+                        eventDraft.subgroup_keys ||
+                        []
+                      ).includes(key);
+
+                    return (
+                      <label
+                        key={key}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          padding: "10px 11px",
+                          borderRadius: 10,
+                          border:
+                            selected
+                              ? `1.5px solid ${P.p600}`
+                              : `1px solid ${P.line}`,
+                          background:
+                            selected
+                              ? P.p50
+                              : P.white,
+                          fontFamily: F.body,
+                          fontSize: 11,
+                          fontWeight:
+                            selected ? 800 : 600,
+                          color: P.ink,
+                          cursor: "pointer"
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={(e) =>
+                            setEventDraft(
+                              (draft) => {
+                                const current =
+                                  Array.isArray(
+                                    draft.subgroup_keys
+                                  )
+                                    ? draft.subgroup_keys
+                                    : [];
+
+                                return {
+                                  ...draft,
+
+                                  subgroup_keys:
+                                    e.target.checked
+                                      ? Array.from(
+                                          new Set([
+                                            ...current,
+                                            key
+                                          ])
+                                        )
+                                      : current.filter(
+                                          (value) =>
+                                            value !== key
+                                        )
+                                };
+                              }
+                            )
+                          }
+                        />
+
+                        <span>{label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+
+                <div
+                  style={{
+                    marginTop: 7,
+                    padding: "8px 10px",
+                    borderRadius: 9,
+                    background: P.soft,
+                    fontFamily: F.body,
+                    fontSize: 9,
+                    lineHeight: 1.45,
+                    color: P.muted
+                  }}
+                >
+                  Leave all groups unchecked for
+                  the whole team. You can select
+                  more than one group.
+                </div>
+              </div>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 9,
+                  fontFamily: F.body,
+                  fontSize: 11,
+                  color: P.ink
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={
+                    eventDraft.attendance_required
+                  }
+                  onChange={(e) =>
+                    setEventDraft(
+                      (draft) => ({
+                        ...draft,
+                        attendance_required:
+                          e.target.checked
+                      })
+                    )
+                  }
+                />
+
+                Track attendance in Connect
+              </label>
+
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 9,
+                  fontFamily: F.body,
+                  fontSize: 11,
+                  color: P.ink
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={
+                    eventDraft.require_decline_reason
+                  }
+                  onChange={(e) =>
+                    setEventDraft(
+                      (draft) => ({
+                        ...draft,
+                        require_decline_reason:
+                          e.target.checked
+                      })
+                    )
+                  }
+                />
+
+                Require reason if unavailable
+              </label>
+
+              {eventError && (
+                <div
+                  style={{
+                    padding: "10px 12px",
+                    borderRadius: 9,
+                    background: "#FEF2F2",
+                    color: "#B91C1C",
+                    fontFamily: F.body,
+                    fontSize: 11,
+                    fontWeight: 700
+                  }}
+                >
+                  {eventError}
+                </div>
+              )}
+
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  marginTop: 4,
+                  flexWrap: "wrap"
+                }}
+              >
+                {editingEventId && (
+                  <>
+                    <button
+                      type="button"
+                      disabled={savingEvent}
+                      onClick={deleteCalendarEvent}
+                      style={{
+                        height: 38,
+                        padding: "0 14px",
+                        borderRadius: 10,
+                        border: "1px solid #fecaca",
+                        background: "#fff",
+                        color: "#dc2626",
+                        fontFamily: F.body,
+                        fontSize: 11,
+                        fontWeight: 800,
+                        cursor:
+                          savingEvent
+                            ? "not-allowed"
+                            : "pointer"
+                      }}
+                    >
+                      Delete Event
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={savingEvent}
+                      onClick={cancelCalendarEvent}
+                      style={{
+                        height: 38,
+                        padding: "0 14px",
+                        borderRadius: 10,
+                        border: "1px solid #fed7aa",
+                        background: "#fff7ed",
+                        color: "#c2410c",
+                        fontFamily: F.body,
+                        fontSize: 11,
+                        fontWeight: 800,
+                        cursor:
+                          savingEvent
+                            ? "not-allowed"
+                            : "pointer"
+                      }}
+                    >
+                      Cancel Event
+                    </button>
+                  </>
+                )}
+
+                <div style={{ flex: 1 }} />
+
+                <Btn
+                  label="Close"
+                  variant="ghost"
+                  onClick={() =>
+                    setShowEventModal(false)
+                  }
+                />
+
+                <Btn
+                  label={
+                    savingEvent
+                      ? "Saving..."
+                      : editingEventId
+                        ? "Save Changes"
+                        : "Add to Calendar"
+                  }
+                  variant="primary"
+                  onClick={saveEvent}
+                />
+              </div>
+
+              <div
+                style={{
+                  fontFamily: F.body,
+                  fontSize: 9,
+                  color: P.muted,
+                  textAlign: "right"
+                }}
+              >
+                Matches and events are shared with Spraoi Connect.
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
 function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches, diagramMap, selectedTeam, onNav, editingSession, onClearEdit, onEditSession }) {
   const [showFirstSessionModal, setShowFirstSessionModal] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);

@@ -739,14 +739,47 @@ const selectedTeam=visibleTeams.find(
     await loadAll();
   }
   function eventComposer(event,mode="event_invite"){
-    const location=event.facility?.name||event.location||"Location TBC"; const when=fmt(event.starts_at); const title=event.event_type==="match"?(event.opponent?`${shortTeam(selectedTeam)} v ${event.opponent}`:`${shortTeam(selectedTeam)} match`):`${shortTeam(selectedTeam)} training`;
-    const isTrainingAllocation=event.event_type==="training"&&event.source==="club_allocation";
-    const body=mode==="reminder"
-      ? `Reminder: please respond for ${event.title||title} · ${when} · ${location}.`
-      : isTrainingAllocation
-        ? `Training confirmed for ${shortTeam(selectedTeam)}\n${when}\n${location}${event.notes?`\n${event.notes}`:""}\n\nPlease confirm availability in Spraoi Academy.`
-        : `${event.title||title}\n${when}\n${location}${event.notes?`\n${event.notes}`:""}\n\nPlease confirm availability in Spraoi Academy.`;
-    setComposer({audienceType:mode==="reminder"?"no_response":"team",subgroupKey:"",messageType:mode,title:mode==="reminder"?`Response reminder · ${title}`:isTrainingAllocation?`Training confirmed · ${shortTeam(selectedTeam)}`:title,body,eventId:event.id,groupId:"",playerIds:[],priority:event.status==="changed"?"important":"normal",requireDeclineReason:false});
+    const location=event.facility?.name||event.location||"Location TBC";
+    const when=fmt(event.starts_at);
+
+    const fallbackTitle=
+      event.event_type==="match"
+        ? (event.opponent
+            ? `${shortTeam(selectedTeam)} v ${event.opponent}`
+            : `${shortTeam(selectedTeam)} match`)
+        : event.event_type==="event"
+          ? `${shortTeam(selectedTeam)} event`
+          : `${shortTeam(selectedTeam)} training`;
+    const displayTitle=event.title||fallbackTitle;
+
+    const isTrainingAllocation=
+      event.event_type==="training" &&
+      event.source==="club_allocation";
+
+    const body=
+      mode==="reminder"
+        ? `Reminder: please respond for ${displayTitle} - ${when} - ${location}.`
+        : isTrainingAllocation
+          ? `Training confirmed for ${shortTeam(selectedTeam)}\n${when}\n${location}${event.notes?`\n${event.notes}`:""}\n\nPlease confirm availability in Spraoi.`
+          : `${displayTitle}\n${when}\n${location}${event.notes?`\n${event.notes}`:""}\n\nPlease confirm availability in Spraoi.`;
+
+    setComposer({
+      audienceType:mode==="reminder"?"no_response":"team",
+      subgroupKey:"",
+      messageType:mode,
+      title:
+        mode==="reminder"
+          ? `Response reminder - ${displayTitle}`
+          : isTrainingAllocation
+            ? `Training confirmed - ${shortTeam(selectedTeam)}`
+            : displayTitle,
+      body,
+      eventId:event.id,
+      groupId:"",
+      playerIds:[],
+      priority:event.status==="changed"?"important":"normal",
+      requireDeclineReason:Boolean(event.require_decline_reason)
+    });
   }
   function openSavedDraft(message){
     setComposer({
@@ -845,6 +878,8 @@ const selectedTeam=visibleTeams.find(
   const nav=CONNECT_NAV;
   const mobileNav=CONNECT_MOBILE_NAV;
   const upcoming=teamEvents.filter(e=>e.status!=="cancelled"&&new Date(e.starts_at)>=new Date(Date.now()-86400000));
+  const cancelledEvents=teamEvents.filter(e=>e.status==="cancelled").slice().sort((a,b)=>new Date(b.starts_at)-new Date(a.starts_at));
+
   const outstanding=upcoming.reduce((n,e)=>n+noResponseCount(e),0);
   const nextPublishedTraining=upcoming.find(e=>e.event_type==="training"&&e.source==="club_allocation")||upcoming.find(e=>e.event_type==="training")||null;
 
@@ -923,7 +958,436 @@ const selectedTeam=visibleTeams.find(
         </div>
       </>}
 
-      {tab==="events"&&<div>{upcoming.map(e=><Card key={e.id} style={{padding:16,marginBottom:10}}><div style={{display:"flex",justifyContent:"space-between",gap:8,flexWrap:"wrap"}}><div><div style={{fontWeight:800}}>{e.title}</div><div style={{fontSize:10,color:C.muted,marginTop:3}}>{fmt(e.starts_at)} · {e.facility?.name||e.location||"Location TBC"}</div></div><Pill>{e.event_type}</Pill></div><div style={{display:"flex",gap:7,marginTop:12,flexWrap:"wrap"}}><Pill tone="yes">{eventPlayers(e).filter(p=>responses.some(r=>r.event_id===e.id&&r.player_id===p.id&&r.response==="yes")).length} Yes</Pill><Pill tone="no">{eventPlayers(e).filter(p=>responses.some(r=>r.event_id===e.id&&r.player_id===p.id&&r.response==="no")).length} No</Pill><Pill tone="maybe">{eventPlayers(e).filter(p=>responses.some(r=>r.event_id===e.id&&r.player_id===p.id&&r.response==="maybe")).length} Maybe</Pill><Pill tone="warn">{noResponseCount(e)} No response</Pill></div>{canSendSelected&&<div style={{display:"flex",gap:8,marginTop:12,flexWrap:"wrap"}}><Btn onClick={()=>eventComposer(e)}>Send / resend event</Btn>{noResponseCount(e)>0&&<Btn ghost onClick={()=>eventComposer(e,"reminder")}>Message no response only</Btn>}</div>}</Card>)}</div>}
+      {tab==="events"&&<div>
+
+        {upcoming.map(e=>{
+
+          const eventPlayerRows=eventPlayers(e);
+
+
+
+          const accepted=eventPlayerRows.filter(p=>
+
+            responses.some(r=>
+
+              r.event_id===e.id &&
+
+              r.player_id===p.id &&
+
+              r.response==="accepted"
+
+            )
+
+          ).length;
+
+
+
+          const declined=eventPlayerRows.filter(p=>
+
+            responses.some(r=>
+
+              r.event_id===e.id &&
+
+              r.player_id===p.id &&
+
+              r.response==="declined"
+
+            )
+
+          ).length;
+
+
+
+          const noResponse=eventPlayerRows.length-accepted-declined;
+
+
+
+          return (
+
+            <Card key={e.id} style={{padding:16,marginBottom:10}}>
+
+              <div style={{
+
+                display:"flex",
+
+                justifyContent:"space-between",
+
+                gap:8,
+
+                flexWrap:"wrap"
+
+              }}>
+
+                <div>
+
+                  <div style={{fontWeight:800}}>
+
+                    {e.title}
+
+                  </div>
+
+
+
+                  <div style={{
+
+                    fontSize:10,
+
+                    color:C.muted,
+
+                    marginTop:3
+
+                  }}>
+
+                    {fmt(e.starts_at)}
+
+                    {" · "}
+
+                    {e.facility?.name||e.location||"Location TBC"}
+
+                  </div>
+
+                </div>
+
+
+
+                <Pill>{e.event_type}</Pill>
+
+              </div>
+
+
+
+              <div style={{
+
+                display:"flex",
+
+                gap:7,
+
+                marginTop:12,
+
+                flexWrap:"wrap"
+
+              }}>
+
+                <Pill tone="yes">
+
+                  {accepted} Accepted
+
+                </Pill>
+
+
+
+                <Pill tone="no">
+
+                  {declined} Declined
+
+                </Pill>
+
+
+
+                <Pill tone="warn">
+
+                  {noResponse} No response
+
+                </Pill>
+
+              </div>
+
+
+
+              <details style={{
+
+                marginTop:12,
+
+                paddingTop:10,
+
+                borderTop:`1px solid ${C.line}`
+
+              }}>
+
+                <summary style={{
+
+                  cursor:"pointer",
+
+                  fontSize:11,
+
+                  fontWeight:800
+
+                }}>
+
+                  View responses
+
+                </summary>
+
+
+
+                <div style={{marginTop:8}}>
+
+                  {eventPlayerRows.map(p=>{
+
+                    const r=responses.find(x=>
+
+                      x.event_id===e.id &&
+
+                      x.player_id===p.id
+
+                    );
+
+
+
+                    return (
+
+                      <div
+
+                        key={p.id}
+
+                        style={{
+
+                          display:"flex",
+
+                          justifyContent:"space-between",
+
+                          gap:10,
+
+                          padding:"8px 0",
+
+                          borderTop:`1px solid ${C.line}`,
+
+                          fontSize:11
+
+                        }}
+
+                      >
+
+                        <span>{p.name}</span>
+
+
+
+                        <Pill
+
+                          tone={
+
+                            r?.response==="accepted"
+
+                              ? "yes"
+
+                              : r?.response==="declined"
+
+                                ? "no"
+
+                                : "warn"
+
+                          }
+
+                        >
+
+                          {r?.response==="accepted"
+
+                            ? "ACCEPTED"
+
+                            : r?.response==="declined"
+
+                              ? "DECLINED"
+
+                              : "NO RESPONSE"}
+
+                        </Pill>
+
+                      </div>
+
+                    );
+
+                  })}
+
+                </div>
+
+              </details>
+
+
+
+              {canSendSelected&&
+
+                <div style={{
+
+                  display:"flex",
+
+                  gap:8,
+
+                  marginTop:12,
+
+                  flexWrap:"wrap"
+
+                }}>
+
+                  <Btn onClick={()=>eventComposer(e)}>
+
+                    Send / resend event
+
+                  </Btn>
+
+
+
+                  {noResponse>0&&
+
+                    <Btn
+
+                      ghost
+
+                      onClick={()=>eventComposer(e,"reminder")}
+
+                    >
+
+                      Message no response only
+
+                    </Btn>
+
+                  }
+
+                </div>
+
+              }
+
+            </Card>
+
+          );
+
+        })}
+
+
+        {cancelledEvents.length>0&&<>
+          <div style={{
+            display:"flex",
+            justifyContent:"space-between",
+            alignItems:"center",
+            gap:8,
+            margin:"22px 0 10px"
+          }}>
+            <div>
+              <div style={{
+                fontFamily:F.display,
+                fontSize:16,
+                fontWeight:800
+              }}>
+                Cancelled / History
+              </div>
+              <div style={{
+                fontSize:10,
+                color:C.muted,
+                marginTop:3
+              }}>
+                Cancelled events are kept for reference. Sending and availability actions are disabled.
+              </div>
+            </div>
+
+            <Pill tone="no">
+              {cancelledEvents.length} cancelled
+            </Pill>
+          </div>
+
+          {cancelledEvents.map(e=>{
+            const eventPlayerRows=eventPlayers(e);
+
+            const accepted=eventPlayerRows.filter(p=>
+              responses.some(r=>
+                r.event_id===e.id &&
+                r.player_id===p.id &&
+                r.response==="accepted"
+              )
+            ).length;
+
+            const declined=eventPlayerRows.filter(p=>
+              responses.some(r=>
+                r.event_id===e.id &&
+                r.player_id===p.id &&
+                r.response==="declined"
+              )
+            ).length;
+
+            const noResponse=Math.max(
+              0,
+              eventPlayerRows.length-accepted-declined
+            );
+
+            return (
+              <Card
+                key={`cancelled-${e.id}`}
+                style={{
+                  padding:16,
+                  marginBottom:10,
+                  opacity:.82,
+                  border:"1px solid #fecaca"
+                }}
+              >
+                <div style={{
+                  display:"flex",
+                  justifyContent:"space-between",
+                  gap:8,
+                  flexWrap:"wrap"
+                }}>
+                  <div>
+                    <div style={{fontWeight:800}}>
+                      {e.title}
+                    </div>
+
+                    <div style={{
+                      fontSize:10,
+                      color:C.muted,
+                      marginTop:3
+                    }}>
+                      {fmt(e.starts_at)}
+                      {" - "}
+                      {e.facility?.name||e.location||"Location TBC"}
+                    </div>
+                  </div>
+
+                  <div style={{
+                    display:"flex",
+                    gap:6,
+                    alignItems:"center",
+                    flexWrap:"wrap"
+                  }}>
+                    <Pill>{e.event_type}</Pill>
+                    <Pill tone="no">CANCELLED</Pill>
+                  </div>
+                </div>
+
+                <div style={{
+                  display:"flex",
+                  gap:7,
+                  marginTop:12,
+                  flexWrap:"wrap"
+                }}>
+                  <Pill tone="yes">
+                    {accepted} Accepted
+                  </Pill>
+
+                  <Pill tone="no">
+                    {declined} Declined
+                  </Pill>
+
+                  <Pill tone="warn">
+                    {noResponse} No response
+                  </Pill>
+                </div>
+
+                <div style={{
+                  marginTop:12,
+                  padding:"10px 12px",
+                  borderRadius:10,
+                  background:"#fef2f2",
+                  color:"#991b1b",
+                  fontSize:10,
+                  fontWeight:700,
+                  lineHeight:1.45
+                }}>
+                  This event has been cancelled. Parent responses are locked and no further event reminders can be sent.
+                </div>
+              </Card>
+            );
+          })}
+        </>}
+      </div>}
+
+
 
       {tab==="messages"&&<>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,marginBottom:12,flexWrap:"wrap"}}>
