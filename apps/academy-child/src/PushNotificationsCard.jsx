@@ -43,10 +43,52 @@ async function getSubscription() {
   const registration = await navigator.serviceWorker.ready;
   return registration.pushManager.getSubscription();
 }
+function isInstalledApp() {
+  return (
+    window.matchMedia?.("(display-mode: standalone)")?.matches ||
+    window.navigator.standalone === true
+  );
+}
+
+async function saveSubscription(subscription, userId) {
+  const json = subscription?.toJSON?.() || {};
+  const p256dhBuffer = subscription?.getKey?.("p256dh");
+  const authBuffer = subscription?.getKey?.("auth");
+
+  const p256dh =
+    json.keys?.p256dh ||
+    (p256dhBuffer ? keyToBase64Url(p256dhBuffer) : "");
+
+  const authKey =
+    json.keys?.auth ||
+    (authBuffer ? keyToBase64Url(authBuffer) : "");
+
+  if (!subscription?.endpoint || !p256dh || !authKey) {
+    throw new Error("Incomplete push subscription on this device.");
+  }
+
+  const { error } = await supabase
+    .from("push_subscriptions")
+    .upsert(
+      {
+        user_id: userId,
+        endpoint: subscription.endpoint,
+        p256dh,
+        auth_key: authKey,
+        user_agent: navigator.userAgent,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "endpoint" }
+    );
+
+  if (error) throw error;
+}
 
 export default function PushNotificationsCard({ userId }) {
   const [state, setState] = useState("checking");
   const [message, setMessage] = useState("");
+  const [testing, setTesting] = useState(false);
+  const installed = isInstalledApp();
 
   const supported =
     typeof window !== "undefined" &&
@@ -66,8 +108,26 @@ export default function PushNotificationsCard({ userId }) {
       try {
         const subscription = await getSubscription();
 
+        if (
+          subscription &&
+          userId &&
+          Notification.permission === "granted"
+        ) {
+          try {
+            await saveSubscription(subscription, userId);
+          } catch (syncError) {
+            console.error("Push subscription sync failed:", syncError);
+          }
+        }
+
         if (!cancelled) {
           setState(subscription ? "enabled" : "disabled");
+
+          if (subscription && installed) {
+            setMessage(
+              "Notifications are enabled for the installed Spraoi app on this device."
+            );
+          }
         }
       } catch (error) {
         console.error("Push subscription check failed:", error);
@@ -124,35 +184,7 @@ export default function PushNotificationsCard({ userId }) {
           });
       }
 
-      const json = subscription.toJSON();
-      const p256dh =
-        json.keys?.p256dh ||
-        keyToBase64Url(
-          subscription.getKey("p256dh")
-        );
-      const authKey =
-        json.keys?.auth ||
-        keyToBase64Url(
-          subscription.getKey("auth")
-        );
-
-      const { error } = await supabase
-        .from("push_subscriptions")
-        .upsert(
-          {
-            user_id: userId,
-            endpoint: subscription.endpoint,
-            p256dh,
-            auth_key: authKey,
-            user_agent: navigator.userAgent,
-            updated_at: new Date().toISOString(),
-          },
-          {
-            onConflict: "endpoint",
-          }
-        );
-
-      if (error) throw error;
+      await saveSubscription(subscription, userId);
 
       setState("enabled");
       setMessage(
@@ -198,6 +230,45 @@ export default function PushNotificationsCard({ userId }) {
       setMessage(
         `Could not disable notifications: ${error.message}`
       );
+    }
+  }
+  async function sendTestPush() {
+    if (!userId) return;
+
+    setTesting(true);
+    setMessage("");
+
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        "send-spraoi-push",
+        {
+          body: {
+            title: "Spraoi test",
+            body: "Push notifications are working on this installed app.",
+            url: "https://app.spraoisports.com/",
+            tag: "spraoi-installed-test",
+          },
+        }
+      );
+
+      if (error) throw error;
+
+      if (!data?.ok || !data?.sent) {
+        throw new Error(
+          data?.error || "No active subscription received the test."
+        );
+      }
+
+      setMessage(
+        "Test notification sent. You should receive it on this device now."
+      );
+    } catch (error) {
+      console.error("Test push failed:", error);
+      setMessage(
+        `Could not send test notification: ${error.message}`
+      );
+    } finally {
+      setTesting(false);
     }
   }
 
@@ -322,6 +393,29 @@ export default function PushNotificationsCard({ userId }) {
             : enabled
               ? "Disable notifications"
               : "Enable notifications"}
+        </button>
+      )}
+      {enabled && (
+        <button
+          type="button"
+          onClick={sendTestPush}
+          disabled={testing}
+          style={{
+            width: "100%",
+            marginTop: 10,
+            padding: "12px 14px",
+            borderRadius: 12,
+            border: `1px solid ${CARD.border}`,
+            background: "#eff6ff",
+            color: CARD.primary,
+            fontFamily: "'League Spartan',sans-serif",
+            fontWeight: 800,
+            fontSize: 14,
+            cursor: testing ? "default" : "pointer",
+            opacity: testing ? 0.65 : 1,
+          }}
+        >
+          {testing ? "Sending test..." : "Send test notification"}
         </button>
       )}
 

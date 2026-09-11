@@ -35,6 +35,8 @@
       content="yes"
     />
 
+    <meta name="mobile-web-app-capable" content="yes" />
+
     <meta
       name="apple-mobile-web-app-status-bar-style"
       content="default"
@@ -82,6 +84,25 @@
       select,
       textarea {
         font-family: "Work Sans", sans-serif;
+      }
+      /* SPRAOI INSTALLED MOBILE TEXT */
+      @media (display-mode: standalone) and (max-width: 700px) {
+        html {
+          -webkit-text-size-adjust: 115%;
+          text-size-adjust: 115%;
+        }
+
+        #root [style*="font-size: 9px"]  { font-size: 11px !important; }
+        #root [style*="font-size: 10px"] { font-size: 12px !important; }
+        #root [style*="font-size: 11px"] { font-size: 13px !important; }
+        #root [style*="font-size: 12px"] { font-size: 14px !important; }
+        #root [style*="font-size: 13px"] { font-size: 14px !important; }
+
+        input,
+        select,
+        textarea {
+          font-size: 16px !important;
+        }
       }
     </style>
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=spraoi-20260817" />
