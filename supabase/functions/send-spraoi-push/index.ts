@@ -36,7 +36,7 @@ export default {
 
     try {
       const callerUserId = String(
-        ctx.userClaims?.sub || ""
+        ctx.userClaims?.id || ctx.jwtClaims?.sub || ""
       ).trim();
 
       if (!callerUserId) {
