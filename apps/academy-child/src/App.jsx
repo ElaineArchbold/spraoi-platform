@@ -3,6 +3,7 @@ import { supabase } from "./supabaseClient";
 import { LEGAL_POLICIES, LEGAL_POLICY_VERSION } from "../../../packages/ui/src/legalPolicies.js";
 import { CheckCircle, Circle, Trophy, Flame, Target, Zap, Home, Award, BookOpen, LogOut, Plus, ChevronDown, ChevronUp, User, Bell, CalendarDays} from "lucide-react";
 import ParentUpdates, { ImportantNotificationModal, useParentNotifications } from "./ParentUpdates";
+import PushNotificationsCard from "./PushNotificationsCard";
 import { registerSW } from "virtual:pwa-register";
 
 registerSW({
@@ -2391,6 +2392,8 @@ export default function App() {
             )}
 
             
+            <PushNotificationsCard userId={session?.user?.id} />
+
             <div style={{
               background:C.surface,
               borderRadius:16,

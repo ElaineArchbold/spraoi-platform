@@ -26,6 +26,7 @@ export default defineConfig({
         ]
       },
       workbox: {
+        importScripts: ["/push-sw.js"],
         navigateFallback: "/index.html",
         runtimeCaching: [
           {
