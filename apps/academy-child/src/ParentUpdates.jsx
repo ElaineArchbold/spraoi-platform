@@ -111,13 +111,45 @@ export function useParentNotifications(userId) {
       if(messageIds.length){
         const {data:messageRows,error:messageLoadError}=await supabase
           .from("connect_messages")
-          .select("id,archived_at")
+          .select("id,archived_at,event_id")
           .in("id",messageIds);
 
         if(!messageLoadError){
+          const linkedEventIds=[
+            ...new Set(
+              (messageRows||[])
+                .map(message=>message.event_id)
+                .filter(Boolean)
+            )
+          ];
+
+          let cancelledEventIds=new Set();
+
+          if(linkedEventIds.length){
+            const {data:eventRows,error:eventStatusError}=await supabase
+              .from("club_events")
+              .select("id,status")
+              .in("id",linkedEventIds);
+
+            if(!eventStatusError){
+              cancelledEventIds=new Set(
+                (eventRows||[])
+                  .filter(event=>event.status==="cancelled")
+                  .map(event=>event.id)
+              );
+            }
+          }
+
           activeMessageIds=new Set(
             (messageRows||[])
-              .filter(message=>!message.archived_at)
+              .filter(
+                message=>
+                  !message.archived_at &&
+                  (
+                    !message.event_id ||
+                    !cancelledEventIds.has(message.event_id)
+                  )
+              )
               .map(message=>message.id)
           );
         }
@@ -353,7 +385,7 @@ export function ImportantNotificationModal({
       >
         <div
           style={{
-            fontSize:10,
+            fontSize:13,
             fontWeight:900,
             color:C.primary,
             textTransform:"uppercase"
@@ -365,7 +397,7 @@ export function ImportantNotificationModal({
         <h2
           style={{
             fontFamily:"'League Spartan',sans-serif",
-            fontSize:21,
+            fontSize:24,
             margin:"8px 0",
             color:C.text
           }}
@@ -375,7 +407,7 @@ export function ImportantNotificationModal({
 
         <p
           style={{
-            fontSize:12,
+            fontSize:15,
             lineHeight:1.55,
             color:C.muted,
             whiteSpace:"pre-line"
@@ -584,6 +616,12 @@ export default function ParentUpdates({
       );
       return;
     }
+
+    if (!userId) {
+      setStatus("Please sign in again before responding.");
+      return;
+    }
+
     const child =
       players.find(
         p => p.id === event._recipient_player_id
@@ -593,19 +631,26 @@ export default function ParentUpdates({
       ) ||
       selectedPlayer;
 
-    if (!child) {
+    const playerId =
+      event._recipient_player_id ||
+      child?.id ||
+      null;
+
+    if (!playerId) {
       setStatus(
         "No linked child was found for this event."
       );
       return;
     }
 
-    const {error} = await supabase
+    setStatus("Saving availability...");
+
+    const {data,error} = await supabase
       .from("availability_responses")
       .upsert(
         {
           event_id:event.id,
-          player_id:child.id,
+          player_id:playerId,
           parent_user_id:userId,
           response,
           note:
@@ -618,14 +663,43 @@ export default function ParentUpdates({
           onConflict:
             "event_id,player_id,parent_user_id"
         }
-      );
+      )
+      .select("id,event_id,player_id,parent_user_id,response,note,responded_at")
+      .single();
 
     if (error) {
-      setStatus(error.message);
+      console.error(
+        "Availability save error:",
+        error
+      );
+      setStatus(
+        `Could not save availability: ${error.message}`
+      );
       return;
     }
 
-    setStatus("Availability saved.");
+    setResponses(current => {
+      const remaining = (current || []).filter(
+        row =>
+          !(
+            row.event_id === event.id &&
+            row.player_id === playerId &&
+            row.parent_user_id === userId
+          )
+      );
+
+      return [
+        ...remaining,
+        data
+      ];
+    });
+
+    setStatus(
+      response === "accepted"
+        ? "Accepted - availability saved."
+        : "Declined - availability saved."
+    );
+
     await loadEvents();
   }
 
@@ -635,7 +709,7 @@ export default function ParentUpdates({
         style={{
           fontFamily:"'League Spartan',sans-serif",
           fontWeight:900,
-          fontSize:20,
+          fontSize:24,
           color:C.text,
           marginBottom:12
         }}
@@ -649,7 +723,7 @@ export default function ParentUpdates({
             padding:10,
             borderRadius:10,
             background:"#e0f2fe",
-            fontSize:11,
+            fontSize:14,
             marginBottom:10
           }}
         >
@@ -672,7 +746,7 @@ export default function ParentUpdates({
         <div
           style={{
             fontWeight:900,
-            fontSize:13,
+            fontSize:16,
             marginBottom:8
           }}
         >
@@ -680,7 +754,7 @@ export default function ParentUpdates({
         </div>
 
         {events.length === 0 ?
-          <div style={{fontSize:11,color:C.muted}}>
+          <div style={{fontSize:14,color:C.muted}}>
             No upcoming team events.
           </div>
         :
@@ -749,13 +823,13 @@ export default function ParentUpdates({
                     <div style={{minWidth:0}}>
                       <div style={{
                         fontWeight:900,
-                        fontSize:13
+                        fontSize:16
                       }}>
                         {eventTitle}
                       </div>
 
                       <div style={{
-                        fontSize:10,
+                        fontSize:13,
                         color:C.muted,
                         marginTop:3
                       }}>
@@ -773,7 +847,7 @@ export default function ParentUpdates({
                         borderRadius:999,
                         background:statusBg,
                         color:statusColor,
-                        fontSize:9,
+                        fontSize:12,
                         fontWeight:900
                       }}>
                         {statusLabel}
@@ -797,7 +871,7 @@ export default function ParentUpdates({
                 }}>
                   {event.notes &&
                     <div style={{
-                      fontSize:11,
+                      fontSize:14,
                       lineHeight:1.5,
                       marginBottom:10
                     }}>
@@ -811,9 +885,10 @@ export default function ParentUpdates({
                       gap:8
                     }}>
                       <button
-                        onClick={(e)=>{
-                          e.preventDefault();
-                          respond(event,"accepted","");
+                        type="button"
+                        onClick={async (e)=>{
+                          e.stopPropagation();
+                          await respond(event,"accepted","");
                         }}
                         style={{
                           flex:1,
@@ -822,16 +897,22 @@ export default function ParentUpdates({
                           border:`1px solid ${responseValue==="accepted" ? "#15803d" : C.line}`,
                           background:responseValue==="accepted" ? "#f0fdf4" : "#fff",
                           color:responseValue==="accepted" ? "#15803d" : C.text,
-                          fontSize:10,
-                          fontWeight:900
+                          fontSize:14,
+                          fontWeight:900,
+                          cursor:"pointer",
+                          pointerEvents:"auto",
+                          touchAction:"manipulation",
+                          position:"relative",
+                          zIndex:2
                         }}
                       >
                         ✓ Accept
                       </button>
 
                       <button
-                        onClick={(e)=>{
-                          e.preventDefault();
+                        type="button"
+                        onClick={async (e)=>{
+                          e.stopPropagation();
                           const reason =
                             String(
                               declineReasons[event.id] ??
@@ -849,7 +930,7 @@ export default function ParentUpdates({
                             return;
                           }
 
-                          respond(
+                          await respond(
                             event,
                             "declined",
                             reason
@@ -862,8 +943,13 @@ export default function ParentUpdates({
                           border:`1px solid ${responseValue==="declined" ? "#dc2626" : C.line}`,
                           background:responseValue==="declined" ? "#fef2f2" : "#fff",
                           color:responseValue==="declined" ? "#dc2626" : C.text,
-                          fontSize:10,
-                          fontWeight:900
+                          fontSize:14,
+                          fontWeight:900,
+                          cursor:"pointer",
+                          pointerEvents:"auto",
+                          touchAction:"manipulation",
+                          position:"relative",
+                          zIndex:2
                         }}
                       >
                         ✕ Decline
@@ -876,12 +962,12 @@ export default function ParentUpdates({
                     <div style={{marginTop:10}}>
                       <label style={{
                         display:"block",
-                        fontSize:10,
+                        fontSize:13,
                         fontWeight:900,
                         color:C.text,
                         marginBottom:5
                       }}>
-                        Reason required
+                        Reason if unavailable
                       </label>
 
                       <textarea
@@ -896,7 +982,7 @@ export default function ParentUpdates({
                             [event.id]:e.target.value
                           }))
                         }
-                        placeholder="Please let us know why they can't attend"
+                        placeholder="Please let us know why they cannot attend"
                         style={{
                           width:"100%",
                           boxSizing:"border-box",
@@ -906,16 +992,16 @@ export default function ParentUpdates({
                           border:`1px solid ${C.line}`,
                           borderRadius:9,
                           fontFamily:"inherit",
-                          fontSize:11
+                          fontSize:14
                         }}
                       />
 
                       <div style={{
-                        fontSize:9,
+                        fontSize:12,
                         color:C.muted,
                         marginTop:4
                       }}>
-                        Required when you select Decline.
+                        Required only if you select Decline.
                       </div>
                     </div>
                   }
@@ -948,7 +1034,7 @@ export default function ParentUpdates({
           <div
             style={{
               fontWeight:900,
-              fontSize:13
+              fontSize:16
             }}
           >
             Messages
@@ -957,7 +1043,7 @@ export default function ParentUpdates({
           {messageNotifications.filter(n=>!n.read_at).length > 0 &&
             <span
               style={{
-                fontSize:9,
+                fontSize:12,
                 fontWeight:900,
                 background:C.primary,
                 color:"#fff",
@@ -975,7 +1061,7 @@ export default function ParentUpdates({
         </div>
 
         {messageNotifications.length === 0 ?
-          <div style={{fontSize:11,color:C.muted}}>
+          <div style={{fontSize:14,color:C.muted}}>
             No messages yet.
           </div>
         :
@@ -1000,7 +1086,7 @@ export default function ParentUpdates({
             >
               <div
                 style={{
-                  fontSize:9,
+                  fontSize:12,
                   fontWeight:900,
                   letterSpacing:".04em",
                   textTransform:"uppercase",
@@ -1042,7 +1128,7 @@ export default function ParentUpdates({
 
                 <b
                   style={{
-                    fontSize:11,
+                    fontSize:14,
                     color:C.text
                   }}
                 >
@@ -1065,7 +1151,7 @@ export default function ParentUpdates({
 
               <div
                 style={{
-                  fontSize:10,
+                  fontSize:13,
                   color:C.muted,
                   marginTop:4,
                   whiteSpace:"nowrap",
@@ -1078,7 +1164,7 @@ export default function ParentUpdates({
 
               <div
                 style={{
-                  fontSize:9,
+                  fontSize:12,
                   color:C.muted,
                   marginTop:4
                 }}
@@ -1123,7 +1209,7 @@ export default function ParentUpdates({
           >
             <div
               style={{
-                fontSize:10,
+                fontSize:13,
                 fontWeight:900,
                 color:C.primary,
                 textTransform:"uppercase"
@@ -1135,7 +1221,7 @@ export default function ParentUpdates({
             <h2
               style={{
                 fontFamily:"'League Spartan',sans-serif",
-                fontSize:21,
+                fontSize:24,
                 margin:"8px 0",
                 color:C.text
               }}
@@ -1145,7 +1231,7 @@ export default function ParentUpdates({
 
             <div
               style={{
-                fontSize:10,
+                fontSize:13,
                 color:C.muted,
                 marginBottom:14
               }}
@@ -1155,7 +1241,7 @@ export default function ParentUpdates({
 
             <div
               style={{
-                fontSize:12,
+                fontSize:15,
                 lineHeight:1.65,
                 color:C.text,
                 whiteSpace:"pre-line"
