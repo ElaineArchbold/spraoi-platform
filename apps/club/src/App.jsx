@@ -3448,7 +3448,9 @@ function ClubTeamsCoreScreen({ club, ageGroups, coaches, selectedTeam, onSelectT
                 ) : (coaches || []).length === 0 ? (
                   <div style={{ padding: 16, color: P.muted, fontFamily: F.body, fontSize: 11, background: P.soft, borderRadius: 10 }}>Add coaches under Members first.</div>
                 ) : (
-                  (coaches || []).map((coach) => {
+                  (coaches || [])
+                    .filter((coach) => selectedStaff.some((row) => row.coach_id === coach.id))
+                    .map((coach) => {
                     const assignment = selectedStaff.find((row) => row.coach_id === coach.id);
                     return (
                       <div key={coach.id} className="club-staff-row" style={{

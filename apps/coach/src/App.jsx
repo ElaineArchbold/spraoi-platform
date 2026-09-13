@@ -13205,27 +13205,21 @@ export default function App() {
 
   const selectedTeamCoaches = selectedTeam?.id
     ? coaches.filter((coach) => {
-        const directTeamId =
-          coach.age_group_id ||
-          coach.team_id ||
-          coach.ageGroupId ||
-          coach.teamId;
+        const targetTeamId = String(selectedTeam.id);
 
-        if (directTeamId) {
-          return String(directTeamId) === String(selectedTeam.id);
-        }
+        const candidateTeamIds = [
+          coach.age_group_id,
+          coach.team_id,
+          coach.ageGroupId,
+          coach.teamId,
+          ...(Array.isArray(coach.age_group_ids) ? coach.age_group_ids : []),
+          ...(Array.isArray(coach.team_ids) ? coach.team_ids : []),
+          ...(Array.isArray(coach.teamIds) ? coach.teamIds : []),
+        ]
+          .filter(Boolean)
+          .map(String);
 
-        const coachTeams =
-          coach.age_group_ids ||
-          coach.team_ids ||
-          coach.teamIds ||
-          [];
-
-        return Array.isArray(coachTeams) &&
-          coachTeams.some(
-            (id) =>
-              String(id) === String(selectedTeam.id)
-          );
+        return candidateTeamIds.includes(targetTeamId);
       })
     : [];
   const [favouriteIds, setFavouriteIds] = useState(() => {
@@ -13869,7 +13863,58 @@ export default function App() {
 
     setAllActivities(enriched);
   }
-  async function loadCoaches(clubId) { const { data } = await supabase.from("coaches").select("*").eq("club_id", clubId); setCoaches(data || []); }
+  async function loadCoaches(clubId) {
+    const [
+      { data: coachData, error: coachError },
+      { data: staffData, error: staffError },
+    ] = await Promise.all([
+      supabase.from("coaches").select("*").eq("club_id", clubId),
+      supabase
+        .from("team_staff")
+        .select("coach_id,age_group_id,status")
+        .eq("club_id", clubId)
+        .eq("status", "active"),
+    ]);
+
+    if (coachError) {
+      console.error("Unable to load coaches:", coachError.message);
+      setCoaches([]);
+      return;
+    }
+
+    if (staffError) {
+      console.warn("Unable to load team staff assignments:", staffError.message);
+    }
+
+    const teamIdsByCoach = new Map();
+
+    (staffData || []).forEach((row) => {
+      if (!row.coach_id || !row.age_group_id) return;
+      const ids = teamIdsByCoach.get(row.coach_id) || [];
+      ids.push(row.age_group_id);
+      teamIdsByCoach.set(row.coach_id, ids);
+    });
+
+    setCoaches(
+      (coachData || []).map((coach) => {
+        const legacyIds = [
+          ...(Array.isArray(coach.team_ids) ? coach.team_ids : []),
+          ...(Array.isArray(coach.age_group_ids) ? coach.age_group_ids : []),
+          ...(coach.age_group_id ? [coach.age_group_id] : []),
+        ];
+
+        return {
+          ...coach,
+          team_ids: [
+            ...new Set([
+              ...legacyIds,
+              ...(teamIdsByCoach.get(coach.id) || []),
+            ].map(String)),
+          ],
+        };
+      })
+    );
+  }
   async function loadDiagramMap() { try { const r = await fetch("/diagrams/diagram-map.json"); setDiagramMap(await r.json()); } catch { } }
   async function loadUpcoming(ageGroupId) {
     if (!ageGroupId) return;
