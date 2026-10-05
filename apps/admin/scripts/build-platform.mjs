@@ -112,7 +112,65 @@ for (const module of modules) {
   // Some existing module JSX uses absolute public asset URLs such as
   // /spraoi-icon.png. Keep those available at the Admin root as well.
   copyPublicToAdminRoot(join(module.path, "public"), adminDist);
+
+  if (module.id === "coach") {
+    const coachIcons = join(module.path, "public", "icons", "coach");
+    const rootCoachIcons = join(adminDist, "icons", "coach");
+
+    if (existsSync(coachIcons)) {
+      mkdirSync(rootCoachIcons, { recursive: true });
+      cpSync(coachIcons, rootCoachIcons, { recursive: true, force: true });
+      console.log(
+        `Synced current Coach icons -> ${relative(repoRoot, rootCoachIcons)}`
+      );
+    }
+  }
 }
+
+const rootAssetsDir = join(adminDist, "assets");
+const rootJs = existsSync(rootAssetsDir)
+  ? readdirSync(rootAssetsDir)
+      .filter((name) => name.endsWith(".js"))
+      .map((name) => readFileSync(join(rootAssetsDir, name), "utf8"))
+      .join("\n")
+  : "";
+
+for (const marker of [
+  "Exercise Library",
+  "Create S&C Programme",
+  "Assign Programme",
+  "Current Assignments",
+]) {
+  if (!rootJs.includes(marker)) {
+    throw new Error(`Unified Admin bundle is missing S&C marker: ${marker}`);
+  }
+}
+
+const coachPlayerIcon = join(
+  repoRoot,
+  "apps",
+  "coach",
+  "public",
+  "icons",
+  "coach",
+  "player.svg"
+);
+
+const rootPlayerIcon = join(
+  adminDist,
+  "icons",
+  "coach",
+  "player.svg"
+);
+
+if (!filesEqual(coachPlayerIcon, rootPlayerIcon)) {
+  throw new Error(
+    "Unified Admin root Players icon does not match the current Coach icon."
+  );
+}
+
+console.log("Verified unified Admin S&C bundle markers.");
+console.log("Verified current Coach Players icon at the Admin root.");
 
 console.log("\nAdmin production output created:");
 console.log("  /          -> Admin router");

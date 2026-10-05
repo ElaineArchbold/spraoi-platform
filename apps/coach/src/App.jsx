@@ -15466,6 +15466,9 @@ const { error: activityError } = await supabase
       {screen === "coach-tactics" && (
         <TacticsBoard selectedTeam={selectedTeam} />
       )}
+      {screen === "coach-strength" && (
+        <StrengthConditioningScreen selectedTeam={selectedTeam} />
+      )}
       {screen === "coach-players" && <PlayersScreen club={club} ageGroups={ageGroups} selectedTeam={selectedTeam} userRole={selectedTeamUserRole} />}
 
       {/* CLUB screens */}
