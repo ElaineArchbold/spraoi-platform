@@ -7194,7 +7194,7 @@ export default function App() {
       })),
       ...fitnessExercises.filter((ex) => (ex.activity_type || "exercise") !== "club" && (ex.activity_type || "exercise") !== "recovery").map((ex) => {
         const claim = progress.find((p) => p.exercise_id === ex.id);
-        return { id:`activity-${ex.id}`, label:ex.title, section:"S&C", icon:"/speed-mechanics-icon.png", color:C.athletic, done:Boolean(claim) && (claim.status || "approved") === "approved", pending:claim?.status === "pending" };
+        return { id:`activity-${ex.id}`, label:ex.title, section:"S&C", icon:"/strength-conditioning-icon.svg", color:C.athletic, done:Boolean(claim) && (claim.status || "approved") === "approved", pending:claim?.status === "pending" };
       }),
       ...fitnessExercises.filter((ex) => (ex.activity_type || "exercise") === "club").map((ex) => {
         const claim = progress.find((p) => p.exercise_id === ex.id);
@@ -7387,7 +7387,7 @@ export default function App() {
             }}
           >
             <img
-              src="/speed-mechanics-icon.png"
+              src="/strength-conditioning-icon.svg"
               alt=""
               style={{
                 width: 29,

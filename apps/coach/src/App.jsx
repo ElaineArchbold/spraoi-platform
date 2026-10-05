@@ -408,6 +408,7 @@ function secondaryNavAsset(moduleKey, id) {
       "coach-sessions": "/icons/coach/sessions.svg",
       "coach-drills": "/icons/coach/drills.svg",
       "coach-tactics": "/icons/coach/tactics.svg",
+      "coach-strength": "/icons/coach/strength-conditioning.svg",
       "coach-players": "/icons/coach/player.svg",
     },
     academy: {
@@ -550,7 +551,7 @@ const MODULES = {
       { id: "coach-sessions", icon: "▶", label: "Sessions" },
       { id: "coach-drills", icon: "◇", label: "Drills" },
       { id: "coach-tactics", icon: "/icons/coach/tactics.svg", label: "Tactics Board" },
-      { id: "coach-strength", icon: "◆", label: "Strength & Conditioning" },
+      { id: "coach-strength", icon: "/icons/coach/strength-conditioning.svg", label: "Strength & Conditioning" },
       { id: "coach-players", icon: "●", label: "Players" },
     ]
   },
