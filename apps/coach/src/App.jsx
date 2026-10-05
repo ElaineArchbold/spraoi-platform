@@ -410,7 +410,7 @@ function secondaryNavAsset(moduleKey, id) {
       "coach-drills": "/icons/coach/drills.svg",
       "coach-tactics": "/icons/coach/tactics.svg",
       "coach-strength": "/icons/coach/strength-conditioning.svg",
-      "coach-players": "/icons/coach/player.svg",
+      "coach-players": "/icons/coach/players-v2.svg",
     },
     academy: {
       "academy-dashboard": "/icons/academy/home.png",
