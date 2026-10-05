@@ -407,7 +407,7 @@ function secondaryNavAsset(moduleKey, id) {
       "coach-planner": "/icons/coach/planner.svg",
       "coach-sessions": "/icons/coach/sessions.svg",
       "coach-drills": "/icons/coach/drills.svg",
-      "coach-tactics": "/icons/coach/drills.svg",
+      "coach-tactics": "/icons/coach/tactics.svg",
       "coach-players": "/icons/coach/player.svg",
     },
     academy: {
@@ -549,7 +549,8 @@ const MODULES = {
       { id: "coach-planner", icon: "◫", label: "Planner" },
       { id: "coach-sessions", icon: "▶", label: "Sessions" },
       { id: "coach-drills", icon: "◇", label: "Drills" },
-      { id: "coach-tactics", icon: "✎", label: "Tactics Board" },
+      { id: "coach-tactics", icon: "/icons/coach/tactics.svg", label: "Tactics Board" },
+      { id: "coach-strength", icon: "◆", label: "Strength & Conditioning" },
       { id: "coach-players", icon: "●", label: "Players" },
     ]
   },
@@ -1029,7 +1030,7 @@ function CoachAttendanceCard({ selectedTeam }) {
               marginTop: 3,
             }}
           >
-            {selectedTeam?.label || "Team"} — Managed in Spraoi Club
+            {teamDisplayName(selectedTeam)} — Managed in Spraoi Club
           </div>
         </div>
 
@@ -1605,10 +1606,7 @@ function DashboardScreen({ club, ageGroups, planSessions, weeklyPlan, upcomingSe
           {/* Academy Preview */}
           <div
             onClick={() =>
-              openAdminModule(
-                "academy",
-                "academy-preview"
-              )
+              onNav("coach-child-preview")
             }
             className="spraoi-stat-card coach-summary-card"
             style={{
@@ -4285,7 +4283,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
   const [day, setDay] = useState(() => {
     const targetDate =
       editingSession?.session_date ||
-      sessionStorage.getItem("spraoi_builder_target_date");
+      (sessionStorage.getItem("spraoi_builder_target_date") || localStorage.getItem("spraoi_builder_target_date"));
 
     if (targetDate) {
       const parts = targetDate.split("-");
@@ -4316,7 +4314,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
   const [weekOffset, setWeekOffset] = useState(() => {
     const targetDate =
       editingSession?.session_date ||
-      sessionStorage.getItem("spraoi_builder_target_date");
+      (sessionStorage.getItem("spraoi_builder_target_date") || localStorage.getItem("spraoi_builder_target_date"));
 
     if (!targetDate) return 0;
 
@@ -4418,16 +4416,190 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
   const previewRef = useRef(null);
   const allocationRequestRef = useRef(0);
   const userTouchedSessionRef = useRef(false);
+
+  function builderDraftKey(dateValue) {
+    if (!selectedTeam?.id || !dateValue) return null;
+
+    return `spraoi_coach_session_draft_${selectedTeam.id}_${dateValue}`;
+  }
+
+  function persistBuilderDraft(dateValue = selectedSessionDate()) {
+    if (
+      editingSession?.id ||
+      !selectedTeam?.id ||
+      !dateValue
+    ) {
+      return false;
+    }
+
+    const key = builderDraftKey(dateValue);
+    if (!key) return false;
+
+    localStorage.setItem(
+      key,
+      JSON.stringify({
+        version: 1,
+        teamId: String(selectedTeam.id),
+        sessionDate: dateValue,
+        sections,
+        notes,
+        plannedStartTime,
+        plannedLocation,
+        savedAt: new Date().toISOString(),
+      })
+    );
+
+    sessionStorage.setItem(
+      "spraoi_builder_target_date",
+      dateValue
+    );
+    localStorage.setItem(
+      "spraoi_builder_target_date",
+      dateValue
+    );
+
+    return true;
+  }
+
+  function restoreBuilderDraft(dateValue) {
+    if (
+      editingSession?.id ||
+      !selectedTeam?.id ||
+      !dateValue
+    ) {
+      return false;
+    }
+
+    const key = builderDraftKey(dateValue);
+    if (!key) return false;
+
+    let draft = null;
+
+    try {
+      draft = JSON.parse(
+        localStorage.getItem(key) || "null"
+      );
+    } catch {
+      draft = null;
+    }
+
+    if (
+      !draft ||
+      String(draft.teamId || "") !==
+        String(selectedTeam.id)
+    ) {
+      return false;
+    }
+
+    const restoredSections =
+      Array.isArray(draft.sections) &&
+      draft.sections.length
+        ? draft.sections
+        : [
+            {
+              id: 1,
+              type: "warmup",
+              label: "Warm-up",
+              drills: [],
+              duration: "10",
+              coachId: "",
+              coachName: "",
+              notes: ""
+            }
+          ];
+
+    setSectionsState(restoredSections);
+    setNotesState(draft.notes || "");
+    setPlannedStartTimeState(
+      draft.plannedStartTime || ""
+    );
+    setPlannedLocationState(
+      draft.plannedLocation || ""
+    );
+
+    const maxSectionId =
+      restoredSections.reduce(
+        (maxId, section) =>
+          Math.max(
+            maxId,
+            Number(section?.id) || 0
+          ),
+        0
+      );
+
+    setNextId(
+      Math.max(maxSectionId + 1, 2)
+    );
+
+    sessionStorage.setItem(
+      "spraoi_builder_target_date",
+      dateValue
+    );
+    localStorage.setItem(
+      "spraoi_builder_target_date",
+      dateValue
+    );
+
+    return true;
+  }
+
+  function clearBuilderDraft(dateValue) {
+    const key = builderDraftKey(dateValue);
+
+    if (key) {
+      localStorage.removeItem(key);
+    }
+  }
+
   useEffect(() => {
-    const timer = setTimeout(() => {
-      sessionStorage.removeItem(
+    if (
+      editingSession?.id ||
+      !selectedTeam?.id ||
+      !userTouchedSessionRef.current
+    ) {
+      return;
+    }
+
+    const dateValue = selectedSessionDate();
+
+    if (!dateValue) return;
+
+    persistBuilderDraft(dateValue);
+  }, [
+    sections,
+    notes,
+    plannedStartTime,
+    plannedLocation,
+    selectedTeam?.id,
+    editingSession?.id,
+  ]);
+
+  useEffect(() => {
+    if (
+      editingSession?.id ||
+      !selectedTeam?.id
+    ) {
+      return;
+    }
+
+    const targetDate =
+      sessionStorage.getItem(
+        "spraoi_builder_target_date"
+      ) ||
+      localStorage.getItem(
         "spraoi_builder_target_date"
       );
-    }, 0);
 
-    return () => clearTimeout(timer);
-  }, []);
+    if (!targetDate) return;
 
+    if (restoreBuilderDraft(targetDate)) {
+      userTouchedSessionRef.current = true;
+      setHasUnsavedChanges(true);
+    }
+  }, [
+    selectedTeam?.id,
+    editingSession?.id
+  ]);
   // Club facilities and published weekly allocations are the source of truth for confirmed venue/time.
   function selectedSessionDate() {
     if (!day) return null;
@@ -4440,7 +4612,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
   }
 
 
-  function builderDateForDay(dayName) {
+  function builderDateForDay(dayName, offsetOverride = weekOffset) {
     const dayMap = {
       Mon: 0,
       Tue: 1,
@@ -4457,7 +4629,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
     monday.setDate(
       monday.getDate() -
       ((monday.getDay() + 6) % 7) +
-      (weekOffset || 0) * 7
+      (offsetOverride || 0) * 7
     );
 
     monday.setDate(
@@ -4475,7 +4647,8 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
 
   async function openBuilderCalendarDate(
     dayName,
-    _ignoredDateObject
+    _ignoredDateObject,
+    weekOffsetOverride = weekOffset
   ) {
 
     // Never carry the previous day's Club allocation
@@ -4484,12 +4657,24 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
     setPublishedAllocation(null);
     setAllocationConflict(false);
     const targetDate =
-      builderDateForDay(dayName);
+      builderDateForDay(dayName, weekOffsetOverride);
 
     if (!targetDate || !selectedTeam?.id) {
       return;
     }
 
+    const currentDraftDate =
+      selectedSessionDate();
+
+    if (
+      userTouchedSessionRef.current &&
+      currentDraftDate &&
+      !editingSession?.id
+    ) {
+      persistBuilderDraft(
+        currentDraftDate
+      );
+    }
     /*
      * If this is genuinely the currently-loaded session,
      * there is nothing to reload.
@@ -4506,7 +4691,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
      */
     if (userTouchedSessionRef.current) {
       const discard = window.confirm(
-        "You have unsaved changes. Discard them and open the selected date?"
+        "Your current work has been saved as a draft. Open the selected date?"
       );
 
       if (!discard) return;
@@ -4569,8 +4754,13 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
        * remounts with the new saved session.
        */
       if (existingSession?.id) {
-        sessionStorage.removeItem(
-          "spraoi_builder_target_date"
+        sessionStorage.setItem(
+          "spraoi_builder_target_date",
+          targetDate
+        );
+        localStorage.setItem(
+          "spraoi_builder_target_date",
+          targetDate
         );
 
         if (onEditSession) {
@@ -4630,6 +4820,57 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
         error.message
       );
     }
+  }
+
+  async function moveBuilderWeek(delta) {
+    const nextOffset =
+      (weekOffset || 0) + delta;
+
+    const currentDraftDate =
+      selectedSessionDate();
+
+    if (
+      userTouchedSessionRef.current &&
+      currentDraftDate &&
+      !editingSession?.id
+    ) {
+      persistBuilderDraft(
+        currentDraftDate
+      );
+    }
+
+    userTouchedSessionRef.current = false;
+    setHasUnsavedChanges(false);
+
+    setWeekOffset(nextOffset);
+
+    if (day) {
+      await openBuilderCalendarDate(
+        day,
+        null,
+        nextOffset
+      );
+
+      return;
+    }
+
+    setSectionsState([
+      {
+        id: 1,
+        type: "warmup",
+        label: "Warm-up",
+        drills: [],
+        duration: "10",
+        coachId: "",
+        coachName: "",
+        notes: ""
+      }
+    ]);
+
+    setNotesState("");
+    setPlannedStartTimeState("");
+    setPlannedLocationState("");
+    setNextId(2);
   }
 
   useEffect(() => {
@@ -5088,7 +5329,7 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
             const eventPayload = {
               club_id: club.id, age_group_id: selectedTeam.id, event_type: "training", title: "Training",
               facility_id: null, location: plannedLocation.trim() || null, starts_at: plannedStart, ends_at: plannedEnd,
-              status: "planned", source: "coach_session", session_id: sessionId,
+              status: "scheduled", source: "coach_session", session_id: sessionId,
             };
             if (existingEvent?.id) {
               const { data } = await supabase.from("club_events").update(eventPayload).eq("id", existingEvent.id).select().maybeSingle();
@@ -5119,7 +5360,25 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
           }
         }
       }
-      if (sessionId && allDrills.length > 0) {
+           if (sessionId) {
+        const {
+          data: persistedSession,
+          error: persistedSessionError
+        } = await supabase
+          .from("sessions")
+          .select("id,session_date,plan_id")
+          .eq("id", sessionId)
+          .maybeSingle();
+
+        if (persistedSessionError || !persistedSession?.id) {
+          throw new Error(
+            "Session did not persist to the database: " +
+            (persistedSessionError?.message || "saved session could not be read back")
+          );
+        }
+      }
+
+ if (sessionId && allDrills.length > 0) {
         const { error: activityInsertError } = await supabase.from("session_activities").insert(allDrills.map((d, i) => ({
           session_id: sessionId,
           activity_id: d.id,
@@ -5311,11 +5570,11 @@ function SessionBuilderScreen({ club, ageGroups, skills, allActivities, coaches,
           {/* Week diary picker */}
           <div style={{ background: P.white, borderRadius: 12, padding: 14, border: `1px solid ${P.line}`, marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-              <button onClick={() => setWeekOffset((w) => (w || 0) - 1)} style={{ background: P.soft, border: "none", borderRadius: 6, width: 28, height: 28, cursor: "pointer", fontSize: 12 }}>◀</button>
+              <button onClick={() => moveBuilderWeek(-1)} style={{ background: P.soft, border: "none", borderRadius: 6, width: 28, height: 28, cursor: "pointer", fontSize: 12 }}>◀</button>
               <span style={{ fontFamily: F.body, fontSize: 12, fontWeight: 700, color: P.ink }}>
                 {(() => { const mon = new Date(); mon.setDate(mon.getDate() - (mon.getDay() || 7) + 1 + (weekOffset || 0) * 7); return `Week of ${mon.toLocaleDateString("en-IE", { day: "numeric", month: "short" })}`; })()}
               </span>
-              <button onClick={() => setWeekOffset((w) => (w || 0) + 1)} style={{ background: P.soft, border: "none", borderRadius: 6, width: 28, height: 28, cursor: "pointer", fontSize: 12 }}>▶</button>
+              <button onClick={() => moveBuilderWeek(1)} style={{ background: P.soft, border: "none", borderRadius: 6, width: 28, height: 28, cursor: "pointer", fontSize: 12 }}>▶</button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
               {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d, i) => {
@@ -7878,7 +8137,7 @@ function DrillsScreen({ allActivities, diagramMap, favouriteIds, onToggleFavouri
 /* ============================================================
    DIAGRAM CREATOR — drag-and-drop pitch diagram builder
    ============================================================ */
-﻿function DiagramCreator({ onSave, onClose, initialElements, backgroundImage }) {
+function DiagramCreator({ onSave, onClose, initialElements, backgroundImage }) {
   const restoredElements = (initialElements || []).filter(
     (el) => el.type !== "pitchMeta"
   );
@@ -10482,6 +10741,502 @@ function DrillCardBuilder({ diagramMap, allActivities, userRole, copyFrom, onBac
 }
 
 
+
+const SC_GROUP_COLOURS = {
+  white: { bg: "#FFFFFF", border: "#94A3B8", text: "#0F172A" },
+  blue: { bg: "#2563EB", border: "#1D4ED8", text: "#FFFFFF" },
+  green: { bg: "#16A34A", border: "#15803D", text: "#FFFFFF" },
+  orange: { bg: "#EA580C", border: "#C2410C", text: "#FFFFFF" },
+  yellow: { bg: "#FACC15", border: "#EAB308", text: "#422006" }
+};
+
+function SCGroupManager({ selectedTeam, compact = false, showFocus = true }) {
+  const [players, setPlayers] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [memberships, setMemberships] = useState([]);
+  const [savingPlayerId, setSavingPlayerId] = useState("");
+  const [savingFocusId, setSavingFocusId] = useState("");
+  const [message, setMessage] = useState("");
+
+  async function loadSCGroups() {
+    if (!selectedTeam?.id) {
+      setPlayers([]);
+      setGroups([]);
+      setMemberships([]);
+      return;
+    }
+
+    const [playerResult, groupResult] = await Promise.all([
+      supabase
+        .from("players")
+        .select("id,name,football_panel,hurling_panel")
+        .eq("age_group_id", selectedTeam.id)
+        .order("name"),
+      supabase
+        .from("sc_groups")
+        .select("*")
+        .eq("age_group_id", selectedTeam.id)
+        .eq("active", true)
+        .order("sort_order")
+    ]);
+
+    if (playerResult.error) {
+      console.error("S&C group players load error:", playerResult.error);
+    }
+    if (groupResult.error) {
+      console.error("S&C groups load error:", groupResult.error);
+    }
+
+    const nextPlayers = playerResult.data || [];
+    const nextGroups = groupResult.data || [];
+
+    setPlayers(nextPlayers);
+    setGroups(nextGroups);
+
+    if (!nextGroups.length) {
+      setMemberships([]);
+      return;
+    }
+
+    const { data: memberRows, error: memberError } = await supabase
+      .from("sc_group_members")
+      .select("*")
+      .in("group_id", nextGroups.map((group) => group.id))
+      .eq("active", true);
+
+    if (memberError) {
+      console.error("S&C group membership load error:", memberError);
+    }
+
+    setMemberships(memberRows || []);
+  }
+
+  useEffect(() => {
+    loadSCGroups();
+  }, [selectedTeam?.id]);
+
+  const membershipForPlayer = (playerId) =>
+    memberships.find(
+      (row) =>
+        String(row.player_id) === String(playerId) &&
+        row.active !== false
+    ) || null;
+
+  const groupForPlayer = (playerId) => {
+    const membership = membershipForPlayer(playerId);
+    return (
+      groups.find(
+        (group) =>
+          String(group.id) === String(membership?.group_id || "")
+      ) || null
+    );
+  };
+
+  async function assignPlayerToGroup(playerId, groupId) {
+    if (!playerId) return;
+
+    setSavingPlayerId(playerId);
+    setMessage("");
+
+    try {
+      const current = membershipForPlayer(playerId);
+
+      if (String(current?.group_id || "") === String(groupId || "")) {
+        return;
+      }
+
+      if (current?.id) {
+        const { error: deactivateError } = await supabase
+          .from("sc_group_members")
+          .update({
+            active: false,
+            updated_at: new Date().toISOString()
+          })
+          .eq("id", current.id);
+
+        if (deactivateError) throw deactivateError;
+      }
+
+      if (groupId) {
+        const { data: authData } = await supabase.auth.getUser();
+
+        const { error: saveError } = await supabase
+          .from("sc_group_members")
+          .upsert(
+            {
+              group_id: groupId,
+              player_id: playerId,
+              active: true,
+              assigned_by: authData?.user?.id || null,
+              assigned_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            },
+            { onConflict: "group_id,player_id" }
+          );
+
+        if (saveError) throw saveError;
+      }
+
+      await loadSCGroups();
+      setMessage("S&C group updated.");
+    } catch (error) {
+      console.error("S&C group assignment error:", error);
+      setMessage(
+        `Could not update S&C group: ${error?.message || "Unknown error"}`
+      );
+    } finally {
+      setSavingPlayerId("");
+    }
+  }
+
+  async function saveGroupFocus(group, focus) {
+    if (!group?.id) return;
+
+    setSavingFocusId(group.id);
+    setMessage("");
+
+    const { error } = await supabase
+      .from("sc_groups")
+      .update({
+        focus: String(focus || "").trim() || null,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", group.id);
+
+    setSavingFocusId("");
+
+    if (error) {
+      console.error("S&C group focus update error:", error);
+      setMessage(`Could not update group focus: ${error.message}`);
+      return;
+    }
+
+    await loadSCGroups();
+    setMessage("S&C group focus updated.");
+  }
+
+  const unassignedCount = players.filter(
+    (player) => !membershipForPlayer(player.id)
+  ).length;
+
+  return (
+    <div
+      style={{
+        background: P.white,
+        border: `1px solid ${P.line}`,
+        borderRadius: 16,
+        padding: compact ? 16 : 20,
+        boxShadow: Sh.card,
+        marginBottom: 18
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 12,
+          alignItems: "flex-start",
+          flexWrap: "wrap",
+          marginBottom: 14
+        }}
+      >
+        <div>
+          <div
+            style={{
+              fontFamily: F.display,
+              fontSize: compact ? 18 : 22,
+              fontWeight: 800,
+              color: P.ink
+            }}
+          >
+            S&C Training Groups
+          </div>
+          <div
+            style={{
+              fontFamily: F.body,
+              fontSize: 11,
+              color: P.muted,
+              marginTop: 3,
+              lineHeight: 1.45
+            }}
+          >
+            White, Blue, Green, Orange and Yellow are independent of Football/Hurling A & B.
+          </div>
+        </div>
+
+        <div
+          style={{
+            padding: "6px 9px",
+            borderRadius: 999,
+            background: unassignedCount > 0 ? "#FFF7ED" : "#DCFCE7",
+            color: unassignedCount > 0 ? "#9A3412" : "#166534",
+            fontFamily: F.body,
+            fontSize: 9,
+            fontWeight: 800
+          }}
+        >
+          {unassignedCount > 0
+            ? `${unassignedCount} unassigned`
+            : "Everyone assigned"}
+        </div>
+      </div>
+
+      {!compact && (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
+            gap: 10,
+            marginBottom: 18
+          }}
+        >
+          {groups.map((group) => {
+            const colour =
+              SC_GROUP_COLOURS[group.colour_key] || SC_GROUP_COLOURS.white;
+            const count = memberships.filter(
+              (row) =>
+                String(row.group_id) === String(group.id) &&
+                row.active !== false
+            ).length;
+
+            return (
+              <div
+                key={group.id}
+                style={{
+                  border: `2px solid ${colour.border}`,
+                  borderRadius: 14,
+                  overflow: "hidden",
+                  background: "#fff"
+                }}
+              >
+                <div
+                  style={{
+                    padding: "10px 12px",
+                    background: colour.bg,
+                    color: colour.text,
+                    borderBottom:
+                      group.colour_key === "white"
+                        ? `1px solid ${colour.border}`
+                        : 0
+                  }}
+                >
+                  <div
+                    style={{
+                      fontFamily: F.display,
+                      fontWeight: 800,
+                      fontSize: 16
+                    }}
+                  >
+                    {group.name}
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: F.body,
+                      fontSize: 9,
+                      fontWeight: 700,
+                      marginTop: 2,
+                      opacity: .85
+                    }}
+                  >
+                    {count} player{count === 1 ? "" : "s"}
+                  </div>
+                </div>
+
+                {showFocus && (
+                  <div style={{ padding: 10 }}>
+                    <div
+                      style={{
+                        fontFamily: F.body,
+                        fontSize: 8,
+                        fontWeight: 800,
+                        color: P.muted,
+                        textTransform: "uppercase",
+                        marginBottom: 4
+                      }}
+                    >
+                      Group focus / goal
+                    </div>
+                    <input
+                      key={`${group.id}:${group.focus || ""}`}
+                      defaultValue={group.focus || ""}
+                      placeholder="e.g. Speed & acceleration"
+                      onBlur={(event) =>
+                        saveGroupFocus(group, event.target.value)
+                      }
+                      disabled={savingFocusId === group.id}
+                      style={{
+                        width: "100%",
+                        boxSizing: "border-box",
+                        border: `1px solid ${P.line}`,
+                        borderRadius: 9,
+                        padding: "8px 9px",
+                        fontFamily: F.body,
+                        fontSize: 10
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: compact
+            ? "repeat(auto-fit,minmax(240px,1fr))"
+            : "repeat(auto-fit,minmax(280px,1fr))",
+          gap: 8
+        }}
+      >
+        {players.map((player) => {
+          const currentGroup = groupForPlayer(player.id);
+
+          return (
+            <div
+              key={player.id}
+              style={{
+                display: "grid",
+                gridTemplateColumns: compact ? "1fr 150px" : "1fr 170px",
+                gap: 10,
+                alignItems: "center",
+                padding: "9px 10px",
+                border: `1px solid ${P.line}`,
+                borderRadius: 11,
+                background: "#fff"
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <div
+                  style={{
+                    fontFamily: F.body,
+                    fontSize: 11,
+                    fontWeight: 800,
+                    color: P.ink,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis"
+                  }}
+                >
+                  {player.name}
+                </div>
+                <div
+                  style={{
+                    fontFamily: F.body,
+                    fontSize: 8,
+                    color: P.muted,
+                    marginTop: 2
+                  }}
+                >
+                  Football {player.football_panel || "—"} ·{" "}
+                  {String(selectedTeam?.gender || "").toLowerCase() === "girls"
+                    ? "Camogie"
+                    : "Hurling"}{" "}
+                  {player.hurling_panel || "—"}
+                </div>
+              </div>
+
+              <select
+                value={currentGroup?.id || ""}
+                onChange={(event) =>
+                  assignPlayerToGroup(player.id, event.target.value)
+                }
+                disabled={savingPlayerId === player.id}
+                style={{
+                  width: "100%",
+                  border: `1.5px solid ${
+                    currentGroup
+                      ? SC_GROUP_COLOURS[currentGroup.colour_key]?.border || P.line
+                      : P.line
+                  }`,
+                  borderRadius: 9,
+                  padding: "8px 9px",
+                  background: "#fff",
+                  fontFamily: F.body,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: P.ink
+                }}
+              >
+                <option value="">No S&C group</option>
+                {groups.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          );
+        })}
+      </div>
+
+      {message && (
+        <div
+          style={{
+            marginTop: 10,
+            fontFamily: F.body,
+            fontSize: 10,
+            color: message.startsWith("Could") ? "#B91C1C" : "#166534"
+          }}
+        >
+          {message}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StrengthConditioningScreen({ selectedTeam }) {
+  return (
+    <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
+      <TopBar
+        title="Strength & Conditioning"
+        sub={`${
+          selectedTeam ? teamDisplayName(selectedTeam) : "Selected team"
+        } — programmes, training groups and player goals`}
+      />
+
+      <div style={{ padding: 24, maxWidth: 1240, margin: "0 auto" }}>
+        <div
+          style={{
+            background: "linear-gradient(135deg,#FAF5FF,#F5F3FF)",
+            border: "1px solid #DDD6FE",
+            borderRadius: 16,
+            padding: 18,
+            marginBottom: 16
+          }}
+        >
+          <div
+            style={{
+              fontFamily: F.display,
+              fontSize: 20,
+              fontWeight: 800,
+              color: "#4C1D95"
+            }}
+          >
+            Training Groups
+          </div>
+          <div
+            style={{
+              fontFamily: F.body,
+              fontSize: 11,
+              color: "#6B7280",
+              lineHeight: 1.5,
+              marginTop: 4
+            }}
+          >
+            Assign players to colour groups here. These groups are used for S&C stations and group-specific goals, and do not change Football or Hurling A/B panels.
+          </div>
+        </div>
+
+        <SCGroupManager selectedTeam={selectedTeam} />
+      </div>
+    </div>
+  );
+}
+
 function PlayersScreen({
   club,
   ageGroups = [],
@@ -10721,6 +11476,10 @@ function PlayersScreen({
             : "Selected team"
         }`}
       />
+
+      <div style={{ padding: "0 0 16px" }}>
+        <SCGroupManager selectedTeam={selectedTeam} compact />
+      </div>
 
       <div className="coach-player-page">
 
@@ -11131,10 +11890,35 @@ function SessionsListScreen({
 
   async function removeSession(session) {
     if (!session?.id) return;
-    if (!window.confirm("Remove this Coach session? The Club pitch allocation will remain.")) return;
+    if (!window.confirm("Remove this session plan? The training event will remain in the team calendar. Only the Coach session content will be removed.")) return;
     try {
-      await supabase.from("club_events").update({ session_id: null }).eq("session_id", session.id);
-      const { error: activityError } = await supabase.from("session_activities").delete().eq("session_id", session.id);
+      const {
+ data: linkedEvents,
+ error: linkedEventsError
+ } = await supabase
+ .from("club_events")
+ .select("id,source,training_allocation_id")
+ .eq("session_id", session.id);
+
+ if (linkedEventsError) {
+ throw linkedEventsError;
+ }
+
+ const linkedEventIds = (linkedEvents || [])
+.map((event) => event.id)
+.filter(Boolean);
+
+if (linkedEventIds.length) {
+const { error: unlinkEventError } = await supabase
+.from("club_events")
+.update({ session_id: null })
+.in("id", linkedEventIds);
+
+if (unlinkEventError) {
+throw unlinkEventError;
+}
+}
+const { error: activityError } = await supabase.from("session_activities").delete().eq("session_id", session.id);
       if (activityError) throw activityError;
       const { data: deleted, error: sessionError } = await supabase.from("sessions").delete().eq("id", session.id).select("id");
       if (sessionError) throw sessionError;
@@ -11888,7 +12672,7 @@ function AcademyPhonePreview({ planSessions = [], extras = [], skills = [], over
   const taskRow=(item)=><div key={item.id} style={{ display:"flex",alignItems:"center",gap:8,padding:"8px 9px",borderRadius:10,background:"#f8fafc" }}><div style={{flex:1,minWidth:0}}><div style={{fontFamily:F.body,fontSize:10,fontWeight:800,color:P.ink}}>{item.title}</div><div style={{fontFamily:F.body,fontSize:8,color:P.muted,marginTop:2}}>{item.target || item.description || item.instruction || "Complete this mission"}</div></div><span style={{fontFamily:F.body,fontSize:8,fontWeight:800,color:"#b45309"}}>+{item.xp || item.xp_reward || 10} XP</span></div>;
   const skillRow=(item)=><div key={item.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 9px",borderRadius:10,background:"#f8fafc"}}><div style={{width:32,height:32,borderRadius:9,background:"#e0f2fe",display:"grid",placeItems:"center"}}>▶</div><div style={{flex:1,minWidth:0}}><div style={{fontFamily:F.body,fontSize:10,fontWeight:800,color:P.ink}}>{item.matchedSkill?.name || "Choose weekly video"}</div><div style={{fontFamily:F.body,fontSize:8,color:P.muted,marginTop:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>Based on {item.sourceDrills.length} Coach drill{item.sourceDrills.length===1?"":"s"}</div></div><span style={{fontFamily:F.body,fontSize:8,fontWeight:800,color:"#b45309"}}>+20 XP</span></div>;
   const visibleCount = football.length+hurling.length+Object.values(grouped).reduce((sum,items)=>sum+items.length,0);
-  return <div style={{ width: compact ? 300 : "min(390px,100%)", maxHeight: compact ? 600 : "none", overflow:"hidden", background:"#fff",borderRadius:compact?26:32,border:compact?"6px solid #16324a":"8px solid #16324a",boxShadow:"0 22px 52px rgba(7,89,133,.2)" }}><div style={{background:"linear-gradient(135deg,#38bdf8,#0284c7)",padding:compact?"16px 14px":"22px 18px",color:"#fff",position:"relative",overflow:"hidden"}}><img src="/spraoi-academy-icon.png" alt="" style={{position:"absolute",right:8,bottom:-8,width:compact?68:88,height:compact?68:88,objectFit:"contain",background:"#fff",borderRadius:18,padding:6}}/><div style={{fontFamily:F.body,fontSize:8,fontWeight:800,opacity:.85,textTransform:"uppercase"}}>Club Spraoi Academy</div><div style={{fontFamily:F.display,fontSize:compact?18:24,fontWeight:800,marginTop:3,maxWidth:"70%"}}>Your weekly adventure</div><div style={{display:"flex",gap:6,marginTop:11}}><span style={previewPill}>⭐ {recommendations.length*20+extras.reduce((s,x)=>s+Number(x.xp||x.xp_reward||0),0)} XP</span><span style={previewPill}>Badges</span></div></div><div style={{padding:compact?10:15,background:"#f3f9fd",maxHeight:compact?460:"none",overflowY:"auto"}}>{visibleCount===0?<div style={{padding:18,textAlign:"center",fontFamily:F.body,fontSize:10,color:P.muted}}>Add weekly content to see the child experience here.</div>:<>{section("Step Goals",grouped.steps,"#0f9f6e","👟",taskRow)}{section("Exercises",grouped.exercises,"#7c3aed","💪",taskRow)}{section("Run Challenge",grouped.runs,"#D89A00","🏃",taskRow)}{section("Football Skills",football,"#2563eb","⚽",skillRow)}{section(selectedTeam?.gender === "girls" ? "Camogie Skills" : "Hurling Skills",hurling,"#dc2626","🏑",skillRow)}{section("Bonus",grouped.bonus,"#d97706","✨",taskRow)}{section("Rest & Recovery",grouped.recovery,"#0f766e","🌙",taskRow)}</>}<div style={{marginTop:10,padding:9,borderRadius:11,background:published?"#dcfce7":"#fff7ed",color:published?"#15803d":"#b45309",fontFamily:F.body,fontSize:8,fontWeight:800,textAlign:"center"}}>{published?"✓ Published to children":"Preview mode — not published"}</div></div></div>;
+  return <div style={{ width: compact ? 300 : "min(390px,100%)", maxHeight: compact ? 600 : "none", overflow:"hidden", background:"#fff",borderRadius:compact?26:32,border:compact?"6px solid #16324a":"8px solid #16324a",boxShadow:"0 22px 52px rgba(7,89,133,.2)" }}><div style={{background:"linear-gradient(135deg,#38bdf8,#0284c7)",padding:compact?"16px 14px":"22px 18px",color:"#fff",position:"relative",overflow:"hidden"}}><img src="/spraoi-academy-icon.png" alt="" style={{position:"absolute",right:8,bottom:-8,width:compact?68:88,height:compact?68:88,objectFit:"contain",background:"#fff",borderRadius:18,padding:6}}/><div style={{fontFamily:F.body,fontSize:8,fontWeight:800,opacity:.85,textTransform:"uppercase"}}>Spraoi</div><div style={{fontFamily:F.display,fontSize:compact?18:24,fontWeight:800,marginTop:3,maxWidth:"70%"}}>Your weekly adventure</div><div style={{display:"flex",gap:6,marginTop:11}}><span style={previewPill}>⭐ {recommendations.length*20+extras.reduce((s,x)=>s+Number(x.xp||x.xp_reward||0),0)} XP</span><span style={previewPill}>Badges</span></div></div><div style={{padding:compact?10:15,background:"#f3f9fd",maxHeight:compact?460:"none",overflowY:"auto"}}>{visibleCount===0?<div style={{padding:18,textAlign:"center",fontFamily:F.body,fontSize:10,color:P.muted}}>Add weekly content to see the child experience here.</div>:<>{section("Step Goals",grouped.steps,"#0f9f6e","👟",taskRow)}{section("Exercises",grouped.exercises,"#7c3aed","💪",taskRow)}{section("Run Challenge",grouped.runs,"#D89A00","🏃",taskRow)}{section("Football Skills",football,"#2563eb","⚽",skillRow)}{section(selectedTeam?.gender === "girls" ? "Camogie Skills" : "Hurling Skills",hurling,"#dc2626","🏑",skillRow)}{section("Bonus",grouped.bonus,"#d97706","✨",taskRow)}{section("Rest & Recovery",grouped.recovery,"#0f766e","🌙",taskRow)}</>}<div style={{marginTop:10,padding:9,borderRadius:11,background:published?"#dcfce7":"#fff7ed",color:published?"#15803d":"#b45309",fontFamily:F.body,fontSize:8,fontWeight:800,textAlign:"center"}}>{published?"✓ Published to children":"Preview mode — not published"}</div></div></div>;
 }
 
 function AcademyDashboardScreen({ selectedTeam, weeklyPlan, planSessions, extras = [], skills = [], overrides = {}, published = false, onSetOverride, onNav }) {
@@ -12370,7 +13154,7 @@ function AcademyParents({ selectedTeam, parentRows, setParentRows }) {
 
   return (
     <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
-      <AcademyPageHeader title="Parent Access" sub={`${selectedTeam?.label || "Team"} — Send parents into the Academy child onboarding flow`} actions={<Btn label="Copy team link" variant="primary" icon="⧉" onClick={() => copy(teamLink)} style={{ background: ACADEMY_BLUE }} />} />
+      <AcademyPageHeader title="Parent Access" sub={`${teamDisplayName(selectedTeam)} — Send parents into the Academy child onboarding flow`} actions={<Btn label="Copy team link" variant="primary" icon="⧉" onClick={() => copy(teamLink)} style={{ background: ACADEMY_BLUE }} />} />
       <div style={{ padding: 24, maxWidth: 1180, margin: "0 auto", display: "grid", gap: 16 }}>
         {copied && <div style={{ position: "fixed", right: 22, top: 76, zIndex: 6000, background: "#0f172a", color: "#fff", padding: "10px 14px", borderRadius: 10, fontFamily: F.body, fontSize: 11, fontWeight: 800, boxShadow: "0 12px 30px rgba(15,23,42,.25)" }}>Link copied</div>}
         <AcademyCard>
@@ -12709,6 +13493,16 @@ export function CoachModule({
     <>
       {screen === "coach-dashboard" && <DashboardScreen club={club} ageGroups={ageGroups} planSessions={planSessions} weeklyPlan={weeklyPlan} upcomingSessions={upcomingSessions} onNav={onNav} onOpenSession={openSession} allActivities={allActivities} selectedTeam={selectedTeam} favouriteIds={favouriteIds} coaches={selectedTeamCoaches} />}
 
+      {screen === "coach-child-preview" && (
+        <AcademyPreview
+          planSessions={planSessions}
+          extras={academyExtras}
+          skills={skills}
+          overrides={academyVideoOverrides}
+          published={academyPublished}
+          selectedTeam={selectedTeam}
+        />
+      )}
       {screen === "coach-attendance" && (
         <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
           <TopBar
@@ -12742,7 +13536,7 @@ export function CoachModule({
       />}
       {screen === "coach-builder" && (
         effectiveCanEdit
-          ? <SessionBuilderScreen key={editingSession?.id || sessionStorage.getItem("spraoi_builder_target_date") || "new-session"} club={club} ageGroups={ageGroups} skills={skills} allActivities={allActivities} coaches={selectedTeamCoaches} diagramMap={diagramMap} selectedTeam={selectedTeam} onNav={onNav} editingSession={editingSession} onClearEdit={() => setEditingSession?.(null)} onEditSession={editSession} />
+          ? <SessionBuilderScreen key={editingSession?.id || (sessionStorage.getItem("spraoi_builder_target_date") || localStorage.getItem("spraoi_builder_target_date")) || "new-session"} club={club} ageGroups={ageGroups} skills={skills} allActivities={allActivities} coaches={selectedTeamCoaches} diagramMap={diagramMap} selectedTeam={selectedTeam} onNav={onNav} editingSession={editingSession} onClearEdit={() => setEditingSession?.(null)} onEditSession={editSession} />
           : <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
               <TopBar title="Session Builder" sub={selectedTeam ? teamDisplayName(selectedTeam) : "No team selected"} />
               <CoachReadOnlyNotice title="Editing unavailable" message="Your Coach / Mentor role is read-only. Ask a Club Admin to assign Lead Coach access if you need to create or amend sessions." />
@@ -12760,6 +13554,7 @@ export function CoachModule({
       {screen === "coach-tactics" && (
         <TacticsBoard selectedTeam={selectedTeam} />
       )}
+      {screen === "coach-strength" && <StrengthConditioningScreen selectedTeam={selectedTeam} />}
       {screen === "coach-players" && <PlayersScreen club={club} ageGroups={ageGroups} selectedTeam={selectedTeam} userRole={selectedTeamUserRole} />}
     </>
   );
@@ -13748,12 +14543,22 @@ export default function App() {
     if (currentAllowed) return;
 
     const savedId =
-      requestedTeamFromUrl(null) ||
       localStorage.getItem(ACTIVE_TEAM_KEY) ||
-      localStorage.getItem("spraoi_team_id");
+      localStorage.getItem("spraoi_team_id") ||
+      requestedTeamFromUrl(null);
+
+    const preferredTeam =
+      allowedTeams.find(
+        (ag) =>
+          String(ag.label || "").trim().toUpperCase() === "U12" &&
+          String(ag.gender || "").trim().toLowerCase() === "boys"
+      ) || null;
 
     const nextTeam =
-      allowedTeams.find((ag) => String(ag.id) === String(savedId || "")) ||
+      allowedTeams.find(
+        (ag) => String(ag.id) === String(savedId || "")
+      ) ||
+      preferredTeam ||
       allowedTeams[0];
 
     selectedTeamIdRef.current = nextTeam.id;
@@ -14157,6 +14962,7 @@ export default function App() {
 
   // Auth loading
   if (authLoading && !shareToken) {
+    if (window.__SPRAOI_ADMIN_SHELL__) return null;
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: P.navy, fontFamily: F.body }}>
         <img src="/spraoi-icon.png" alt="Spraoi" style={{ width: 48, height: 48, opacity: 0.7 }} />
@@ -14452,7 +15258,83 @@ export default function App() {
     setPitchView(false);
   }
 
-  async function editSession(sess) {
+  async function removeOpenSession(sess) {
+ if (!sess?.id) return;
+
+ if (!permissions.canEditCoachPlans) {
+ showPermissionMessage();
+ return;
+ }
+
+ const confirmed = window.confirm(
+ "Remove this session plan? The training event will remain in the team calendar. Only the Coach session content will be removed."
+ );
+
+ if (!confirmed) return;
+
+ try {
+ const { data: linkedEvents, error: linkedEventsError } = await supabase
+ .from("club_events")
+ .select("id,source")
+ .eq("session_id", sess.id);
+
+ if (linkedEventsError) throw linkedEventsError;
+
+ const linkedEventIds = (linkedEvents || [])
+.map((event) => event.id)
+.filter(Boolean);
+
+if (linkedEventIds.length) {
+const { error: unlinkEventError } = await supabase
+.from("club_events")
+.update({ session_id: null })
+.in("id", linkedEventIds);
+
+if (unlinkEventError) {
+throw unlinkEventError;
+}
+}
+const { error: activityError } = await supabase
+ .from("session_activities")
+ .delete()
+ .eq("session_id", sess.id);
+
+ if (activityError) throw activityError;
+
+ const { data: deleted, error: sessionError } = await supabase
+ .from("sessions")
+ .delete()
+ .eq("id", sess.id)
+ .select("id");
+
+ if (sessionError) throw sessionError;
+
+ if (!deleted?.length) {
+ throw new Error("The session could not be removed.");
+ }
+
+ setSessionDetail(null);
+
+ window.dispatchEvent(
+ new CustomEvent("spraoi:club-events-changed", {
+ detail: {
+ clubId: club?.id,
+ teamId: selectedTeam?.id
+ }
+ })
+ );
+
+ setScreen("coach-planner");
+ } catch (error) {
+ console.error("Could not remove training session:", error);
+ alert(
+ "Could not remove training session: " +
+ (error?.message || "Unknown error")
+ );
+ }
+ }
+
+ async function editSession(sess) {
     if (!permissions.canEditCoachPlans) {
       showPermissionMessage();
       return;
@@ -14529,6 +15411,16 @@ export default function App() {
       {/* COACH screens */}
       {screen === "coach-dashboard" && <DashboardScreen club={club} ageGroups={ageGroups} planSessions={planSessions} weeklyPlan={weeklyPlan} upcomingSessions={upcomingSessions} onNav={setScreen} onOpenSession={openSession} allActivities={allActivities} selectedTeam={selectedTeam} favouriteIds={favouriteIds} coaches={selectedTeamCoaches} canEdit={permissions.canEditCoachPlans} onPermissionDenied={showPermissionMessage} />}
 
+      {screen === "coach-child-preview" && (
+        <AcademyPreview
+          planSessions={planSessions}
+          extras={academyExtras}
+          skills={skills}
+          overrides={academyVideoOverrides}
+          published={academyPublished}
+          selectedTeam={selectedTeam}
+        />
+      )}
       {screen === "coach-attendance" && (
         <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
           <TopBar
@@ -14564,7 +15456,7 @@ export default function App() {
         permissions.canEditCoachPlans
           ? (
               <SessionBuilderScreen
-                key={editingSession?.id || sessionStorage.getItem("spraoi_builder_target_date") || "new-session"}
+                key={editingSession?.id || (sessionStorage.getItem("spraoi_builder_target_date") || localStorage.getItem("spraoi_builder_target_date")) || "new-session"}
                 club={club}
                 ageGroups={ageGroups}
                 skills={skills}
@@ -14702,7 +15594,23 @@ export default function App() {
                 <button onClick={() => setPitchView(!pitchView)} style={{ padding: "6px 12px", borderRadius: 8, border: `1.5px solid ${pitchView ? "#43a047" : P.line}`, background: pitchView ? "#e8f5e9" : P.white, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: pitchView ? "#2e7d32" : P.muted, cursor: "pointer" }}>
                   {pitchView ? "List" : "Pitch"}
                 </button>
-                <button onClick={() => { setSessionDetail(null); editSession(sessionDetail); }} style={{ padding: "6px 12px", borderRadius: 8, border: `1.5px solid ${P.p600}`, background: P.white, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.p600, cursor: "pointer" }}>Edit</button>
+               <button
+onClick={() => removeOpenSession(sessionDetail)}
+style={{
+padding: "6px 12px",
+borderRadius: 8,
+border: "1.5px solid #fecaca",
+background: "#fff",
+fontFamily: F.body,
+fontSize: 11,
+fontWeight: 700,
+color: "#dc2626",
+cursor: "pointer"
+}}
+>
+Remove
+</button>
+ <button onClick={() => { setSessionDetail(null); editSession(sessionDetail); }} style={{ padding: "6px 12px", borderRadius: 8, border: `1.5px solid ${P.p600}`, background: P.white, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: P.p600, cursor: "pointer" }}>Edit</button>
                 <button onClick={shareSessionImage} data-share-btn style={{ padding: "6px 12px", borderRadius: 8, border: "none", background: P.p600, fontFamily: F.body, fontSize: 11, fontWeight: 700, color: "#fff", cursor: "pointer" }}>Share</button>
                 <button onClick={() => setSessionDetail(null)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: P.muted }}>x</button>
               </div>
