@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import TacticsBoard from "./TacticsBoard";
 import { createPortal } from "react-dom";
 import { supabase } from "./supabaseClient";
+import StrengthConditioningModule from "./StrengthConditioningModule";
 
 import html2canvas from "html2canvas";
 import { openAdminModule, requestedScreenFromUrl, requestedTeamFromUrl, readModuleScreen, writeModuleScreen } from "../../../packages/ui/src/platformNavigation.js";
@@ -11191,50 +11192,15 @@ function SCGroupManager({ selectedTeam, compact = false, showFocus = true }) {
 
 function StrengthConditioningScreen({ selectedTeam }) {
   return (
-    <div style={{ flex: 1, overflow: "auto", background: P.soft }}>
-      <TopBar
-        title="Strength & Conditioning"
-        sub={`${
-          selectedTeam ? teamDisplayName(selectedTeam) : "Selected team"
-        } — programmes, training groups and player goals`}
-      />
-
-      <div style={{ padding: 24, maxWidth: 1240, margin: "0 auto" }}>
-        <div
-          style={{
-            background: "linear-gradient(135deg,#FAF5FF,#F5F3FF)",
-            border: "1px solid #DDD6FE",
-            borderRadius: 16,
-            padding: 18,
-            marginBottom: 16
-          }}
-        >
-          <div
-            style={{
-              fontFamily: F.display,
-              fontSize: 20,
-              fontWeight: 800,
-              color: "#4C1D95"
-            }}
-          >
-            Training Groups
-          </div>
-          <div
-            style={{
-              fontFamily: F.body,
-              fontSize: 11,
-              color: "#6B7280",
-              lineHeight: 1.5,
-              marginTop: 4
-            }}
-          >
-            Assign players to colour groups here. These groups are used for S&C stations and group-specific goals, and do not change Football or Hurling A/B panels.
-          </div>
-        </div>
-
-        <SCGroupManager selectedTeam={selectedTeam} />
-      </div>
-    </div>
+    <StrengthConditioningModule
+      selectedTeam={selectedTeam}
+      teamName={
+        selectedTeam
+          ? teamDisplayName(selectedTeam)
+          : "Selected team"
+      }
+      GroupManager={SCGroupManager}
+    />
   );
 }
 
