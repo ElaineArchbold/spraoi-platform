@@ -430,6 +430,56 @@ export default function StrengthConditioningModule({ selectedTeam, teamName = "S
   const selectedProgrammeRows = rowsForProgramme(selectedProgramme);
   const selectedPlayerRows = selectedPlayer ? selectedProgrammeRows.filter((x) => String(x.player.id) === String(selectedPlayer.id)) : [];
 
+  function playerProgrammeSummary(player) {
+    const rows = selectedProgrammeRows.filter((row) => String(row.player.id) === String(player.id));
+    const total = rows.length;
+    const approved = rows.filter((row) => row.progress?.status === "approved").length;
+    const pending = rows.filter((row) => row.progress?.status === "pending").length;
+    const needsWork = rows.filter((row) => row.progress?.status === "needs_work").length;
+    const todo = Math.max(0, total - approved - pending - needsWork);
+    const percent = total ? Math.round((approved / total) * 100) : 0;
+    const currentWeek = rows[0]?.week?.week_number || null;
+    const hasOverride = rows.some((row) => row.override);
+    const feedbackCount = rows.reduce((count, row) => {
+      if (!row.progress?.id) return count;
+      return count + (feedback.some((entry) => String(entry.progress_id) === String(row.progress.id)) ? 1 : 0);
+    }, 0);
+
+    let label = "Not assigned";
+    let tone = "muted";
+    if (total) {
+      if (needsWork) {
+        label = "Needs attention";
+        tone = "amber";
+      } else if (pending) {
+        label = "Waiting for coach";
+        tone = "purple";
+      } else if (approved === total) {
+        label = "Complete";
+        tone = "green";
+      } else if (approved > 0) {
+        label = "In progress";
+        tone = "blue";
+      } else {
+        label = "To do";
+        tone = "muted";
+      }
+    }
+
+    return { rows, total, approved, pending, needsWork, todo, percent, currentWeek, hasOverride, feedbackCount, label, tone };
+  }
+
+  const selectedPlayerSummary = selectedPlayer ? playerProgrammeSummary(selectedPlayer) : null;
+
+  function summaryChip(summary) {
+    if (!summary) return { bg: "#F3F4F6", color: UI.muted };
+    if (summary.tone === "green") return { bg: UI.greenSoft, color: UI.green };
+    if (summary.tone === "amber") return { bg: UI.amberSoft, color: UI.amber };
+    if (summary.tone === "purple") return { bg: "#EDE9FE", color: UI.purpleDark };
+    if (summary.tone === "blue") return { bg: UI.blueSoft, color: UI.blue };
+    return { bg: "#F3F4F6", color: UI.muted };
+  }
+
   async function createProgramme() {
     if (!programmeForm.title.trim()) return;
     setSaving(true);
@@ -982,46 +1032,190 @@ export default function StrengthConditioningModule({ selectedTeam, teamName = "S
             )}
 
             {tab === "players" && (
-              <div style={{ display: "grid", gridTemplateColumns: "300px 1fr", gap: 14, alignItems: "start" }}>
-                <div style={card}>
-                  <div style={{ fontSize: 16, fontWeight: 900, color: UI.ink }}>Players</div>
-                  {players.map((player)=>(
-                    <button key={player.id} type="button" onClick={()=>setSelectedPlayerId(player.id)} style={{
-                      width:"100%", textAlign:"left",
-                      border:String(player.id)===String(selectedPlayerId)?`2px solid ${UI.purple}`:`1px solid ${UI.line}`,
-                      background:String(player.id)===String(selectedPlayerId)?UI.purpleSoft:"#fff",
-                      borderRadius:10,padding:9,marginTop:6,cursor:"pointer"
-                    }}>
-                      <div style={{fontSize:10,fontWeight:900,color:UI.ink}}>{player.name}</div>
-                      <div style={{fontSize:8,color:UI.muted,marginTop:3}}>{groupForPlayer(player.id)?.name || "No S&C group"}</div>
-                    </button>
-                  ))}
-                </div>
+              <div style={{ display: "grid", gridTemplateColumns: "330px minmax(0,1fr)", gap: 14, alignItems: "start" }}>
+                <div style={{ ...card, padding: 12 }}>
+                  <div style={{ display:"flex", justifyContent:"space-between", gap:8, alignItems:"center" }}>
+                    <div>
+                      <div style={{ fontSize: 16, fontWeight: 900, color: UI.ink }}>Players</div>
+                      <div style={{ fontSize: 8, color: UI.muted, marginTop: 2 }}>
+                        {selectedProgramme ? selectedProgramme.title : "Choose a programme"}
+                      </div>
+                    </div>
+                    <Chip>{players.length} players</Chip>
+                  </div>
 
-                <div style={card}>
-                  <div style={{ fontSize: 20, fontWeight: 900, color: UI.ink }}>{selectedPlayer?.name || "Select a player"}</div>
-                  <div style={{ display:"grid", gap:8, marginTop:10 }}>
-                    {selectedPlayerRows.map((row)=>{
-                      const state = row.progress?.status || "todo";
-                      const feedbackRow = row.progress ? feedback.find((f)=>String(f.progress_id)===String(row.progress.id)) : null;
+                  <div style={{ display:"grid", gap:6, marginTop:10 }}>
+                    {players.map((player)=>{
+                      const summary = playerProgrammeSummary(player);
+                      const group = groupForPlayer(player.id);
+                      const chipTone = summaryChip(summary);
+                      const isSelected = String(player.id) === String(selectedPlayerId);
+
                       return (
-                        <div key={`${row.assignment.id}:${row.item.id}`} style={{border:`1px solid ${UI.line}`,borderRadius:11,padding:11}}>
-                          <div style={{display:"flex",justifyContent:"space-between",gap:10}}>
-                            <div>
-                              <div style={{fontSize:8,fontWeight:900,color:UI.purpleDark,textTransform:"uppercase"}}>{row.programme.title} · Week {row.week.week_number}</div>
-                              <div style={{fontSize:13,fontWeight:900,color:UI.ink,marginTop:3}}>{row.exercise?.title || "Activity"}</div>
-                              <div style={{fontSize:9,color:UI.muted,marginTop:3}}>Target: <strong>{targetLabel(row.item,row.exercise,row.override)}</strong></div>
+                        <button
+                          key={player.id}
+                          type="button"
+                          onClick={()=>setSelectedPlayerId(player.id)}
+                          style={{
+                            width:"100%",
+                            textAlign:"left",
+                            border:isSelected?`2px solid ${UI.purple}`:`1px solid ${UI.line}`,
+                            background:isSelected?UI.purpleSoft:"#fff",
+                            borderRadius:12,
+                            padding:10,
+                            cursor:"pointer"
+                          }}
+                        >
+                          <div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"flex-start"}}>
+                            <div style={{minWidth:0}}>
+                              <div style={{fontSize:10,fontWeight:900,color:UI.ink,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{player.name}</div>
+                              <div style={{fontSize:8,color:UI.muted,marginTop:3}}>
+                                {group?.name || "No S&C group"}
+                                {summary.currentWeek ? ` · Week ${summary.currentWeek}` : ""}
+                              </div>
                             </div>
-                            <Chip bg={state==="approved"?UI.greenSoft:state==="pending"?"#EDE9FE":state==="needs_work"?UI.amberSoft:"#F3F4F6"} color={state==="approved"?UI.green:state==="pending"?UI.purpleDark:state==="needs_work"?UI.amber:UI.muted}>{state}</Chip>
+                            <Chip bg={chipTone.bg} color={chipTone.color}>{summary.label}</Chip>
                           </div>
-                          {feedbackRow?.feedback && <div style={{fontSize:9,color:UI.ink,background:"#F8FAFC",padding:8,borderRadius:8,marginTop:8}}>Feedback: {feedbackRow.feedback}</div>}
-                          <div style={{display:"flex",justifyContent:"flex-end",marginTop:8}}>
-                            <button type="button" onClick={()=>openOverride(row)} style={{...button,padding:"6px 8px",background:"#F3F4F6",color:UI.ink,fontSize:8}}>Adjust Target</button>
-                          </div>
-                        </div>
+
+                          {summary.total > 0 && (
+                            <>
+                              <div style={{height:5,borderRadius:999,background:"#E5E7EB",overflow:"hidden",marginTop:8}}>
+                                <div style={{height:"100%",width:`${summary.percent}%`,background:UI.purple,borderRadius:999}} />
+                              </div>
+                              <div style={{display:"flex",justifyContent:"space-between",gap:8,marginTop:5,fontSize:8,color:UI.muted}}>
+                                <span>{summary.approved}/{summary.total} complete</span>
+                                <span>
+                                  {summary.hasOverride ? "Adjusted target" : ""}
+                                  {summary.hasOverride && summary.feedbackCount ? " · " : ""}
+                                  {summary.feedbackCount ? `${summary.feedbackCount} feedback` : ""}
+                                </span>
+                              </div>
+                            </>
+                          )}
+                        </button>
                       );
                     })}
                   </div>
+                </div>
+
+                <div style={{ display:"grid", gap:12 }}>
+                  <div style={card}>
+                    {selectedPlayer ? (
+                      <>
+                        <div style={{display:"flex",justifyContent:"space-between",gap:14,alignItems:"flex-start",flexWrap:"wrap"}}>
+                          <div>
+                            <div style={{ fontSize: 21, fontWeight: 900, color: UI.ink }}>{selectedPlayer.name}</div>
+                            <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap",marginTop:6}}>
+                              <Chip>{groupForPlayer(selectedPlayer.id)?.name || "No S&C group"}</Chip>
+                              {selectedProgramme && <Chip bg={UI.purpleSoft} color={UI.purpleDark}>{selectedProgramme.title}</Chip>}
+                              {selectedPlayerSummary?.currentWeek && <Chip>Week {selectedPlayerSummary.currentWeek}</Chip>}
+                              {selectedPlayerSummary?.hasOverride && <Chip bg={UI.blueSoft} color={UI.blue}>Adjusted target</Chip>}
+                            </div>
+                          </div>
+
+                          {selectedPlayerSummary && (
+                            <div style={{minWidth:180}}>
+                              <div style={{display:"flex",justifyContent:"space-between",fontSize:8,fontWeight:800,color:UI.muted}}>
+                                <span>Current week progress</span>
+                                <span>{selectedPlayerSummary.percent}%</span>
+                              </div>
+                              <div style={{height:7,borderRadius:999,background:"#E5E7EB",overflow:"hidden",marginTop:5}}>
+                                <div style={{height:"100%",width:`${selectedPlayerSummary.percent}%`,background:UI.purple,borderRadius:999}} />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {selectedPlayerSummary?.total ? (
+                          <div style={{display:"grid",gridTemplateColumns:"repeat(4,minmax(0,1fr))",gap:8,marginTop:14}}>
+                            {[
+                              ["Complete", selectedPlayerSummary.approved, UI.greenSoft, UI.green],
+                              ["Waiting", selectedPlayerSummary.pending, "#EDE9FE", UI.purpleDark],
+                              ["Needs work", selectedPlayerSummary.needsWork, UI.amberSoft, UI.amber],
+                              ["To do", selectedPlayerSummary.todo, "#F3F4F6", UI.muted]
+                            ].map(([label,value,bg,color])=>(
+                              <div key={label} style={{background:bg,borderRadius:10,padding:10}}>
+                                <div style={{fontSize:16,fontWeight:900,color}}>{value}</div>
+                                <div style={{fontSize:8,fontWeight:800,color,marginTop:2}}>{label}</div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div style={{fontSize:9,color:UI.muted,background:"#F8FAFC",borderRadius:10,padding:12,marginTop:12}}>
+                            This player does not currently have work in the selected programme.
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div style={{fontSize:10,color:UI.muted}}>Select a player.</div>
+                    )}
+                  </div>
+
+                  {selectedPlayer && selectedPlayerRows.length > 0 && (
+                    <div style={{display:"grid",gap:8}}>
+                      {selectedPlayerRows.map((row)=>{
+                        const state = row.progress?.status || "todo";
+                        const feedbackRows = row.progress
+                          ? feedback.filter((f)=>String(f.progress_id)===String(row.progress.id))
+                          : [];
+                        const latestFeedback = feedbackRows[0] || null;
+
+                        return (
+                          <div key={`${row.assignment.id}:${row.item.id}`} style={{...card,padding:13}}>
+                            <div style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"flex-start"}}>
+                              <div style={{minWidth:0}}>
+                                <div style={{fontSize:8,fontWeight:900,color:UI.purpleDark,textTransform:"uppercase"}}>
+                                  {row.programme.title} · Week {row.week.week_number}
+                                </div>
+                                <div style={{fontSize:14,fontWeight:900,color:UI.ink,marginTop:3}}>{row.exercise?.title || "Activity"}</div>
+                                <div style={{fontSize:9,color:UI.muted,marginTop:4}}>
+                                  Target: <strong style={{color:UI.ink}}>{targetLabel(row.item,row.exercise,row.override)}</strong>
+                                </div>
+                                <div style={{display:"flex",gap:5,flexWrap:"wrap",marginTop:7}}>
+                                  <Chip>{row.item.verification_type === "coach" ? "Coach check" : "Self check"}</Chip>
+                                  {row.override && <Chip bg={UI.blueSoft} color={UI.blue}>Individual override</Chip>}
+                                </div>
+                              </div>
+
+                              <Chip
+                                bg={state==="approved"?UI.greenSoft:state==="pending"?"#EDE9FE":state==="needs_work"?UI.amberSoft:"#F3F4F6"}
+                                color={state==="approved"?UI.green:state==="pending"?UI.purpleDark:state==="needs_work"?UI.amber:UI.muted}
+                              >
+                                {state==="approved"?"Complete":state==="pending"?"Waiting for coach":state==="needs_work"?"Needs work":"To do"}
+                              </Chip>
+                            </div>
+
+                            {row.override?.coach_note && (
+                              <div style={{fontSize:9,color:UI.blue,background:UI.blueSoft,padding:8,borderRadius:8,marginTop:9}}>
+                                Target note: {row.override.coach_note}
+                              </div>
+                            )}
+
+                            {latestFeedback?.feedback && (
+                              <div style={{fontSize:9,color:UI.ink,background:"#F8FAFC",padding:9,borderRadius:8,marginTop:8}}>
+                                <strong>Coach feedback:</strong> {latestFeedback.feedback}
+                              </div>
+                            )}
+
+                            <div style={{display:"flex",justifyContent:"space-between",gap:8,alignItems:"center",marginTop:9}}>
+                              <div style={{fontSize:8,color:UI.muted}}>
+                                {feedbackRows.length
+                                  ? `${feedbackRows.length} feedback ${feedbackRows.length === 1 ? "entry" : "entries"}`
+                                  : "No coach feedback yet"}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={()=>openOverride(row)}
+                                style={{...button,padding:"7px 10px",background:UI.purpleSoft,color:UI.purpleDark,fontSize:8}}
+                              >
+                                Adjust Target
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
